@@ -1,14 +1,10 @@
-import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { git } from '../../../../lib/git.mjs';
 import { readSchemaVersion, SCHEMA_FILE, SCHEMA_VERSION } from '../../../../lib/schema.mjs';
 import { SETTINGS_FILE, SETTINGS_VERSION } from '../../../../lib/settings.mjs';
 
 const FALLBACK_IDENTITY = ['-c', 'user.name=chef-setup', '-c', 'user.email=chef-setup@example.com'];
-
-function git(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
-}
 
 function identityArgs(cwd) {
   try {
