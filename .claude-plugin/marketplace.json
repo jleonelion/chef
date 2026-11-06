@@ -1,0 +1,12 @@
+{
+  "name": "chef",
+  "owner": { "name": "jleonelion" },
+  "metadata": { "description": "Chef: a free kitchen-assistant skill pack." },
+  "plugins": [
+    {
+      "name": "chef",
+      "source": "./plugins/chef",
+      "description": "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root."
+    }
+  ]
+}

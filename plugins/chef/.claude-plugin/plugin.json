@@ -1,0 +1,8 @@
+{
+  "name": "chef",
+  "version": "0.1.0",
+  "description": "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
+  "author": { "name": "jleonelion" },
+  "repository": "https://github.com/jleonelion/chef",
+  "license": "MIT"
+}
