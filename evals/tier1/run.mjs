@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Tier1 deterministic evals: run each case's built script against a throwaway data root,
-// then assert on its output and on what it wrote. Ported from chef-core evals/tier1.
+// then assert on its output and on what it wrote. `seed` writes files into the data root
+// first; `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 //   node evals/tier1/run.mjs [--skills-dir <dir>]   (default: plugins/chef/skills)
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -19,6 +20,7 @@ function prepare(testCase) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
   const dataRoot = path.join(tmp, 'data-root');
   if ((testCase.fixture ?? 'data-root') === 'data-root') fs.cpSync(fixture, dataRoot, { recursive: true });
+  for (const file of testCase.seed ?? []) fs.writeFileSync(path.join(dataRoot, file.path), file.content);
   return { tmp, dataRoot };
 }
 
@@ -42,7 +44,7 @@ function runCase(testCase, skillsDir) {
     const [cmd, ...args] = testCase.command.map(expand);
     const result = spawnSync(cmd, args, {
       cwd: tmp,
-      env: { ...process.env, CHEF_DATA_ROOT: dataRoot },
+      env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
       encoding: 'utf8',
       timeout: 30000,
     });

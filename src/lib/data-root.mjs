@@ -1,10 +1,9 @@
 import os from 'node:os';
 import path from 'node:path';
+import { muse } from '../runtime/muse.mjs';
 
-// Muse's default; other runtimes pass --data-root or set CHEF_DATA_ROOT.
-export const DEFAULT_DATA_ROOT = path.join(os.homedir(), 'workspace', 'chef');
-
-export function resolveDataRoot({ flag, env = process.env } = {}) {
-  const raw = flag ?? env.CHEF_DATA_ROOT ?? DEFAULT_DATA_ROOT;
+// --data-root flag > CHEF_DATA_ROOT > the runtime adapter's default.
+export function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
+  const raw = flag ?? env.CHEF_DATA_ROOT ?? adapter.defaultDataRoot();
   return path.resolve(raw.replace(/^~(?=$|\/)/, os.homedir()));
 }
