@@ -2,6 +2,8 @@
 // Tier1 deterministic evals: run each case's built script against a throwaway data root,
 // then assert on its output and on what it wrote. `seed` writes files into the data root
 // first; `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
+// Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
+// `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 //   node evals/tier1/run.mjs [--skills-dir <dir>]   (default: plugins/chef/skills)
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
