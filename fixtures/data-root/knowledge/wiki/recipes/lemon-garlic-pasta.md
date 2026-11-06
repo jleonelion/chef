@@ -1,7 +1,14 @@
 ---
-title: Lemon Garlic Pasta
 type: recipe
+title: Lemon Garlic Pasta
 servings: 2
+prep_minutes: 5
+cook_minutes: 15
+total_minutes: 20
+cuisine: italian
+tags: [pasta, weeknight]
+source_kind: text
+source_raw: [knowledge/raw/recipes/20260115-lemon-garlic-pasta.txt]
 created: 2026-01-15
 updated: 2026-01-15
 ---
