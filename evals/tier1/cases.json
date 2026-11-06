@@ -3,17 +3,371 @@
     "id": "chef-setup-creates-data-root",
     "description": "chef-setup init creates a git-initialised data root with a schema-version file and a git-ignored settings file.",
     "fixture": "none",
-    "command": ["node", "{skills}/chef-setup/scripts/setup.mjs", "init"],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "init"
+    ],
     "parse": "json",
     "assertions": [
-      { "path": "$.status", "equals": "created" },
-      { "path": "$.schema_version", "equals": 1 }
+      {
+        "path": "$.status",
+        "equals": "created"
+      },
+      {
+        "path": "$.schema_version",
+        "equals": 1
+      }
     ],
     "files": [
-      { "path": "schema-version.json", "parse": "json", "assertions": [{ "path": "$.schema_version", "equals": 1 }] },
-      { "path": "settings.json", "parse": "json", "assertions": [{ "path": "$.settings_version", "equals": 1 }] },
-      { "path": ".gitignore", "assertions": [{ "path": "$.content", "includes": "settings.json" }] },
-      { "path": ".git/HEAD", "assertions": [{ "path": "$.content", "includes": "refs/heads/main" }] }
+      {
+        "path": "schema-version.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.schema_version",
+            "equals": 1
+          }
+        ]
+      },
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.settings_version",
+            "equals": 1
+          }
+        ]
+      },
+      {
+        "path": ".gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "settings.json"
+          }
+        ]
+      },
+      {
+        "path": ".git/HEAD",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "refs/heads/main"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-settings-missing-uses-defaults",
+    "description": "With no settings.json, every v1 key falls back to its code default (units from locale) and no warning is shown.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "missing"
+      },
+      {
+        "path": "$.settings.household_recipients",
+        "equals": []
+      },
+      {
+        "path": "$.settings.trusted_receipt_senders",
+        "equals": []
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "us"
+      },
+      {
+        "path": "$.settings.calendar",
+        "equals": null
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-settings-units-default-from-locale",
+    "description": "Units default to metric outside imperial locales.",
+    "env": {
+      "LANG": "en_GB.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.settings.units",
+        "equals": "metric"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-settings-invalid-uses-defaults-and-warns",
+    "description": "An unparseable settings.json yields defaults plus one warning pointing at chef-setup, and the raw file for review.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"units\": "
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid"
+      },
+      {
+        "path": "$.settings.household_recipients",
+        "equals": []
+      },
+      {
+        "path": "$.settings.trusted_receipt_senders",
+        "equals": []
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "us"
+      },
+      {
+        "path": "$.settings.calendar",
+        "equals": null
+      },
+      {
+        "path": "$.warning",
+        "includes": "chef-setup"
+      },
+      {
+        "path": "$.content",
+        "includes": "settings_version"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-settings-unknown-version-uses-defaults-and-warns",
+    "description": "A settings.json from a newer Chef yields defaults plus one warning.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 7, \"units\": \"metric\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "unknown-version"
+      },
+      {
+        "path": "$.settings.household_recipients",
+        "equals": []
+      },
+      {
+        "path": "$.settings.trusted_receipt_senders",
+        "equals": []
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "us"
+      },
+      {
+        "path": "$.settings.calendar",
+        "equals": null
+      },
+      {
+        "path": "$.warning",
+        "includes": "version 7"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-set-preserves-unknown-keys",
+    "description": "Change-settings writes the new values and keeps keys it does not know.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"future_key\": \"kept\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric",
+      "--household-recipients",
+      "cook@example.com, helper@example.com",
+      "--calendar",
+      "Family"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "metric"
+      },
+      {
+        "path": "$.side_effects",
+        "includes": "recreate-delivery-tasks"
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.future_key",
+            "equals": "kept"
+          },
+          {
+            "path": "$.settings_version",
+            "equals": 1
+          },
+          {
+            "path": "$.units",
+            "equals": "metric"
+          },
+          {
+            "path": "$.calendar",
+            "equals": "Family"
+          },
+          {
+            "path": "$.household_recipients",
+            "equals": [
+              "cook@example.com",
+              "helper@example.com"
+            ]
+          }
+        ]
+      },
+      {
+        "path": ".gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "settings.json"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-set-refuses-invalid-file-without-rewrite",
+    "description": "Change-settings never silently overwrites a broken settings.json.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "not json\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.content",
+        "equals": "not json\n"
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "not json\n"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-set-rejects-bad-email",
+    "description": "Change-settings rejects a recipient that is not an email address.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--household-recipients",
+      "not-an-address"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid-input"
+      },
+      {
+        "path": "$.problems[0]",
+        "includes": "not-an-address"
+      }
     ]
   }
 ]
