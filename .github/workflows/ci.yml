@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '24'] # 24 = Muse VM, 20 = README floor
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node scripts/lint-skills.mjs
+      - run: node --test
+      - run: node evals/tier1/run.mjs
+
+  skill-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: node scripts/lint-skills.mjs
+
+  build-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun scripts/build.mjs
+      - name: Built output must match a fresh build
+        run: |
+          git status --porcelain plugins/
+          test -z "$(git status --porcelain plugins/)"
+
+  bundle-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - run: node scripts/bundle-smoke.mjs
+
+  hygiene:
+    runs-on: ubuntu-latest
+    env:
+      TRUFFLEHOG_VERSION: 3.99.8
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+      - name: Household-identifier deny list + example.com email rule
+        env:
+          CHEF_HYGIENE_DENY: ${{ secrets.CHEF_HYGIENE_DENY }}
+        run: node scripts/hygiene.mjs --require-deny-list
+      - name: Install trufflehog
+        run: |
+          curl -sSfL --retry 8 --retry-all-errors --retry-max-time 180 \
+            -o "$RUNNER_TEMP/trufflehog.tar.gz" \
+            "https://github.com/trufflesecurity/trufflehog/releases/download/v${TRUFFLEHOG_VERSION}/trufflehog_${TRUFFLEHOG_VERSION}_linux_amd64.tar.gz"
+          tar -xzf "$RUNNER_TEMP/trufflehog.tar.gz" -C "$RUNNER_TEMP" trufflehog
+          sudo install -m 0755 "$RUNNER_TEMP/trufflehog" /usr/local/bin/trufflehog
+      - name: Secret scan (files + history)
+        run: |
+          trufflehog filesystem . --fail --no-update
+          trufflehog git file://. --fail --no-update
