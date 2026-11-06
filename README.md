@@ -56,6 +56,10 @@ Requires Node 20+ and Bun.
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
 synthetic data root used by tests. CI fails if the built output differs from a fresh build.
 
+The skill-format lint only accepts the 10 v1 skill names (`V1_SKILLS` in
+`scripts/lib/skill-format.mjs`) and reports which are still missing. Missing skills become an
+error once the plugin version reaches 1.0.0, or with `node scripts/lint-skills.mjs --release`.
+
 Contributions: no real names, addresses or personal emails anywhere. Use `example.com`.
 
 ## License
