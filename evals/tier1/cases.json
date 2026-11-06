@@ -1,0 +1,19 @@
+[
+  {
+    "id": "chef-setup-creates-data-root",
+    "description": "chef-setup init creates a git-initialised data root with a schema-version file and a git-ignored settings file.",
+    "fixture": "none",
+    "command": ["node", "{skills}/chef-setup/scripts/setup.mjs", "init"],
+    "parse": "json",
+    "assertions": [
+      { "path": "$.status", "equals": "created" },
+      { "path": "$.schema_version", "equals": 1 }
+    ],
+    "files": [
+      { "path": "schema-version.json", "parse": "json", "assertions": [{ "path": "$.schema_version", "equals": 1 }] },
+      { "path": "settings.json", "parse": "json", "assertions": [{ "path": "$.settings_version", "equals": 1 }] },
+      { "path": ".gitignore", "assertions": [{ "path": "$.content", "includes": "settings.json" }] },
+      { "path": ".git/HEAD", "assertions": [{ "path": "$.content", "includes": "refs/heads/main" }] }
+    ]
+  }
+]
