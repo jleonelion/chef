@@ -823,6 +823,53 @@
     ]
   },
   {
+    "id": "chef-food-inventory-refuses-schema-mismatch",
+    "description": "chef-food-inventory refuses to write when the data root's schema version differs and points to update Chef.",
+    "seed": [
+      {
+        "path": "schema-version.json",
+        "content": "{\"schema_version\":2}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "edit",
+      "--path",
+      "fridge.dairy.whole_milk",
+      "--amount",
+      "2"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "update Chef"
+      },
+      {
+        "path": "$.changes",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.dairy.whole_milk.amount",
+            "equals": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "food-inventory-receipt-text-yields-items",
     "description": "Receipt text becomes inventory items: a new item is placed by name, a targeted item is added to, and the rollup page is regenerated.",
     "seed": [
