@@ -28,6 +28,7 @@ jobs:
       - run: node scripts/lint-skills.mjs
       - run: node --test
       - run: node evals/tier1/run.mjs
+      - run: node evals/migration-regression.mjs
 
   skill-format:
     runs-on: ubuntu-latest
