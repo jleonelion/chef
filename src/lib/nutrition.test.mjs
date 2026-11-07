@@ -66,3 +66,23 @@ test('looks each food up once', async () => {
   await computeNutrition({ lines: ['100 g onion', '50 g onion'], servings: 1, fdc });
   assert.deepEqual(calls, ['/fdc/v1/foods/search?onion']);
 });
+
+test('uses a reviewed ingredient match before USDA search', async () => {
+  const fdc = {
+    unavailable: null,
+    search: async () => assert.fail('reviewed aliases must not use search'),
+    food: async (fdcId) => ({
+      ok: true,
+      food: {
+        fdcId,
+        description: 'Oil, olive, salad or cooking',
+        dataType: 'SR Legacy',
+        per100g: { calories: 884, protein: 0, fat: 100, saturated_fat: 13.8, carbs: 0, fiber: 0, sugar: 0, sodium: 2, cholesterol: 0 },
+        portions: [],
+      },
+    }),
+  };
+  const result = await computeNutrition({ lines: ['100 g EVOO'], servings: 1, fdc });
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(result.sources, ['100 g EVOO: Oil, olive, salad or cooking (FDC 171413), 100 g']);
+});
