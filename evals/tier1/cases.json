@@ -2827,5 +2827,213 @@
         ]
       }
     ]
+  },
+  {
+    "id": "chef-shopping-lists-combines-plan-minus-inventory-chat-only",
+    "description": "A saved plan becomes one list: quantities scaled to planned servings and combined across meals, inventory subtracted in convertible units only, and with no household recipients the list is shown in chat with nothing written.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "content": "---\ntype: meal-plan\ntitle: \"Meal plan: week of 2026-01-19\"\nweek_start: 2026-01-19\nmeals:\n  - { date: 2026-01-19, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 4 }\n  - { date: 2026-01-20, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 2 }\n  - { date: 2026-01-21, slug: lemon-garlic-pasta, title: Lemon Garlic Pasta, servings: 2 }\n---\n# Meal plan: week of 2026-01-19\n"
+      },
+      {
+        "path": "data/food-inventory/current.json",
+        "content": "{\n  \"lastUpdated\": \"2026-01-14T18:00:00.000Z\",\n  \"pantry\": {\n    \"grains\": {\n      \"spaghetti\": {\n        \"name\": \"spaghetti\",\n        \"amount\": 0.5,\n        \"unit\": \"lb\"\n      }\n    },\n    \"canned\": {\n      \"chickpeas\": {\n        \"name\": \"chickpeas\",\n        \"amount\": 1,\n        \"unit\": \"can\"\n      }\n    }\n  },\n  \"fridge\": {\n    \"produce\": {\n      \"spinach\": {\n        \"name\": \"spinach\",\n        \"amount\": 1,\n        \"unit\": \"bunch\"\n      }\n    }\n  }\n}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "built"
+      },
+      {
+        "path": "$.week_start",
+        "equals": "2026-01-19"
+      },
+      {
+        "path": "$.items.[?(@item=='chickpeas')].amount",
+        "equals": 2
+      },
+      {
+        "path": "$.items.[?(@item=='garlic')].amount",
+        "equals": 6
+      },
+      {
+        "path": "$.items.[?(@item=='garlic')].unit",
+        "equals": "clove"
+      },
+      {
+        "path": "$.items.[?(@item=='crushed tomatoes')].amount",
+        "equals": 600
+      },
+      {
+        "path": "$.items.[?(@item=='spinach')].amount",
+        "equals": 225
+      },
+      {
+        "path": "$.items.[?(@item=='spinach')].on_hand.unit",
+        "equals": "bunch"
+      },
+      {
+        "path": "$.covered[0].item",
+        "equals": "spaghetti"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "includes": "No dietary constraints recorded"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 6 clove garlic"
+      },
+      {
+        "path": "$.delivery.mode",
+        "equals": "chat"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-shopping-lists-excludes-newly-gated-recipe-and-writes-off-muse",
+    "description": "A planned recipe the ruleset now excludes is reported and left off the list with the label footer; with household recipients set off Muse, the list is written to the data root and committed.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "content": "---\ntype: meal-plan\ntitle: \"Meal plan: week of 2026-01-19\"\nweek_start: 2026-01-19\nmeals:\n  - { date: 2026-01-19, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 4 }\n  - { date: 2026-01-20, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 2 }\n  - { date: 2026-01-21, slug: lemon-garlic-pasta, title: Lemon Garlic Pasta, servings: 2 }\n---\n# Meal plan: week of 2026-01-19\n"
+      },
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"lemon\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"household_recipients\":[\"cook@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "built"
+      },
+      {
+        "path": "$.excluded[0].slug",
+        "equals": "lemon-garlic-pasta"
+      },
+      {
+        "path": "$.items.[?(@item=='garlic')].amount",
+        "equals": 3
+      },
+      {
+        "path": "$.items.[?(@item=='spaghetti')]",
+        "equals": []
+      },
+      {
+        "path": "$.dietary.footer",
+        "includes": "always check labels"
+      },
+      {
+        "path": "$.delivery.mode",
+        "equals": "file"
+      },
+      {
+        "path": "$.delivery.path",
+        "equals": "data/shopping-lists/2026-01-19.md"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/shopping-lists/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "# Shopping list: week of 2026-01-19"
+          },
+          {
+            "path": "$.content",
+            "includes": "always check labels"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-recipient-change-returns-delivery-tasks",
+    "description": "Changing household recipients through chef-setup returns the delivery tasks to re-create so Muse re-asks permission for the new addresses.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--household-recipients",
+      "cook@example.com"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.side_effects",
+        "equals": [
+          "recreate-delivery-tasks"
+        ]
+      },
+      {
+        "path": "$.delivery_tasks.action",
+        "equals": "recreate-delivery-tasks"
+      },
+      {
+        "path": "$.delivery_tasks.recipients",
+        "equals": [
+          "cook@example.com"
+        ]
+      },
+      {
+        "path": "$.delivery_tasks.tasks[0].skill",
+        "equals": "chef-shopping-lists"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-other-setting-change-has-no-delivery-tasks",
+    "description": "A settings change that leaves household recipients alone returns no delivery tasks.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.delivery_tasks",
+        "absent": true
+      }
+    ]
   }
 ]

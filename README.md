@@ -4,7 +4,7 @@ A free, MIT-licensed kitchen-assistant skill pack: recipes, meal planning, shopp
 pantry inventory. Chef keeps everything in one folder you own, the **data root**, as plain
 files under local git.
 
-> Status: early. `chef-setup`, `chef-add-recipe`, `chef-recipe-search`, `chef-recipe-decisions`, `chef-food-inventory` and `chef-meal-planning` ship so far; more skills land before v1.
+> Status: early. `chef-setup`, `chef-add-recipe`, `chef-recipe-search`, `chef-recipe-decisions`, `chef-food-inventory`, `chef-meal-planning` and `chef-shopping-lists` ship so far; more skills land before v1.
 
 ## Install
 
