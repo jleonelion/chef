@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { writeWiki } from '../../../../lib/wiki.mjs';
 import { decide } from './decide.mjs';
 import { propose } from './propose.mjs';
 import { addRule } from './rules.mjs';
 import { PROPOSALS_FILE } from './store.mjs';
-import { commits, dataRoot, draft, readJson } from './test-root.mjs';
+import { commits, dataRoot, draft, exists, readJson } from './test-root.mjs';
 
 const date = '2026-01-20';
 
@@ -47,6 +48,35 @@ test('standing rules decide a proposal; reject rules win over approve rules', ()
   assert.equal(lentil.status, 'auto-rejected');
   assert.deepEqual(lentil.rule, { id: 'no-lentils', reason: 'No lentils' });
   assert.equal(readJson(root, PROPOSALS_FILE).proposals['lentil-soup'].decisions[0].by, 'rule:no-lentils');
+});
+
+test('a dietary conflict keeps a matching auto-approve proposal open with reasons', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: {
+        type: 'dietary-ruleset',
+        title: 'Dietary ruleset',
+        members: [{ name: 'Alex Example', hard_constraints: ['dairy'] }],
+        updated: date,
+      },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'declare dietary rule',
+  });
+  addRule(root, { action: 'approve', id: 'soups', reason: 'Always soups', text: ['soup'], date });
+
+  const result = propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
+
+  assert.equal(result.status, 'proposed');
+  assert.equal(result.state, 'open');
+  assert.equal(result.reasons[0].constraint, 'dairy');
+  assert.equal(result.reasons[0].why, 'ingredient-text');
+  const record = readJson(root, PROPOSALS_FILE).proposals['mushroom-barley-soup'];
+  assert.deepEqual(record.decisions, []);
+  assert.deepEqual(record.gate_reasons, result.reasons);
+  assert.equal(exists(root, 'knowledge/wiki/recipes/mushroom-barley-soup.md'), false);
 });
 
 test('rule phrases match at word starts only', () => {

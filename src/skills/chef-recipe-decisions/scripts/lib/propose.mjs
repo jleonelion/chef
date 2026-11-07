@@ -1,9 +1,11 @@
 // Recipe Proposal: record a recipe Chef wants to suggest, unless the user already decided on it
 // or a standing rule decides it. Proposals are keyed by recipe slug, so a rejected recipe (same
 // title or source address) is never proposed again.
+import { checkRecipe } from '../../../../lib/dietary-gate.mjs';
+import { readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { listRecipes, normalizeUrl } from '../../../../lib/recipes.mjs';
 import { slugify, writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
-import { checkDraft } from '../../../chef-add-recipe/scripts/lib/draft.mjs';
+import { checkDraft, recipePage } from '../../../chef-add-recipe/scripts/lib/draft.mjs';
 import { matchRule } from './rules.mjs';
 import { PROPOSALS_FILE, proposalState, readProposals, readRules, storeFile, summary } from './store.mjs';
 
@@ -41,13 +43,27 @@ export function propose(root, { draft, url, note, date }) {
   const prior = earlier(store, record.slug, url);
   if (prior) return { status: EARLIER[proposalState(prior)], data_root: root, ...summary(prior) };
 
-  const match = matchRule(readRules(root), record.draft);
+  let match = matchRule(readRules(root), record.draft);
   record.proposed = date;
+  if (match?.action === 'approve') {
+    const page = recipePage(record.draft, { sourceKind: 'proposal', sourceRaw: [], date });
+    const verdict = checkRecipe(readRuleset(root), { slug: record.slug, ...page });
+    if (!verdict.allowed) {
+      record.gate_reasons = verdict.reasons;
+      match = null;
+    }
+  }
   if (match) record.decisions.push({ outcome: match.action === 'reject' ? 'reject' : 'accept', date, by: `rule:${match.rule.id}`, reason: match.rule.reason });
   store.proposals[record.id] = record;
   const verb = match ? `auto-${match.action}` : 'propose';
   const written = writeWiki(root, { data: [storeFile(PROPOSALS_FILE, store)], message: `chef-recipe-decisions: ${verb} ${record.id}` });
   if (written.status !== 'written') return written;
   const status = match ? `auto-${match.action === 'reject' ? 'rejected' : 'accepted'}` : 'proposed';
-  return { status, data_root: root, ...summary(record), ...(match && { rule: { id: match.rule.id, reason: match.rule.reason } }) };
+  return {
+    status,
+    data_root: root,
+    ...summary(record),
+    ...(record.gate_reasons && { reasons: record.gate_reasons }),
+    ...(match && { rule: { id: match.rule.id, reason: match.rule.reason } }),
+  };
 }
