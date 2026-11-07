@@ -8,6 +8,8 @@ import { ingredientLines, listRecipes, today } from '../../../../lib/recipes.mjs
 import { readSettings } from '../../../../lib/settings.mjs';
 import { wikiPath, writeWiki } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
+import { activeGoal } from '../../../chef-health-goals/scripts/lib/goals.mjs';
+import { healthSuggestions } from '../../../chef-health-goals/scripts/lib/suggest.mjs';
 
 const PROFILE_PATH = wikiPath('household-profile', 'profile');
 
@@ -56,9 +58,9 @@ function planBody(weekStart, meals) {
   return `# Meal plan: week of ${weekStart}\n\n| Date | Recipe | Servings |\n|---|---|---:|\n${rows}\n`;
 }
 
-// Health-aware suggestions are added by chef-health-goals later. No declared goal is a no-op.
+// chef-health-goals' advisory step, on the saved plan only. No declared goal is a no-op.
 export function applyHealthSuggestions(plan, goal) {
-  return goal ? { ...plan, suggestions: { status: 'deferred' } } : plan;
+  return goal ? { ...plan, health_suggestions: healthSuggestions(plan, goal) } : plan;
 }
 
 function selectRecipes(allowed, bySlug, slots, days) {
@@ -165,5 +167,5 @@ export function planWeek(root, { weekStart, days = 7, slots = [], overrides = []
     ...(avoidanceNotes.length && { avoidance_notes: avoidanceNotes }),
     ...(settings.warning && { settings_warning: settings.warning }),
     ...calendarPayload(settings.settings.calendar, meals),
-  });
+  }, activeGoal(root));
 }
