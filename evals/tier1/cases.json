@@ -2398,7 +2398,15 @@
       },
       {
         "path": "$.meals[*].slug",
-        "equals": ["chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew"]
+        "equals": [
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew"
+        ]
       },
       {
         "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].why",
@@ -2825,6 +2833,266 @@
             "absent": true
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "chef-health-goals-no-goal-no-health-output",
+    "description": "With no goal declared, the weekly report is dormant with no health output, even when meals are logged, and nothing is written.",
+    "seed": [
+      {
+        "path": "data/meal-log/log.json",
+        "content": "{\n  \"entries\": [\n    {\n      \"id\": \"2026-01-19-lunch-lentil-salad\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"lunch\",\n      \"recipe\": null,\n      \"food\": \"lentil-salad\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 550,\n        \"protein\": 35,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 800,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-19-dinner-lemon-garlic-pasta\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"lemon-garlic-pasta\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 700,\n        \"protein\": 25,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 1300,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-20-dinner-takeout-ramen\",\n      \"date\": \"2026-01-20\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"takeout-ramen\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 900,\n        \"protein\": 30,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 3100,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-20T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-21-dinner-chickpea-spinach-stew\",\n      \"date\": \"2026-01-21\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"chickpea-spinach-stew\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": null,\n      \"logged_at\": \"2026-01-21T19:00:00Z\"\n    }\n  ]\n}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-health-goals/scripts/health-goals.mjs",
+      "report",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "dormant"
+      },
+      {
+        "path": "$.footer",
+        "absent": true
+      },
+      {
+        "path": "$.progress",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-no-goal-no-health-suggestions",
+    "description": "With no goal declared, a saved meal plan carries no health suggestions.",
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19",
+      "--days",
+      "2"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.health_suggestions",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "chef-health-goals-weekly-report-from-fixture",
+    "description": "The weekly report averages fully measured days from the meal log against the goal targets, lists unmeasured entries without estimating, ends with the not-medical-advice footer, and writes nothing.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"Lower sodium\",\"targets\":{\"sodium\":{\"max\":2300},\"protein\":{\"min\":90}},\"set\":\"2026-01-10\",\"updated\":\"2026-01-10\"}\n"
+      },
+      {
+        "path": "data/meal-log/log.json",
+        "content": "{\n  \"entries\": [\n    {\n      \"id\": \"2026-01-19-lunch-lentil-salad\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"lunch\",\n      \"recipe\": null,\n      \"food\": \"lentil-salad\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 550,\n        \"protein\": 35,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 800,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-19-dinner-lemon-garlic-pasta\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"lemon-garlic-pasta\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 700,\n        \"protein\": 25,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 1300,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-20-dinner-takeout-ramen\",\n      \"date\": \"2026-01-20\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"takeout-ramen\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 900,\n        \"protein\": 30,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 3100,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-20T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-21-dinner-chickpea-spinach-stew\",\n      \"date\": \"2026-01-21\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"chickpea-spinach-stew\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": null,\n      \"logged_at\": \"2026-01-21T19:00:00Z\"\n    }\n  ]\n}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-health-goals/scripts/health-goals.mjs",
+      "report",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "report"
+      },
+      {
+        "path": "$.week_end",
+        "equals": "2026-01-25"
+      },
+      {
+        "path": "$.goal",
+        "equals": "Lower sodium"
+      },
+      {
+        "path": "$.days[0].totals.sodium",
+        "equals": 2100
+      },
+      {
+        "path": "$.days[2].status",
+        "equals": "incomplete"
+      },
+      {
+        "path": "$.days[3].status",
+        "equals": "not-logged"
+      },
+      {
+        "path": "$.unmeasured[0].id",
+        "equals": "2026-01-21-dinner-chickpea-spinach-stew"
+      },
+      {
+        "path": "$.progress[0]",
+        "equals": {
+          "nutrient": "sodium",
+          "max": 2300,
+          "daily_average": 2600,
+          "days_on_target": 1,
+          "days_measured": 2
+        }
+      },
+      {
+        "path": "$.progress[1]",
+        "equals": {
+          "nutrient": "protein",
+          "min": 90,
+          "daily_average": 45,
+          "days_on_target": 0,
+          "days_measured": 2
+        }
+      },
+      {
+        "path": "$.footer",
+        "equals": "Chef gives general information, not medical advice."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-health-goals-set-goal-shows-training-notice-once",
+    "description": "Declaring the first goal saves the one goals store and records the shared training-setting notice in the same commit; a second set does not repeat the notice.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-health-goals/scripts/health-goals.mjs",
+          "set",
+          "--goal",
+          "Lower sodium",
+          "--max",
+          "sodium=2300"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "saved"
+          },
+          {
+            "path": "$.notice",
+            "includes": "Help improve our AI models"
+          },
+          {
+            "path": "$.footer",
+            "equals": "Chef gives general information, not medical advice."
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-health-goals/scripts/health-goals.mjs",
+      "set",
+      "--goal",
+      "Lower sodium",
+      "--max",
+      "sodium=2000",
+      "--min",
+      "fiber=30"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.notice",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "data/health-goals/goals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.targets",
+            "equals": {
+              "sodium": {
+                "max": 2000
+              },
+              "fiber": {
+                "min": 30
+              }
+            }
+          }
+        ]
+      },
+      {
+        "path": "data/notices.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.training-setting",
+            "absent": false
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-goal-adds-advisory-suggestions",
+    "description": "With a goal declared, a saved plan gets health suggestions with the footer; fixture recipes have no computed nutrition, so Chef says it cannot compare rather than estimating.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"Lower sodium\",\"targets\":{\"sodium\":{\"max\":2300},\"protein\":{\"min\":90}},\"set\":\"2026-01-10\",\"updated\":\"2026-01-10\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19",
+      "--days",
+      "2"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.health_suggestions.status",
+        "equals": "unavailable"
+      },
+      {
+        "path": "$.health_suggestions.footer",
+        "equals": "Chef gives general information, not medical advice."
       }
     ]
   }

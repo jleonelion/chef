@@ -50,6 +50,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Weekly meal plans are saved in `knowledge/wiki/meal-plans/` with a nutrition rollup. Every
   candidate passes the household dietary gate. Chef emits calendar instructions only when the
   `calendar` setting names a calendar; scripts never call a calendar API.
+- Health features stay off until you tell Chef a goal (`chef-health-goals`). Then your goal and
+  daily targets live in `data/health-goals/`, you can ask for a weekly progress report from your
+  meal log, and meal plans add advisory suggestions. Drop the goal and they go quiet again.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
   To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
 - Ask Chef to "verify my Chef install" any time; it never touches your data.
