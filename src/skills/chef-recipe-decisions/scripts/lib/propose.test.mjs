@@ -79,6 +79,25 @@ test('a dietary conflict keeps a matching auto-approve proposal open with reason
   assert.equal(exists(root, 'knowledge/wiki/recipes/mushroom-barley-soup.md'), false);
 });
 
+test('an unreadable dietary ruleset keeps a matching auto-approve proposal open', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: { type: 'dietary-ruleset', title: 'Dietary ruleset', members: 'broken', updated: date },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'write unreadable dietary rule',
+  });
+  addRule(root, { action: 'approve', id: 'soups', reason: 'Always soups', text: ['soup'], date });
+
+  const result = propose(root, { draft, date });
+
+  assert.equal(result.status, 'proposed');
+  assert.equal(result.reasons[0].why, 'ruleset-unreadable');
+  assert.deepEqual(readJson(root, PROPOSALS_FILE).proposals['mushroom-barley-soup'].decisions, []);
+});
+
 test('rule phrases match at word starts only', () => {
   const root = dataRoot();
   addRule(root, { action: 'reject', id: 'no-ham', reason: 'No ham', text: ['ham'], date });

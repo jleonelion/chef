@@ -117,6 +117,26 @@ test('explicit confirmation publishes a dietary conflict and records the user de
   assert.equal(exists(root, 'data/recipe-decisions/standing-rules.json'), false);
 });
 
+test('an unreadable dietary ruleset refuses publication without confirmation', () => {
+  const root = accepted();
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: { type: 'dietary-ruleset', title: 'Dietary ruleset', members: 'broken', updated: date },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'write unreadable dietary rule',
+  });
+  const before = commits(root);
+
+  const result = publishProposals(root, { date });
+
+  assert.equal(result.status, 'refused');
+  assert.equal(result.blocked[0].reasons[0].why, 'ruleset-unreadable');
+  assert.equal(commits(root), before);
+  assert.equal(exists(root, page), false);
+});
+
 test('a refused publication keeps the decision for a later retry', () => {
   const root = accepted();
   fs.writeFileSync(path.join(root, 'schema-version.json'), '{"schema_version": 99}');
