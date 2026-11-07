@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 // Tier1 deterministic evals: run each case's built script against a throwaway data root,
 // then assert on its output and on what it wrote. `seed` writes files into the data root
-// first (the fixture is then committed to a fresh git repo); `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
+// first (the fixture is then committed to a fresh git repo); `afterCommitSeed` creates pending
+// user changes. `updateInstall` creates a local tagged release checkout and custom-skills install.
+// `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 //   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>]
@@ -26,18 +28,46 @@ function commitFixture(dataRoot) {
   git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'fixture');
 }
 
-function prepare(testCase, fixture) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
-  const dataRoot = path.join(tmp, 'data-root');
-  const useFixture = (testCase.fixture ?? 'data-root') === 'data-root';
-  if (useFixture) fs.cpSync(fixture, dataRoot, { recursive: true });
-  for (const file of testCase.seed ?? []) {
+function writeSeed(dataRoot, files) {
+  for (const file of files ?? []) {
     const abs = path.join(dataRoot, file.path);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
     fs.writeFileSync(abs, file.content);
   }
+}
+
+function prepareUpdateInstall(tmp, sourceSkills) {
+  const skillsDir = path.join(tmp, 'custom-skills');
+  const repository = path.join(tmp, 'chef-release');
+  const releaseSkills = path.join(repository, 'plugins', 'chef', 'skills');
+  fs.mkdirSync(skillsDir);
+  fs.mkdirSync(releaseSkills, { recursive: true });
+  for (const name of fs.readdirSync(sourceSkills)) {
+    fs.cpSync(path.join(sourceSkills, name), path.join(releaseSkills, name), { recursive: true });
+    fs.cpSync(path.join(sourceSkills, name), path.join(skillsDir, name.replaceAll('-', '_')), { recursive: true });
+  }
+  fs.mkdirSync(path.join(skillsDir, 'chef_dropped'));
+  fs.writeFileSync(path.join(skillsDir, 'chef_dropped', 'old.txt'), 'removed by update\n');
+  fs.mkdirSync(path.join(repository, 'plugins', 'chef', '.claude-plugin'));
+  fs.writeFileSync(path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), '{"name":"chef","version":"0.1.0"}\n');
+  const git = (...args) => execFileSync('git', args, { cwd: repository, stdio: 'ignore' });
+  git('init', '-q', '-b', 'main');
+  git('add', '-A');
+  git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'release');
+  git('tag', 'v0.1.0');
+  return skillsDir;
+}
+
+function prepare(testCase, fixture, sourceSkills) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
+  const dataRoot = path.join(tmp, 'data-root');
+  const useFixture = (testCase.fixture ?? 'data-root') === 'data-root';
+  if (useFixture) fs.cpSync(fixture, dataRoot, { recursive: true });
+  writeSeed(dataRoot, testCase.seed);
   if (useFixture) commitFixture(dataRoot);
-  return { tmp, dataRoot };
+  writeSeed(dataRoot, testCase.afterCommitSeed);
+  const caseSkills = testCase.updateInstall ? prepareUpdateInstall(tmp, sourceSkills) : sourceSkills;
+  return { tmp, dataRoot, caseSkills };
 }
 
 function parseOutput(mode, result) {
@@ -54,9 +84,9 @@ function readTarget(dataRoot, target) {
 }
 
 function runCase(testCase, skillsDir, fixture) {
-  const { tmp, dataRoot } = prepare(testCase, fixture);
+  const { tmp, dataRoot, caseSkills } = prepare(testCase, fixture, skillsDir);
   try {
-    const expand = (arg) => arg.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot);
+    const expand = (arg) => arg.replaceAll('{skills}', caseSkills).replaceAll('{data_root}', dataRoot);
     const run = (step) => {
       const [cmd, ...args] = step.command.map(expand);
       const result = spawnSync(cmd, args, {
@@ -70,7 +100,11 @@ function runCase(testCase, skillsDir, fixture) {
       return result;
     };
     // `steps` run first, in order, each expected to exit 0 unless it says otherwise.
-    for (const step of testCase.steps ?? []) run(step);
+    for (const step of testCase.steps ?? []) {
+      const stepResult = run(step);
+      const evaluation = parseOutput(step.parse ?? testCase.parse, stepResult);
+      for (const assertion of step.assertions ?? []) assertCase(evaluation, assertion);
+    }
     const result = run(testCase);
     const evaluation = parseOutput(testCase.parse, result);
     for (const assertion of testCase.assertions ?? []) assertCase(evaluation, assertion);

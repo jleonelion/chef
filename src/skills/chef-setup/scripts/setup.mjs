@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // chef-setup entry point. Modes: init (create the data root), adopt (clone an existing one),
-// settings (show), set (change), verify (check the install), usda (check the USDA connection).
+// settings (show), set (change), update (install a tagged release), verify (check the install),
+// usda (check the USDA connection).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -12,6 +13,7 @@ import { adoptDataRoot } from './lib/adopt-data-root.mjs';
 import { checkUsda } from './lib/check-usda.mjs';
 import { initDataRoot } from './lib/init-data-root.mjs';
 import { changesFromFlags, SETTING_FLAGS } from './lib/settings-args.mjs';
+import { updateChef } from './lib/update-chef.mjs';
 import { verifyInstall } from './lib/verify-install.mjs';
 import { writeSettings } from './lib/write-settings.mjs';
 
@@ -19,7 +21,13 @@ import { writeSettings } from './lib/write-settings.mjs';
 const skillDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const { values, positionals } = parseArgs({
-  options: { 'data-root': { type: 'string' }, source: { type: 'string' }, rewrite: { type: 'boolean' }, ...SETTING_FLAGS },
+  options: {
+    'data-root': { type: 'string' },
+    source: { type: 'string' },
+    rewrite: { type: 'boolean' },
+    confirm: { type: 'boolean' },
+    ...SETTING_FLAGS,
+  },
   allowPositionals: true,
 });
 
@@ -34,11 +42,24 @@ function show(root) {
   return { data_root: root, ...readSettings(root) };
 }
 
+function update(root) {
+  try {
+    return updateChef(root, {
+      skillDir,
+      fixture: path.join(skillDir, 'fixture', 'data-root'),
+      confirm: values.confirm ?? false,
+    });
+  } catch (error) {
+    return { status: 'refused', data_root: root, reason: error instanceof Error ? error.message : String(error) };
+  }
+}
+
 const MODES = {
   init: (root) => initDataRoot(root),
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
+  update,
   verify: (root) => verifyInstall(root, { skillsDir: path.dirname(skillDir), fixture: path.join(skillDir, 'fixture', 'data-root') }),
   usda: () => checkUsda(usdaClient()),
 };

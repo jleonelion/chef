@@ -41,10 +41,9 @@ function compareSemver(left, right) {
 }
 
 function latestTag(repository) {
-  try {
+  const remotes = git(repository, ['remote']).split('\n').filter(Boolean);
+  if (remotes.includes('origin')) {
     git(repository, ['fetch', '--tags', '--force', 'origin']);
-  } catch {
-    // A release checkout may have no remote; its local tags are still authoritative.
   }
   const releases = git(repository, ['tag', '--list']).split('\n').filter(Boolean).map(semver).filter(Boolean).sort(compareSemver);
   if (releases.length === 0) throw new Error('Chef repository has no semver release tags');
@@ -116,6 +115,8 @@ export function updateChef(root, {
   const settingsPlan = settingsMigrationPlan(root, { migrations: settingsMigrations, target: targetSettings });
 
   git(install.repository, ['checkout', '--detach', release]);
+  const repositoryChanges = git(install.repository, ['status', '--short', '--untracked-files=all']);
+  if (repositoryChanges) throw new Error(`Chef repository is not clean after checking out ${release}`);
   syncSkills(install.repository, install.skillsDir, sourceNames, expectedNames);
   const changes = { skills, migrations: { data_root: dataPlan.applied, settings: settingsPlan.applied } };
   if (!confirm) return { status: 'confirmation-required', data_root: root, release, changes };
