@@ -34,9 +34,21 @@ function fromConnector(spec, run) {
   return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: 'connector' };
 }
 
+function updateInstall({ skillDir, repository }) {
+  const skillsDir = path.dirname(skillDir);
+  const customSkills = path.basename(skillsDir) === 'custom-skills';
+  return {
+    repository,
+    skillsDir,
+    installedName: path.basename(skillDir),
+    nameForSkill: customSkills ? 'underscores' : 'hyphens',
+  };
+}
+
 export const muse = {
   name: 'muse',
   defaultDataRoot: () => path.join(os.homedir(), 'workspace', 'chef'),
+  updateInstall,
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
