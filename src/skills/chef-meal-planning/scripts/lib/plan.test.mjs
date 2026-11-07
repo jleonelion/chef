@@ -124,3 +124,12 @@ test('servings come from household profile frontmatter, never body prose', () =>
   assert.equal(result.meals[0].servings, 4);
   assert.equal(result.servings_source, 'profile');
 });
+
+test('auto-fill does not repeat while enough distinct allowed recipes exist', () => {
+  const root = makeRoot([recipe('alpha'), recipe('beta'), recipe('gamma')]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 3, slots: ['', 'alpha', ''] });
+
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(result.meals.map((meal) => meal.slug), ['beta', 'alpha', 'gamma']);
+});
