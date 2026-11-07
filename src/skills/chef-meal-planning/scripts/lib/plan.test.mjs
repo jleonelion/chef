@@ -133,3 +133,28 @@ test('auto-fill does not repeat while enough distinct allowed recipes exist', ()
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.meals.map((meal) => meal.slug), ['beta', 'alpha', 'gamma']);
 });
+
+test('a one-plan override allows the chosen recipe and reports lifted reasons', () => {
+  const root = makeRoot([
+    recipe('dairy', { frontmatter: { dietary_flags: ['contains-dairy'] }, ingredients: ['30 g parmesan'] }),
+    ruleset([{ name: 'Alex Example', hard_constraints: ['dairy'] }]),
+  ]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    days: 1,
+    slots: ['dairy'],
+    overrides: [{ member: 'Alex Example', constraint: 'dairy' }],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.meals[0].slug, 'dairy');
+  assert.deepEqual(result.overridden, [{
+    slug: 'dairy',
+    reasons: [
+      { member: 'Alex Example', constraint: 'dairy', why: 'flagged', detail: 'contains-dairy' },
+      { member: 'Alex Example', constraint: 'dairy', why: 'ingredient-text', detail: '30 g parmesan' },
+    ],
+  }]);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, result.path), 'utf8'), /overrid(?:e|den)/);
+});

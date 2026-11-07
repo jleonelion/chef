@@ -76,11 +76,11 @@ function selectRecipes(allowed, bySlug, slots, days) {
   });
 }
 
-export function planWeek(root, { weekStart, days = 7, slots = [] }) {
+export function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
   const ruleset = readRuleset(root);
   const { recipes, unreadable } = listRecipes(root);
   const candidates = recipes.filter((recipe) => recipe.frontmatter.type === 'recipe');
-  const judged = candidates.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset) }));
+  const judged = candidates.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset, { overrides }) }));
   const active = judged.filter(({ recipe }) => recipe.frontmatter.lifecycle !== 'retired');
   const excluded = active.filter(({ verdict }) => verdict.excluded)
     .map(({ recipe, verdict }) => ({ slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, reasons: verdict.reasons }));
@@ -118,6 +118,10 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
   const activeBySlug = new Map(active.map(({ recipe }) => [recipe.slug, recipe]));
   const selected = selectRecipes(allowed, activeBySlug, slots, days);
   const meals = selected.map((recipe, index) => mealView(recipe, dateAt(weekStart, index), profile.servings));
+  const overridden = [...new Set(selected.map((recipe) => recipe.slug))].flatMap((slug) => {
+    const reasons = bySlug.get(slug).verdict.overridden;
+    return reasons.length ? [{ slug, reasons }] : [];
+  });
   const avoidanceNotes = meals.flatMap((meal) => {
     const avoidances = bySlug.get(meal.slug).verdict.avoidances;
     return avoidances.length ? [{ date: meal.date, slug: meal.slug, avoidances }] : [];
@@ -157,6 +161,7 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
     inventory,
     nutrition,
     dietary,
+    ...(overridden.length && { overridden }),
     ...(avoidanceNotes.length && { avoidance_notes: avoidanceNotes }),
     ...(settings.warning && { settings_warning: settings.warning }),
     ...calendarPayload(settings.settings.calendar, meals),
