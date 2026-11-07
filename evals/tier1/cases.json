@@ -672,5 +672,277 @@
         "equals": 1
       }
     ]
+  },
+  {
+    "id": "food-inventory-receipt-text-yields-items",
+    "description": "Receipt text becomes inventory items: a new item is placed by name, a targeted item is added to, and the rollup page is regenerated.",
+    "seed": [
+      {
+        "path": "../receipt.txt",
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n- 1 gal whole milk \u2014 $3.49 -> fridge.dairy.whole_milk\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "add-receipt",
+      "--transcript-file",
+      "{data_root}/../receipt.txt",
+      "--source",
+      "text",
+      "--date",
+      "2026-01-15"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "added"
+      },
+      {
+        "path": "$.changes[*].path",
+        "equals": [
+          "pantry.produce.bananas",
+          "fridge.dairy.whole_milk"
+        ]
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.pantry.produce.bananas.amount",
+            "equals": 2
+          },
+          {
+            "path": "$.pantry.produce.bananas.unit",
+            "equals": "lb"
+          },
+          {
+            "path": "$.fridge.dairy.whole_milk.amount",
+            "equals": 2
+          }
+        ]
+      },
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- bananas: 2 lb"
+          },
+          {
+            "path": "$.content",
+            "includes": "- whole milk: 2 gal (expires 2026-01-21)"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-untrusted-sender-refused",
+    "description": "A forwarded receipt from a sender not in trusted_receipt_senders is refused and nothing changes, even when the display name looks trusted.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"trusted_receipt_senders\": [\"receipts@example.com\"]}\n"
+      },
+      {
+        "path": "../receipt.txt",
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n- 1 gal whole milk \u2014 $3.49 -> fridge.dairy.whole_milk\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "add-receipt",
+      "--transcript-file",
+      "{data_root}/../receipt.txt",
+      "--source",
+      "email",
+      "--from",
+      "\"receipts@example.com\" <orders@example.com>",
+      "--receipt-id",
+      "<r1@example.com>"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "orders@example.com is not a trusted receipt sender"
+      },
+      {
+        "path": "$.changes",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.dairy.whole_milk.amount",
+            "equals": 1
+          },
+          {
+            "path": "$.pantry.produce.bananas",
+            "absent": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-forwarding-off-refused",
+    "description": "With no trusted senders set, forwarded receipts are refused because forwarding is off.",
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "check-sender",
+      "--from",
+      "receipts@example.com"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "forwarding is off"
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-trusted-sender-accepted",
+    "description": "A trusted sender passes the gate case-insensitively.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"trusted_receipt_senders\": [\"receipts@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "check-sender",
+      "--from",
+      "Example Market <Receipts@Example.com>"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "trusted"
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-rollup-matches-store",
+    "description": "The health check finds the fixture store valid, matching its audit log and ledger, and the rollup page matching the store.",
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "health",
+      "--today",
+      "2026-01-16",
+      "--days",
+      "3"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "healthy"
+      },
+      {
+        "path": "$.problems",
+        "equals": []
+      },
+      {
+        "path": "$.stats",
+        "equals": {
+          "items": 5,
+          "empty": 0,
+          "expired": 0,
+          "expiring_soon": 1,
+          "receipts": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-health-detects-edited-rollup",
+    "description": "A hand-edited rollup page no longer matches the store and the health check says so.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "content": "---\ntype: inventory-rollup\ntitle: Current inventory\n---\n# Current inventory\n\n- caviar: 9 jar\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "health",
+      "--today",
+      "2026-01-16"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "problems"
+      },
+      {
+        "path": "$.problems",
+        "includes": "the rollup page does not match the store"
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-expiring-soonest-first",
+    "description": "Expiration tracking lists stocked items expiring within the window, soonest first, and expired items separately.",
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "expiring",
+      "--today",
+      "2026-01-18",
+      "--days",
+      "5"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.expired.length",
+        "equals": 1
+      },
+      {
+        "path": "$.expired[0].path",
+        "equals": "fridge.produce.spinach"
+      },
+      {
+        "path": "$.soon.length",
+        "equals": 1
+      },
+      {
+        "path": "$.soon[0].path",
+        "equals": "fridge.dairy.whole_milk"
+      },
+      {
+        "path": "$.soon[0].days_left",
+        "equals": 3
+      }
+    ]
   }
 ]

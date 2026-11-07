@@ -7076,7 +7076,8 @@ function readSchemaVersion(root) {
 // src/lib/wiki.mjs
 var WIKI_DIR = "knowledge/wiki";
 var RAW_DIR = "knowledge/raw";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household" };
+var DATA_DIR = "data";
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household" };
 var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function slugify(text) {
   return text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80).replace(/^-+|-+$/g, "");
@@ -7088,10 +7089,10 @@ function wikiPath(type, slug) {
     throw new Error(`invalid slug: ${JSON.stringify(slug)}`);
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
-function rawPath(relative) {
+function pathUnder(dir, relative, kind) {
   const normalized = path4.posix.normalize(relative);
-  if (!normalized.startsWith(`${RAW_DIR}/`))
-    throw new Error(`raw files must live under ${RAW_DIR}/: ${relative}`);
+  if (!normalized.startsWith(`${dir}/`))
+    throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
 }
 function writeRefusal(root) {
@@ -7106,16 +7107,17 @@ function writeRefusal(root) {
     return refuse("data root has no git history; run chef-setup to repair it");
   return null;
 }
-function writeWiki(root, { pages = [], raw = [], message }) {
+function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const pageFiles = pages.map((page) => ({ path: wikiPath(page.frontmatter.type, page.slug), content: serializePage(page.frontmatter, page.body) }));
-  const rawFiles = raw.map((file) => ({ path: rawPath(file.path), content: file.content }));
+  const rawFiles = raw.map((file) => ({ path: pathUnder(RAW_DIR, file.path, "raw"), content: file.content }));
+  const dataFiles = data.map((file) => ({ path: pathUnder(DATA_DIR, file.path, "data"), content: file.content }));
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
   const taken = rawFiles.find((file) => fs2.existsSync(path4.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
-  const files = [...rawFiles, ...pageFiles];
+  const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
     const abs = path4.join(root, file.path);
     fs2.mkdirSync(path4.dirname(abs), { recursive: true });
@@ -7123,7 +7125,7 @@ function writeWiki(root, { pages = [], raw = [], message }) {
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
-  return { status: "written", data_root: root, pages: pageFiles.map((f) => f.path), raw: rawFiles.map((f) => f.path) };
+  return { status: "written", data_root: root, pages: pageFiles.map((f) => f.path), raw: rawFiles.map((f) => f.path), data: dataFiles.map((f) => f.path) };
 }
 
 // src/lib/recipes.mjs

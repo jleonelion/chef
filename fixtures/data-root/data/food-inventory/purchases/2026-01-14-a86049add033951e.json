@@ -1,0 +1,48 @@
+{
+  "receipt_id": "a86049add033951e",
+  "date": "2026-01-14",
+  "source": "text",
+  "store": "Example Market",
+  "items": [
+    {
+      "name": "whole milk",
+      "quantity": 1,
+      "unit": "gal",
+      "price": 3.49,
+      "expires": "2026-01-21",
+      "target": null
+    },
+    {
+      "name": "jasmine rice",
+      "quantity": 2,
+      "unit": "lb",
+      "price": 3.98,
+      "expires": null,
+      "target": null
+    },
+    {
+      "name": "spinach",
+      "quantity": 1,
+      "unit": "bunch",
+      "price": 2.49,
+      "expires": "2026-01-17",
+      "target": null
+    },
+    {
+      "name": "eggs",
+      "quantity": 12,
+      "unit": "each",
+      "price": 4.29,
+      "expires": "2026-02-04",
+      "target": null
+    },
+    {
+      "name": "frozen peas",
+      "quantity": 1,
+      "unit": "bag",
+      "price": 1.99,
+      "expires": null,
+      "target": null
+    }
+  ]
+}

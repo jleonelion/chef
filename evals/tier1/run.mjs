@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Tier1 deterministic evals: run each case's built script against a throwaway data root,
 // then assert on its output and on what it wrote. `seed` writes files into the data root
-// first; `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
+// first (the fixture is then committed to a fresh git repo); `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 //   node evals/tier1/run.mjs [--skills-dir <dir>]   (default: plugins/chef/skills)
@@ -18,22 +18,26 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
 const fixture = path.join(repo, 'fixtures', 'data-root');
 
-// A real data root is a git repo; give the fixture copy one commit so writes can commit too.
+// A real data root is a git repo; skills commit every write. `seed` paths starting with ../
+// land beside the data root (inputs such as receipt transcripts) and are not committed.
 function commitFixture(dataRoot) {
-  const git = (...args) => execFileSync('git', ['-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', ...args], { cwd: dataRoot, stdio: 'ignore' });
+  const git = (...args) => execFileSync('git', args, { cwd: dataRoot, stdio: 'ignore' });
   git('init', '-q', '-b', 'main');
   git('add', '-A');
-  git('commit', '-q', '-m', 'fixture');
+  git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'fixture');
 }
 
 function prepare(testCase) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
   const dataRoot = path.join(tmp, 'data-root');
-  if ((testCase.fixture ?? 'data-root') === 'data-root') {
-    fs.cpSync(fixture, dataRoot, { recursive: true });
-    commitFixture(dataRoot);
+  const useFixture = (testCase.fixture ?? 'data-root') === 'data-root';
+  if (useFixture) fs.cpSync(fixture, dataRoot, { recursive: true });
+  for (const file of testCase.seed ?? []) {
+    const abs = path.join(dataRoot, file.path);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, file.content);
   }
-  for (const file of testCase.seed ?? []) fs.writeFileSync(path.join(dataRoot, file.path), file.content);
+  if (useFixture) commitFixture(dataRoot);
   return { tmp, dataRoot };
 }
 

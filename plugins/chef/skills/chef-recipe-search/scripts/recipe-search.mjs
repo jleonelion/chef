@@ -7047,7 +7047,7 @@ function readSchemaVersion(root) {
 
 // src/lib/wiki.mjs
 var WIKI_DIR = "knowledge/wiki";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household" };
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household" };
 
 // src/lib/recipes.mjs
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
