@@ -9,7 +9,7 @@ import { schemaWriteBlocker } from './schema.mjs';
 export const WIKI_DIR = 'knowledge/wiki';
 export const RAW_DIR = 'knowledge/raw';
 export const DATA_DIR = 'data';
-export const WIKI_FOLDERS = { recipe: 'recipes', 'household-profile': 'household', 'inventory-rollup': 'household' };
+export const WIKI_FOLDERS = { recipe: 'recipes', 'household-profile': 'household', 'inventory-rollup': 'household', 'dietary-ruleset': 'household' };
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export function slugify(text) {
