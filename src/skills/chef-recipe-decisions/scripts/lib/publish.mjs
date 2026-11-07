@@ -48,11 +48,13 @@ export function publishProposals(root, { ids, date, confirm = false }) {
   if (problem) return { data_root: root, ...problem };
   if (!chosen.length) return { status: 'unchanged', data_root: root, published: [] };
   const blocked = blockedByDietaryGate(root, chosen, date);
-  if (blocked.length && !confirm) {
+  const confirmedIds = new Set(confirm ? (ids ?? []) : []);
+  const allBlockedNamed = blocked.every((record) => confirmedIds.has(record.id));
+  if (blocked.length && !allBlockedNamed) {
     return {
       status: 'refused',
       data_root: root,
-      reason: 'The dietary hard-constraint gate did not allow publication. Explicit confirmation is required.',
+      reason: 'The dietary hard-constraint gate did not allow publication. Explicit confirmation is required for each blocked proposal named with --id.',
       blocked,
     };
   }

@@ -102,7 +102,7 @@ test('explicit confirmation publishes a dietary conflict and records the user de
   propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
   decide(root, { id, outcome: 'accept', date });
 
-  const result = publishProposals(root, { date, confirm: true });
+  const result = publishProposals(root, { ids: [id], date, confirm: true });
 
   assert.equal(result.status, 'published');
   assert.equal(exists(root, page), true);
@@ -115,6 +115,27 @@ test('explicit confirmation publishes a dietary conflict and records the user de
   });
   assert.equal(decisions.length, 2);
   assert.equal(exists(root, 'data/recipe-decisions/standing-rules.json'), false);
+});
+
+test('bulk confirmation refuses all publication until each blocked proposal is named', () => {
+  const root = dataRoot();
+  declareConstraint(root, 'dairy');
+  propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
+  decide(root, { id, outcome: 'accept', date });
+  const safeDraft = { title: 'Plain Rice', ingredients: ['1 cup rice', '2 cups water'], steps: ['Simmer.'] };
+  propose(root, { draft: safeDraft, date });
+  decide(root, { id: 'plain-rice', outcome: 'accept', date });
+  const before = commits(root);
+
+  const result = publishProposals(root, { date, confirm: true });
+
+  assert.equal(result.status, 'refused');
+  assert.deepEqual(result.blocked.map((record) => record.id), [id]);
+  assert.match(result.reason, /named with --id/i);
+  assert.equal(commits(root), before);
+  assert.equal(exists(root, page), false);
+  assert.equal(exists(root, 'knowledge/wiki/recipes/plain-rice.md'), false);
+  assert.equal(readJson(root, PROPOSALS_FILE).proposals[id].decisions.length, 1);
 });
 
 test('derived dietary flags let an accepted safe proposal publish without confirmation', () => {
