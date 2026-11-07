@@ -8,6 +8,29 @@ test('Muse data root default is ~/workspace/chef', () => {
   assert.equal(muse.defaultDataRoot(), path.join(os.homedir(), 'workspace', 'chef'));
 });
 
+test('update locations come from the adapter for Muse custom skills', () => {
+  const workspace = path.join(os.tmpdir(), 'chef-runtime-workspace');
+  const skillDir = path.join(workspace, 'custom-skills', 'chef_setup');
+  const repository = path.join(workspace, 'chef-source');
+  assert.deepEqual(muse.updateInstall({ skillDir, repository }), {
+    repository,
+    skillsDir: path.join(workspace, 'custom-skills'),
+    installedName: 'chef_setup',
+    nameForSkill: 'underscores',
+  });
+});
+
+test('update locations come from the adapter for Claude Code and Muse Code plugins', () => {
+  const repository = path.join(os.tmpdir(), 'chef-plugin-cache');
+  const skillDir = path.join(repository, 'plugins', 'chef', 'skills', 'chef-setup');
+  assert.deepEqual(muse.updateInstall({ skillDir, repository }), {
+    repository,
+    skillsDir: path.join(repository, 'plugins', 'chef', 'skills'),
+    installedName: 'chef-setup',
+    nameForSkill: 'hyphens',
+  });
+});
+
 test('locale prefers LC_ALL, then LC_MEASUREMENT, then LANG, skipping C/POSIX and empty', () => {
   assert.equal(muse.locale({ LC_ALL: 'en_GB.UTF-8', LANG: 'en_US.UTF-8' }), 'en_GB.UTF-8');
   assert.equal(muse.locale({ LC_ALL: '', LC_MEASUREMENT: 'de_DE', LANG: 'en_US.UTF-8' }), 'de_DE');
