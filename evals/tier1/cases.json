@@ -3400,5 +3400,113 @@
         "absent": true
       }
     ]
+  },
+  {
+    "id": "chef-setup-schedule-proposes-and-writes-nothing",
+    "description": "With default settings and no health goal, chef-setup proposes only the morning briefing and update notice, says why the rest are not offered, and writes nothing.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "schedule"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "proposal"
+      },
+      {
+        "path": "$.tasks[*].name",
+        "equals": [
+          "Chef morning briefing",
+          "Chef update notice"
+        ]
+      },
+      {
+        "path": "$.not_offered[*].name",
+        "equals": [
+          "Chef weekly health report",
+          "Chef shopping list",
+          "Chef receipt check"
+        ]
+      },
+      {
+        "path": "$.runtime.instruction",
+        "includes": "explicit yes"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-schedule-offers-conditional-tasks",
+    "description": "An active health goal, household recipients and receipt senders unlock the weekly health report, shopping-list delivery task and receipt check; still nothing is written.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"More protein\",\"targets\":{\"protein\":{\"min\":90}}}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"household_recipients\":[\"cook@example.com\"],\"trusted_receipt_senders\":[\"receipts@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "schedule"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.tasks[*].name",
+        "equals": [
+          "Chef morning briefing",
+          "Chef weekly health report",
+          "Chef shopping list",
+          "Chef update notice",
+          "Chef receipt check"
+        ]
+      },
+      {
+        "path": "$.not_offered",
+        "equals": []
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef shopping list')].skill",
+        "equals": "chef-shopping-lists"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-check-update-reports-current",
+    "description": "The update notice check compares the installed release with the newest tag and installs nothing.",
+    "updateInstall": true,
+    "command": [
+      "node",
+      "{skills}/chef_setup/scripts/setup.mjs",
+      "check-update"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "current"
+      },
+      {
+        "path": "$.latest",
+        "equals": "v0.1.0"
+      }
+    ]
   }
 ]

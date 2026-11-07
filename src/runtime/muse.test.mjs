@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { RECURRING_TASKS } from '../lib/recurring-tasks.mjs';
 import { muse } from './muse.mjs';
 
 test('Muse data root default is ~/workspace/chef', () => {
@@ -92,4 +93,15 @@ test('household email and delivery-task payloads are instructions, never sends',
   const tasks = muse.deliveryTasks(['cook@example.com']);
   assert.deepEqual(tasks.tasks.map((t) => t.skill), ['chef-shopping-lists']);
   assert.deepEqual(tasks.recipients, ['cook@example.com']);
+});
+
+test('delivery tasks are re-created from the one shared task definition', () => {
+  const [task] = muse.deliveryTasks([]).tasks;
+  assert.deepEqual(task, RECURRING_TASKS.find((t) => t.name === 'Chef shopping list'));
+});
+
+test('schedule setup tells the agent to create only tasks the user said yes to', () => {
+  const { instruction } = muse.scheduleSetup();
+  assert.match(instruction, /recurring task/);
+  assert.match(instruction, /explicit yes/);
 });

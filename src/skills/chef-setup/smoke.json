@@ -3,5 +3,6 @@
   { "id": "settings", "script": "scripts/setup.mjs", "args": ["settings"], "expect": { "exit": 0, "status": "missing" } },
   { "id": "set", "script": "scripts/setup.mjs", "args": ["set", "--units", "metric"], "expect": { "exit": 0, "status": "saved" } },
   { "id": "safety", "script": "scripts/setup.mjs", "args": ["safety"], "expect": { "exit": 0, "status": "ok" } },
+  { "id": "schedule", "script": "scripts/setup.mjs", "args": ["schedule"], "expect": { "exit": 0, "status": "proposal" } },
   { "id": "set-dietary-needs-a-member", "script": "scripts/setup.mjs", "args": ["set-dietary", "--hard", "egg"], "expect": { "exit": 2, "status": "invalid-input" } }
 ]

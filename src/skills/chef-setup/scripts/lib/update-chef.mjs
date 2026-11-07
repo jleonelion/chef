@@ -10,7 +10,7 @@ import { verifyInstall } from './verify-install.mjs';
 
 const TAG = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$/;
 
-function semver(tag) {
+export function semver(tag) {
   const match = tag.match(TAG);
   if (!match) return null;
   return { tag, numbers: match.slice(1, 4).map(Number), prerelease: match[4]?.split('.') ?? [] };
@@ -25,7 +25,7 @@ function compareIdentifier(left, right) {
   return left.localeCompare(right);
 }
 
-function compareSemver(left, right) {
+export function compareSemver(left, right) {
   for (let index = 0; index < 3; index += 1) {
     if (left.numbers[index] !== right.numbers[index]) return left.numbers[index] - right.numbers[index];
   }
@@ -40,7 +40,7 @@ function compareSemver(left, right) {
   return 0;
 }
 
-function latestTag(repository) {
+export function latestTag(repository) {
   const remotes = git(repository, ['remote']).split('\n').filter(Boolean);
   if (remotes.includes('origin')) {
     git(repository, ['fetch', '--tags', '--force', 'origin']);

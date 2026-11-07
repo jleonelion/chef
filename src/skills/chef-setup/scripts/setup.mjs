@@ -2,7 +2,8 @@
 // chef-setup entry point. Modes: init (create the data root), adopt (clone an existing one),
 // settings (show), set (change), update (install a tagged release), verify (check the install),
 // usda (check the USDA connection), safety (the one safety screen), dietary (show the dietary
-// ruleset), set-dietary (change it).
+// ruleset), set-dietary (change it), schedule (propose recurring tasks; writes nothing),
+// check-update (is a newer release out; installs nothing).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -14,8 +15,10 @@ import { SAFETY_SCREEN } from '../../../lib/safety-text.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
 import { adoptDataRoot } from './lib/adopt-data-root.mjs';
+import { checkUpdate } from './lib/check-update.mjs';
 import { checkUsda } from './lib/check-usda.mjs';
 import { initDataRoot } from './lib/init-data-root.mjs';
+import { scheduleProposal } from './lib/schedule.mjs';
 import { changesFromFlags, SETTING_FLAGS } from './lib/settings-args.mjs';
 import { updateChef } from './lib/update-chef.mjs';
 import { verifyInstall } from './lib/verify-install.mjs';
@@ -88,6 +91,8 @@ const MODES = {
   safety: () => ({ status: 'ok', screen: SAFETY_SCREEN }),
   dietary,
   'set-dietary': setDietary,
+  schedule: scheduleProposal,
+  'check-update': () => checkUpdate({ skillDir }),
 };
 
 const mode = positionals[0] ?? 'init';
