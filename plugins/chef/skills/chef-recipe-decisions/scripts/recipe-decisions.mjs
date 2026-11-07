@@ -6946,7 +6946,7 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-recipe-decisions/scripts/recipe-decisions.mjs
-import fs7 from "node:fs";
+import fs8 from "node:fs";
 import { parseArgs } from "node:util";
 
 // src/lib/data-root.mjs
@@ -7307,285 +7307,6 @@ function today(date = new Date) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
-// src/skills/chef-add-recipe/scripts/lib/draft.mjs
-var oneLine = (value) => String(value).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
-var isText = (value, max) => typeof value === "string" && oneLine(value).length > 0 && oneLine(value).length <= max;
-var wholeIn = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
-var LINES = { max: 100, length: 2000 };
-var lineList = (value) => Array.isArray(value) && value.length > 0 && value.length <= LINES.max && value.every((line) => isText(line, LINES.length));
-var FIELDS = [
-  ["title", (v) => isText(v, 200), "required, at most 200 characters", true],
-  ["description", (v) => isText(v, 1000), "at most 1000 characters"],
-  ["servings", (v) => wholeIn(v, 1, 1000), "must be a whole number from 1 to 1000"],
-  ...["prep_minutes", "cook_minutes", "total_minutes"].map((key) => [key, (v) => wholeIn(v, 0, 10080), "must be a whole number from 0 to 10080"]),
-  ["cuisine", (v) => isText(v, 40), "at most 40 characters"],
-  ["tags", (v) => Array.isArray(v) && v.length <= 20 && v.every((t) => isText(t, 40)), "must be a list of at most 20 short tags"],
-  ["ingredients", lineList, "must be a list of 1 to 100 non-empty lines", true],
-  ["steps", lineList, "must be a list of 1 to 100 non-empty lines", true]
-];
-function checkDraft(draft) {
-  if (draft === null || typeof draft !== "object" || Array.isArray(draft))
-    return { problems: ["draft must be a JSON object"] };
-  const given = (key) => draft[key] !== undefined && draft[key] !== null;
-  const problems = FIELDS.filter(([key, ok, , required]) => (required || given(key)) && !ok(draft[key])).map(([key, , why]) => `${key}: ${why}`);
-  if (problems.length)
-    return { problems };
-  const recipe = { title: oneLine(draft.title), ingredients: draft.ingredients.map(oneLine), steps: draft.steps.map(oneLine) };
-  for (const key of ["servings", "prep_minutes", "cook_minutes", "total_minutes"])
-    if (given(key))
-      recipe[key] = draft[key];
-  if (!given("total_minutes") && given("prep_minutes") && given("cook_minutes"))
-    recipe.total_minutes = draft.prep_minutes + draft.cook_minutes;
-  if (given("description"))
-    recipe.description = oneLine(draft.description);
-  if (given("cuisine"))
-    recipe.cuisine = oneLine(draft.cuisine).toLowerCase();
-  if (given("tags") && draft.tags.length)
-    recipe.tags = [...new Set(draft.tags.map((t) => oneLine(t).toLowerCase()))];
-  return { recipe, problems };
-}
-var FACT_KEYS = ["servings", "prep_minutes", "cook_minutes", "total_minutes", "cuisine", "tags"];
-function recipePage(recipe, { sourceKind, sourceUrl, sourceRaw, date }) {
-  const frontmatter = { type: "recipe", title: recipe.title };
-  for (const key of FACT_KEYS)
-    if (recipe[key] !== undefined)
-      frontmatter[key] = recipe[key];
-  Object.assign(frontmatter, { source_kind: sourceKind }, sourceUrl ? { source_url: sourceUrl } : {});
-  Object.assign(frontmatter, { source_raw: sourceRaw, created: date, updated: date });
-  const intro = recipe.description ? `
-${recipe.description}
-` : "";
-  const ingredients = recipe.ingredients.map((line) => `- ${line}`).join(`
-`);
-  const steps = recipe.steps.map((line, i) => `${i + 1}. ${line}`).join(`
-`);
-  return { frontmatter, body: `
-# ${recipe.title}
-${intro}
-## Ingredients
-
-${ingredients}
-
-## Steps
-
-${steps}
-` };
-}
-
-// src/skills/chef-recipe-decisions/scripts/lib/store.mjs
-import fs5 from "node:fs";
-import path6 from "node:path";
-var STORE_DIR = "data/recipe-decisions";
-var PROPOSALS_FILE = `${STORE_DIR}/proposals.json`;
-var RULES_FILE = `${STORE_DIR}/standing-rules.json`;
-function readJson(root, rel, empty) {
-  const file = path6.join(root, rel);
-  return fs5.existsSync(file) ? JSON.parse(fs5.readFileSync(file, "utf8")) : empty;
-}
-var readProposals = (root) => readJson(root, PROPOSALS_FILE, { proposals: {} });
-var readRules = (root) => readJson(root, RULES_FILE, { auto_reject: [], auto_approve: [] });
-var storeFile = (rel, value) => ({ path: rel, content: `${JSON.stringify(value, null, 2)}
-` });
-function proposalState(record) {
-  const last = record.decisions.at(-1)?.outcome;
-  if (last === "accept")
-    return "accepted";
-  if (last === "reject")
-    return "rejected";
-  return "open";
-}
-function summary(record) {
-  const last = record.decisions.at(-1);
-  return {
-    id: record.id,
-    slug: record.slug,
-    title: record.title,
-    state: proposalState(record),
-    proposed: record.proposed,
-    ...record.note && { note: record.note },
-    ...last && { decided: last.date, by: last.by, ...last.reason && { reason: last.reason } },
-    ...record.published && { published: record.published }
-  };
-}
-
-// src/skills/chef-recipe-decisions/scripts/lib/rules.mjs
-var ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-var LISTS = { reject: "auto_reject", approve: "auto_approve" };
-var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-var has = (haystack, phrase) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape(phrase.trim().toLowerCase())}`, "u").test(haystack);
-function matches(rule, recipe) {
-  const title = recipe.title.toLowerCase();
-  const text = [recipe.title, recipe.description, recipe.cuisine, ...recipe.tags ?? [], ...recipe.ingredients].filter(Boolean).join(`
-`).toLowerCase();
-  return (rule.title_includes ?? []).every((p) => has(title, p)) && (rule.text_includes ?? []).every((p) => has(text, p));
-}
-function matchRule(rules, recipe) {
-  for (const action of ["reject", "approve"]) {
-    const rule = (rules[LISTS[action]] ?? []).find((r) => matches(r, recipe));
-    if (rule)
-      return { action, rule };
-  }
-  return null;
-}
-var clean = (items) => (items ?? []).map((p) => p.trim()).filter(Boolean);
-function addRule(root, { action, id, reason, title, text, date }) {
-  const rule = { id, reason: reason?.trim(), title_includes: clean(title), text_includes: clean(text), created: date };
-  const problems = [];
-  if (!Object.hasOwn(LISTS, action))
-    problems.push("--action must be approve or reject");
-  if (!ID.test(id ?? ""))
-    problems.push("--id must be lowercase letters, digits and single hyphens");
-  if (!rule.reason)
-    problems.push("--reason is required");
-  if (!rule.title_includes.length && !rule.text_includes.length)
-    problems.push("give at least one --title or --text phrase");
-  if (problems.length)
-    return { status: "invalid-input", data_root: root, problems };
-  for (const key of ["title_includes", "text_includes"])
-    if (!rule[key].length)
-      delete rule[key];
-  const refusal = writeRefusal(root);
-  if (refusal)
-    return refusal;
-  const rules = readRules(root);
-  const existed = Object.values(LISTS).some((list) => (rules[list] ?? []).some((r) => r.id === id));
-  const next = Object.fromEntries(Object.values(LISTS).map((list) => [list, (rules[list] ?? []).filter((r) => r.id !== id)]));
-  next[LISTS[action]].push(rule);
-  const written = writeWiki(root, { data: [storeFile(RULES_FILE, next)], message: `chef-recipe-decisions: ${existed ? "replace" : "add"} rule ${id}` });
-  return written.status === "written" ? { status: existed ? "replaced" : "added", data_root: root, action, rule } : written;
-}
-function removeRule(root, { id }) {
-  const rules = readRules(root);
-  if (!Object.values(LISTS).some((list) => (rules[list] ?? []).some((r) => r.id === id)))
-    return { status: "not-found", data_root: root, id: id ?? null };
-  const next = Object.fromEntries(Object.values(LISTS).map((list) => [list, (rules[list] ?? []).filter((r) => r.id !== id)]));
-  const written = writeWiki(root, { data: [storeFile(RULES_FILE, next)], message: `chef-recipe-decisions: remove rule ${id}` });
-  return written.status === "written" ? { status: "removed", data_root: root, id } : written;
-}
-
-// src/skills/chef-recipe-decisions/scripts/lib/propose.mjs
-var EARLIER = { rejected: "already-rejected", accepted: "already-accepted", open: "already-proposed" };
-function inBook(root, slug, url) {
-  const wanted = url && normalizeUrl(url);
-  return listRecipes(root).recipes.find((r) => r.slug === slug || wanted && normalizeUrl(r.frontmatter.source_url ?? "") === wanted);
-}
-function earlier(store, slug, url) {
-  const wanted = url && normalizeUrl(url);
-  return Object.values(store.proposals).find((r) => r.id === slug || r.slug === slug || wanted && r.source_url && normalizeUrl(r.source_url) === wanted);
-}
-function checkProposal(root, { draft, url, note }) {
-  const { recipe, problems } = checkDraft(draft);
-  if (!problems.length && url && !normalizeUrl(url)?.match(/^https?:/))
-    problems.push("--url must be an http or https address");
-  if (problems.length)
-    return { problem: { status: "invalid-input", data_root: root, problems } };
-  const slug = slugify(recipe.title);
-  if (!slug)
-    return { problem: { status: "invalid-input", data_root: root, problems: ["title: needs at least one letter or digit"] } };
-  return { record: { id: slug, slug, title: recipe.title, ...url && { source_url: url }, ...note && { note }, draft: recipe, decisions: [] } };
-}
-function propose(root, { draft, url, note, date }) {
-  const { record, problem } = checkProposal(root, { draft, url, note });
-  if (problem)
-    return problem;
-  const refusal = writeRefusal(root);
-  if (refusal)
-    return refusal;
-  const existing = inBook(root, record.slug, url);
-  if (existing)
-    return { status: "exists", data_root: root, slug: existing.slug, path: existing.path, lifecycle: existing.frontmatter.lifecycle ?? "active" };
-  const store = readProposals(root);
-  const prior = earlier(store, record.slug, url);
-  if (prior)
-    return { status: EARLIER[proposalState(prior)], data_root: root, ...summary(prior) };
-  const match = matchRule(readRules(root), record.draft);
-  record.proposed = date;
-  if (match)
-    record.decisions.push({ outcome: match.action === "reject" ? "reject" : "accept", date, by: `rule:${match.rule.id}`, reason: match.rule.reason });
-  store.proposals[record.id] = record;
-  const verb = match ? `auto-${match.action}` : "propose";
-  const written = writeWiki(root, { data: [storeFile(PROPOSALS_FILE, store)], message: `chef-recipe-decisions: ${verb} ${record.id}` });
-  if (written.status !== "written")
-    return written;
-  const status = match ? `auto-${match.action === "reject" ? "rejected" : "accepted"}` : "proposed";
-  return { status, data_root: root, ...summary(record), ...match && { rule: { id: match.rule.id, reason: match.rule.reason } } };
-}
-
-// src/skills/chef-recipe-decisions/scripts/lib/decide.mjs
-var OUTCOMES = ["accept", "reject", "defer", "revise"];
-var invalid = (root, ...problems) => ({ status: "invalid-input", data_root: root, problems });
-function revised(root, record, draft) {
-  if (!draft)
-    return { problem: invalid(root, "revise needs --draft with the changed recipe") };
-  const { record: next, problem } = checkProposal(root, { draft, url: record.source_url });
-  return problem ? { problem } : { changes: { slug: next.slug, title: next.title, draft: next.draft } };
-}
-function decide(root, { id, outcome, reason, draft, date }) {
-  if (!OUTCOMES.includes(outcome))
-    return invalid(root, `--outcome must be one of ${OUTCOMES.join(", ")}`);
-  const refusal = writeRefusal(root);
-  if (refusal)
-    return refusal;
-  const store = readProposals(root);
-  const record = store.proposals[id];
-  if (!record)
-    return { status: "not-found", data_root: root, id: id ?? null };
-  if (record.published && outcome !== "accept")
-    return invalid(root, `${id} is already in the recipe book; retire the recipe instead`);
-  const current = proposalState(record);
-  if (outcome === "accept" && current === "accepted" || outcome === "reject" && current === "rejected") {
-    return { status: "unchanged", data_root: root, ...summary(record) };
-  }
-  const { changes, problem } = outcome === "revise" ? revised(root, record, draft) : {};
-  if (problem)
-    return problem;
-  const decision = { outcome, date, by: "user", ...reason?.trim() && { reason: reason.trim() } };
-  const next = { ...record, ...changes, decisions: [...record.decisions, decision] };
-  store.proposals[id] = next;
-  const written = writeWiki(root, { data: [storeFile(PROPOSALS_FILE, store)], message: `chef-recipe-decisions: ${outcome} ${id}` });
-  if (written.status !== "written")
-    return written;
-  return { status: "decided", data_root: root, outcome, ...summary(next), ...changes && { draft: next.draft } };
-}
-
-// src/skills/chef-recipe-decisions/scripts/lib/lifecycle.mjs
-var RETIRED_KEYS = ["lifecycle", "retired", "retired_reason"];
-var withoutRetired = (fm) => Object.fromEntries(Object.entries(fm).filter(([key]) => !RETIRED_KEYS.includes(key)));
-function change(root, slug, { to, reason, date }) {
-  const refusal = writeRefusal(root);
-  if (refusal)
-    return refusal;
-  const recipe = listRecipes(root).recipes.find((r) => r.slug === slug);
-  if (!recipe)
-    return { status: "not-found", data_root: root, slug: slug ?? null };
-  const current = recipe.frontmatter.lifecycle === "retired" ? "retired" : "active";
-  if (current === to)
-    return { status: "unchanged", data_root: root, slug, lifecycle: current };
-  const base = withoutRetired(recipe.frontmatter);
-  const retired = to === "retired" ? { lifecycle: "retired", retired: date, ...reason?.trim() && { retired_reason: reason.trim() } } : { lifecycle: "active" };
-  const frontmatter = { ...base, ...retired, updated: date };
-  const verb = to === "retired" ? "retire" : "restore";
-  const written = writeWiki(root, { pages: [{ slug, frontmatter, body: recipe.body }], message: `chef-recipe-decisions: ${verb} ${slug}` });
-  return written.status === "written" ? { status: to === "retired" ? "retired" : "restored", data_root: root, slug, path: recipe.path, lifecycle: to } : written;
-}
-var retireRecipe = (root, { slug, reason, date }) => change(root, slug, { to: "retired", reason, date });
-var restoreRecipe = (root, { slug, date }) => change(root, slug, { to: "active", date });
-
-// src/skills/chef-add-recipe/scripts/lib/add.mjs
-import fs6 from "node:fs";
-import path7 from "node:path";
-var RAW_RECIPES = `${RAW_DIR}/recipes`;
-function rawName(root, stem, ext) {
-  for (let n = 1;; n += 1) {
-    const rel = `${RAW_RECIPES}/${stem}${n === 1 ? "" : `-${n}`}${ext}`;
-    if (!fs6.existsSync(path7.join(root, rel)))
-      return rel;
-  }
-}
-
-// src/skills/chef-add-recipe/scripts/lib/enrich.mjs
-import { isDeepStrictEqual } from "node:util";
-
 // src/lib/dietary-flags.mjs
 var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
 var phrases = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?![a-z])`, "g");
@@ -7665,6 +7386,452 @@ function dietaryFlags(lines) {
   const lower = lines.map((line) => line.toLowerCase());
   return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
 }
+
+// src/lib/dietary-ruleset.mjs
+import fs5 from "node:fs";
+import path6 from "node:path";
+
+// src/lib/safety-text.mjs
+var GUARANTEE_LINE = "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.";
+var NOT_MEDICAL_ADVICE = "Chef gives general information, not medical advice.";
+var TRAINING_SETTING_URL = "https://muse.ai/privacy";
+var TRAINING_NOTICE = `Your dietary and health details are saved in your Chef data root. On Muse, the "Help improve our AI models" setting may cover them; see ${TRAINING_SETTING_URL}.`;
+var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
+
+// src/lib/dietary-ruleset.mjs
+var RULESET_TYPE = "dietary-ruleset";
+var RULESET_SLUG = "dietary-ruleset";
+var RULESET_PATH = wikiPath(RULESET_TYPE, RULESET_SLUG);
+var ALIASES = {
+  milk: ["dairy"],
+  lactose: ["dairy"],
+  eggs: ["egg"],
+  peanut: ["peanuts"],
+  "tree nut": ["tree-nuts"],
+  "tree nuts": ["tree-nuts"],
+  nuts: ["peanuts", "tree-nuts"],
+  nut: ["peanuts", "tree-nuts"],
+  celiac: ["gluten"],
+  coeliac: ["gluten"],
+  crustacean: ["shellfish"],
+  crustaceans: ["shellfish"],
+  soya: ["soy"]
+};
+var suffix = (flag) => flag.slice("contains-".length);
+var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var ALLERGEN_WORDS = [
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag), [suffix(flag)]]),
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
+  ...Object.entries(ALIASES)
+].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
+var FILLER = /(?<![a-z])(?:allerg(?:y|ies|ic)|intoleran(?:ce|t)|free|seeds?|no|to|an?)(?![a-z])/g;
+var core = (name) => name.replace(/[-_]/g, " ").replace(FILLER, " ").replace(/\s+/g, " ").trim();
+function exactFlags(text) {
+  for (const word of [text, `${text}s`, text.replace(/s$/, "")]) {
+    if (ALIASES[word])
+      return ALIASES[word];
+    const flag = word.replace(/ /g, "-");
+    if (flagFor(flag))
+      return [flag];
+  }
+  return null;
+}
+function scannedFlags(text) {
+  const spaced = text.replace(/[-_]/g, " ");
+  const flags = new Set(dietaryFlags([text, spaced]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
+    if (pattern.test(spaced))
+      mapped.forEach((f) => flags.add(f));
+  return [...flags];
+}
+function constraintsFor(name) {
+  const exact = exactFlags(core(name));
+  if (exact)
+    return exact;
+  const scanned = scannedFlags(name);
+  return scanned.length ? scanned : [name];
+}
+var clean = (raw) => String(raw).trim().toLowerCase().replace(/^contains-/, "");
+function normalizeConstraints(names) {
+  const out = names.map(clean).filter(Boolean).flatMap(constraintsFor);
+  return [...new Set(out)].sort();
+}
+var flagFor = (constraint) => DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null;
+var textList = (value) => value === undefined || Array.isArray(value) && value.every((v) => typeof v === "string" && v.trim());
+function membersProblem(members) {
+  if (members === undefined)
+    return null;
+  if (!Array.isArray(members))
+    return "members must be a list";
+  const bad = members.find((m) => typeof m?.name !== "string" || !m.name.trim() || !textList(m.hard_constraints) || !textList(m.avoidances));
+  return bad ? "every member needs a name, and constraints must be lists of text" : null;
+}
+function rulesetFromPage(frontmatter) {
+  const problem = frontmatter.type !== RULESET_TYPE ? `page type is not ${RULESET_TYPE}` : membersProblem(frontmatter.members);
+  if (problem)
+    return { status: "unreadable", reason: problem, members: [], hard: [], avoid: [] };
+  const members = frontmatter.members ?? [];
+  const hard = members.flatMap((m) => normalizeConstraints(m.hard_constraints ?? []).map((constraint) => ({ member: m.name, constraint })));
+  const avoid = members.flatMap((m) => (m.avoidances ?? []).map((a) => ({ member: m.name, avoidance: a.trim().toLowerCase() })));
+  return { status: hard.length || avoid.length ? "declared" : "none-declared", members, hard, avoid };
+}
+function readRuleset(root) {
+  const file = path6.join(root, RULESET_PATH);
+  if (!fs5.existsSync(file))
+    return { status: "never-asked", members: [], hard: [], avoid: [] };
+  try {
+    return rulesetFromPage(parsePage(fs5.readFileSync(file, "utf8")).frontmatter);
+  } catch (error) {
+    return { status: "unreadable", reason: error.message, members: [], hard: [], avoid: [] };
+  }
+}
+
+// src/lib/dietary-gate.mjs
+var AUTO_FLAGS_COUNT_AS_CHECKED = true;
+var escape2 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var wordMatch = (term) => new RegExp(`(?<![a-z])${escape2(term)}(?:s|es)?(?![a-z])`);
+function constraintConflicts(recipe, constraint) {
+  const lines = ingredientLines(recipe.body);
+  const flag = flagFor(constraint);
+  const flags = recipe.frontmatter.dietary_flags;
+  const conflicts = [];
+  if (flag && Array.isArray(flags) && flags.includes(flag))
+    conflicts.push({ why: "flagged", detail: flag });
+  const matches = flag ? (line2) => dietaryFlags([line2]).includes(flag) : (line2) => wordMatch(constraint).test(line2.toLowerCase());
+  const line = lines.find(matches);
+  if (line)
+    conflicts.push({ why: "ingredient-text", detail: line });
+  return conflicts;
+}
+var isVerified = (recipe, constraint) => /^\d{4}-\d{2}-\d{2}$/.test(String(recipe.frontmatter.verified_by_user?.[constraint] ?? ""));
+function uncheckedReason(recipe, constraint, autoFlagsCount) {
+  if (isVerified(recipe, constraint))
+    return null;
+  if (!ingredientLines(recipe.body).length)
+    return "no-ingredients";
+  if (!flagFor(constraint))
+    return null;
+  if (!Array.isArray(recipe.frontmatter.dietary_flags))
+    return "not-checked";
+  return autoFlagsCount ? null : "unverified";
+}
+function hardReasons(recipe, { member, constraint }, autoFlagsCount) {
+  const conflicts = constraintConflicts(recipe, constraint);
+  const unchecked = conflicts.length ? null : uncheckedReason(recipe, constraint, autoFlagsCount);
+  const found = unchecked ? [{ why: unchecked }] : conflicts;
+  return found.map((c) => ({ member, constraint, ...c }));
+}
+function avoidanceMatches(recipe, { member, avoidance }) {
+  const line = ingredientLines(recipe.body).find((l) => wordMatch(avoidance).test(l.toLowerCase()));
+  return line ? [{ member, avoidance, detail: line }] : [];
+}
+function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLAGS_COUNT_AS_CHECKED } = {}) {
+  if (ruleset.status === "unreadable")
+    return { excluded: true, reasons: [{ why: "ruleset-unreadable" }], overridden: [], avoidances: [] };
+  const all = ruleset.hard.flatMap((rule) => hardReasons(recipe, rule, autoFlagsCount));
+  const lifted = (r) => overrides.some((o) => o.member === r.member && o.constraint === r.constraint);
+  const reasons = all.filter((r) => !lifted(r));
+  const avoidances = ruleset.avoid.flatMap((rule) => avoidanceMatches(recipe, rule));
+  return { excluded: reasons.length > 0, reasons, overridden: all.filter(lifted), avoidances };
+}
+function checkRecipe(ruleset, recipe, options) {
+  const { excluded, ...rest } = gateRecipe(recipe, ruleset, options);
+  return { allowed: !excluded, ...rest };
+}
+
+// src/skills/chef-add-recipe/scripts/lib/draft.mjs
+var oneLine = (value) => String(value).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+var isText = (value, max) => typeof value === "string" && oneLine(value).length > 0 && oneLine(value).length <= max;
+var wholeIn = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
+var LINES = { max: 100, length: 2000 };
+var lineList = (value) => Array.isArray(value) && value.length > 0 && value.length <= LINES.max && value.every((line) => isText(line, LINES.length));
+var FIELDS = [
+  ["title", (v) => isText(v, 200), "required, at most 200 characters", true],
+  ["description", (v) => isText(v, 1000), "at most 1000 characters"],
+  ["servings", (v) => wholeIn(v, 1, 1000), "must be a whole number from 1 to 1000"],
+  ...["prep_minutes", "cook_minutes", "total_minutes"].map((key) => [key, (v) => wholeIn(v, 0, 10080), "must be a whole number from 0 to 10080"]),
+  ["cuisine", (v) => isText(v, 40), "at most 40 characters"],
+  ["tags", (v) => Array.isArray(v) && v.length <= 20 && v.every((t) => isText(t, 40)), "must be a list of at most 20 short tags"],
+  ["ingredients", lineList, "must be a list of 1 to 100 non-empty lines", true],
+  ["steps", lineList, "must be a list of 1 to 100 non-empty lines", true]
+];
+function checkDraft(draft) {
+  if (draft === null || typeof draft !== "object" || Array.isArray(draft))
+    return { problems: ["draft must be a JSON object"] };
+  const given = (key) => draft[key] !== undefined && draft[key] !== null;
+  const problems = FIELDS.filter(([key, ok, , required]) => (required || given(key)) && !ok(draft[key])).map(([key, , why]) => `${key}: ${why}`);
+  if (problems.length)
+    return { problems };
+  const recipe = { title: oneLine(draft.title), ingredients: draft.ingredients.map(oneLine), steps: draft.steps.map(oneLine) };
+  for (const key of ["servings", "prep_minutes", "cook_minutes", "total_minutes"])
+    if (given(key))
+      recipe[key] = draft[key];
+  if (!given("total_minutes") && given("prep_minutes") && given("cook_minutes"))
+    recipe.total_minutes = draft.prep_minutes + draft.cook_minutes;
+  if (given("description"))
+    recipe.description = oneLine(draft.description);
+  if (given("cuisine"))
+    recipe.cuisine = oneLine(draft.cuisine).toLowerCase();
+  if (given("tags") && draft.tags.length)
+    recipe.tags = [...new Set(draft.tags.map((t) => oneLine(t).toLowerCase()))];
+  return { recipe, problems };
+}
+var FACT_KEYS = ["servings", "prep_minutes", "cook_minutes", "total_minutes", "cuisine", "tags"];
+function recipePage(recipe, { sourceKind, sourceUrl, sourceRaw, date }) {
+  const frontmatter = { type: "recipe", title: recipe.title };
+  for (const key of FACT_KEYS)
+    if (recipe[key] !== undefined)
+      frontmatter[key] = recipe[key];
+  Object.assign(frontmatter, { source_kind: sourceKind }, sourceUrl ? { source_url: sourceUrl } : {});
+  Object.assign(frontmatter, { source_raw: sourceRaw, created: date, updated: date });
+  const intro = recipe.description ? `
+${recipe.description}
+` : "";
+  const ingredients = recipe.ingredients.map((line) => `- ${line}`).join(`
+`);
+  const steps = recipe.steps.map((line, i) => `${i + 1}. ${line}`).join(`
+`);
+  return { frontmatter, body: `
+# ${recipe.title}
+${intro}
+## Ingredients
+
+${ingredients}
+
+## Steps
+
+${steps}
+` };
+}
+
+// src/skills/chef-recipe-decisions/scripts/lib/store.mjs
+import fs6 from "node:fs";
+import path7 from "node:path";
+var STORE_DIR = "data/recipe-decisions";
+var PROPOSALS_FILE = `${STORE_DIR}/proposals.json`;
+var RULES_FILE = `${STORE_DIR}/standing-rules.json`;
+function readJson(root, rel, empty) {
+  const file = path7.join(root, rel);
+  return fs6.existsSync(file) ? JSON.parse(fs6.readFileSync(file, "utf8")) : empty;
+}
+var readProposals = (root) => readJson(root, PROPOSALS_FILE, { proposals: {} });
+var readRules = (root) => readJson(root, RULES_FILE, { auto_reject: [], auto_approve: [] });
+var storeFile = (rel, value) => ({ path: rel, content: `${JSON.stringify(value, null, 2)}
+` });
+function proposalState(record) {
+  const last = record.decisions.at(-1)?.outcome;
+  if (last === "accept")
+    return "accepted";
+  if (last === "reject")
+    return "rejected";
+  return "open";
+}
+function summary(record) {
+  const last = record.decisions.at(-1);
+  return {
+    id: record.id,
+    slug: record.slug,
+    title: record.title,
+    state: proposalState(record),
+    proposed: record.proposed,
+    ...record.note && { note: record.note },
+    ...record.gate_reasons && { reasons: record.gate_reasons },
+    ...last && { decided: last.date, by: last.by, ...last.reason && { reason: last.reason } },
+    ...record.published && { published: record.published }
+  };
+}
+
+// src/skills/chef-recipe-decisions/scripts/lib/rules.mjs
+var ID = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+var LISTS = { reject: "auto_reject", approve: "auto_approve" };
+var escape3 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var has = (haystack, phrase) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape3(phrase.trim().toLowerCase())}`, "u").test(haystack);
+function matches(rule, recipe) {
+  const title = recipe.title.toLowerCase();
+  const text = [recipe.title, recipe.description, recipe.cuisine, ...recipe.tags ?? [], ...recipe.ingredients].filter(Boolean).join(`
+`).toLowerCase();
+  return (rule.title_includes ?? []).every((p) => has(title, p)) && (rule.text_includes ?? []).every((p) => has(text, p));
+}
+function matchRule(rules, recipe) {
+  for (const action of ["reject", "approve"]) {
+    const rule = (rules[LISTS[action]] ?? []).find((r) => matches(r, recipe));
+    if (rule)
+      return { action, rule };
+  }
+  return null;
+}
+var clean2 = (items) => (items ?? []).map((p) => p.trim()).filter(Boolean);
+function addRule(root, { action, id, reason, title, text, date }) {
+  const rule = { id, reason: reason?.trim(), title_includes: clean2(title), text_includes: clean2(text), created: date };
+  const problems = [];
+  if (!Object.hasOwn(LISTS, action))
+    problems.push("--action must be approve or reject");
+  if (!ID.test(id ?? ""))
+    problems.push("--id must be lowercase letters, digits and single hyphens");
+  if (!rule.reason)
+    problems.push("--reason is required");
+  if (!rule.title_includes.length && !rule.text_includes.length)
+    problems.push("give at least one --title or --text phrase");
+  if (problems.length)
+    return { status: "invalid-input", data_root: root, problems };
+  for (const key of ["title_includes", "text_includes"])
+    if (!rule[key].length)
+      delete rule[key];
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const rules = readRules(root);
+  const existed = Object.values(LISTS).some((list) => (rules[list] ?? []).some((r) => r.id === id));
+  const next = Object.fromEntries(Object.values(LISTS).map((list) => [list, (rules[list] ?? []).filter((r) => r.id !== id)]));
+  next[LISTS[action]].push(rule);
+  const written = writeWiki(root, { data: [storeFile(RULES_FILE, next)], message: `chef-recipe-decisions: ${existed ? "replace" : "add"} rule ${id}` });
+  return written.status === "written" ? { status: existed ? "replaced" : "added", data_root: root, action, rule } : written;
+}
+function removeRule(root, { id }) {
+  const rules = readRules(root);
+  if (!Object.values(LISTS).some((list) => (rules[list] ?? []).some((r) => r.id === id)))
+    return { status: "not-found", data_root: root, id: id ?? null };
+  const next = Object.fromEntries(Object.values(LISTS).map((list) => [list, (rules[list] ?? []).filter((r) => r.id !== id)]));
+  const written = writeWiki(root, { data: [storeFile(RULES_FILE, next)], message: `chef-recipe-decisions: remove rule ${id}` });
+  return written.status === "written" ? { status: "removed", data_root: root, id } : written;
+}
+
+// src/skills/chef-recipe-decisions/scripts/lib/propose.mjs
+var EARLIER = { rejected: "already-rejected", accepted: "already-accepted", open: "already-proposed" };
+function inBook(root, slug, url) {
+  const wanted = url && normalizeUrl(url);
+  return listRecipes(root).recipes.find((r) => r.slug === slug || wanted && normalizeUrl(r.frontmatter.source_url ?? "") === wanted);
+}
+function earlier(store, slug, url) {
+  const wanted = url && normalizeUrl(url);
+  return Object.values(store.proposals).find((r) => r.id === slug || r.slug === slug || wanted && r.source_url && normalizeUrl(r.source_url) === wanted);
+}
+function checkProposal(root, { draft, url, note }) {
+  const { recipe, problems } = checkDraft(draft);
+  if (!problems.length && url && !normalizeUrl(url)?.match(/^https?:/))
+    problems.push("--url must be an http or https address");
+  if (problems.length)
+    return { problem: { status: "invalid-input", data_root: root, problems } };
+  const slug = slugify(recipe.title);
+  if (!slug)
+    return { problem: { status: "invalid-input", data_root: root, problems: ["title: needs at least one letter or digit"] } };
+  return { record: { id: slug, slug, title: recipe.title, ...url && { source_url: url }, ...note && { note }, draft: recipe, decisions: [] } };
+}
+function propose(root, { draft, url, note, date }) {
+  const { record, problem } = checkProposal(root, { draft, url, note });
+  if (problem)
+    return problem;
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const existing = inBook(root, record.slug, url);
+  if (existing)
+    return { status: "exists", data_root: root, slug: existing.slug, path: existing.path, lifecycle: existing.frontmatter.lifecycle ?? "active" };
+  const store = readProposals(root);
+  const prior = earlier(store, record.slug, url);
+  if (prior)
+    return { status: EARLIER[proposalState(prior)], data_root: root, ...summary(prior) };
+  let match = matchRule(readRules(root), record.draft);
+  record.proposed = date;
+  if (match?.action === "approve") {
+    const page = recipePage(record.draft, { sourceKind: "proposal", sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
+    const verdict = checkRecipe(readRuleset(root), { slug: record.slug, ...page });
+    if (!verdict.allowed) {
+      record.gate_reasons = verdict.reasons;
+      match = null;
+    }
+  }
+  if (match)
+    record.decisions.push({ outcome: match.action === "reject" ? "reject" : "accept", date, by: `rule:${match.rule.id}`, reason: match.rule.reason });
+  store.proposals[record.id] = record;
+  const verb = match ? `auto-${match.action}` : "propose";
+  const written = writeWiki(root, { data: [storeFile(PROPOSALS_FILE, store)], message: `chef-recipe-decisions: ${verb} ${record.id}` });
+  if (written.status !== "written")
+    return written;
+  const status = match ? `auto-${match.action === "reject" ? "rejected" : "accepted"}` : "proposed";
+  return {
+    status,
+    data_root: root,
+    ...summary(record),
+    ...match && { rule: { id: match.rule.id, reason: match.rule.reason } }
+  };
+}
+
+// src/skills/chef-recipe-decisions/scripts/lib/decide.mjs
+var OUTCOMES = ["accept", "reject", "defer", "revise"];
+var invalid = (root, ...problems) => ({ status: "invalid-input", data_root: root, problems });
+function revised(root, record, draft) {
+  if (!draft)
+    return { problem: invalid(root, "revise needs --draft with the changed recipe") };
+  const { record: next, problem } = checkProposal(root, { draft, url: record.source_url });
+  return problem ? { problem } : { changes: { slug: next.slug, title: next.title, draft: next.draft } };
+}
+function decide(root, { id, outcome, reason, draft, date }) {
+  if (!OUTCOMES.includes(outcome))
+    return invalid(root, `--outcome must be one of ${OUTCOMES.join(", ")}`);
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const store = readProposals(root);
+  const record = store.proposals[id];
+  if (!record)
+    return { status: "not-found", data_root: root, id: id ?? null };
+  if (record.published && outcome !== "accept")
+    return invalid(root, `${id} is already in the recipe book; retire the recipe instead`);
+  const current = proposalState(record);
+  if (outcome === "accept" && current === "accepted" || outcome === "reject" && current === "rejected") {
+    return { status: "unchanged", data_root: root, ...summary(record) };
+  }
+  const { changes, problem } = outcome === "revise" ? revised(root, record, draft) : {};
+  if (problem)
+    return problem;
+  const decision = { outcome, date, by: "user", ...reason?.trim() && { reason: reason.trim() } };
+  const next = { ...record, ...changes, decisions: [...record.decisions, decision] };
+  store.proposals[id] = next;
+  const written = writeWiki(root, { data: [storeFile(PROPOSALS_FILE, store)], message: `chef-recipe-decisions: ${outcome} ${id}` });
+  if (written.status !== "written")
+    return written;
+  return { status: "decided", data_root: root, outcome, ...summary(next), ...changes && { draft: next.draft } };
+}
+
+// src/skills/chef-recipe-decisions/scripts/lib/lifecycle.mjs
+var RETIRED_KEYS = ["lifecycle", "retired", "retired_reason"];
+var withoutRetired = (fm) => Object.fromEntries(Object.entries(fm).filter(([key]) => !RETIRED_KEYS.includes(key)));
+function change(root, slug, { to, reason, date }) {
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const recipe = listRecipes(root).recipes.find((r) => r.slug === slug);
+  if (!recipe)
+    return { status: "not-found", data_root: root, slug: slug ?? null };
+  const current = recipe.frontmatter.lifecycle === "retired" ? "retired" : "active";
+  if (current === to)
+    return { status: "unchanged", data_root: root, slug, lifecycle: current };
+  const base = withoutRetired(recipe.frontmatter);
+  const retired = to === "retired" ? { lifecycle: "retired", retired: date, ...reason?.trim() && { retired_reason: reason.trim() } } : { lifecycle: "active" };
+  const frontmatter = { ...base, ...retired, updated: date };
+  const verb = to === "retired" ? "retire" : "restore";
+  const written = writeWiki(root, { pages: [{ slug, frontmatter, body: recipe.body }], message: `chef-recipe-decisions: ${verb} ${slug}` });
+  return written.status === "written" ? { status: to === "retired" ? "retired" : "restored", data_root: root, slug, path: recipe.path, lifecycle: to } : written;
+}
+var retireRecipe = (root, { slug, reason, date }) => change(root, slug, { to: "retired", reason, date });
+var restoreRecipe = (root, { slug, date }) => change(root, slug, { to: "active", date });
+
+// src/skills/chef-add-recipe/scripts/lib/add.mjs
+import fs7 from "node:fs";
+import path8 from "node:path";
+var RAW_RECIPES = `${RAW_DIR}/recipes`;
+function rawName(root, stem, ext) {
+  for (let n = 1;; n += 1) {
+    const rel = `${RAW_RECIPES}/${stem}${n === 1 ? "" : `-${n}`}${ext}`;
+    if (!fs7.existsSync(path8.join(root, rel)))
+      return rel;
+  }
+}
+
+// src/skills/chef-add-recipe/scripts/lib/enrich.mjs
+import { isDeepStrictEqual } from "node:util";
 
 // src/lib/fdc-synonyms-data.mjs
 var REVIEWED_FDC_FOODS = [
@@ -7974,15 +8141,24 @@ function pick(store, ids) {
   return { chosen: ids.map((id) => store.proposals[id]).filter(accepted) };
 }
 function plan(root, record, date, slugsInBook) {
-  const path8 = wikiPath("recipe", record.slug);
+  const path9 = wikiPath("recipe", record.slug);
   if (slugsInBook.has(record.slug))
-    return { record, published: { date, path: path8, linked: true } };
+    return { record, published: { date, path: path9, linked: true } };
   const raw = rawName(root, `${date.replaceAll("-", "")}-${record.slug}`, ".json");
   const page = recipePage(record.draft, { sourceKind: "proposal", sourceUrl: record.source_url, sourceRaw: [raw], date });
-  return { record, published: { date, path: path8 }, page: { slug: record.slug, ...page }, raw: { path: raw, content: `${JSON.stringify(record.draft, null, 2)}
+  return { record, published: { date, path: path9 }, page: { slug: record.slug, ...page }, raw: { path: raw, content: `${JSON.stringify(record.draft, null, 2)}
 ` } };
 }
-function publishProposals(root, { ids, date }) {
+function blockedByDietaryGate(root, records, date) {
+  const ruleset = readRuleset(root);
+  return records.flatMap((record) => {
+    const page = recipePage(record.draft, { sourceKind: "proposal", sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
+    const verdict = checkRecipe(ruleset, { slug: record.slug, ...page });
+    return verdict.allowed ? [] : [{ id: record.id, slug: record.slug, title: record.title, reasons: verdict.reasons }];
+  });
+}
+function publishProposals(root, { ids, date, confirm = false }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
@@ -7992,6 +8168,28 @@ function publishProposals(root, { ids, date }) {
     return { data_root: root, ...problem };
   if (!chosen.length)
     return { status: "unchanged", data_root: root, published: [] };
+  const blocked = blockedByDietaryGate(root, chosen, date);
+  const confirmedIds = new Set(confirm ? ids ?? [] : []);
+  const allBlockedNamed = blocked.every((record) => confirmedIds.has(record.id));
+  if (blocked.length && !allBlockedNamed) {
+    return {
+      status: "refused",
+      data_root: root,
+      reason: "The dietary hard-constraint gate did not allow publication. Explicit confirmation is required for each blocked proposal named with --id.",
+      blocked
+    };
+  }
+  if (blocked.length) {
+    const blockedIds = new Set(blocked.map((record) => record.id));
+    for (const record of chosen.filter((candidate) => blockedIds.has(candidate.id))) {
+      record.decisions.push({
+        outcome: "accept",
+        date,
+        by: "user",
+        reason: "Confirmed publication despite the dietary hard-constraint gate."
+      });
+    }
+  }
   const slugsInBook = new Set(listRecipes(root).recipes.map((r) => r.slug));
   const plans = chosen.map((record) => plan(root, record, date, slugsInBook));
   for (const p of plans)
@@ -8006,8 +8204,8 @@ function publishProposals(root, { ids, date }) {
     return written;
   return { status: "published", data_root: root, published: plans.map((p) => ({ id: p.record.id, slug: p.record.slug, ...p.published })) };
 }
-async function publishAndEnrich(root, { ids, date, fdc }) {
-  const result = publishProposals(root, { ids, date });
+async function publishAndEnrich(root, { ids, date, fdc, confirm = false }) {
+  const result = publishProposals(root, { ids, date, confirm });
   const fresh = result.published?.filter((p) => !p.linked).map((p) => p.slug) ?? [];
   if (result.status !== "published" || !fresh.length)
     return result;
@@ -8029,6 +8227,7 @@ var { values, positionals } = parseArgs({
     state: { type: "string" },
     slug: { type: "string" },
     action: { type: "string" },
+    confirm: { type: "boolean" },
     title: many,
     text: many
   },
@@ -8041,12 +8240,12 @@ function readDraft() {
   if (values.draft === undefined)
     return {};
   try {
-    return { draft: JSON.parse(fs7.readFileSync(values.draft, "utf8")) };
+    return { draft: JSON.parse(fs8.readFileSync(values.draft, "utf8")) };
   } catch (error) {
     return { problem: invalid2(`--draft must be a readable JSON file: ${error.message}`) };
   }
 }
-var publish = (ids) => publishAndEnrich(root, { ids, date, fdc: usdaClient() });
+var publish = (ids) => publishAndEnrich(root, { ids, date, fdc: usdaClient(), confirm: values.confirm });
 var withPublication = async (result, id) => ({ ...result, publication: await publish([id]) });
 async function proposeMode() {
   const { draft, problem } = readDraft();

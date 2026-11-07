@@ -2,6 +2,9 @@
 // idempotent and retryable: a published proposal is never written again, and a recipe page that
 // already exists is linked instead of overwritten. Page, raw copy and store update share one
 // commit; enrichment follows as its own commit.
+import { checkRecipe } from '../../../../lib/dietary-gate.mjs';
+import { dietaryFlags } from '../../../../lib/dietary-flags.mjs';
+import { readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { wikiPath, writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
 import { rawName } from '../../../chef-add-recipe/scripts/lib/add.mjs';
@@ -27,13 +30,45 @@ function plan(root, record, date, slugsInBook) {
   return { record, published: { date, path }, page: { slug: record.slug, ...page }, raw: { path: raw, content: `${JSON.stringify(record.draft, null, 2)}\n` } };
 }
 
-export function publishProposals(root, { ids, date }) {
+function blockedByDietaryGate(root, records, date) {
+  const ruleset = readRuleset(root);
+  return records.flatMap((record) => {
+    const page = recipePage(record.draft, { sourceKind: 'proposal', sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
+    const verdict = checkRecipe(ruleset, { slug: record.slug, ...page });
+    return verdict.allowed ? [] : [{ id: record.id, slug: record.slug, title: record.title, reasons: verdict.reasons }];
+  });
+}
+
+export function publishProposals(root, { ids, date, confirm = false }) {
   const refusal = writeRefusal(root);
   if (refusal) return refusal;
   const store = readProposals(root);
   const { chosen, problem } = pick(store, ids);
   if (problem) return { data_root: root, ...problem };
   if (!chosen.length) return { status: 'unchanged', data_root: root, published: [] };
+  const blocked = blockedByDietaryGate(root, chosen, date);
+  const confirmedIds = new Set(confirm ? (ids ?? []) : []);
+  const allBlockedNamed = blocked.every((record) => confirmedIds.has(record.id));
+  if (blocked.length && !allBlockedNamed) {
+    return {
+      status: 'refused',
+      data_root: root,
+      reason: 'The dietary hard-constraint gate did not allow publication. Explicit confirmation is required for each blocked proposal named with --id.',
+      blocked,
+    };
+  }
+  if (blocked.length) {
+    const blockedIds = new Set(blocked.map((record) => record.id));
+    for (const record of chosen.filter((candidate) => blockedIds.has(candidate.id))) {
+      record.decisions.push({
+        outcome: 'accept',
+        date,
+        by: 'user',
+        reason: 'Confirmed publication despite the dietary hard-constraint gate.',
+      });
+    }
+  }
 
   const slugsInBook = new Set(listRecipes(root).recipes.map((r) => r.slug));
   const plans = chosen.map((record) => plan(root, record, date, slugsInBook));
@@ -49,8 +84,8 @@ export function publishProposals(root, { ids, date }) {
 }
 
 // Publish, then enrich the newly written pages the way chef-add-recipe does.
-export async function publishAndEnrich(root, { ids, date, fdc }) {
-  const result = publishProposals(root, { ids, date });
+export async function publishAndEnrich(root, { ids, date, fdc, confirm = false }) {
+  const result = publishProposals(root, { ids, date, confirm });
   const fresh = result.published?.filter((p) => !p.linked).map((p) => p.slug) ?? [];
   if (result.status !== 'published' || !fresh.length) return result;
   const { recipes, hint, status, reason } = await enrichRecipes(root, { slugs: fresh, fdc, date });

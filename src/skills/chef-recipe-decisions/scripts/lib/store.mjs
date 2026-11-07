@@ -35,6 +35,7 @@ export function summary(record) {
     state: proposalState(record),
     proposed: record.proposed,
     ...(record.note && { note: record.note }),
+    ...(record.gate_reasons && { reasons: record.gate_reasons }),
     ...(last && { decided: last.date, by: last.by, ...(last.reason && { reason: last.reason }) }),
     ...(record.published && { published: record.published }),
   };

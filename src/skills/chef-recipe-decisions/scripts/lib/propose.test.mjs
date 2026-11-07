@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { writeWiki } from '../../../../lib/wiki.mjs';
 import { decide } from './decide.mjs';
 import { propose } from './propose.mjs';
 import { addRule } from './rules.mjs';
 import { PROPOSALS_FILE } from './store.mjs';
-import { commits, dataRoot, draft, readJson } from './test-root.mjs';
+import { commits, dataRoot, draft, exists, readJson } from './test-root.mjs';
 
 const date = '2026-01-20';
 
@@ -47,6 +48,85 @@ test('standing rules decide a proposal; reject rules win over approve rules', ()
   assert.equal(lentil.status, 'auto-rejected');
   assert.deepEqual(lentil.rule, { id: 'no-lentils', reason: 'No lentils' });
   assert.equal(readJson(root, PROPOSALS_FILE).proposals['lentil-soup'].decisions[0].by, 'rule:no-lentils');
+});
+
+test('derived dietary flags let a safe matching proposal auto-approve', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: {
+        type: 'dietary-ruleset',
+        title: 'Dietary ruleset',
+        members: [{ name: 'Alex Example', hard_constraints: ['peanut allergy'] }],
+        updated: date,
+      },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'declare dietary rule',
+  });
+  addRule(root, { action: 'approve', id: 'rice', reason: 'Always rice', text: ['rice'], date });
+
+  const result = propose(root, {
+    draft: { title: 'Plain Rice', ingredients: ['1 cup rice', '2 cups water'], steps: ['Simmer.'] },
+    date,
+  });
+
+  assert.equal(result.status, 'auto-accepted');
+  assert.equal(result.state, 'accepted');
+  assert.equal(result.by, 'rule:rice');
+});
+
+test('peanut butter keeps a matching auto-approve proposal open with derived and text reasons', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: {
+        type: 'dietary-ruleset',
+        title: 'Dietary ruleset',
+        members: [{ name: 'Alex Example', hard_constraints: ['peanut allergy'] }],
+        updated: date,
+      },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'declare dietary rule',
+  });
+  addRule(root, { action: 'approve', id: 'rice', reason: 'Always rice', text: ['rice'], date });
+
+  const peanutRice = { title: 'Peanut Rice', ingredients: ['1 cup rice', '2 tbsp peanut butter'], steps: ['Stir.'] };
+  const result = propose(root, { draft: peanutRice, date });
+
+  assert.equal(result.status, 'proposed');
+  assert.equal(result.state, 'open');
+  assert.equal(result.reasons[0].constraint, 'peanuts');
+  assert.deepEqual(result.reasons.map((reason) => reason.why), ['flagged', 'ingredient-text']);
+  const record = readJson(root, PROPOSALS_FILE).proposals['peanut-rice'];
+  assert.deepEqual(record.decisions, []);
+  assert.deepEqual(record.gate_reasons, result.reasons);
+  assert.equal(exists(root, 'knowledge/wiki/recipes/peanut-rice.md'), false);
+  const again = propose(root, { draft: peanutRice, date });
+  assert.equal(again.status, 'already-proposed');
+  assert.deepEqual(again.reasons, result.reasons);
+});
+
+test('an unreadable dietary ruleset keeps a matching auto-approve proposal open', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: { type: 'dietary-ruleset', title: 'Dietary ruleset', members: 'broken', updated: date },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'write unreadable dietary rule',
+  });
+  addRule(root, { action: 'approve', id: 'soups', reason: 'Always soups', text: ['soup'], date });
+
+  const result = propose(root, { draft, date });
+
+  assert.equal(result.status, 'proposed');
+  assert.equal(result.reasons[0].why, 'ruleset-unreadable');
+  assert.deepEqual(readJson(root, PROPOSALS_FILE).proposals['mushroom-barley-soup'].decisions, []);
 });
 
 test('rule phrases match at word starts only', () => {
