@@ -2353,5 +2353,202 @@
         ]
       }
     ]
+  },
+  {
+    "id": "chef-recipe-decisions-auto-approve-dietary-conflict-stays-open",
+    "description": "A standing auto-approve rule cannot accept or publish a proposal containing a declared allergen; the proposal stays open with the gate reasons.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "../draft.json",
+        "content": "{\"title\":\"Creamy Vegetable Soup\",\"ingredients\":[\"2 cups vegetables\",\"1 cup milk\"],\"steps\":[\"Simmer.\"]}"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "rule-add",
+          "--action",
+          "approve",
+          "--id",
+          "always-soup",
+          "--reason",
+          "Always add soups",
+          "--text",
+          "soup"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "propose",
+          "--draft",
+          "{data_root}/../draft.json"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "proposed"
+          },
+          {
+            "path": "$.state",
+            "equals": "open"
+          },
+          {
+            "path": "$.reasons[0].constraint",
+            "equals": "dairy"
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--query",
+      "creamy"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 0
+      }
+    ],
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.proposals.creamy-vegetable-soup.decisions",
+            "equals": []
+          },
+          {
+            "path": "$.proposals.creamy-vegetable-soup.gate_reasons[0].why",
+            "equals": "ingredient-text"
+          },
+          {
+            "path": "$.proposals.creamy-vegetable-soup.published",
+            "absent": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-publish-dietary-conflict-refused-cleanly",
+    "description": "Publishing an accepted proposal that conflicts with a hard constraint is refused with reasons and leaves the data-root commit and worktree unchanged.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"sesame\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "content": "{\"proposals\":{\"sesame-noodles\":{\"id\":\"sesame-noodles\",\"slug\":\"sesame-noodles\",\"title\":\"Sesame Noodles\",\"proposed\":\"2026-01-15\",\"draft\":{\"title\":\"Sesame Noodles\",\"ingredients\":[\"200 g noodles\",\"1 tbsp sesame oil\"],\"steps\":[\"Toss.\"]},\"decisions\":[{\"outcome\":\"accept\",\"date\":\"2026-01-15\",\"by\":\"user\"}]}}}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+      "publish",
+      "--id",
+      "sesame-noodles"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "confirmation"
+      },
+      {
+        "path": "$.blocked[0].reasons[0].constraint",
+        "equals": "sesame"
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-confirmed-dietary-publication-is-audited",
+    "description": "The one-shot publish confirmation reaches the dietary gate and adds an explicit user decision to history without creating a standing exception.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"sesame\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "content": "{\"proposals\":{\"sesame-noodles\":{\"id\":\"sesame-noodles\",\"slug\":\"sesame-noodles\",\"title\":\"Sesame Noodles\",\"proposed\":\"2026-01-15\",\"draft\":{\"title\":\"Sesame Noodles\",\"ingredients\":[\"200 g noodles\",\"1 tbsp sesame oil\"],\"steps\":[\"Toss.\"]},\"decisions\":[{\"outcome\":\"accept\",\"date\":\"2026-01-15\",\"by\":\"user\"}]}}}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+      "publish",
+      "--id",
+      "sesame-noodles",
+      "--confirm"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "published"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.proposals.sesame-noodles.decisions.length",
+            "equals": 2
+          },
+          {
+            "path": "$.proposals.sesame-noodles.decisions[1].by",
+            "equals": "user"
+          },
+          {
+            "path": "$.proposals.sesame-noodles.decisions[1].reason",
+            "includes": "dietary hard-constraint gate"
+          }
+        ]
+      },
+      {
+        "path": "knowledge/wiki/recipes/sesame-noodles.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "source_kind: proposal"
+          }
+        ]
+      }
+    ]
   }
 ]
