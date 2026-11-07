@@ -7635,6 +7635,7 @@ function summary(record) {
     state: proposalState(record),
     proposed: record.proposed,
     ...record.note && { note: record.note },
+    ...record.gate_reasons && { reasons: record.gate_reasons },
     ...last && { decided: last.date, by: last.by, ...last.reason && { reason: last.reason } },
     ...record.published && { published: record.published }
   };
@@ -7752,7 +7753,6 @@ function propose(root, { draft, url, note, date }) {
     status,
     data_root: root,
     ...summary(record),
-    ...record.gate_reasons && { reasons: record.gate_reasons },
     ...match && { rule: { id: match.rule.id, reason: match.rule.reason } }
   };
 }

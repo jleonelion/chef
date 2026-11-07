@@ -24,13 +24,13 @@ Run every command from this skill's directory. Each prints one JSON object. Exit
 
 Act on `status`:
 
-- `proposed`: show the user the title, a one-line description and the ingredients, and ask whether to add it.
+- `proposed`: show the user the title, a one-line description and the ingredients, and ask whether to add it. When `reasons` is present, a matching auto-approve rule was blocked by the dietary hard-constraint gate; show every reason so the user can decide.
 - `already-rejected`: the user turned this recipe down before (`decided`, `reason`). Do not suggest it. Pick another.
 - `already-proposed`: it is still waiting for an answer. Ask about it again only if it fits the conversation.
 - `already-accepted`: the user accepted it; run `publish` to finish adding it.
 - `exists`: the recipe is already in the book. If `lifecycle` is `retired`, offer to restore it.
 - `auto-rejected`: a standing rule (`rule`) turned it down. Do not show it.
-- `auto-accepted`: a standing rule accepted it and `publication` shows it was added. Tell the user in one line, naming the rule.
+- `auto-accepted`: a standing rule accepted it after the dietary hard-constraint gate allowed it, and `publication` shows it was added. Tell the user in one line, naming the rule.
 
 ## Record the user's answer
 
@@ -58,6 +58,14 @@ node scripts/recipe-decisions.mjs publish --id <id>
 
 `published` lists the recipes added, each enriched with dietary flags and nutrition like `chef-add-recipe`; report `enrichment` and pass on any `hint` in one line. An entry with `linked: true` means a recipe with that title was already in the book, so it was left as it was. `unchanged` means there was nothing left to publish. If publication fails (`refused`), the decision is kept: tell the user `reason` and run `publish` again once it is fixed.
 
+Publication always checks the current dietary hard-constraint gate. When `refused` includes `blocked`, show each proposal's `reasons` and ask whether the user explicitly wants to publish despite them. Only after they confirm, run the same command with `--confirm`:
+
+```sh
+node scripts/recipe-decisions.mjs publish --id <id> --confirm
+```
+
+`--confirm` applies only to that publication call. It never changes the dietary ruleset or creates a standing exception, and the script records the explicit confirmation in the proposal's decision history. An unreadable dietary ruleset is also blocked and requires this confirmation.
+
 ## Retire or restore a recipe
 
 ```sh
@@ -78,7 +86,7 @@ node scripts/recipe-decisions.mjs rules
 node scripts/recipe-decisions.mjs rule-remove --id no-pork
 ```
 
-A rule matches when every `--title` phrase is in the title and every `--text` phrase is in the title, description, cuisine, tags or ingredients (at the start of a word, any case). Reject rules win over approve rules. An existing `--id` is replaced. A rule never touches recipes already in the book.
+A rule matches when every `--title` phrase is in the title and every `--text` phrase is in the title, description, cuisine, tags or ingredients (at the start of a word, any case). Reject rules win over approve rules. Auto-approve rules apply only when the dietary hard-constraint gate allows the draft; otherwise it stays open with the reasons for the user. An existing `--id` is replaced. A rule never touches recipes already in the book.
 
 ## Rules
 
