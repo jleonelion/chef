@@ -1150,6 +1150,78 @@
     ]
   },
   {
+    "id": "chef-setup-update-commits-confirms-and-verifies",
+    "description": "Update commits pending user data, previews dropped skills, waits for confirmation, then verifies the tagged install.",
+    "updateInstall": true,
+    "afterCommitSeed": [
+      {
+        "path": "knowledge/wiki/household/pending-note.md",
+        "content": "User data awaiting commit.\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef_setup/scripts/setup.mjs",
+          "update"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "confirmation-required"
+          },
+          {
+            "path": "$.changes.skills.removed",
+            "includes": "chef_dropped"
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef_setup/scripts/setup.mjs",
+      "update",
+      "--confirm"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "updated"
+      },
+      {
+        "path": "$.release",
+        "equals": "v0.1.0"
+      },
+      {
+        "path": "$.verify.status",
+        "equals": "pass"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/pending-note.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "User data awaiting commit.\n"
+          }
+        ]
+      },
+      {
+        "path": ".git/logs/HEAD",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "Before Chef update"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "chef-setup-set-refuses-schema-mismatch",
     "description": "A writing skill refuses to write to a data root on a different schema version and points the user at update Chef.",
     "seed": [
