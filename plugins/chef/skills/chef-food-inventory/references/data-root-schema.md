@@ -20,6 +20,7 @@ Wiki page types and their folders:
 | `household-profile` | `knowledge/wiki/household/` |
 | `inventory-rollup` | `knowledge/wiki/household/` (generated from `data/food-inventory/`; never edited by hand) |
 | `dietary-ruleset` | `knowledge/wiki/household/` (one page, `dietary-ruleset.md`; only `chef-setup` writes it) |
+| `meal-plan` | `knowledge/wiki/meal-plans/` (one page per planned week) |
 
 A page's slug is its filename without `.md`: lowercase letters, digits and single hyphens.
 
@@ -131,6 +132,24 @@ updated: 2026-01-15
 | `updated` | yes | `YYYY-MM-DD` |
 
 A page Chef cannot read leaves every recipe out of suggestions until `chef-setup` fixes it.
+
+## Meal-plan pages
+
+`knowledge/wiki/meal-plans/<week-start>.md`, written only by `chef-meal-planning`.
+
+| Field | Required | Value |
+|---|---|---|
+| `type` | yes | `meal-plan` |
+| `title` | yes | Text |
+| `week_start`, `created` | yes | `YYYY-MM-DD` |
+| `household_profile` | yes | The profile path used, or `null` when none exists |
+| `meals` | yes | Seven entries with `date`, recipe `slug`, `title` and household `servings` |
+| `nutrition` | yes | The shared nutrition engine's rollup. `complete` has per-meal and weekly `totals`; `incomplete` lists meals whose recipe nutrition is unavailable and never estimates totals |
+| `dietary` | yes | Ruleset status plus the applicable `nudge`, `footer`, `caveats` or unreadable-ruleset `problem` |
+| `inventory` | yes | Inventory context considered while preferring recipes |
+
+Calendar payloads are runtime instructions returned by the script only when `settings.calendar`
+is set. They are never stored on a meal-plan page, and Chef scripts never call a calendar API.
 
 ## Notices
 

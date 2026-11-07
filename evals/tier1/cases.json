@@ -2369,6 +2369,10 @@
       {
         "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
         "content": "---\ntype: recipe\ntitle: Lemon Garlic Pasta\nservings: 2\ntotal_minutes: 20\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [contains-dairy]\nnutrition_status: complete\nnutrition_per_serving: {calories: 500, protein: 15, fat: 20, saturated_fat: 8, carbs: 65, fiber: 3, sugar: 4, sodium: 600, cholesterol: 25}\n---\n# Lemon Garlic Pasta\n\n## Ingredients\n\n- 200 g spaghetti\n- 30 g parmesan\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/retired-rice.md",
+        "content": "---\ntype: recipe\ntitle: Retired Rice\nservings: 3\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\nlifecycle: retired\nretired: 2026-01-16\ndietary_flags: []\nnutrition_status: complete\nnutrition_per_serving: {calories: 200, protein: 4, fat: 1, saturated_fat: 0, carbs: 42, fiber: 1, sugar: 0, sodium: 5, cholesterol: 0}\n---\n# Retired Rice\n\n## Ingredients\n\n- 2 lb jasmine rice\n\n## Steps\n\n1. Cook.\n"
       }
     ],
     "command": [
@@ -2428,6 +2432,72 @@
           {
             "path": "$.content",
             "includes": "items_considered: 5"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-emits-calendar-payload-only-when-configured",
+    "description": "A configured calendar produces a runtime payload, while the saved plan retains an incomplete nutrition rollup and the never-asked dietary nudge.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"calendar\":\"Household meals\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-26"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.calendar.calendar",
+        "equals": "Household meals"
+      },
+      {
+        "path": "$.calendar.action",
+        "equals": "create-events"
+      },
+      {
+        "path": "$.calendar.events.length",
+        "equals": 7
+      },
+      {
+        "path": "$.calendar.instruction",
+        "includes": "does not call a calendar API"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "equals": "No dietary constraints recorded. Tell me about any allergies or foods someone must never eat."
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      },
+      {
+        "path": "$.nutrition.status",
+        "equals": "incomplete"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-26.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition:\n  status: incomplete"
           }
         ]
       }
