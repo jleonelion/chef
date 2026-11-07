@@ -1,13 +1,13 @@
 ---
 name: chef-setup
-description: Create the Chef data root, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up, wants to change units, household recipients, receipt senders or the calendar, or when another chef- skill reports a missing data root or a settings warning.
+description: Create or adopt the Chef data root, onboard the user, change Chef settings, and verify the install. Use when the user installs Chef or asks to set it up, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning or a schema mismatch.
 ---
 
 # Chef setup
 
 Chef stores all of its state in one folder, the **data root**. Per-user settings live in `settings.json` inside it. This skill is the only writer of that file.
 
-Run every command from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `refused` or `invalid-input`.
+Run every command from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `refused` or `invalid-input`; exit code 1 means `verify` found a problem.
 
 ## Create the data root
 
@@ -27,6 +27,20 @@ Act on `status`:
 - `exists`: a data root is already there and nothing was changed. Ask whether they want to review their settings; if so, run onboarding.
 - `refused`: the folder holds files that are not a Chef data root. Do not delete or move anything. Tell the user, ask for a different folder, and rerun with `--data-root`.
 
+If the user already has a Chef data root elsewhere (a backup, another machine, or a migration hand-off repo), adopt it instead of running `init`.
+
+## Adopt an existing data root
+
+```sh
+node scripts/setup.mjs adopt --source <git URL or folder>
+```
+
+`--source` takes an `https://` or `ssh://` git URL, `git@host:path`, a `file:///` URL, or a local folder. The script clones it into the data root, checks its schema version, then removes the clone's git remotes so the data root stays local-only.
+
+- `adopted`: tell the user Chef now uses the data root at `data_root` and that its history came with it. Settings are not part of a data root's history, so run onboarding.
+- `refused`: show `reason`. Nothing was changed. If the target folder is not empty, ask for a different folder and rerun with `--data-root`. If `reason` mentions "update Chef", the source was written by a different Chef version; tell the user and stop.
+- `invalid-input`: show `problems` and ask for a corrected source.
+
 ## Onboarding
 
 Every question is optional. If the user skips one, or all of them, leave that setting at its default; Chef still works. Ask in this order, one at a time:
@@ -42,6 +56,8 @@ node scripts/setup.mjs set --units metric --household-recipients "a@example.com,
 ```
 
 Confirm what was saved from the `settings` field of the output. If the user skipped everything, do not run `set`.
+
+Finish onboarding with **Verify install**.
 
 ## Change settings
 
@@ -65,7 +81,24 @@ Act on the `set` output:
 
 When another chef- skill reports a settings warning, run `node scripts/setup.mjs settings`. If `status` is `invalid` or `unknown-version`, show the user `warning` and `content`, then offer to fix it with `set ... --rewrite`.
 
+## Verify install
+
+Run at the end of onboarding, after every Chef update, and whenever the user asks to check that Chef works:
+
+```sh
+node scripts/setup.mjs verify
+```
+
+It checks Node, that the data root is writable and on this Chef's schema version, and runs every bundled script against a throwaway copy of a sample data root. It never changes the user's data.
+
+- `pass`: tell the user Chef is installed and working.
+- `fail`: for each entry in `checks` with `ok: false`, tell the user its `name` and `detail`. A `data-root` failure means run `init` or fix folder permissions. A `schema` failure means Chef needs updating. A `node` failure means the runtime needs Node 20 or later. A `smoke:` failure means the install is damaged; reinstall Chef.
+
+## Schema mismatch
+
+When any chef- skill refuses with a `reason` that says to "update Chef", the data root and the installed skills are on different schema versions. Chef will not write until they match. Tell the user the reason and do not retry the write or edit `schema-version.json`.
+
 ## Rules
 
-- Never edit `settings.json` by hand, never commit it, and never add a git remote to the data root unless the user asks.
+- Never edit `settings.json` or `schema-version.json` by hand, never commit `settings.json`, and never add a git remote to the data root unless the user asks.
 - Never ask for API keys or passwords in chat. Settings hold only addresses and preferences.

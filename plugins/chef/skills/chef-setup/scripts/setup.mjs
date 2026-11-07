@@ -143,7 +143,7 @@ function git(cwd, args, { env } = {}) {
 
 // src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
 var URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
-var SAFE_CLONE = ["-c", "core.hooksPath=/dev/null", "-c", "protocol.ext.allow=never", "-c", "protocol.fd.allow=never"];
+var SAFE_CLONE = ["-c", "core.hooksPath=/dev/null", "-c", "core.symlinks=false", "-c", "protocol.ext.allow=never", "-c", "protocol.fd.allow=never"];
 var QUIET = { GIT_TERMINAL_PROMPT: "0" };
 function sourceProblem(source) {
   if (typeof source !== "string" || !source.trim())

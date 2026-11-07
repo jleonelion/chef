@@ -37,6 +37,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
   (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
+  To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
+- Ask Chef to "verify my Chef install" any time; it never touches your data.
 
 ## Safety
 
