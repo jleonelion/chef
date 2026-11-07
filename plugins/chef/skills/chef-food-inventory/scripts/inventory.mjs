@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs4 = this.flowScalar(this.type);
+            const fs5 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs4, sep: [] });
+              map.items.push({ start, key: fs5, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs4);
+              this.stack.push(fs5);
             } else {
-              Object.assign(it, { key: fs4, sep: [] });
+              Object.assign(it, { key: fs5, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs4 = this.flowScalar(this.type);
+            const fs5 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs4, sep: [] });
+              fc.items.push({ start: [], key: fs5, sep: [] });
             else if (it.sep)
-              this.stack.push(fs4);
+              this.stack.push(fs5);
             else
-              Object.assign(it, { key: fs4, sep: [] });
+              Object.assign(it, { key: fs5, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6953,16 +6953,49 @@ import os2 from "node:os";
 import path2 from "node:path";
 
 // src/runtime/muse.mjs
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
+var AUTHDC = "/opt/hatch/bin/authdc";
+var PROVIDERS = {
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+};
+var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
+function placementOf(text) {
+  const [kind, name] = text.split(":");
+  return { in: kind === "query_param" ? "query" : kind, name };
+}
+function fromConnector(spec, run) {
+  let entry;
+  try {
+    entry = JSON.parse(run(AUTHDC, ["cred", "surrogate", spec.connector])).credentials?.[0];
+  } catch {
+    return { ok: false, reason: "not-connected" };
+  }
+  if (typeof entry?.surrogate !== "string" || !entry.surrogate)
+    return { ok: false, reason: "not-connected" };
+  if (entry.placement !== spec.placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
+  },
+  credential(provider, { env = process.env, exists = fs.existsSync, run = runFile } = {}) {
+    const spec = PROVIDERS[provider];
+    if (!spec)
+      throw new Error(`unknown credential provider: ${provider}`);
+    if (exists(AUTHDC))
+      return fromConnector(spec, run);
+    const value = env[spec.env]?.trim();
+    return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   }
 };
 
@@ -6973,15 +7006,15 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
 }
 
 // src/lib/schema.mjs
-import fs from "node:fs";
+import fs2 from "node:fs";
 import path3 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
   const file = path3.join(root, SCHEMA_FILE);
-  if (!fs.existsSync(file))
+  if (!fs2.existsSync(file))
     return null;
-  return JSON.parse(fs.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -7009,7 +7042,7 @@ function schemaWriteBlocker(root) {
 }
 
 // src/lib/settings.mjs
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 1;
@@ -7062,9 +7095,9 @@ function classify(stored) {
 function readSettings(root, { locale } = {}) {
   const defaults = defaultSettings({ locale });
   const file = path4.join(root, SETTINGS_FILE);
-  if (!fs2.existsSync(file))
+  if (!fs3.existsSync(file))
     return { status: "missing", settings: defaults };
-  const content = fs2.readFileSync(file, "utf8");
+  const content = fs3.readFileSync(file, "utf8");
   const stored = parse(content);
   const { status, reason } = classify(stored);
   if (status !== "ok")
@@ -7074,7 +7107,7 @@ function readSettings(root, { locale } = {}) {
 }
 
 // src/skills/chef-food-inventory/scripts/lib/cli-args.mjs
-import fs3 from "node:fs";
+import fs4 from "node:fs";
 var OPTIONS = {
   "data-root": { type: "string" },
   "transcript-file": { type: "string" },
@@ -7094,11 +7127,11 @@ var OPTIONS = {
 };
 var today = () => new Date().toLocaleDateString("en-CA");
 function readTranscript(file) {
-  return fs3.readFileSync(!file || file === "-" ? 0 : file, "utf8");
+  return fs4.readFileSync(!file || file === "-" ? 0 : file, "utf8");
 }
 
 // src/lib/wiki.mjs
-import fs4 from "node:fs";
+import fs5 from "node:fs";
 import path5 from "node:path";
 
 // node_modules/yaml/dist/index.js
@@ -7166,10 +7199,10 @@ ${body}`;
 }
 
 // src/lib/git.mjs
-import { execFileSync } from "node:child_process";
+import { execFileSync as execFileSync2 } from "node:child_process";
 function git(cwd, args, { env } = {}) {
   const options = { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
-  return execFileSync("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
+  return execFileSync2("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
 }
 var FALLBACK_IDENTITY = ["-c", "user.name=chef", "-c", "user.email=chef@example.com"];
 function commit(cwd, message) {
@@ -7203,7 +7236,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs4.existsSync(path5.join(root, ".git")))
+  if (!fs5.existsSync(path5.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -7214,14 +7247,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs4.existsSync(path5.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs5.existsSync(path5.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
     const abs = path5.join(root, file.path);
-    fs4.mkdirSync(path5.dirname(abs), { recursive: true });
-    fs4.writeFileSync(abs, file.content);
+    fs5.mkdirSync(path5.dirname(abs), { recursive: true });
+    fs5.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -7230,7 +7263,7 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs5 from "node:fs";
+import fs6 from "node:fs";
 import path6 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
@@ -7300,7 +7333,7 @@ function listItems(inventory) {
 }
 var readText = (root, relative) => {
   const file = path6.join(root, relative);
-  return fs5.existsSync(file) ? fs5.readFileSync(file, "utf8") : null;
+  return fs6.existsSync(file) ? fs6.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -7461,7 +7494,7 @@ function expiringItems(inventory, { today: today2, days }) {
 }
 
 // src/skills/chef-food-inventory/scripts/lib/health.mjs
-import fs6 from "node:fs";
+import fs7 from "node:fs";
 import path7 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/ledger.mjs
@@ -7495,7 +7528,7 @@ function rollupProblems(root, inventory) {
   return same ? [] : ["the rollup page does not match the store"];
 }
 function ledgerProblems(root, ledger) {
-  return Object.entries(ledger.receipts).filter(([id, entry]) => !fs6.existsSync(path7.join(root, STORE.purchases, `${entry.date}-${id}.json`))).map(([id]) => `receipt ${id} has no purchase record`);
+  return Object.entries(ledger.receipts).filter(([id, entry]) => !fs7.existsSync(path7.join(root, STORE.purchases, `${entry.date}-${id}.json`))).map(([id]) => `receipt ${id} has no purchase record`);
 }
 function stats(inventory, ledger, window) {
   const items = listItems(inventory);

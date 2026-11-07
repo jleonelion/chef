@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create or adopt the Chef data root, onboard the user, change Chef settings, and verify the install. Use when the user installs Chef or asks to set it up, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning or a schema mismatch.
+description: Create or adopt the Chef data root, onboard the user, change Chef settings, and verify the install. Use when the user installs Chef or asks to set it up, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
 ---
 
 # Chef setup
@@ -57,7 +57,26 @@ node scripts/setup.mjs set --units metric --household-recipients "a@example.com,
 
 Confirm what was saved from the `settings` field of the output. If the user skipped everything, do not run `set`.
 
-Finish onboarding with **Verify install**.
+Then offer **Connect USDA nutrition**, and finish onboarding with **Verify install**.
+
+## Connect USDA nutrition
+
+Optional. Chef computes recipe nutrition only from USDA FoodData Central; without it, nutrition is marked "not computed" and Chef never estimates it. Ask: "Do you want Chef to compute nutrition for your recipes? It needs a free USDA FoodData Central key, which you enter privately, never in this chat." If they decline, move on.
+
+1. The user gets a free key at https://fdc.nal.usda.gov/api-key-signup (USDA emails it).
+2. Store it where scripts never see it:
+   - **Muse app:** create a custom connector with your connector tools, with exactly these details: provider `usda-fdc`, API host `api.nal.usda.gov`, auth scheme `api_key`, placement query parameter `api_key`. Start Muse's secure entry card so the user types the key there, and have them allow the host when asked.
+   - **Claude Code or Muse Code:** the user sets the environment variable `CHEF_USDA_FDC_KEY` in their own shell or runtime settings. Do not run that command for them or put the key in any file.
+3. Check it with one harmless search:
+
+   ```sh
+   node scripts/setup.mjs usda
+   ```
+
+   - `connected`: tell the user nutrition is on (`food` is the test match). Offer to fill in nutrition for saved recipes with `chef-add-recipe`'s `enrich --unenriched`.
+   - `failed` (exit code 0, since USDA access is optional): act on `reason`. `not-connected`: the connector or variable is missing; repeat step 2. `wrong-placement`: the connector's placement differs from step 2; reconnect it with those details. `rejected`: USDA refused the key; reconnect with the key from USDA's email. `rate-limited` or `unreachable`: try again later.
+
+**Rotate** the key by reconnecting the connector (Muse) or changing the variable, then run `usda` again. **Remove** it by disconnecting the connector in Muse's connector settings or unsetting the variable; Chef then marks new nutrition "not computed".
 
 ## Change settings
 

@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs = this.flowScalar(this.type);
+            const fs2 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs, sep: [] });
+              map.items.push({ start, key: fs2, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs);
+              this.stack.push(fs2);
             } else {
-              Object.assign(it, { key: fs, sep: [] });
+              Object.assign(it, { key: fs2, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs = this.flowScalar(this.type);
+            const fs2 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs, sep: [] });
+              fc.items.push({ start: [], key: fs2, sep: [] });
             else if (it.sep)
-              this.stack.push(fs);
+              this.stack.push(fs2);
             else
-              Object.assign(it, { key: fs, sep: [] });
+              Object.assign(it, { key: fs2, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6953,16 +6953,49 @@ import os2 from "node:os";
 import path2 from "node:path";
 
 // src/runtime/muse.mjs
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
+var AUTHDC = "/opt/hatch/bin/authdc";
+var PROVIDERS = {
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+};
+var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
+function placementOf(text) {
+  const [kind, name] = text.split(":");
+  return { in: kind === "query_param" ? "query" : kind, name };
+}
+function fromConnector(spec, run) {
+  let entry;
+  try {
+    entry = JSON.parse(run(AUTHDC, ["cred", "surrogate", spec.connector])).credentials?.[0];
+  } catch {
+    return { ok: false, reason: "not-connected" };
+  }
+  if (typeof entry?.surrogate !== "string" || !entry.surrogate)
+    return { ok: false, reason: "not-connected" };
+  if (entry.placement !== spec.placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
+  },
+  credential(provider, { env = process.env, exists = fs.existsSync, run = runFile } = {}) {
+    const spec = PROVIDERS[provider];
+    if (!spec)
+      throw new Error(`unknown credential provider: ${provider}`);
+    if (exists(AUTHDC))
+      return fromConnector(spec, run);
+    const value = env[spec.env]?.trim();
+    return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   }
 };
 
@@ -6973,7 +7006,7 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
 }
 
 // src/lib/recipes.mjs
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 import path4 from "node:path";
 
 // node_modules/yaml/dist/index.js
@@ -7035,14 +7068,14 @@ function parsePage(text) {
 }
 
 // src/lib/schema.mjs
-import fs from "node:fs";
+import fs2 from "node:fs";
 import path3 from "node:path";
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
   const file = path3.join(root, SCHEMA_FILE);
-  if (!fs.existsSync(file))
+  if (!fs2.existsSync(file))
     return null;
-  return JSON.parse(fs.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
 }
 
 // src/lib/wiki.mjs
@@ -7053,13 +7086,13 @@ var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inven
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
   const dir = path4.join(root, RECIPES_DIR);
-  const files = fs2.existsSync(dir) ? fs2.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const files = fs3.existsSync(dir) ? fs3.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs2.readFileSync(path4.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs3.readFileSync(path4.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });

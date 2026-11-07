@@ -429,7 +429,11 @@
       },
       {
         "path": "$.recipes[0].dietary_flags",
-        "equals": null
+        "equals": [
+          "contains-gluten",
+          "contains-soy",
+          "contains-wheat"
+        ]
       },
       {
         "path": "$.missing_data",
@@ -462,7 +466,10 @@
           }
         ]
       }
-    ]
+    ],
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    }
   },
   {
     "id": "chef-add-recipe-draft-then-show",
@@ -642,6 +649,148 @@
     ]
   },
   {
+    "id": "chef-add-recipe-enriches-without-usda-key",
+    "description": "A saved recipe is enriched straight away: allergen flags from the ingredient wording, and with no USDA key nutrition is \"not computed\" with a chef-setup hint and no numbers.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\":\"Buttermilk Pancakes\",\"servings\":4,\"ingredients\":[\"2 cups all-purpose flour\",\"2 large eggs\",\"2 cups buttermilk\",\"1 pinch salt\"],\"steps\":[\"Whisk.\",\"Cook on a griddle.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Buttermilk pancakes. Synthetic test source.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "added"
+      },
+      {
+        "path": "$.enrichment.dietary_flags",
+        "equals": [
+          "contains-dairy",
+          "contains-egg",
+          "contains-gluten",
+          "contains-wheat"
+        ]
+      },
+      {
+        "path": "$.enrichment.nutrition",
+        "equals": "not-computed"
+      },
+      {
+        "path": "$.enrichment.reason",
+        "equals": "not-connected"
+      },
+      {
+        "path": "$.hint",
+        "includes": "chef-setup"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/buttermilk-pancakes.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition_status: not-computed"
+          },
+          {
+            "path": "$.content",
+            "includes": "- contains-egg"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-re-enrich-saved-recipe",
+    "description": "Re-enrich is an entry point: a saved recipe with no flags gets them, and nutrition is never filled in without USDA.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "enrich",
+      "--slug",
+      "lemon-garlic-pasta"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "enriched"
+      },
+      {
+        "path": "$.recipes[0].dietary_flags",
+        "equals": [
+          "contains-dairy",
+          "contains-gluten",
+          "contains-wheat"
+        ]
+      },
+      {
+        "path": "$.recipes[0].nutrition",
+        "equals": "not-computed"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition_status: not-computed"
+          },
+          {
+            "path": "$.content",
+            "includes": "- contains-wheat"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-usda-not-connected",
+    "description": "With no USDA connector or key, the connection check reports not-connected without calling USDA.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "usda"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "failed"
+      },
+      {
+        "path": "$.reason",
+        "equals": "not-connected"
+      }
+    ]
+  },
+  {
     "id": "chef-recipe-search-counts-missing-time",
     "description": "A time facet leaves out recipes with no recorded time and counts them in missing_data.",
     "seed": [
@@ -679,7 +828,7 @@
     "seed": [
       {
         "path": "../receipt.txt",
-        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n- 1 gal whole milk \u2014 $3.49 -> fridge.dairy.whole_milk\n"
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas — $1.38\n- 1 gal whole milk — $3.49 -> fridge.dairy.whole_milk\n"
       }
     ],
     "command": [
@@ -751,7 +900,7 @@
       },
       {
         "path": "../receipt.txt",
-        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n- 1 gal whole milk \u2014 $3.49 -> fridge.dairy.whole_milk\n"
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas — $1.38\n- 1 gal whole milk — $3.49 -> fridge.dairy.whole_milk\n"
       }
     ],
     "command": [

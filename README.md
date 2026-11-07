@@ -39,6 +39,11 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Recipes are Markdown pages in `knowledge/wiki/recipes/`, each with an unchanged copy of its source in
   `knowledge/raw/recipes/`. Every change Chef makes is a git commit in the data root. The format is
   documented in `src/references/data-root-schema.md`.
+- New recipes get dietary flags (from the ingredient wording) and nutrition from USDA
+  FoodData Central. Nutrition needs a free USDA key, which you connect during setup: on Muse
+  as a custom connector, elsewhere as the `CHEF_USDA_FDC_KEY` environment variable. The key
+  never enters the data root or the chat. Without it, nutrition is marked "not computed";
+  Chef never estimates it.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
   To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
 - Ask Chef to "verify my Chef install" any time; it never touches your data.
@@ -61,6 +66,9 @@ Requires Node 20+ and Bun.
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
 synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per
 released schema version (see `fixtures/README.md`). CI fails if the built output differs from a fresh build.
+
+Tests never call USDA. Tier1 runs off Muse with `CHEF_USDA_FDC_KEY` cleared; on a Muse VM with
+a USDA connector, the connector takes precedence and tier1 would reach the live API.
 
 The skill-format lint only accepts the 10 v1 skill names (`V1_SKILLS` in
 `scripts/lib/skill-format.mjs`) and reports which are still missing. Missing skills become an

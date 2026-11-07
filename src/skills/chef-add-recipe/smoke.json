@@ -29,5 +29,18 @@
       "exit": 2,
       "status": "invalid-input"
     }
+  },
+  {
+    "id": "enrich-unknown-recipe-not-found",
+    "script": "scripts/add-recipe.mjs",
+    "args": [
+      "enrich",
+      "--slug",
+      "no-such-recipe"
+    ],
+    "expect": {
+      "exit": 2,
+      "status": "not-found"
+    }
   }
 ]

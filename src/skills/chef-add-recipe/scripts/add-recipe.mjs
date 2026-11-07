@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 // chef-add-recipe entry point. Modes: url (add from a web page), draft (add from a recipe
-// draft the agent wrote from pasted text, a photo, or a page with no recipe data).
+// draft the agent wrote from pasted text, a photo, or a page with no recipe data), enrich
+// (re-enrich saved recipes). Every add is followed by enrichment.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { usdaClient } from '../../../lib/fdc.mjs';
 import { today } from '../../../lib/recipes.mjs';
 import { addRecipe } from './lib/add.mjs';
+import { enrichRecipes } from './lib/enrich.mjs';
 import { fetchPage, httpUrl } from './lib/fetch-page.mjs';
 import { draftFromHtml, htmlToText } from './lib/jsonld.mjs';
 import { readSource, SOURCE_TYPES } from './lib/source-file.mjs';
@@ -21,6 +24,8 @@ const { values, positionals } = parseArgs({
     kind: { type: 'string' },
     source: { type: 'string' },
     'dry-run': { type: 'boolean' },
+    slug: { type: 'string', multiple: true },
+    unenriched: { type: 'boolean' },
   },
   allowPositionals: true,
 });
@@ -68,7 +73,20 @@ function fromDraft() {
   return addRecipe(root, { draft, kind, url: values.url, source, date: today(), dryRun: values['dry-run'] });
 }
 
-const MODES = { url: fromUrl, draft: fromDraft };
+function enrich() {
+  if (!values.slug?.length && !values.unenriched) return invalid('give --slug <slug> (repeatable) or --unenriched');
+  return enrichRecipes(root, { slugs: values.slug, unenriched: values.unenriched, fdc: usdaClient(), date: today() });
+}
+
+// A saved recipe is enriched straight away, as its own commit.
+async function enrichAdded(result) {
+  if (result.status !== 'added') return result;
+  const enriched = await enrichRecipes(root, { slugs: [result.slug], fdc: usdaClient(), date: today() });
+  const { recipes, hint, reason, status } = enriched;
+  return { ...result, enrichment: recipes?.[0] ?? { status, reason }, ...(hint && { hint }) };
+}
+
+const MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich };
 const mode = positionals[0];
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(', ')}`);
@@ -76,4 +94,4 @@ if (!Object.hasOwn(MODES, mode)) {
 }
 const result = await MODES[mode]();
 console.log(JSON.stringify(result));
-if (['refused', 'invalid-input', 'fetch-failed'].includes(result.status)) process.exitCode = 2;
+if (['refused', 'invalid-input', 'fetch-failed', 'not-found'].includes(result.status)) process.exitCode = 2;

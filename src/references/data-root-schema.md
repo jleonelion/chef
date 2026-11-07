@@ -70,7 +70,11 @@ One or two lines about the dish.
 | `source_url` | when `source_kind` is `url` | The `http` or `https` address the recipe came from |
 | `source_raw` | yes | Paths, relative to the data root, of the raw files this page was made from |
 | `created`, `updated` | yes | `YYYY-MM-DD` |
-| `dietary_flags`, `nutrition_per_serving` | no | Added by recipe enrichment. A missing field means "not checked yet", never "none" |
+| `dietary_flags` | no | Added by recipe enrichment: sorted `contains-*` flags from `contains-dairy`, `contains-egg`, `contains-fish`, `contains-gluten`, `contains-peanuts`, `contains-sesame`, `contains-shellfish`, `contains-soy`, `contains-tree-nuts`, `contains-wheat`, read from the ingredient wording. A missing field means "not checked yet", never "none"; `[]` means checked and none found in the wording. Enrichment never removes a flag |
+| `nutrition_status` | no | `complete`, `incomplete` or `not-computed` (no USDA access). Missing means not attempted yet |
+| `nutrition_per_serving` | only when `complete` | `calories` (kcal), `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar` (g, 1 decimal), `sodium`, `cholesterol` (mg). Only from USDA FoodData Central, never estimated |
+| `nutrition_missing` | when `incomplete` | One line per ingredient (or `servings`) that blocked the calculation, with the reason |
+| `nutrition_sources` | no | One line per ingredient: the USDA food and grams used |
 
 The body holds the human-readable recipe. `## Ingredients` is a bulleted list, one ingredient per line; `## Steps` is a numbered list. Chef reads ingredients from the body, so the frontmatter never repeats them.
 
