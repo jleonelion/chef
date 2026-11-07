@@ -58,13 +58,13 @@ node scripts/recipe-decisions.mjs publish --id <id>
 
 `published` lists the recipes added, each enriched with dietary flags and nutrition like `chef-add-recipe`; report `enrichment` and pass on any `hint` in one line. An entry with `linked: true` means a recipe with that title was already in the book, so it was left as it was. `unchanged` means there was nothing left to publish. If publication fails (`refused`), the decision is kept: tell the user `reason` and run `publish` again once it is fixed.
 
-Publication always checks the current dietary hard-constraint gate. When `refused` includes `blocked`, show each proposal's `reasons` and ask whether the user explicitly wants to publish despite them. Only after they confirm, run the same command with `--confirm`:
+Publication derives dietary flags from the draft ingredients, then checks the current dietary hard-constraint gate. When `refused` includes `blocked`, name the recipe and each conflicting member and constraint from `reasons`. Ask whether the user wants to publish that specific recipe despite that constraint. Only their explicit yes for that recipe counts; then name its id on the confirmed call:
 
 ```sh
 node scripts/recipe-decisions.mjs publish --id <id> --confirm
 ```
 
-`--confirm` applies only to that publication call. It never changes the dietary ruleset or creates a standing exception, and the script records the explicit confirmation in the proposal's decision history. An unreadable dietary ruleset is also blocked and requires this confirmation.
+`--confirm` applies only to blocked proposals named by `--id` on that publication call. A bulk `publish --confirm` without ids refuses the whole call and publishes nothing when any proposal is blocked. Confirmation never changes the dietary ruleset or creates a standing exception, and the script records the explicit user decision in the proposal's history. An unreadable dietary ruleset is also blocked and requires recipe-specific confirmation.
 
 ## Retire or restore a recipe
 
