@@ -23,3 +23,8 @@ Muse-only behaviors with no automated test. Check each on Muse before tagging a 
 - [ ] With the Gmail connector disconnected, the list is shown in chat with an offer to forward it, and nothing fails silently. (`muse.householdEmail` in `src/runtime/muse.mjs`)
 - [ ] A recurring "Chef shopping list" task fires on schedule and emails the list unattended, using the send grant approved for the current recipients. (`DELIVERY_TASKS` in `src/runtime/muse.mjs`)
 - [ ] Changing recipients with `chef-setup` re-creates the "Chef shopping list" task, Muse asks to approve the new addresses, Chef lists the re-created task, and nothing is sent to removed addresses. (`muse.deliveryTasks` in `src/runtime/muse.mjs`, `src/skills/chef-setup/scripts/lib/write-settings.mjs`)
+
+## chef-batch-prep-planning
+
+- [ ] Asking for a prep plan for a week with a saved meal plan sends the PDF as a downloadable chat attachment (not only a filesystem path, not a Library entry), with one page per recipe. (`muse.attachment` in `src/runtime/muse.mjs`, `src/skills/chef-batch-prep-planning/SKILL.md`)
+- [ ] The attachment downloads and prints from a phone and a desktop browser; titles, steps and checkboxes fit the page. (`src/skills/chef-batch-prep-planning/scripts/lib/render.mjs`)

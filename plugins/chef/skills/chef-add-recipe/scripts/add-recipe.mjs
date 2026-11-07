@@ -6966,6 +6966,7 @@ var AUTHDC = "/opt/hatch/bin/authdc";
 var PROVIDERS = {
   "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
 };
+var ATTACHMENT_INSTRUCTION = "Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.";
 var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
 function placementOf(text) {
   const [kind, name] = text.split(":");
@@ -7044,6 +7045,9 @@ var muse = {
       return fromConnector(spec, run);
     const value = env[spec.env]?.trim();
     return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
+  },
+  attachment(file, { exists = fs.existsSync } = {}) {
+    return muse.isMuse({ exists }) ? { attachment: { action: "send-chat-attachment", path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
   }
 };
 
