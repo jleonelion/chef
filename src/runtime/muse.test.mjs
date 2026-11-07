@@ -79,3 +79,17 @@ test('unknown providers are a programming error', () => {
 test('locale falls back to the runtime Intl locale', () => {
   assert.equal(muse.locale({ LANG: 'POSIX' }), Intl.DateTimeFormat().resolvedOptions().locale);
 });
+
+test('Muse is detected by its credential binary', () => {
+  assert.equal(muse.isMuse({ exists: (file) => file === '/opt/hatch/bin/authdc' }), true);
+  assert.equal(muse.isMuse({ exists: () => false }), false);
+});
+
+test('household email and delivery-task payloads are instructions, never sends', () => {
+  const email = muse.householdEmail({ to: ['cook@example.com'], subject: 'S', body: 'B' });
+  assert.equal(email.connector, 'gmail');
+  assert.match(email.instruction, /does not send email/);
+  const tasks = muse.deliveryTasks(['cook@example.com']);
+  assert.deepEqual(tasks.tasks.map((t) => t.skill), ['chef-shopping-lists']);
+  assert.deepEqual(tasks.recipients, ['cook@example.com']);
+});
