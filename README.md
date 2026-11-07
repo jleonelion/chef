@@ -4,7 +4,7 @@ A free, MIT-licensed kitchen-assistant skill pack: recipes, meal planning, shopp
 pantry inventory. Chef keeps everything in one folder you own, the **data root**, as plain
 files under local git.
 
-> Status: early. `chef-setup`, `chef-add-recipe`, `chef-recipe-search` and `chef-food-inventory` ship so far; more skills land before v1.
+> Status: early. `chef-setup`, `chef-add-recipe`, `chef-recipe-search`, `chef-recipe-decisions` and `chef-food-inventory` ship so far; more skills land before v1.
 
 ## Install
 
@@ -44,9 +44,15 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   as a custom connector, elsewhere as the `CHEF_USDA_FDC_KEY` environment variable. The key
   never enters the data root or the chat. Without it, nutrition is marked "not computed";
   Chef never estimates it.
+- When Chef suggests a recipe, your yes or no is kept in `data/recipe-decisions/`, so a recipe
+  you turned down is not suggested again. "Always" and "never" rules live there too. Retiring a
+  recipe hides it from search without deleting it; you can bring it back.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
   To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
 - Ask Chef to "verify my Chef install" any time; it never touches your data.
+- Ask Chef to "update Chef" to install the newest tagged release. Chef commits the data root,
+  previews skill and migration changes, waits for confirmation before migrating, and verifies
+  the install afterward. Updates never delete data-root files.
 
 ## Safety
 

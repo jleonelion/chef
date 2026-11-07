@@ -19,6 +19,7 @@ const { values, positionals } = parseArgs({
     'max-minutes': { type: 'string' },
     limit: { type: 'string' },
     slug: { type: 'string' },
+    'include-retired': { type: 'boolean' },
   },
   allowPositionals: true,
 });
@@ -36,10 +37,11 @@ function search(recipes) {
     flag: split(values.flag),
     max_minutes: wholeNumber(values['max-minutes']),
     limit: wholeNumber(values.limit) ?? 20,
+    include_retired: values['include-retired'],
   };
   const bad = ['max_minutes', 'limit'].filter((key) => Number.isNaN(facets[key]));
   if (bad.length) return { status: 'invalid-input', data_root: root, problems: bad.map((key) => `--${key.replace('_', '-')} must be a whole number`) };
-  const facetsUsed = Object.fromEntries(Object.entries(facets).filter(([key, v]) => key !== 'limit' && v !== undefined && !(Array.isArray(v) && !v.length)));
+  const facetsUsed = Object.fromEntries(Object.entries(facets).filter(([key, v]) => !['limit', 'include_retired'].includes(key) && v !== undefined && !(Array.isArray(v) && !v.length)));
   return { status: 'ok', data_root: root, facets: facetsUsed, total_recipes: recipes.length, ...searchRecipes(recipes, facets) };
 }
 

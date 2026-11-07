@@ -48,7 +48,7 @@ If you already fetched the page with your own web tool, save the HTML to a `.htm
 ## Act on `status`
 
 - `added`: tell the user the recipe `title` is saved, then report `enrichment` (see below).
-- `exists`: the recipe is already saved (`matched` says whether by title or by web address). Tell the user and do not add it again.
+- `exists`: the recipe is already saved (`matched` says whether by title or by web address). Tell the user and do not add it again. If `lifecycle` is `retired`, offer to restore it with `chef-recipe-decisions`.
 - `needs-draft`: the page has no recipe data a script can read. Read `page_text`, write a draft as above, then run `draft --kind url --url <same address> --source <page_file> --draft draft.json`.
 - `would-add`: a dry run; nothing was written. `frontmatter` and `body` show the page.
 - `fetch-failed`: tell the user `reason`. Offer to try again, or ask them to paste the recipe text.

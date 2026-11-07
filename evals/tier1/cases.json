@@ -1150,6 +1150,78 @@
     ]
   },
   {
+    "id": "chef-setup-update-commits-confirms-and-verifies",
+    "description": "Update commits pending user data, previews dropped skills, waits for confirmation, then verifies the tagged install.",
+    "updateInstall": true,
+    "afterCommitSeed": [
+      {
+        "path": "knowledge/wiki/household/pending-note.md",
+        "content": "User data awaiting commit.\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef_setup/scripts/setup.mjs",
+          "update"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "confirmation-required"
+          },
+          {
+            "path": "$.changes.skills.removed",
+            "includes": "chef_dropped"
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef_setup/scripts/setup.mjs",
+      "update",
+      "--confirm"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "updated"
+      },
+      {
+        "path": "$.release",
+        "equals": "v0.1.0"
+      },
+      {
+        "path": "$.verify.status",
+        "equals": "pass"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/pending-note.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "User data awaiting commit.\n"
+          }
+        ]
+      },
+      {
+        "path": ".git/logs/HEAD",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "Before Chef update"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "chef-setup-set-refuses-schema-mismatch",
     "description": "A writing skill refuses to write to a data root on a different schema version and points the user at update Chef.",
     "seed": [
@@ -1198,6 +1270,310 @@
             "equals": "{\"settings_version\":1}\n"
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-rejected-not-reproposed",
+    "description": "A recipe the user rejected in chat is a durable decision: proposing it again returns the earlier rejection and writes nothing.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "../draft.json",
+        "content": "{\"title\":\"Mushroom Barley Soup\",\"servings\":4,\"total_minutes\":50,\"cuisine\":\"american\",\"ingredients\":[\"200 g mushrooms\",\"100 g pearl barley\",\"1 l vegetable stock\"],\"steps\":[\"Simmer everything for 40 minutes.\"]}"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "propose",
+          "--draft",
+          "{data_root}/../draft.json"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "decide",
+          "--id",
+          "mushroom-barley-soup",
+          "--outcome",
+          "reject",
+          "--reason",
+          "Not a fan of barley"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+      "propose",
+      "--draft",
+      "{data_root}/../draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "already-rejected"
+      },
+      {
+        "path": "$.reason",
+        "equals": "Not a fan of barley"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.proposals.mushroom-barley-soup.decisions.length",
+            "equals": 1
+          },
+          {
+            "path": "$.proposals.mushroom-barley-soup.decisions[0].outcome",
+            "equals": "reject"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-publication-idempotent",
+    "description": "Accepting publishes the recipe once; publishing again changes nothing.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "../draft.json",
+        "content": "{\"title\":\"Mushroom Barley Soup\",\"servings\":4,\"total_minutes\":50,\"cuisine\":\"american\",\"ingredients\":[\"200 g mushrooms\",\"100 g pearl barley\",\"1 l vegetable stock\"],\"steps\":[\"Simmer everything for 40 minutes.\"]}"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "propose",
+          "--draft",
+          "{data_root}/../draft.json"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "decide",
+          "--id",
+          "mushroom-barley-soup",
+          "--outcome",
+          "accept"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "publish",
+          "--id",
+          "mushroom-barley-soup"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+      "publish"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "unchanged"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/mushroom-barley-soup.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "source_kind: proposal"
+          },
+          {
+            "path": "$.content",
+            "includes": "dietary_flags:"
+          }
+        ]
+      },
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.proposals.mushroom-barley-soup.published.path",
+            "equals": "knowledge/wiki/recipes/mushroom-barley-soup.md"
+          },
+          {
+            "path": "$.proposals.mushroom-barley-soup.decisions.length",
+            "equals": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-standing-rule-auto-rejects",
+    "description": "A standing auto-reject rule decides a matching proposal without asking, and records which rule did it.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "../draft.json",
+        "content": "{\"title\":\"Mushroom Barley Soup\",\"servings\":4,\"total_minutes\":50,\"cuisine\":\"american\",\"ingredients\":[\"200 g mushrooms\",\"100 g pearl barley\",\"1 l vegetable stock\"],\"steps\":[\"Simmer everything for 40 minutes.\"]}"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "rule-add",
+          "--action",
+          "reject",
+          "--id",
+          "no-barley",
+          "--reason",
+          "No barley",
+          "--text",
+          "barley"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+      "propose",
+      "--draft",
+      "{data_root}/../draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "auto-rejected"
+      },
+      {
+        "path": "$.rule.id",
+        "equals": "no-barley"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.proposals.mushroom-barley-soup.decisions[0].by",
+            "equals": "rule:no-barley"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-retired-recipe-leaves-search",
+    "description": "A retired recipe keeps its page but leaves recipe search; search reports how many it hid.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "retire",
+          "--slug",
+          "lemon-garlic-pasta",
+          "--reason",
+          "Made it too often"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "garlic"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.recipes[*].slug",
+        "equals": "chickpea-spinach-stew"
+      },
+      {
+        "path": "$.retired_hidden",
+        "equals": 1
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "lifecycle: retired"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-decisions-restore-returns-recipe",
+    "description": "Retirement is reversible: a restored recipe is back in search.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "retire",
+          "--slug",
+          "lemon-garlic-pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs",
+          "restore",
+          "--slug",
+          "lemon-garlic-pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "spaghetti"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "lemon-garlic-pasta"
+      },
+      {
+        "path": "$.retired_hidden",
+        "absent": true
       }
     ]
   }

@@ -6981,9 +6981,35 @@ function fromConnector(spec, run) {
     return { ok: false, reason: "wrong-placement" };
   return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
 }
+var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
+function findPluginRepository(skillDir) {
+  for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
+    if (fs.existsSync(pluginManifest(candidate)))
+      return candidate;
+  }
+  return null;
+}
+function findWorkspaceRepository(skillsDir) {
+  const workspace = path.dirname(skillsDir);
+  const matches = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => path.join(workspace, entry.name));
+  if (matches.length !== 1)
+    throw new Error(`expected one Chef repository in ${workspace}; found ${matches.length}`);
+  return matches[0];
+}
+function updateInstall({ skillDir, repository }) {
+  const skillsDir = path.dirname(skillDir);
+  const customSkills = path.basename(skillsDir) === "custom-skills";
+  return {
+    repository: repository ?? (customSkills ? findWorkspaceRepository(skillsDir) : findPluginRepository(skillDir)),
+    skillsDir,
+    installedName: path.basename(skillDir),
+    nameForSkill: customSkills ? "underscores" : "hyphens"
+  };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
+  updateInstall,
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
@@ -7140,17 +7166,26 @@ function summary({ recipe, fm, tags, flags }) {
     tags,
     total_minutes: fm.total_minutes ?? null,
     servings: fm.servings ?? null,
-    dietary_flags: flags
+    dietary_flags: flags,
+    ...fm.lifecycle === "retired" && { lifecycle: "retired" }
   };
 }
-function searchRecipes(recipes, { limit = 20, ...facets }) {
+function searchRecipes(recipes, { limit = 20, include_retired = false, ...facets }) {
   const active = Object.entries(facets).filter(([key, value]) => Object.hasOwn(CHECKS, key) && value !== undefined && !(Array.isArray(value) && !value.length));
   const matches = [];
   const missing = {};
+  let retiredHidden = 0;
   for (const v of recipes.filter((r) => r.frontmatter.type === "recipe").map(view)) {
     const results = active.map(([key, value]) => CHECKS[key](v, value));
-    if (results.every((r) => r === true))
-      matches.push(v);
+    const retired = v.fm.lifecycle === "retired" && !include_retired;
+    if (results.every((r) => r === true)) {
+      if (retired)
+        retiredHidden += 1;
+      else
+        matches.push(v);
+    }
+    if (retired)
+      continue;
     const gap = results.find((r) => typeof r === "string");
     if (gap && results.every((r) => r !== false)) {
       const field = gap.slice("missing:".length);
@@ -7160,6 +7195,8 @@ function searchRecipes(recipes, { limit = 20, ...facets }) {
   const result = { count: matches.length, recipes: matches.slice(0, limit).map(summary) };
   if (Object.keys(missing).length)
     result.missing_data = missing;
+  if (retiredHidden)
+    result.retired_hidden = retiredHidden;
   return result;
 }
 
@@ -7176,7 +7213,8 @@ var { values, positionals } = parseArgs({
     flag: many,
     "max-minutes": { type: "string" },
     limit: { type: "string" },
-    slug: { type: "string" }
+    slug: { type: "string" },
+    "include-retired": { type: "boolean" }
   },
   allowPositionals: true
 });
@@ -7192,12 +7230,13 @@ function search(recipes) {
     tag: split(values.tag),
     flag: split(values.flag),
     max_minutes: wholeNumber(values["max-minutes"]),
-    limit: wholeNumber(values.limit) ?? 20
+    limit: wholeNumber(values.limit) ?? 20,
+    include_retired: values["include-retired"]
   };
   const bad = ["max_minutes", "limit"].filter((key) => Number.isNaN(facets[key]));
   if (bad.length)
     return { status: "invalid-input", data_root: root, problems: bad.map((key) => `--${key.replace("_", "-")} must be a whole number`) };
-  const facetsUsed = Object.fromEntries(Object.entries(facets).filter(([key, v]) => key !== "limit" && v !== undefined && !(Array.isArray(v) && !v.length)));
+  const facetsUsed = Object.fromEntries(Object.entries(facets).filter(([key, v]) => !["limit", "include_retired"].includes(key) && v !== undefined && !(Array.isArray(v) && !v.length)));
   return { status: "ok", data_root: root, facets: facetsUsed, total_recipes: recipes.length, ...searchRecipes(recipes, facets) };
 }
 function show(recipes) {
