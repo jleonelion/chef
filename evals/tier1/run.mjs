@@ -4,7 +4,8 @@
 // first (the fixture is then committed to a fresh git repo); `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
-//   node evals/tier1/run.mjs [--skills-dir <dir>]   (default: plugins/chef/skills)
+//   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>]
+//   (defaults: plugins/chef/skills, fixtures/data-root)
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -16,8 +17,6 @@ import { assertCase } from './assertions.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
-const fixture = path.join(repo, 'fixtures', 'data-root');
-
 // A real data root is a git repo; skills commit every write. `seed` paths starting with ../
 // land beside the data root (inputs such as receipt transcripts) and are not committed.
 function commitFixture(dataRoot) {
@@ -27,7 +26,7 @@ function commitFixture(dataRoot) {
   git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'fixture');
 }
 
-function prepare(testCase) {
+function prepare(testCase, fixture) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
   const dataRoot = path.join(tmp, 'data-root');
   const useFixture = (testCase.fixture ?? 'data-root') === 'data-root';
@@ -54,8 +53,8 @@ function readTarget(dataRoot, target) {
   return (target.parse ?? 'text') === 'json' ? JSON.parse(content) : { content };
 }
 
-function runCase(testCase, skillsDir) {
-  const { tmp, dataRoot } = prepare(testCase);
+function runCase(testCase, skillsDir, fixture) {
+  const { tmp, dataRoot } = prepare(testCase, fixture);
   try {
     const expand = (arg) => arg.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot);
     const run = (step) => {
@@ -84,11 +83,12 @@ function runCase(testCase, skillsDir) {
   }
 }
 
-const { values } = parseArgs({ options: { 'skills-dir': { type: 'string' } } });
+const { values } = parseArgs({ options: { 'skills-dir': { type: 'string' }, fixture: { type: 'string' } } });
 const skillsDir = path.resolve(values['skills-dir'] ?? path.join(repo, 'plugins', 'chef', 'skills'));
+const fixture = path.resolve(values.fixture ?? path.join(repo, 'fixtures', 'data-root'));
 const cases = JSON.parse(fs.readFileSync(path.join(here, 'cases.json'), 'utf8'));
 for (const testCase of cases) {
-  runCase(testCase, skillsDir);
+  runCase(testCase, skillsDir, fixture);
   console.log(`ok - ${testCase.id}`);
 }
 console.log(`Tier 1 deterministic evals passed: ${cases.length}/${cases.length}`);

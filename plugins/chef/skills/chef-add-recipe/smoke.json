@@ -1,0 +1,33 @@
+[
+  {
+    "id": "draft-needs-a-draft-file",
+    "script": "scripts/add-recipe.mjs",
+    "args": [
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "SKILL.md",
+      "--draft",
+      "missing-draft.json",
+      "--dry-run"
+    ],
+    "expect": {
+      "exit": 2,
+      "status": "invalid-input"
+    }
+  },
+  {
+    "id": "rejects-non-http-url",
+    "script": "scripts/add-recipe.mjs",
+    "args": [
+      "url",
+      "--url",
+      "file:///etc/hosts"
+    ],
+    "expect": {
+      "exit": 2,
+      "status": "invalid-input"
+    }
+  }
+]

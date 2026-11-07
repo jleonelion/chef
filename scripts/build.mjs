@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 // Builds src/skills/<skill> into self-contained plugins/chef/skills/<skill> folders:
-// each top-level scripts/*.mjs is bundled to one Node file; SKILL.md, the skill's own references/
-// and the shared src/references/ files are copied.
+// each top-level scripts/*.mjs is bundled to one Node file; SKILL.md, smoke.json, the skill's own
+// references/ and the shared src/references/ files are copied. chef-setup also gets the synthetic
+// fixture data root for "verify install".
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -21,6 +22,7 @@ async function buildSkill(name) {
   const src = path.join(srcSkills, name);
   const out = path.join(outSkills, name);
   fs.cpSync(path.join(src, 'SKILL.md'), path.join(out, 'SKILL.md'));
+  if (fs.existsSync(path.join(src, 'smoke.json'))) fs.cpSync(path.join(src, 'smoke.json'), path.join(out, 'smoke.json'));
   if (fs.existsSync(path.join(src, 'references'))) {
     fs.cpSync(path.join(src, 'references'), path.join(out, 'references'), { recursive: true });
   }
@@ -34,4 +36,5 @@ async function buildSkill(name) {
 
 fs.rmSync(outSkills, { recursive: true, force: true });
 for (const name of fs.readdirSync(srcSkills).sort()) await buildSkill(name);
+fs.cpSync(path.join(repo, 'fixtures', 'data-root'), path.join(outSkills, 'chef-setup', 'fixture', 'data-root'), { recursive: true });
 console.log(`built ${fs.readdirSync(outSkills).length} skill(s) into ${path.relative(repo, outSkills)}`);

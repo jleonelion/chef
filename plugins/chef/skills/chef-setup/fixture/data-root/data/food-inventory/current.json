@@ -1,0 +1,57 @@
+{
+  "lastUpdated": "2026-01-14T18:00:00.000Z",
+  "fridge": {
+    "dairy": {
+      "whole_milk": {
+        "name": "whole milk",
+        "amount": 1,
+        "unit": "gal",
+        "purchased": "2026-01-14",
+        "updated": "2026-01-14T18:00:00.000Z",
+        "expires": "2026-01-21"
+      }
+    },
+    "produce": {
+      "spinach": {
+        "name": "spinach",
+        "amount": 1,
+        "unit": "bunch",
+        "purchased": "2026-01-14",
+        "updated": "2026-01-14T18:00:00.000Z",
+        "expires": "2026-01-17"
+      }
+    },
+    "eggs": {
+      "eggs": {
+        "name": "eggs",
+        "amount": 12,
+        "unit": "each",
+        "purchased": "2026-01-14",
+        "updated": "2026-01-14T18:00:00.000Z",
+        "expires": "2026-02-04"
+      }
+    }
+  },
+  "pantry": {
+    "grains": {
+      "jasmine_rice": {
+        "name": "jasmine rice",
+        "amount": 2,
+        "unit": "lb",
+        "purchased": "2026-01-14",
+        "updated": "2026-01-14T18:00:00.000Z"
+      }
+    }
+  },
+  "freezer": {
+    "other": {
+      "frozen_peas": {
+        "name": "frozen peas",
+        "amount": 1,
+        "unit": "bag",
+        "purchased": "2026-01-14",
+        "updated": "2026-01-14T18:00:00.000Z"
+      }
+    }
+  }
+}

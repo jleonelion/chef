@@ -1,10 +1,10 @@
 // The one write path into a data root: wiki pages by type, append-only raw files and
-// operational store files under data/, one git commit per call. Refuses when the root's schema version is not the one Chef was built for.
+// operational store files under data/, one git commit per call. Refuses through the shared schema write guard.
 import fs from 'node:fs';
 import path from 'node:path';
 import { serializePage } from './frontmatter.mjs';
 import { commit, git } from './git.mjs';
-import { readSchemaVersion, SCHEMA_VERSION } from './schema.mjs';
+import { schemaWriteBlocker } from './schema.mjs';
 
 export const WIKI_DIR = 'knowledge/wiki';
 export const RAW_DIR = 'knowledge/raw';
@@ -36,13 +36,9 @@ function pathUnder(dir, relative, kind) {
 
 // null when writes are allowed, else a refusal to return to the caller.
 export function writeRefusal(root) {
-  const version = readSchemaVersion(root);
-  const refuse = (reason) => ({ status: 'refused', data_root: root, reason });
-  if (version === null) return refuse('not a Chef data root; run chef-setup first');
-  if (version !== SCHEMA_VERSION) {
-    return refuse(`data root is at schema version ${version} but this Chef expects ${SCHEMA_VERSION}; run "update Chef" first`);
-  }
-  if (!fs.existsSync(path.join(root, '.git'))) return refuse('data root has no git history; run chef-setup to repair it');
+  const blocked = schemaWriteBlocker(root);
+  if (blocked) return { status: 'refused', data_root: root, ...blocked };
+  if (!fs.existsSync(path.join(root, '.git'))) return { status: 'refused', data_root: root, reason: 'data root has no git history; run chef-setup to repair it' };
   return null;
 }
 

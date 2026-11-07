@@ -5,10 +5,11 @@
   "description": "Source, build and tests for the Chef skill pack. Built skills live in plugins/chef/skills.",
   "scripts": {
     "build": "bun scripts/build.mjs",
-    "check": "bun run lint && bun run test && bun run tier1",
+    "check": "bun run lint && bun run test && bun run tier1 && bun run migrations",
     "lint": "node scripts/lint-skills.mjs",
     "test": "node --test",
     "tier1": "node evals/tier1/run.mjs",
+    "migrations": "node evals/migration-regression.mjs",
     "smoke": "node scripts/bundle-smoke.mjs",
     "hygiene": "node scripts/hygiene.mjs"
   },

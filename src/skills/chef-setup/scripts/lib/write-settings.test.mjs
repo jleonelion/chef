@@ -93,3 +93,13 @@ test('refuses when settings.json is tracked by data-root git', () => {
   assert.match(result.reason, /tracked/);
   assert.deepEqual(stored(root), { settings_version: 1 });
 });
+
+test('refuses on a schema mismatch and points at update Chef', () => {
+  const root = newRoot();
+  fs.writeFileSync(path.join(root, 'schema-version.json'), '{"schema_version":2}\n');
+  const result = writeSettings(root, { units: 'metric' }, US);
+  assert.equal(result.status, 'refused');
+  assert.match(result.reason, /update Chef/);
+  assert.equal(result.schema_version, 2);
+  assert.deepEqual(stored(root), { settings_version: 1 });
+});

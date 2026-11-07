@@ -944,5 +944,57 @@
         "equals": 3
       }
     ]
+  },
+  {
+    "id": "chef-setup-set-refuses-schema-mismatch",
+    "description": "A writing skill refuses to write to a data root on a different schema version and points the user at update Chef.",
+    "seed": [
+      {
+        "path": "schema-version.json",
+        "content": "{\"schema_version\":2}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "update Chef"
+      },
+      {
+        "path": "$.schema_version",
+        "equals": 2
+      },
+      {
+        "path": "$.expected_schema_version",
+        "equals": 1
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "{\"settings_version\":1}\n"
+          }
+        ]
+      }
+    ]
   }
 ]

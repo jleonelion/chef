@@ -6983,6 +6983,30 @@ function readSchemaVersion(root) {
     return null;
   return JSON.parse(fs.readFileSync(file, "utf8")).schema_version;
 }
+function storedVersion(root) {
+  try {
+    const version = readSchemaVersion(root);
+    return version === null || Number.isInteger(version) ? { version } : { problem: `${SCHEMA_FILE} has no integer schema_version` };
+  } catch {
+    return { problem: `${SCHEMA_FILE} is not valid JSON` };
+  }
+}
+var UPDATE = 'Ask Chef to "update Chef" before changing anything.';
+function schemaWriteBlocker(root) {
+  const { version, problem } = storedVersion(root);
+  if (problem)
+    return { reason: `${problem}; Chef won't write to this data root. ${UPDATE}` };
+  if (version === null)
+    return { reason: "not a Chef data root; run chef-setup init first" };
+  if (version === SCHEMA_VERSION)
+    return null;
+  const which = version > SCHEMA_VERSION ? "a newer" : "an older";
+  return {
+    reason: `this data root uses ${which} schema (${version}) than this Chef (${SCHEMA_VERSION}). ${UPDATE}`,
+    schema_version: version,
+    expected_schema_version: SCHEMA_VERSION
+  };
+}
 
 // src/lib/settings.mjs
 import fs2 from "node:fs";
@@ -7143,8 +7167,9 @@ ${body}`;
 
 // src/lib/git.mjs
 import { execFileSync } from "node:child_process";
-function git(cwd, args) {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+function git(cwd, args, { env } = {}) {
+  const options = { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
+  return execFileSync("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
 }
 var FALLBACK_IDENTITY = ["-c", "user.name=chef", "-c", "user.email=chef@example.com"];
 function commit(cwd, message) {
@@ -7175,15 +7200,11 @@ function pathUnder(dir, relative, kind) {
   return normalized;
 }
 function writeRefusal(root) {
-  const version = readSchemaVersion(root);
-  const refuse = (reason) => ({ status: "refused", data_root: root, reason });
-  if (version === null)
-    return refuse("not a Chef data root; run chef-setup first");
-  if (version !== SCHEMA_VERSION) {
-    return refuse(`data root is at schema version ${version} but this Chef expects ${SCHEMA_VERSION}; run "update Chef" first`);
-  }
+  const blocked = schemaWriteBlocker(root);
+  if (blocked)
+    return { status: "refused", data_root: root, ...blocked };
   if (!fs4.existsSync(path5.join(root, ".git")))
-    return refuse("data root has no git history; run chef-setup to repair it");
+    return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
 function writeWiki(root, { pages = [], raw = [], data = [], message }) {

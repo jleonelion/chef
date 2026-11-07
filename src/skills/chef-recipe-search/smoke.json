@@ -1,0 +1,4 @@
+[
+  { "id": "search", "script": "scripts/recipe-search.mjs", "args": ["search", "--ingredient", "garlic"], "expect": { "exit": 0, "status": "ok" } },
+  { "id": "show", "script": "scripts/recipe-search.mjs", "args": ["show", "--slug", "lemon-garlic-pasta"], "expect": { "exit": 0, "status": "ok" } }
+]

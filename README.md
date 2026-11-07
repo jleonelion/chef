@@ -40,6 +40,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   `knowledge/raw/recipes/`. Every change Chef makes is a git commit in the data root. The format is
   documented in `src/references/data-root-schema.md`.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
+  To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
+- Ask Chef to "verify my Chef install" any time; it never touches your data.
 
 ## Safety
 
@@ -52,12 +54,13 @@ Requires Node 20+ and Bun.
 | Command | What it does |
 |---|---|
 | `bun run build` | Bundle `src/skills/*` into `plugins/chef/skills/*` (commit the result) |
-| `bun run check` | Skill-format lint, unit tests, tier1 evals |
+| `bun run check` | Skill-format lint, unit tests, tier1 evals, migration regression |
 | `bun run smoke` | Run tier1 against a copy of the built skills outside the repo |
 | `bun run hygiene` | Public-hygiene scan; set `CHEF_HYGIENE_DENY` to the deny-list patterns |
 
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
-synthetic data root used by tests. CI fails if the built output differs from a fresh build.
+synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per
+released schema version (see `fixtures/README.md`). CI fails if the built output differs from a fresh build.
 
 The skill-format lint only accepts the 10 v1 skill names (`V1_SKILLS` in
 `scripts/lib/skill-format.mjs`) and reports which are still missing. Missing skills become an
