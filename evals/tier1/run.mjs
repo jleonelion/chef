@@ -4,6 +4,7 @@
 // first (the fixture is then committed to a fresh git repo); `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
+// `git` optionally checks that HEAD is unchanged and/or the data-root worktree is clean.
 //   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>]
 //   (defaults: plugins/chef/skills, fixtures/data-root)
 import assert from 'node:assert/strict';
@@ -13,7 +14,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
-import { assertCase } from './assertions.mjs';
+import { assertCase, assertGitState } from './assertions.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
@@ -53,9 +54,14 @@ function readTarget(dataRoot, target) {
   return (target.parse ?? 'text') === 'json' ? JSON.parse(content) : { content };
 }
 
+function gitOutput(dataRoot, ...args) {
+  return execFileSync('git', args, { cwd: dataRoot, encoding: 'utf8' }).trimEnd();
+}
+
 function runCase(testCase, skillsDir, fixture) {
   const { tmp, dataRoot } = prepare(testCase, fixture);
   try {
+    const beforeHead = testCase.git?.headUnchanged ? gitOutput(dataRoot, 'rev-parse', 'HEAD') : undefined;
     const expand = (arg) => arg.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot);
     const run = (step) => {
       const [cmd, ...args] = step.command.map(expand);
@@ -77,6 +83,16 @@ function runCase(testCase, skillsDir, fixture) {
     for (const target of testCase.files ?? []) {
       const written = readTarget(dataRoot, target);
       for (const assertion of target.assertions ?? []) assertCase(written, assertion);
+    }
+    if (testCase.git) {
+      assertGitState(
+        {
+          beforeHead,
+          afterHead: testCase.git.headUnchanged ? gitOutput(dataRoot, 'rev-parse', 'HEAD') : undefined,
+          status: testCase.git.clean ? gitOutput(dataRoot, 'status', '--porcelain') : undefined,
+        },
+        testCase.git,
+      );
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

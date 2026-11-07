@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { assertCase } from './assertions.mjs';
+import { assertCase, assertGitState } from './assertions.mjs';
 
 const doc = {
   one: ['x'],
@@ -39,4 +39,11 @@ test('absent treats null as present', () => {
 test('absent: false requires the key to be present', () => {
   assertCase(doc, { path: '$.nothing', absent: false });
   assert.throws(() => assertCase(doc, { path: '$.warning', absent: false }), /\$\.warning: expected present/);
+});
+
+test('git assertions require an unchanged HEAD and clean tree when requested', () => {
+  const expected = { headUnchanged: true, clean: true };
+  assertGitState({ beforeHead: 'abc', afterHead: 'abc', status: '' }, expected);
+  assert.throws(() => assertGitState({ beforeHead: 'abc', afterHead: 'def', status: '' }, expected), /HEAD changed/);
+  assert.throws(() => assertGitState({ beforeHead: 'abc', afterHead: 'abc', status: ' M changed' }, expected), /tree is dirty/);
 });
