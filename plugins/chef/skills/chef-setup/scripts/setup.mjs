@@ -38,6 +38,30 @@ function readSchemaVersion(root) {
     return null;
   return JSON.parse(fs.readFileSync(file, "utf8")).schema_version;
 }
+function storedVersion(root) {
+  try {
+    const version = readSchemaVersion(root);
+    return version === null || Number.isInteger(version) ? { version } : { problem: `${SCHEMA_FILE} has no integer schema_version` };
+  } catch {
+    return { problem: `${SCHEMA_FILE} is not valid JSON` };
+  }
+}
+var UPDATE = 'Ask Chef to "update Chef" before changing anything.';
+function schemaWriteBlocker(root) {
+  const { version, problem } = storedVersion(root);
+  if (problem)
+    return { reason: `${problem}; Chef won't write to this data root. ${UPDATE}` };
+  if (version === null)
+    return { reason: "not a Chef data root; run chef-setup init first" };
+  if (version === SCHEMA_VERSION)
+    return null;
+  const which = version > SCHEMA_VERSION ? "a newer" : "an older";
+  return {
+    reason: `this data root uses ${which} schema (${version}) than this Chef (${SCHEMA_VERSION}). ${UPDATE}`,
+    schema_version: version,
+    expected_schema_version: SCHEMA_VERSION
+  };
+}
 
 // src/lib/settings.mjs
 import fs2 from "node:fs";
@@ -197,8 +221,9 @@ function applyChanges(stored, changes) {
 }
 var definedChanges = (changes) => Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== null));
 function blocker(root, current, rewrite) {
-  if (readSchemaVersion(root) === null)
-    return { reason: "not a Chef data root; run chef-setup init first" };
+  const schemaBlocked = schemaWriteBlocker(root);
+  if (schemaBlocked)
+    return schemaBlocked;
   if (current.status !== "ok" && current.status !== "missing" && !rewrite) {
     return { reason: current.warning, content: current.content };
   }

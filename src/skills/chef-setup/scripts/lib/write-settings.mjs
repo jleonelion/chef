@@ -3,7 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { git } from '../../../../lib/git.mjs';
-import { readSchemaVersion } from '../../../../lib/schema.mjs';
+import { schemaWriteBlocker } from '../../../../lib/schema.mjs';
 import { readSettings, SETTING_KEYS, SETTINGS_FILE, SETTINGS_VERSION, validateSettings } from '../../../../lib/settings.mjs';
 
 const IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
@@ -40,7 +40,8 @@ function applyChanges(stored, changes) {
 const definedChanges = (changes) => Object.fromEntries(Object.entries(changes).filter(([, value]) => value !== null));
 
 function blocker(root, current, rewrite) {
-  if (readSchemaVersion(root) === null) return { reason: 'not a Chef data root; run chef-setup init first' };
+  const schemaBlocked = schemaWriteBlocker(root);
+  if (schemaBlocked) return schemaBlocked;
   if (current.status !== 'ok' && current.status !== 'missing' && !rewrite) {
     return { reason: current.warning, content: current.content };
   }
