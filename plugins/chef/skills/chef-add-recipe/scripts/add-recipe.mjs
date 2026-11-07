@@ -7196,7 +7196,7 @@ function schemaWriteBlocker(root) {
 var WIKI_DIR = "knowledge/wiki";
 var RAW_DIR = "knowledge/raw";
 var DATA_DIR = "data";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household" };
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household" };
 var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function slugify(text) {
   return text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80).replace(/^-+|-+$/g, "");
@@ -7840,6 +7840,83 @@ async function fetchPage(value, { maxBytes = MAX_PAGE_BYTES, timeoutMs = 20000, 
   }
 }
 
+// src/lib/safety-text.mjs
+var GUARANTEE_LINE = "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.";
+var NOT_MEDICAL_ADVICE = "Chef gives general information, not medical advice.";
+var TRAINING_SETTING_URL = "https://muse.ai/privacy";
+var TRAINING_NOTICE = `Your dietary and health details are saved in your Chef data root. On Muse, the "Help improve our AI models" setting may cover them; see ${TRAINING_SETTING_URL}.`;
+var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
+
+// src/lib/dietary-ruleset.mjs
+var RULESET_TYPE = "dietary-ruleset";
+var RULESET_SLUG = "dietary-ruleset";
+var RULESET_PATH = wikiPath(RULESET_TYPE, RULESET_SLUG);
+var ALIASES = {
+  milk: ["dairy"],
+  lactose: ["dairy"],
+  eggs: ["egg"],
+  peanut: ["peanuts"],
+  "tree nut": ["tree-nuts"],
+  "tree nuts": ["tree-nuts"],
+  nuts: ["peanuts", "tree-nuts"],
+  nut: ["peanuts", "tree-nuts"],
+  celiac: ["gluten"],
+  coeliac: ["gluten"],
+  crustacean: ["shellfish"],
+  crustaceans: ["shellfish"],
+  soya: ["soy"]
+};
+function normalizeConstraints(names) {
+  const out = names.flatMap((raw) => {
+    const name = String(raw).trim().toLowerCase().replace(/^contains-/, "");
+    return ALIASES[name] ?? (name ? [name] : []);
+  });
+  return [...new Set(out)].sort();
+}
+var flagFor = (constraint) => DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null;
+
+// src/lib/dietary-gate.mjs
+var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var wordMatch = (term) => new RegExp(`(?<![a-z])${escape(term)}(?:s|es)?(?![a-z])`);
+function constraintConflicts(recipe, constraint) {
+  const lines = ingredientLines(recipe.body);
+  const flag = flagFor(constraint);
+  const flags = recipe.frontmatter.dietary_flags;
+  const conflicts = [];
+  if (flag && Array.isArray(flags) && flags.includes(flag))
+    conflicts.push({ why: "flagged", detail: flag });
+  const matches = flag ? (line2) => dietaryFlags([line2]).includes(flag) : (line2) => wordMatch(constraint).test(line2.toLowerCase());
+  const line = lines.find(matches);
+  if (line)
+    conflicts.push({ why: "ingredient-text", detail: line });
+  return conflicts;
+}
+
+// src/skills/chef-add-recipe/scripts/lib/verify.mjs
+function verifyRecipe(root, { slug, constraints, date }) {
+  const names = normalizeConstraints(constraints);
+  if (!names.length)
+    return { status: "invalid-input", data_root: root, problems: ["give --constraint <name>"] };
+  const recipe = listRecipes(root).recipes.find((r) => r.slug === slug);
+  if (!recipe)
+    return { status: "not-found", data_root: root, slugs: [slug] };
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const conflicts = names.flatMap((constraint) => constraintConflicts(recipe, constraint).map((c) => ({ constraint, ...c })));
+  if (conflicts.length) {
+    return { status: "refused", data_root: root, slug, conflicts, reason: "the recipe shows a conflict, so it cannot be verified; a one-plan override is the only way to use it" };
+  }
+  const previous = recipe.frontmatter.verified_by_user ?? {};
+  const added = names.filter((name) => !previous[name]);
+  if (!added.length)
+    return { status: "unchanged", data_root: root, slug, verified_by_user: previous };
+  const verified_by_user = { ...previous, ...Object.fromEntries(added.map((name) => [name, date])) };
+  const frontmatter = { ...recipe.frontmatter, verified_by_user, updated: date };
+  const written = writeWiki(root, { pages: [{ slug, frontmatter, body: recipe.body }], message: `chef-add-recipe: verify ${slug} for ${added.join(", ")}` });
+  return written.status === "written" ? { status: "verified", data_root: root, slug, verified_by_user } : written;
+}
+
 // src/skills/chef-add-recipe/scripts/lib/jsonld.mjs
 var ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", mdash: "—", ndash: "–", hellip: "…", deg: "°", frac12: "½", frac14: "¼", frac34: "¾" };
 function decode(text) {
@@ -7956,7 +8033,8 @@ var { values, positionals } = parseArgs({
     source: { type: "string" },
     "dry-run": { type: "boolean" },
     slug: { type: "string", multiple: true },
-    unenriched: { type: "boolean" }
+    unenriched: { type: "boolean" },
+    constraint: { type: "string", multiple: true }
   },
   allowPositionals: true
 });
@@ -8019,7 +8097,12 @@ async function enrichAdded(result) {
   const { recipes, hint, reason, status } = enriched;
   return { ...result, enrichment: recipes?.[0] ?? { status, reason }, ...hint && { hint } };
 }
-var MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich };
+function verify() {
+  if (values.slug?.length !== 1)
+    return invalid("give exactly one --slug <slug>");
+  return verifyRecipe(root, { slug: values.slug[0], constraints: values.constraint ?? [], date: today() });
+}
+var MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich, verify };
 var mode = positionals[0];
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);

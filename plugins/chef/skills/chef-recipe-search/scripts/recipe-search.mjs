@@ -7005,7 +7005,87 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
-// src/lib/recipes.mjs
+// src/lib/dietary-flags.mjs
+var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
+var phrases = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?![a-z])`, "g");
+var WHEAT = [
+  "wheat",
+  "flour",
+  "bread",
+  "breadcrumb",
+  "panko",
+  "pasta",
+  "spaghetti",
+  "linguine",
+  "fettuccine",
+  "penne",
+  "macaroni",
+  "lasagna",
+  "lasagne",
+  "orzo",
+  "rigatoni",
+  "fusilli",
+  "tagliatelle",
+  "noodle",
+  "udon",
+  "ramen",
+  "couscous",
+  "bulgur",
+  "semolina",
+  "farro",
+  "spelt",
+  "durum",
+  "seitan",
+  "tortilla",
+  "pita",
+  "baguette",
+  "crouton",
+  "cracker",
+  "pastry",
+  "pastries",
+  "phyllo",
+  "filo",
+  "brioche",
+  "bagel",
+  "biscuit",
+  "soy sauce",
+  "teriyaki",
+  "hoisin"
+];
+var NOT_WHEAT = phrases("(?:almond|rice|coconut|chickpea|corn|oat|tapioca|potato|cassava|buckwheat|cauliflower|glass) (?:flour|tortillas?|noodles?|pasta|crackers?)");
+var PLANT = "(?:coconut|almond|oat|soy|rice|cashew|hemp|flax)";
+var TREE_NUT_NAMES = ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut", "macadamia", "brazil nut", "pine nut", "pignoli", "chestnut"];
+var RULES = {
+  "contains-dairy": {
+    match: words("milk", "buttermilk", "butter", "cream", "cheese", "parmesan", "parmigiano", "mozzarella", "cheddar", "ricotta", "feta", "gruyere", "pecorino", "mascarpone", "paneer", "halloumi", "brie", "yogurt", "yoghurt", "ghee", "whey", "casein", "kefir", "creme fraiche", "crème fraîche", "half-and-half", "pesto"),
+    except: phrases(`${PLANT} (?:milk|cream|yogurt|yoghurt|butter)`, "(?:peanut|nut|seed|sunflower|apple|cocoa|shea) butter", "butter beans?", "cream of tartar")
+  },
+  "contains-egg": { match: words("egg", "yolk", "mayonnaise", "mayo", "meringue", "aioli"), except: phrases("vegan (?:mayo|mayonnaise)") },
+  "contains-fish": {
+    match: words("fish", "anchovy", "anchovies", "salmon", "tuna", "cod", "halibut", "tilapia", "trout", "sardine", "mackerel", "haddock", "snapper", "sea bass", "swordfish", "bonito", "dashi", "worcestershire", "caesar")
+  },
+  "contains-gluten": { match: words(...WHEAT, "barley", "rye", "malt", "oat", "beer"), except: NOT_WHEAT },
+  "contains-peanuts": { match: words("peanut", "groundnut", "satay", "nut"), except: phrases("(?:pine|brazil|tiger) nuts?") },
+  "contains-sesame": { match: words("sesame", "tahini", "benne", "za'atar", "zaatar", "gomasio", "hummus", "furikake", "halva", "halvah") },
+  "contains-shellfish": {
+    match: words("shellfish", "shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "langoustine", "scampi", "clam", "mussel", "oyster", "scallop", "squid", "calamari", "octopus"),
+    except: phrases("oyster mushrooms?")
+  },
+  "contains-soy": { match: words("soy", "soya", "soybean", "tofu", "tempeh", "edamame", "miso", "tamari", "shoyu", "teriyaki", "natto", "hoisin") },
+  "contains-tree-nuts": { match: words(...TREE_NUT_NAMES, "praline", "marzipan", "frangipane", "nutella", "pesto", "nut") },
+  "contains-wheat": { match: words(...WHEAT), except: NOT_WHEAT }
+};
+var DIETARY_FLAGS = Object.keys(RULES).sort();
+function lineHas(rule, line) {
+  const text = rule.except ? line.replace(rule.except, " ") : line;
+  return rule.match.test(text);
+}
+function dietaryFlags(lines) {
+  const lower = lines.map((line) => line.toLowerCase());
+  return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
+}
+
+// src/lib/dietary-ruleset.mjs
 import fs3 from "node:fs";
 import path4 from "node:path";
 
@@ -7067,6 +7147,15 @@ function parsePage(text) {
   return { frontmatter, body: text.slice(match[0].length) };
 }
 
+// src/lib/safety-text.mjs
+var GUARANTEE_LINE = "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.";
+var NOT_MEDICAL_ADVICE = "Chef gives general information, not medical advice.";
+var NEVER_ASKED_NUDGE = "No dietary constraints recorded. Tell me about any allergies or foods someone must never eat.";
+var TRAINING_SETTING_URL = "https://muse.ai/privacy";
+var TRAINING_NOTICE = `Your dietary and health details are saved in your Chef data root. On Muse, the "Help improve our AI models" setting may cover them; see ${TRAINING_SETTING_URL}.`;
+var textOnlyCaveat = (constraint) => `"${constraint}" is not one of Chef's allergen flags, so Chef matches it on ingredient wording only and can miss it under another name.`;
+var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
+
 // src/lib/schema.mjs
 import fs2 from "node:fs";
 import path3 from "node:path";
@@ -7080,19 +7169,98 @@ function readSchemaVersion(root) {
 
 // src/lib/wiki.mjs
 var WIKI_DIR = "knowledge/wiki";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household" };
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household" };
+var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+function wikiPath(type, slug) {
+  if (!Object.hasOwn(WIKI_FOLDERS, type))
+    throw new Error(`unknown wiki page type: ${type}`);
+  if (!SLUG.test(slug))
+    throw new Error(`invalid slug: ${JSON.stringify(slug)}`);
+  return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
+}
+
+// src/lib/dietary-ruleset.mjs
+var RULESET_TYPE = "dietary-ruleset";
+var RULESET_SLUG = "dietary-ruleset";
+var RULESET_PATH = wikiPath(RULESET_TYPE, RULESET_SLUG);
+var ALIASES = {
+  milk: ["dairy"],
+  lactose: ["dairy"],
+  eggs: ["egg"],
+  peanut: ["peanuts"],
+  "tree nut": ["tree-nuts"],
+  "tree nuts": ["tree-nuts"],
+  nuts: ["peanuts", "tree-nuts"],
+  nut: ["peanuts", "tree-nuts"],
+  celiac: ["gluten"],
+  coeliac: ["gluten"],
+  crustacean: ["shellfish"],
+  crustaceans: ["shellfish"],
+  soya: ["soy"]
+};
+function normalizeConstraints(names) {
+  const out = names.flatMap((raw) => {
+    const name = String(raw).trim().toLowerCase().replace(/^contains-/, "");
+    return ALIASES[name] ?? (name ? [name] : []);
+  });
+  return [...new Set(out)].sort();
+}
+var flagFor = (constraint) => DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null;
+var textList = (value) => value === undefined || Array.isArray(value) && value.every((v) => typeof v === "string" && v.trim());
+function membersProblem(members) {
+  if (members === undefined)
+    return null;
+  if (!Array.isArray(members))
+    return "members must be a list";
+  const bad = members.find((m) => typeof m?.name !== "string" || !m.name.trim() || !textList(m.hard_constraints) || !textList(m.avoidances));
+  return bad ? "every member needs a name, and constraints must be lists of text" : null;
+}
+function rulesetFromPage(frontmatter) {
+  const problem = frontmatter.type !== RULESET_TYPE ? `page type is not ${RULESET_TYPE}` : membersProblem(frontmatter.members);
+  if (problem)
+    return { status: "unreadable", reason: problem, members: [], hard: [], avoid: [] };
+  const members = frontmatter.members ?? [];
+  const hard = members.flatMap((m) => normalizeConstraints(m.hard_constraints ?? []).map((constraint) => ({ member: m.name, constraint })));
+  const avoid = members.flatMap((m) => (m.avoidances ?? []).map((a) => ({ member: m.name, avoidance: a.trim().toLowerCase() })));
+  return { status: hard.length || avoid.length ? "declared" : "none-declared", members, hard, avoid };
+}
+function readRuleset(root) {
+  const file = path4.join(root, RULESET_PATH);
+  if (!fs3.existsSync(file))
+    return { status: "never-asked", members: [], hard: [], avoid: [] };
+  try {
+    return rulesetFromPage(parsePage(fs3.readFileSync(file, "utf8")).frontmatter);
+  } catch (error) {
+    return { status: "unreadable", reason: error.message, members: [], hard: [], avoid: [] };
+  }
+}
+function dietaryNotes(ruleset) {
+  const notes = { status: ruleset.status };
+  if (ruleset.status === "never-asked")
+    notes.nudge = NEVER_ASKED_NUDGE;
+  if (ruleset.status === "unreadable")
+    notes.problem = `The dietary ruleset can't be read (${ruleset.reason}), so Chef left every recipe out. Fix it with chef-setup.`;
+  if (ruleset.hard.length || ruleset.status === "unreadable")
+    notes.footer = GUARANTEE_LINE;
+  const textOnly = [...new Set(ruleset.hard.map((h) => h.constraint).filter((c) => !flagFor(c)))];
+  if (textOnly.length)
+    notes.caveats = textOnly.map(textOnlyCaveat);
+  return notes;
+}
 
 // src/lib/recipes.mjs
+import fs4 from "node:fs";
+import path5 from "node:path";
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
-  const dir = path4.join(root, RECIPES_DIR);
-  const files = fs3.existsSync(dir) ? fs3.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const dir = path5.join(root, RECIPES_DIR);
+  const files = fs4.existsSync(dir) ? fs4.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs3.readFileSync(path4.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs4.readFileSync(path5.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });
@@ -7109,9 +7277,73 @@ function ingredientLines(body) {
 `).map((line) => line.match(/^\s*[-*]\s+(.+)$/)?.[1].trim()).filter(Boolean);
 }
 
-// src/skills/chef-recipe-search/scripts/lib/search.mjs
+// src/lib/dietary-gate.mjs
+var AUTO_FLAGS_COUNT_AS_CHECKED = true;
 var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-var wordStart = (needle) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape(needle.trim())}`, "iu");
+var wordMatch = (term) => new RegExp(`(?<![a-z])${escape(term)}(?:s|es)?(?![a-z])`);
+function constraintConflicts(recipe, constraint) {
+  const lines = ingredientLines(recipe.body);
+  const flag = flagFor(constraint);
+  const flags = recipe.frontmatter.dietary_flags;
+  const conflicts = [];
+  if (flag && Array.isArray(flags) && flags.includes(flag))
+    conflicts.push({ why: "flagged", detail: flag });
+  const matches = flag ? (line2) => dietaryFlags([line2]).includes(flag) : (line2) => wordMatch(constraint).test(line2.toLowerCase());
+  const line = lines.find(matches);
+  if (line)
+    conflicts.push({ why: "ingredient-text", detail: line });
+  return conflicts;
+}
+var isVerified = (recipe, constraint) => /^\d{4}-\d{2}-\d{2}$/.test(String(recipe.frontmatter.verified_by_user?.[constraint] ?? ""));
+function uncheckedReason(recipe, constraint, autoFlagsCount) {
+  if (isVerified(recipe, constraint))
+    return null;
+  if (!ingredientLines(recipe.body).length)
+    return "no-ingredients";
+  if (!flagFor(constraint))
+    return null;
+  if (!Array.isArray(recipe.frontmatter.dietary_flags))
+    return "not-checked";
+  return autoFlagsCount ? null : "unverified";
+}
+function hardReasons(recipe, { member, constraint }, autoFlagsCount) {
+  const conflicts = constraintConflicts(recipe, constraint);
+  const unchecked = conflicts.length ? null : uncheckedReason(recipe, constraint, autoFlagsCount);
+  const found = unchecked ? [{ why: unchecked }] : conflicts;
+  return found.map((c) => ({ member, constraint, ...c }));
+}
+function avoidanceMatches(recipe, { member, avoidance }) {
+  const line = ingredientLines(recipe.body).find((l) => wordMatch(avoidance).test(l.toLowerCase()));
+  return line ? [{ member, avoidance, detail: line }] : [];
+}
+function parseOverrides(raws = [], ruleset) {
+  const overrides = [];
+  const problems = [];
+  for (const raw of raws) {
+    const at = raw.lastIndexOf(":");
+    const member = raw.slice(0, at).trim();
+    const constraints = at > 0 ? normalizeConstraints([raw.slice(at + 1)]) : [];
+    const declared = constraints.length > 0 && constraints.every((constraint) => ruleset.hard.some((h) => h.member === member && h.constraint === constraint));
+    if (declared)
+      overrides.push(...constraints.map((constraint) => ({ member, constraint })));
+    else
+      problems.push(`--override "${raw}" must be <member>:<constraint> for a hard constraint that member declared`);
+  }
+  return { overrides, problems };
+}
+function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLAGS_COUNT_AS_CHECKED } = {}) {
+  if (ruleset.status === "unreadable")
+    return { excluded: true, reasons: [{ why: "ruleset-unreadable" }], overridden: [], avoidances: [] };
+  const all = ruleset.hard.flatMap((rule) => hardReasons(recipe, rule, autoFlagsCount));
+  const lifted = (r) => overrides.some((o) => o.member === r.member && o.constraint === r.constraint);
+  const reasons = all.filter((r) => !lifted(r));
+  const avoidances = ruleset.avoid.flatMap((rule) => avoidanceMatches(recipe, rule));
+  return { excluded: reasons.length > 0, reasons, overridden: all.filter(lifted), avoidances };
+}
+
+// src/skills/chef-recipe-search/scripts/lib/search.mjs
+var escape2 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var wordStart = (needle) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape2(needle.trim())}`, "iu");
 var lower = (value) => String(value ?? "").toLowerCase();
 var list = (value) => Array.isArray(value) ? value.map(lower) : [];
 function view(recipe) {
@@ -7143,7 +7375,14 @@ function summary({ recipe, fm, tags, flags }) {
     dietary_flags: flags
   };
 }
-function searchRecipes(recipes, { limit = 20, ...facets }) {
+function withVerdict(fields, verdict) {
+  if (verdict?.overridden.length)
+    fields.dietary_override = verdict.overridden;
+  if (verdict?.avoidances.length)
+    fields.avoidances = verdict.avoidances;
+  return fields;
+}
+function searchRecipes(recipes, { limit = 20, ...facets }, gate) {
   const active = Object.entries(facets).filter(([key, value]) => Object.hasOwn(CHECKS, key) && value !== undefined && !(Array.isArray(value) && !value.length));
   const matches = [];
   const missing = {};
@@ -7157,7 +7396,12 @@ function searchRecipes(recipes, { limit = 20, ...facets }) {
       missing[field] = (missing[field] ?? 0) + 1;
     }
   }
-  const result = { count: matches.length, recipes: matches.slice(0, limit).map(summary) };
+  const judged = matches.map((v) => ({ v, verdict: gate?.(v.recipe) }));
+  const allowed = judged.filter(({ verdict }) => !verdict?.excluded);
+  const excluded = judged.filter(({ verdict }) => verdict?.excluded).map(({ v, verdict }) => ({ slug: v.recipe.slug, title: v.fm.title ?? v.recipe.slug, reasons: verdict.reasons }));
+  const result = { count: allowed.length, recipes: allowed.slice(0, limit).map(({ v, verdict }) => withVerdict(summary(v), verdict)) };
+  if (excluded.length)
+    result.excluded = excluded;
   if (Object.keys(missing).length)
     result.missing_data = missing;
   return result;
@@ -7176,7 +7420,8 @@ var { values, positionals } = parseArgs({
     flag: many,
     "max-minutes": { type: "string" },
     limit: { type: "string" },
-    slug: { type: "string" }
+    slug: { type: "string" },
+    override: many
   },
   allowPositionals: true
 });
@@ -7194,17 +7439,24 @@ function search(recipes) {
     max_minutes: wholeNumber(values["max-minutes"]),
     limit: wholeNumber(values.limit) ?? 20
   };
+  const ruleset = readRuleset(root);
+  const { overrides, problems } = parseOverrides(values.override, ruleset);
   const bad = ["max_minutes", "limit"].filter((key) => Number.isNaN(facets[key]));
-  if (bad.length)
-    return { status: "invalid-input", data_root: root, problems: bad.map((key) => `--${key.replace("_", "-")} must be a whole number`) };
+  problems.push(...bad.map((key) => `--${key.replace("_", "-")} must be a whole number`));
+  if (problems.length)
+    return { status: "invalid-input", data_root: root, problems };
   const facetsUsed = Object.fromEntries(Object.entries(facets).filter(([key, v]) => key !== "limit" && v !== undefined && !(Array.isArray(v) && !v.length)));
-  return { status: "ok", data_root: root, facets: facetsUsed, total_recipes: recipes.length, ...searchRecipes(recipes, facets) };
+  const dietary = { ...dietaryNotes(ruleset), ...overrides.length && { overrides } };
+  const gate = (recipe) => gateRecipe(recipe, ruleset, { overrides });
+  return { status: "ok", data_root: root, facets: facetsUsed, total_recipes: recipes.length, ...searchRecipes(recipes, facets, gate), dietary };
 }
 function show(recipes) {
   const recipe = recipes.find((r) => r.slug === values.slug);
   if (!recipe)
     return { status: "not-found", data_root: root, slug: values.slug ?? null };
-  return { status: "ok", data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body };
+  const verdict = gateRecipe(recipe, readRuleset(root));
+  const conflicts = verdict.excluded ? { dietary_conflicts: verdict.reasons } : {};
+  return { status: "ok", data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body, ...conflicts };
 }
 var MODES = { search, show };
 var mode = positionals[0];

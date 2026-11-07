@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // chef-recipe-search entry point, read-only. Modes: search (facets), show (one recipe).
+// Search runs every match through the dietary gate; --override lifts one constraint for this call only.
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { gateRecipe, parseOverrides } from '../../../lib/dietary-gate.mjs';
+import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
 import { listRecipes } from '../../../lib/recipes.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { searchRecipes } from './lib/search.mjs';
@@ -19,6 +22,7 @@ const { values, positionals } = parseArgs({
     'max-minutes': { type: 'string' },
     limit: { type: 'string' },
     slug: { type: 'string' },
+    override: many,
   },
   allowPositionals: true,
 });
@@ -37,16 +41,23 @@ function search(recipes) {
     max_minutes: wholeNumber(values['max-minutes']),
     limit: wholeNumber(values.limit) ?? 20,
   };
+  const ruleset = readRuleset(root);
+  const { overrides, problems } = parseOverrides(values.override, ruleset);
   const bad = ['max_minutes', 'limit'].filter((key) => Number.isNaN(facets[key]));
-  if (bad.length) return { status: 'invalid-input', data_root: root, problems: bad.map((key) => `--${key.replace('_', '-')} must be a whole number`) };
+  problems.push(...bad.map((key) => `--${key.replace('_', '-')} must be a whole number`));
+  if (problems.length) return { status: 'invalid-input', data_root: root, problems };
   const facetsUsed = Object.fromEntries(Object.entries(facets).filter(([key, v]) => key !== 'limit' && v !== undefined && !(Array.isArray(v) && !v.length)));
-  return { status: 'ok', data_root: root, facets: facetsUsed, total_recipes: recipes.length, ...searchRecipes(recipes, facets) };
+  const dietary = { ...dietaryNotes(ruleset), ...(overrides.length && { overrides }) };
+  const gate = (recipe) => gateRecipe(recipe, ruleset, { overrides });
+  return { status: 'ok', data_root: root, facets: facetsUsed, total_recipes: recipes.length, ...searchRecipes(recipes, facets, gate), dietary };
 }
 
 function show(recipes) {
   const recipe = recipes.find((r) => r.slug === values.slug);
   if (!recipe) return { status: 'not-found', data_root: root, slug: values.slug ?? null };
-  return { status: 'ok', data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body };
+  const verdict = gateRecipe(recipe, readRuleset(root));
+  const conflicts = verdict.excluded ? { dietary_conflicts: verdict.reasons } : {};
+  return { status: 'ok', data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body, ...conflicts };
 }
 
 const MODES = { search, show };

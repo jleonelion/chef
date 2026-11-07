@@ -1145,5 +1145,525 @@
         ]
       }
     ]
+  },
+  {
+    "id": "dietary-gate-excludes-flagged-recipe",
+    "description": "A recipe flagged contains-X is left out for a member with hard constraint X, even when its wording no longer shows X, and listed with the reason. Plans carry the guarantee line as the check-labels footer.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"sesame\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/rice-bowl.md",
+        "content": "---\ntype: recipe\ntitle: Rice Bowl\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [\"contains-sesame\"]\n---\n# Rice Bowl\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 cup rice\n- 1 cucumber\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "content": "---\ntype: recipe\ntitle: Plain Rice\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: []\n---\n# Plain Rice\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 cup rice\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "rice"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "plain-rice"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='rice-bowl')].reasons.[?(@constraint=='sesame')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='rice-bowl')].reasons.[0].member",
+        "equals": "Alex Example"
+      },
+      {
+        "path": "$.dietary.status",
+        "equals": "declared"
+      },
+      {
+        "path": "$.dietary.footer",
+        "equals": "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels."
+      },
+      {
+        "path": "$.dietary.nudge",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "dietary-gate-excludes-ingredient-text-match",
+    "description": "Ingredient wording excludes a recipe even when its stored flags are empty (stale), and a constraint outside the flag set is matched on ingredient text with a stated caveat.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]},{\"name\":\"Sam Example\",\"hard_constraints\":[\"cumin\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/tomato-soup.md",
+        "content": "---\ntype: recipe\ntitle: Tomato Soup\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: []\n---\n# Tomato Soup\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 400 g crushed tomatoes\n- 100 ml cream\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.excluded.[?(@slug=='tomato-soup')].reasons.[?(@constraint=='dairy')].why",
+        "equals": "ingredient-text"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='tomato-soup')].reasons.[0].detail",
+        "equals": "100 ml cream"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='chickpea-spinach-stew')].reasons.[?(@constraint=='cumin')].why",
+        "includes": "ingredient-text"
+      },
+      {
+        "path": "$.dietary.caveats[0]",
+        "includes": "\"cumin\""
+      },
+      {
+        "path": "$.dietary.caveats[0]",
+        "includes": "ingredient wording only"
+      }
+    ]
+  },
+  {
+    "id": "dietary-gate-excludes-unchecked-recipe",
+    "description": "A recipe whose dietary flags were never checked is left out for a flag-set hard constraint (fail closed), with the reason.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"gluten\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 0
+      },
+      {
+        "path": "$.excluded.[?(@slug=='chickpea-spinach-stew')].reasons.[?(@constraint=='gluten')].why",
+        "equals": "not-checked"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[?(@constraint=='gluten')].why",
+        "equals": "ingredient-text"
+      }
+    ]
+  },
+  {
+    "id": "dietary-gate-verified-by-user-keeps-recipe",
+    "description": "The user's dated verification makes an unchecked recipe usable for that constraint, permanently; a recipe that shows a conflict cannot be verified.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"gluten\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "verify",
+          "--slug",
+          "chickpea-spinach-stew",
+          "--constraint",
+          "celiac"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "verify",
+          "--slug",
+          "lemon-garlic-pasta",
+          "--constraint",
+          "gluten"
+        ],
+        "expectedStatus": 2
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "chickpea-spinach-stew"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[?(@constraint=='gluten')].why",
+        "equals": "ingredient-text"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "verified_by_user:\n  gluten: 20"
+          }
+        ]
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "title: Lemon Garlic Pasta"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dietary-gate-override-one-plan-not-stored",
+    "description": "The declaring member's override lets a conflicting recipe into one search, marked as overridden; the next search without it excludes the recipe again and the ruleset is unchanged.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "enrich",
+          "--unenriched"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--override",
+          "Alex Example:dairy"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[?(@constraint=='dairy')].why",
+        "includes": "flagged"
+      },
+      {
+        "path": "$.dietary.overrides",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "\"hard_constraints\":[\"dairy\"]"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "dietary-gate-override-applies-to-that-search",
+    "description": "With an override for the declaring member, the flagged recipe is returned and marked dietary_override; an override for a constraint nobody declared is rejected.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "enrich",
+          "--unenriched"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--override",
+          "Sam Example:dairy"
+        ],
+        "expectedStatus": 2
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--override",
+      "Alex Example:dairy"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.recipes.[?(@slug=='lemon-garlic-pasta')].dietary_override.[0].constraint",
+        "equals": "dairy"
+      },
+      {
+        "path": "$.dietary.overrides",
+        "equals": [
+          {
+            "member": "Alex Example",
+            "constraint": "dairy"
+          }
+        ]
+      },
+      {
+        "path": "$.excluded",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "dietary-nudge-while-never-asked",
+    "description": "With no dietary ruleset (never asked), output carries the one-line nudge and no check-labels footer, and nothing is excluded.",
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.dietary.status",
+        "equals": "never-asked"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "equals": "No dietary constraints recorded. Tell me about any allergies or foods someone must never eat."
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "dietary-no-nudge-once-none-declared",
+    "description": "Answering \"no\" to the allergy question records none declared: the nudge stops, no footer is added and no training notice is shown.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set-dietary",
+          "--none"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.dietary.status",
+        "equals": "none-declared"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "absent": true
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "members: []"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-first-hard-constraint-shows-training-notice",
+    "description": "Declaring a first hard constraint saves the ruleset, records and shows the one-time training-setting notice, and states the text-only caveat.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Alex Example",
+      "--hard",
+      "peanuts, mustard",
+      "--avoid",
+      "olives"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.ruleset.status",
+        "equals": "declared"
+      },
+      {
+        "path": "$.notice",
+        "includes": "Help improve our AI models"
+      },
+      {
+        "path": "$.caveats[0]",
+        "includes": "\"mustard\""
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "hard_constraints:\n      - mustard\n      - peanuts"
+          }
+        ]
+      },
+      {
+        "path": "data/notices.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.training-setting",
+            "absent": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-training-notice-only-once",
+    "description": "A later hard constraint does not repeat the training-setting notice.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set-dietary",
+          "--member",
+          "Alex Example",
+          "--hard",
+          "peanuts"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Sam Example",
+      "--hard",
+      "egg"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.notice",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-safety-screen",
+    "description": "The one safety screen: not medical advice, the guarantee line word for word, and the training setting link.",
+    "fixture": "none",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "safety"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.screen[0]",
+        "includes": "not medical advice"
+      },
+      {
+        "path": "$.screen[1]",
+        "equals": "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels."
+      },
+      {
+        "path": "$.screen[2]",
+        "includes": "https://"
+      }
+    ]
   }
 ]

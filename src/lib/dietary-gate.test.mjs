@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { gateRecipe } from './dietary-gate.mjs';
+import { gateRecipe, parseOverrides } from './dietary-gate.mjs';
 import { rulesetFromPage } from './dietary-ruleset.mjs';
 
 const ruleset = (...members) => rulesetFromPage({ type: 'dietary-ruleset', members });
@@ -73,6 +73,14 @@ test('an override lifts only that member and constraint, for this call', () => {
   assert.deepEqual([...new Set(verdict.reasons.map((x) => x.constraint))], ['egg']);
   assert.deepEqual([...new Set(verdict.overridden.map((x) => x.constraint))], ['dairy']);
   assert.equal(gateRecipe(dish, r).overridden.length, 0);
+});
+
+test('overrides parse as member:constraint and must name a declared hard constraint', () => {
+  const r = ruleset(alex(['dairy', 'gluten']));
+  assert.deepEqual(parseOverrides(['Alex Example: Milk'], r), { overrides: [{ member: 'Alex Example', constraint: 'dairy' }], problems: [] });
+  assert.equal(parseOverrides(['Sam Example:dairy'], r).problems.length, 1);
+  assert.equal(parseOverrides(['Alex Example:egg'], r).problems.length, 1);
+  assert.equal(parseOverrides(['dairy'], r).problems.length, 1);
 });
 
 test('avoidances are reported, never excluded', () => {

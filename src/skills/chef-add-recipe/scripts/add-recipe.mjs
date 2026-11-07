@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // chef-add-recipe entry point. Modes: url (add from a web page), draft (add from a recipe
 // draft the agent wrote from pasted text, a photo, or a page with no recipe data), enrich
-// (re-enrich saved recipes). Every add is followed by enrichment.
+// (re-enrich saved recipes), verify (the user's dated check that a recipe is safe for a
+// constraint). Every add is followed by enrichment.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -12,6 +13,7 @@ import { today } from '../../../lib/recipes.mjs';
 import { addRecipe } from './lib/add.mjs';
 import { enrichRecipes } from './lib/enrich.mjs';
 import { fetchPage, httpUrl } from './lib/fetch-page.mjs';
+import { verifyRecipe } from './lib/verify.mjs';
 import { draftFromHtml, htmlToText } from './lib/jsonld.mjs';
 import { readSource, SOURCE_TYPES } from './lib/source-file.mjs';
 
@@ -26,6 +28,7 @@ const { values, positionals } = parseArgs({
     'dry-run': { type: 'boolean' },
     slug: { type: 'string', multiple: true },
     unenriched: { type: 'boolean' },
+    constraint: { type: 'string', multiple: true },
   },
   allowPositionals: true,
 });
@@ -86,7 +89,12 @@ async function enrichAdded(result) {
   return { ...result, enrichment: recipes?.[0] ?? { status, reason }, ...(hint && { hint }) };
 }
 
-const MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich };
+function verify() {
+  if (values.slug?.length !== 1) return invalid('give exactly one --slug <slug>');
+  return verifyRecipe(root, { slug: values.slug[0], constraints: values.constraint ?? [], date: today() });
+}
+
+const MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich, verify };
 const mode = positionals[0];
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(', ')}`);

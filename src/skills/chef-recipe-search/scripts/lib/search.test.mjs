@@ -59,3 +59,12 @@ test('summaries carry the facet fields and null for unknown flags', () => {
     dietary_flags: null,
   });
 });
+
+test('a gate splits matches into results and excluded recipes with reasons', () => {
+  const gate = (r) => ({ excluded: r.slug === 'pasta', reasons: [{ why: 'flagged' }], overridden: [], avoidances: r.slug === 'stew' ? [{ avoidance: 'garlic' }] : [] });
+  const result = searchRecipes(recipes, { ingredient: ['garlic'] }, gate);
+  assert.equal(result.count, 1);
+  assert.deepEqual(result.recipes.map((r) => r.slug), ['stew']);
+  assert.deepEqual(result.recipes[0].avoidances, [{ avoidance: 'garlic' }]);
+  assert.deepEqual(result.excluded, [{ slug: 'pasta', title: 'pasta', reasons: [{ why: 'flagged' }] }]);
+});

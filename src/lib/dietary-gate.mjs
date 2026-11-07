@@ -2,7 +2,7 @@
 // for a constraint, its ingredient text matches it, or Chef can't check it. Avoidances are
 // only reported. Overrides lift one member's constraint for one call and are never stored.
 import { dietaryFlags } from './dietary-flags.mjs';
-import { flagFor } from './dietary-ruleset.mjs';
+import { flagFor, normalizeConstraints } from './dietary-ruleset.mjs';
 import { ingredientLines } from './recipes.mjs';
 
 // Decision (spec 17 #5): enrichment's `dietary_flags` (including []) count as checked for
@@ -46,6 +46,22 @@ function hardReasons(recipe, { member, constraint }, autoFlagsCount) {
 function avoidanceMatches(recipe, { member, avoidance }) {
   const line = ingredientLines(recipe.body).find((l) => wordMatch(avoidance).test(l.toLowerCase()));
   return line ? [{ member, avoidance, detail: line }] : [];
+}
+
+// "<member>:<constraint>" strings from the user's one-plan override request. Each must name a
+// hard constraint that member declared; nothing here is ever written anywhere.
+export function parseOverrides(raws = [], ruleset) {
+  const overrides = [];
+  const problems = [];
+  for (const raw of raws) {
+    const at = raw.lastIndexOf(':');
+    const member = raw.slice(0, at).trim();
+    const constraints = at > 0 ? normalizeConstraints([raw.slice(at + 1)]) : [];
+    const declared = constraints.length > 0 && constraints.every((constraint) => ruleset.hard.some((h) => h.member === member && h.constraint === constraint));
+    if (declared) overrides.push(...constraints.map((constraint) => ({ member, constraint })));
+    else problems.push(`--override "${raw}" must be <member>:<constraint> for a hard constraint that member declared`);
+  }
+  return { overrides, problems };
 }
 
 export function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLAGS_COUNT_AS_CHECKED } = {}) {

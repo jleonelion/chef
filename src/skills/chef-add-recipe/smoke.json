@@ -42,5 +42,18 @@
       "exit": 2,
       "status": "not-found"
     }
+  },
+  {
+    "id": "verify-needs-a-constraint",
+    "script": "scripts/add-recipe.mjs",
+    "args": [
+      "verify",
+      "--slug",
+      "lemon-garlic-pasta"
+    ],
+    "expect": {
+      "exit": 2,
+      "status": "invalid-input"
+    }
   }
 ]

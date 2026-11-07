@@ -40,7 +40,15 @@ function summary({ recipe, fm, tags, flags }) {
   };
 }
 
-export function searchRecipes(recipes, { limit = 20, ...facets }) {
+// The dietary gate's verdict, added to a summary only when it has something to say.
+function withVerdict(fields, verdict) {
+  if (verdict?.overridden.length) fields.dietary_override = verdict.overridden;
+  if (verdict?.avoidances.length) fields.avoidances = verdict.avoidances;
+  return fields;
+}
+
+// gate: optional recipe => verdict (lib/dietary-gate.mjs); excluded matches are listed with reasons.
+export function searchRecipes(recipes, { limit = 20, ...facets }, gate) {
   const active = Object.entries(facets).filter(([key, value]) => Object.hasOwn(CHECKS, key) && value !== undefined && !(Array.isArray(value) && !value.length));
   const matches = [];
   const missing = {};
@@ -53,7 +61,12 @@ export function searchRecipes(recipes, { limit = 20, ...facets }) {
       missing[field] = (missing[field] ?? 0) + 1;
     }
   }
-  const result = { count: matches.length, recipes: matches.slice(0, limit).map(summary) };
+  const judged = matches.map((v) => ({ v, verdict: gate?.(v.recipe) }));
+  const allowed = judged.filter(({ verdict }) => !verdict?.excluded);
+  const excluded = judged.filter(({ verdict }) => verdict?.excluded)
+    .map(({ v, verdict }) => ({ slug: v.recipe.slug, title: v.fm.title ?? v.recipe.slug, reasons: verdict.reasons }));
+  const result = { count: allowed.length, recipes: allowed.slice(0, limit).map(({ v, verdict }) => withVerdict(summary(v), verdict)) };
+  if (excluded.length) result.excluded = excluded;
   if (Object.keys(missing).length) result.missing_data = missing;
   return result;
 }
