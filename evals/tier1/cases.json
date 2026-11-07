@@ -375,5 +375,302 @@
         "includes": "not-an-address"
       }
     ]
+  },
+  {
+    "id": "chef-add-recipe-url-then-search-finds-it",
+    "description": "Adding a recipe page with schema.org data writes a v1 wiki page; chef-recipe-search then finds it by ingredient, cuisine and time.",
+    "seed": [
+      {
+        "path": "page.html",
+        "content": "<html><head><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Recipe\",\"name\":\"Miso Mushroom Noodles\",\"recipeYield\":\"2 servings\",\"prepTime\":\"PT10M\",\"cookTime\":\"PT15M\",\"recipeCuisine\":\"Japanese\",\"keywords\":\"noodles, weeknight\",\"recipeIngredient\":[\"200 g udon noodles\",\"150 g shiitake mushrooms\",\"1 tbsp white miso\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Cook the noodles.\"},{\"@type\":\"HowToStep\",\"text\":\"Fry the mushrooms, stir in the miso and toss with the noodles.\"}]}</script></head><body><p>Synthetic test page.</p></body></html>"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "url",
+          "--url",
+          "https://example.com/miso-noodles",
+          "--html",
+          "{data_root}/page.html"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "mushroom",
+      "--cuisine",
+      "japanese",
+      "--max-minutes",
+      "30"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "miso-mushroom-noodles"
+      },
+      {
+        "path": "$.recipes[0].total_minutes",
+        "equals": 25
+      },
+      {
+        "path": "$.recipes[0].servings",
+        "equals": 2
+      },
+      {
+        "path": "$.recipes[0].dietary_flags",
+        "equals": null
+      },
+      {
+        "path": "$.missing_data",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/miso-mushroom-noodles.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "type: recipe"
+          },
+          {
+            "path": "$.content",
+            "includes": "source_url: https://example.com/miso-noodles"
+          },
+          {
+            "path": "$.content",
+            "includes": "- knowledge/raw/recipes/"
+          },
+          {
+            "path": "$.content",
+            "includes": "- 150 g shiitake mushrooms"
+          },
+          {
+            "path": "$.content",
+            "includes": "2. Fry the mushrooms"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-draft-then-show",
+    "description": "A recipe drafted from pasted text is saved with its raw source and chef-recipe-search show returns it.",
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Toasted Oat Porridge\", \"servings\": 1, \"cook_minutes\": 10, \"ingredients\": [\"50 g rolled oats\", \"200 ml milk\"], \"steps\": [\"Toast the oats.\", \"Simmer in the milk.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Toasted oat porridge for one. Synthetic test source.\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "draft",
+          "--kind",
+          "text",
+          "--source",
+          "{data_root}/pasted.txt",
+          "--draft",
+          "{data_root}/draft.json"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "toasted-oat-porridge"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.frontmatter.source_kind",
+        "equals": "text"
+      },
+      {
+        "path": "$.frontmatter.source_url",
+        "absent": true
+      },
+      {
+        "path": "$.body",
+        "includes": "- 50 g rolled oats"
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-duplicate-reports-existing",
+    "description": "Adding a recipe whose title matches a saved recipe changes nothing and reports the existing page.",
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Lemon Garlic Pasta\", \"ingredients\": [\"spaghetti\"], \"steps\": [\"Cook.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Synthetic duplicate.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "exists"
+      },
+      {
+        "path": "$.matched",
+        "equals": "slug"
+      },
+      {
+        "path": "$.path",
+        "equals": "knowledge/wiki/recipes/lemon-garlic-pasta.md"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- 200 g spaghetti"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-page-without-recipe-data-needs-draft",
+    "description": "A page with no schema.org recipe data returns needs-draft with the page text and writes nothing.",
+    "seed": [
+      {
+        "path": "page.html",
+        "content": "<html><body><h1>Bean Salad</h1><p>Mix the beans.</p></body></html>"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "url",
+      "--url",
+      "https://example.com/bean-salad",
+      "--html",
+      "{data_root}/page.html"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "needs-draft"
+      },
+      {
+        "path": "$.page_text",
+        "includes": "Mix the beans."
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-refuses-schema-mismatch",
+    "description": "chef-add-recipe refuses to write when the data root's schema version differs and points to update Chef.",
+    "seed": [
+      {
+        "path": "schema-version.json",
+        "content": "{\"schema_version\":2}\n"
+      },
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Toasted Oat Porridge\", \"servings\": 1, \"cook_minutes\": 10, \"ingredients\": [\"50 g rolled oats\", \"200 ml milk\"], \"steps\": [\"Toast the oats.\", \"Simmer in the milk.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Synthetic.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "update Chef"
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-search-counts-missing-time",
+    "description": "A time facet leaves out recipes with no recorded time and counts them in missing_data.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "content": "---\ntype: recipe\ntitle: Plain Rice\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-17\nupdated: 2026-01-17\n---\n\n# Plain Rice\n\n## Ingredients\n\n- 1 cup rice\n\n## Steps\n\n1. Simmer.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--max-minutes",
+      "60"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.total_recipes",
+        "equals": 3
+      },
+      {
+        "path": "$.missing_data.total_minutes",
+        "equals": 1
+      }
+    ]
   }
 ]

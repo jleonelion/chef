@@ -25,6 +25,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
       - run: node scripts/lint-skills.mjs
       - run: node --test
       - run: node evals/tier1/run.mjs
@@ -45,6 +49,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: package.json
+      - run: bun install --frozen-lockfile
       - run: bun scripts/build.mjs
       - name: Built output must match a fresh build
         run: |

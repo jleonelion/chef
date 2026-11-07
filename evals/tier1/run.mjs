@@ -6,7 +6,7 @@
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 //   node evals/tier1/run.mjs [--skills-dir <dir>]   (default: plugins/chef/skills)
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,10 +18,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
 const fixture = path.join(repo, 'fixtures', 'data-root');
 
+// A real data root is a git repo; give the fixture copy one commit so writes can commit too.
+function commitFixture(dataRoot) {
+  const git = (...args) => execFileSync('git', ['-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', ...args], { cwd: dataRoot, stdio: 'ignore' });
+  git('init', '-q', '-b', 'main');
+  git('add', '-A');
+  git('commit', '-q', '-m', 'fixture');
+}
+
 function prepare(testCase) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
   const dataRoot = path.join(tmp, 'data-root');
-  if ((testCase.fixture ?? 'data-root') === 'data-root') fs.cpSync(fixture, dataRoot, { recursive: true });
+  if ((testCase.fixture ?? 'data-root') === 'data-root') {
+    fs.cpSync(fixture, dataRoot, { recursive: true });
+    commitFixture(dataRoot);
+  }
   for (const file of testCase.seed ?? []) fs.writeFileSync(path.join(dataRoot, file.path), file.content);
   return { tmp, dataRoot };
 }
@@ -43,15 +54,21 @@ function runCase(testCase, skillsDir) {
   const { tmp, dataRoot } = prepare(testCase);
   try {
     const expand = (arg) => arg.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot);
-    const [cmd, ...args] = testCase.command.map(expand);
-    const result = spawnSync(cmd, args, {
-      cwd: tmp,
-      env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
-      encoding: 'utf8',
-      timeout: 30000,
-    });
-    const expected = testCase.expectedStatus ?? 0;
-    assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);
+    const run = (step) => {
+      const [cmd, ...args] = step.command.map(expand);
+      const result = spawnSync(cmd, args, {
+        cwd: tmp,
+        env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
+        encoding: 'utf8',
+        timeout: 30000,
+      });
+      const expected = step.expectedStatus ?? 0;
+      assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);
+      return result;
+    };
+    // `steps` run first, in order, each expected to exit 0 unless it says otherwise.
+    for (const step of testCase.steps ?? []) run(step);
+    const result = run(testCase);
     const evaluation = parseOutput(testCase.parse, result);
     for (const assertion of testCase.assertions ?? []) assertCase(evaluation, assertion);
     for (const target of testCase.files ?? []) {

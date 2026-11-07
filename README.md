@@ -4,7 +4,7 @@ A free, MIT-licensed kitchen-assistant skill pack: recipes, meal planning, shopp
 pantry inventory. Chef keeps everything in one folder you own, the **data root**, as plain
 files under local git.
 
-> Status: early. Only `chef-setup` ships so far; more skills land before v1.
+> Status: early. `chef-setup`, `chef-add-recipe` and `chef-recipe-search` ship so far; more skills land before v1.
 
 ## Install
 
@@ -36,6 +36,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   lists and prep plans, which senders' receipts Chef accepts, and a calendar. All are optional.
   Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
   (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.
+- Recipes are Markdown pages in `knowledge/wiki/recipes/`, each with an unchanged copy of its source in
+  `knowledge/raw/recipes/`. Every change Chef makes is a git commit in the data root. The format is
+  documented in `src/references/data-root-schema.md`.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
 
 ## Safety
