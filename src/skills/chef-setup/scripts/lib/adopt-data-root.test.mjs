@@ -93,7 +93,7 @@ test('a source that is not a git repo fails the clone cleanly', () => {
 });
 
 test('accepts only git URLs and existing folders', () => {
-  for (const ok of ['https://github.com/example/chef-data.git', 'ssh://git@example.com/chef.git', 'git@github.com:example/chef-data.git', 'file:///srv/chef.git']) {
+  for (const ok of ['https://example.com/example/chef-data.git', 'ssh://git@example.com/chef.git', 'git@example.com:example/chef-data.git', 'file:///srv/chef.git']) {
     assert.equal(sourceProblem(ok), null, ok);
   }
   for (const bad of ['', '-uevil', '--upload-pack=touch /tmp/x', 'ext::sh -c touch% /tmp/x', 'http://example.com/a.git', 'fd::3']) {
