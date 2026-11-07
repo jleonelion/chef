@@ -50,6 +50,17 @@ test('flags recipient changes so delivery tasks get re-created', () => {
   assert.deepEqual(writeSettings(root, { units: 'metric' }, US).side_effects, []);
 });
 
+test('a recipient change returns the delivery tasks to re-create; other changes return none', () => {
+  const root = newRoot();
+  const changed = writeSettings(root, { household_recipients: ['a@example.com'] }, US);
+  assert.equal(changed.delivery_tasks.action, 'recreate-delivery-tasks');
+  assert.deepEqual(changed.delivery_tasks.recipients, ['a@example.com']);
+  assert.deepEqual(changed.delivery_tasks.tasks.map((task) => task.skill), ['chef-shopping-lists']);
+  const cleared = writeSettings(root, { household_recipients: [] }, US);
+  assert.deepEqual(cleared.delivery_tasks.recipients, []);
+  assert.equal(Object.hasOwn(writeSettings(root, { units: 'metric' }, US), 'delivery_tasks'), false);
+});
+
 test('rejects invalid input without touching the file', () => {
   const root = newRoot();
   const result = writeSettings(root, { trusted_receipt_senders: ['not-an-email'] }, US);

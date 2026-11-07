@@ -2398,7 +2398,15 @@
       },
       {
         "path": "$.meals[*].slug",
-        "equals": ["chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew"]
+        "equals": [
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew"
+        ]
       },
       {
         "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].why",
@@ -2825,6 +2833,571 @@
             "absent": true
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "chef-health-goals-no-goal-no-health-output",
+    "description": "With no goal declared, the weekly report is dormant with no health output, even when meals are logged, and nothing is written.",
+    "seed": [
+      {
+        "path": "data/meal-log/log.json",
+        "content": "{\n  \"entries\": [\n    {\n      \"id\": \"2026-01-19-lunch-lentil-salad\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"lunch\",\n      \"recipe\": null,\n      \"food\": \"lentil-salad\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 550,\n        \"protein\": 35,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 800,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-19-dinner-lemon-garlic-pasta\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"lemon-garlic-pasta\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 700,\n        \"protein\": 25,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 1300,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-20-dinner-takeout-ramen\",\n      \"date\": \"2026-01-20\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"takeout-ramen\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 900,\n        \"protein\": 30,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 3100,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-20T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-21-dinner-chickpea-spinach-stew\",\n      \"date\": \"2026-01-21\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"chickpea-spinach-stew\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": null,\n      \"logged_at\": \"2026-01-21T19:00:00Z\"\n    }\n  ]\n}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-health-goals/scripts/health-goals.mjs",
+      "report",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "dormant"
+      },
+      {
+        "path": "$.footer",
+        "absent": true
+      },
+      {
+        "path": "$.progress",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-no-goal-no-health-suggestions",
+    "description": "With no goal declared, a saved meal plan carries no health suggestions.",
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19",
+      "--days",
+      "2"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.health_suggestions",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "chef-health-goals-weekly-report-from-fixture",
+    "description": "The weekly report averages fully measured days from the meal log against the goal targets, lists unmeasured entries without estimating, ends with the not-medical-advice footer, and writes nothing.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"Lower sodium\",\"targets\":{\"sodium\":{\"max\":2300},\"protein\":{\"min\":90}},\"set\":\"2026-01-10\",\"updated\":\"2026-01-10\"}\n"
+      },
+      {
+        "path": "data/meal-log/log.json",
+        "content": "{\n  \"entries\": [\n    {\n      \"id\": \"2026-01-19-lunch-lentil-salad\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"lunch\",\n      \"recipe\": null,\n      \"food\": \"lentil-salad\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 550,\n        \"protein\": 35,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 800,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-19-dinner-lemon-garlic-pasta\",\n      \"date\": \"2026-01-19\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"lemon-garlic-pasta\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 700,\n        \"protein\": 25,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 1300,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-19T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-20-dinner-takeout-ramen\",\n      \"date\": \"2026-01-20\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"takeout-ramen\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": {\n        \"calories\": 900,\n        \"protein\": 30,\n        \"fat\": 20,\n        \"saturated_fat\": 5,\n        \"carbs\": 80,\n        \"fiber\": 8,\n        \"sugar\": 10,\n        \"sodium\": 3100,\n        \"cholesterol\": 30\n      },\n      \"logged_at\": \"2026-01-20T19:00:00Z\"\n    },\n    {\n      \"id\": \"2026-01-21-dinner-chickpea-spinach-stew\",\n      \"date\": \"2026-01-21\",\n      \"slot\": \"dinner\",\n      \"recipe\": null,\n      \"food\": \"chickpea-spinach-stew\",\n      \"servings\": 1,\n      \"cooked\": false,\n      \"nutrition\": null,\n      \"logged_at\": \"2026-01-21T19:00:00Z\"\n    }\n  ]\n}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-health-goals/scripts/health-goals.mjs",
+      "report",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "report"
+      },
+      {
+        "path": "$.week_end",
+        "equals": "2026-01-25"
+      },
+      {
+        "path": "$.goal",
+        "equals": "Lower sodium"
+      },
+      {
+        "path": "$.days[0].totals.sodium",
+        "equals": 2100
+      },
+      {
+        "path": "$.days[2].status",
+        "equals": "incomplete"
+      },
+      {
+        "path": "$.days[3].status",
+        "equals": "not-logged"
+      },
+      {
+        "path": "$.unmeasured[0].id",
+        "equals": "2026-01-21-dinner-chickpea-spinach-stew"
+      },
+      {
+        "path": "$.progress[0]",
+        "equals": {
+          "nutrient": "sodium",
+          "max": 2300,
+          "daily_average": 2600,
+          "days_on_target": 1,
+          "days_measured": 2
+        }
+      },
+      {
+        "path": "$.progress[1]",
+        "equals": {
+          "nutrient": "protein",
+          "min": 90,
+          "daily_average": 45,
+          "days_on_target": 0,
+          "days_measured": 2
+        }
+      },
+      {
+        "path": "$.footer",
+        "equals": "Chef gives general information, not medical advice."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-health-goals-set-goal-shows-training-notice-once",
+    "description": "Declaring the first goal saves the one goals store and records the shared training-setting notice in the same commit; a second set does not repeat the notice.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-health-goals/scripts/health-goals.mjs",
+          "set",
+          "--goal",
+          "Lower sodium",
+          "--max",
+          "sodium=2300"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "saved"
+          },
+          {
+            "path": "$.notice",
+            "includes": "Help improve our AI models"
+          },
+          {
+            "path": "$.footer",
+            "equals": "Chef gives general information, not medical advice."
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-health-goals/scripts/health-goals.mjs",
+      "set",
+      "--goal",
+      "Lower sodium",
+      "--max",
+      "sodium=2000",
+      "--min",
+      "fiber=30"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.notice",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "data/health-goals/goals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.targets",
+            "equals": {
+              "sodium": {
+                "max": 2000
+              },
+              "fiber": {
+                "min": 30
+              }
+            }
+          }
+        ]
+      },
+      {
+        "path": "data/notices.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.training-setting",
+            "absent": false
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-goal-adds-advisory-suggestions",
+    "description": "With a goal declared, a saved plan gets health suggestions with the footer; fixture recipes have no computed nutrition, so Chef says it cannot compare rather than estimating.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"Lower sodium\",\"targets\":{\"sodium\":{\"max\":2300},\"protein\":{\"min\":90}},\"set\":\"2026-01-10\",\"updated\":\"2026-01-10\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19",
+      "--days",
+      "2"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.health_suggestions.status",
+        "equals": "unavailable"
+      },
+      {
+        "path": "$.health_suggestions.footer",
+        "equals": "Chef gives general information, not medical advice."
+      }
+    ]
+  },
+  {
+    "id": "chef-meal-logging-cooked-meal-deducts-inventory-once",
+    "description": "Logging a cooked saved recipe stores one entry and deducts its scaled ingredients; logging the same entry again changes neither the log nor inventory.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-food-inventory/scripts/inventory.mjs",
+          "edit",
+          "--path",
+          "pantry.grains.spaghetti",
+          "--amount",
+          "1",
+          "--unit",
+          "kg"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+          "log",
+          "--date",
+          "2026-01-15",
+          "--slot",
+          "dinner",
+          "--recipe",
+          "lemon-garlic-pasta",
+          "--servings",
+          "5",
+          "--cooked",
+          "--logged-at",
+          "2026-01-15T19:30:00.000Z"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+      "log",
+      "--date",
+      "2026-01-15",
+      "--slot",
+      "dinner",
+      "--recipe",
+      "lemon-garlic-pasta",
+      "--servings",
+      "5",
+      "--cooked",
+      "--logged-at",
+      "2026-01-15T19:30:00.000Z"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "unchanged"
+      },
+      {
+        "path": "$.entry.id",
+        "equals": "2026-01-15-dinner-lemon-garlic-pasta"
+      },
+      {
+        "path": "$.inventory.status",
+        "equals": "duplicate"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.pantry.grains.spaghetti.amount",
+            "equals": 0.5
+          }
+        ]
+      },
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.entries.length",
+            "equals": 1
+          },
+          {
+            "path": "$.entries[0].cooked",
+            "equals": true
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-shopping-lists-combines-plan-minus-inventory-chat-only",
+    "description": "A saved plan becomes one list: quantities scaled to planned servings and combined across meals, inventory subtracted in convertible units only, and with no household recipients the list is shown in chat with nothing written.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "content": "---\ntype: meal-plan\ntitle: \"Meal plan: week of 2026-01-19\"\nweek_start: 2026-01-19\nmeals:\n  - { date: 2026-01-19, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 4 }\n  - { date: 2026-01-20, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 2 }\n  - { date: 2026-01-21, slug: lemon-garlic-pasta, title: Lemon Garlic Pasta, servings: 2 }\n---\n# Meal plan: week of 2026-01-19\n"
+      },
+      {
+        "path": "data/food-inventory/current.json",
+        "content": "{\n  \"lastUpdated\": \"2026-01-14T18:00:00.000Z\",\n  \"pantry\": {\n    \"grains\": {\n      \"spaghetti\": {\n        \"name\": \"spaghetti\",\n        \"amount\": 0.5,\n        \"unit\": \"lb\"\n      }\n    },\n    \"canned\": {\n      \"chickpeas\": {\n        \"name\": \"chickpeas\",\n        \"amount\": 1,\n        \"unit\": \"can\"\n      }\n    }\n  },\n  \"fridge\": {\n    \"produce\": {\n      \"spinach\": {\n        \"name\": \"spinach\",\n        \"amount\": 1,\n        \"unit\": \"bunch\"\n      }\n    }\n  }\n}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "built"
+      },
+      {
+        "path": "$.week_start",
+        "equals": "2026-01-19"
+      },
+      {
+        "path": "$.items.[?(@item=='chickpeas')].amount",
+        "equals": 2
+      },
+      {
+        "path": "$.items.[?(@item=='garlic')].amount",
+        "equals": 6
+      },
+      {
+        "path": "$.items.[?(@item=='garlic')].unit",
+        "equals": "clove"
+      },
+      {
+        "path": "$.items.[?(@item=='crushed tomatoes')].amount",
+        "equals": 600
+      },
+      {
+        "path": "$.items.[?(@item=='spinach')].amount",
+        "equals": 225
+      },
+      {
+        "path": "$.items.[?(@item=='spinach')].on_hand.unit",
+        "equals": "bunch"
+      },
+      {
+        "path": "$.covered[0].item",
+        "equals": "spaghetti"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "includes": "No dietary constraints recorded"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 6 clove garlic"
+      },
+      {
+        "path": "$.delivery.mode",
+        "equals": "chat"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-shopping-lists-excludes-newly-gated-recipe-and-writes-off-muse",
+    "description": "A planned recipe the ruleset now excludes is reported and left off the list with the label footer; with household recipients set off Muse, the list is written to the data root and committed.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "content": "---\ntype: meal-plan\ntitle: \"Meal plan: week of 2026-01-19\"\nweek_start: 2026-01-19\nmeals:\n  - { date: 2026-01-19, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 4 }\n  - { date: 2026-01-20, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 2 }\n  - { date: 2026-01-21, slug: lemon-garlic-pasta, title: Lemon Garlic Pasta, servings: 2 }\n---\n# Meal plan: week of 2026-01-19\n"
+      },
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"lemon\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"household_recipients\":[\"cook@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "built"
+      },
+      {
+        "path": "$.excluded[0].slug",
+        "equals": "lemon-garlic-pasta"
+      },
+      {
+        "path": "$.items.[?(@item=='garlic')].amount",
+        "equals": 3
+      },
+      {
+        "path": "$.items.[?(@item=='spaghetti')]",
+        "equals": []
+      },
+      {
+        "path": "$.dietary.footer",
+        "includes": "always check labels"
+      },
+      {
+        "path": "$.delivery.mode",
+        "equals": "file"
+      },
+      {
+        "path": "$.delivery.path",
+        "equals": "data/shopping-lists/2026-01-19.md"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/shopping-lists/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "# Shopping list: week of 2026-01-19"
+          },
+          {
+            "path": "$.content",
+            "includes": "always check labels"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-recipient-change-returns-delivery-tasks",
+    "description": "Changing household recipients through chef-setup returns the delivery tasks to re-create so Muse re-asks permission for the new addresses.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--household-recipients",
+      "cook@example.com"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.side_effects",
+        "equals": [
+          "recreate-delivery-tasks"
+        ]
+      },
+      {
+        "path": "$.delivery_tasks.action",
+        "equals": "recreate-delivery-tasks"
+      },
+      {
+        "path": "$.delivery_tasks.recipients",
+        "equals": [
+          "cook@example.com"
+        ]
+      },
+      {
+        "path": "$.delivery_tasks.tasks[0].skill",
+        "equals": "chef-shopping-lists"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-other-setting-change-has-no-delivery-tasks",
+    "description": "A settings change that leaves household recipients alone returns no delivery tasks.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.delivery_tasks",
+        "absent": true
       }
     ]
   },

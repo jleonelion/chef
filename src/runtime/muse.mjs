@@ -64,8 +64,31 @@ function updateInstall({ skillDir, repository }) {
   };
 }
 
+// Recurring Chef tasks that email household recipients. Muse pins a task's send grant to the
+// recipients at approval time, so a recipient change means re-creating these tasks.
+const DELIVERY_TASKS = [{ name: 'Chef shopping list', skill: 'chef-shopping-lists' }];
+
 export const muse = {
   name: 'muse',
+  isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
+  // Household delivery: a payload for the user's Gmail connector. Scripts never send email.
+  householdEmail({ to, subject, body }) {
+    return {
+      connector: 'gmail',
+      to,
+      subject,
+      body,
+      instruction: "Send this email with the user's Gmail connector; this script does not send email. If Gmail is not connected, show the list in chat and offer to forward it.",
+    };
+  },
+  deliveryTasks(recipients) {
+    return {
+      action: 'recreate-delivery-tasks',
+      recipients,
+      tasks: DELIVERY_TASKS,
+      instruction: 'Re-create each of these recurring Chef tasks that exists, so Muse asks the user to approve the new recipients, then list the tasks you re-created. Do not create a task that did not exist.',
+    };
+  },
   defaultDataRoot: () => path.join(os.homedir(), 'workspace', 'chef'),
   updateInstall,
   locale(env = process.env) {
@@ -82,8 +105,8 @@ export const muse = {
     return value ? { ok: true, value, placement: placementOf(spec.placement), source: 'env' } : { ok: false, reason: 'not-connected' };
   },
   // Fields to merge into a script result so the agent sends `file` as a chat attachment.
-  // Only on Muse (authdc present); elsewhere the caller reports the path instead.
+  // Only on Muse; elsewhere the caller reports the path instead.
   attachment(file, { exists = fs.existsSync } = {}) {
-    return exists(AUTHDC) ? { attachment: { action: 'send-chat-attachment', path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
+    return muse.isMuse({ exists }) ? { attachment: { action: 'send-chat-attachment', path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
   },
 };

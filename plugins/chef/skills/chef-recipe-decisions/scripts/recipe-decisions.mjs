@@ -7008,8 +7008,27 @@ function updateInstall({ skillDir, repository }) {
     nameForSkill: customSkills ? "underscores" : "hyphens"
   };
 }
+var DELIVERY_TASKS = [{ name: "Chef shopping list", skill: "chef-shopping-lists" }];
 var muse = {
   name: "muse",
+  isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
+  householdEmail({ to, subject, body }) {
+    return {
+      connector: "gmail",
+      to,
+      subject,
+      body,
+      instruction: "Send this email with the user's Gmail connector; this script does not send email. If Gmail is not connected, show the list in chat and offer to forward it."
+    };
+  },
+  deliveryTasks(recipients) {
+    return {
+      action: "recreate-delivery-tasks",
+      recipients,
+      tasks: DELIVERY_TASKS,
+      instruction: "Re-create each of these recurring Chef tasks that exists, so Muse asks the user to approve the new recipients, then list the tasks you re-created. Do not create a task that did not exist."
+    };
+  },
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
   updateInstall,
   locale(env = process.env) {
@@ -7026,7 +7045,7 @@ var muse = {
     return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   },
   attachment(file, { exists = fs.existsSync } = {}) {
-    return exists(AUTHDC) ? { attachment: { action: "send-chat-attachment", path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
+    return muse.isMuse({ exists }) ? { attachment: { action: "send-chat-attachment", path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
   }
 };
 
