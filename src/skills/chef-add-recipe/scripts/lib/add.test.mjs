@@ -5,6 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { git } from '../../../../lib/git.mjs';
 import { initDataRoot } from '../../../chef-setup/scripts/lib/init-data-root.mjs';
+import { retireRecipe } from '../../../chef-recipe-decisions/scripts/lib/lifecycle.mjs';
 import { addRecipe } from './add.mjs';
 
 const dataRoot = () => {
@@ -34,6 +35,13 @@ test('a second add of the same title or URL reports the existing recipe', () => 
   const other = addRecipe(root, { draft: { ...draft, title: 'Other' }, ...url, url: 'https://EXAMPLE.com/dal/#notes' });
   assert.equal(other.status, 'exists');
   assert.equal(other.matched, 'source_url');
+});
+
+test('adding a retired recipe again reports it as retired', () => {
+  const root = dataRoot();
+  addRecipe(root, { draft, ...text });
+  retireRecipe(root, { slug: 'weeknight-dal', date: '2026-02-01' });
+  assert.equal(addRecipe(root, { draft, ...text }).lifecycle, 'retired');
 });
 
 test('raw names never reuse an existing file', () => {
