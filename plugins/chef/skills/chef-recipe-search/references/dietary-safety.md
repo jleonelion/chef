@@ -40,5 +40,5 @@ Only the member who declared a hard constraint can override it (on Muse, the acc
 
 - **Check labels** (`dietary.footer`): on plans and shopping lists only when a hard constraint is declared.
 - **Nudge** (`dietary.nudge`): on plans and shopping lists only while the ruleset is never asked.
-- **Training setting** (`notice` from `chef-setup set-dietary`): shown once, the first time a hard constraint is saved. Pass it on as given, with its link; never describe Meta's terms yourself.
-- Health reports and suggestions always end with "general information, not medical advice".
+- **Training setting** (`notice` from `chef-setup set-dietary` or `chef-health-goals set`): shown once, the first time a hard constraint or a health goal is saved, whichever comes first. Pass it on as given, with its link; never describe Meta's terms yourself.
+- Health reports and suggestions always end with their `footer`: "Chef gives general information, not medical advice."

@@ -7509,8 +7509,8 @@ function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLA
 }
 
 // src/skills/chef-meal-planning/scripts/lib/plan.mjs
-import fs8 from "node:fs";
-import path9 from "node:path";
+import fs9 from "node:fs";
+import path10 from "node:path";
 
 // src/lib/fdc.mjs
 var NUTRIENTS = { calories: 1008, protein: 1003, fat: 1004, saturated_fat: 1258, carbs: 1005, fiber: 1079, sugar: 2000, sodium: 1093, cholesterol: 1253 };
@@ -7765,13 +7765,74 @@ function loadInventory(root) {
   return inventory;
 }
 
+// src/skills/chef-health-goals/scripts/lib/goals.mjs
+import fs8 from "node:fs";
+import path9 from "node:path";
+var GOALS_PATH = "data/health-goals/goals.json";
+var FIELDS = Object.keys(NUTRIENTS);
+function readGoal(root) {
+  const file = path9.join(root, GOALS_PATH);
+  if (!fs8.existsSync(file))
+    return { status: "dormant" };
+  let stored;
+  try {
+    stored = JSON.parse(fs8.readFileSync(file, "utf8"));
+  } catch {
+    return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
+  }
+  if (!stored?.goal)
+    return { status: "dormant" };
+  return { status: "active", goal: stored.goal, targets: stored.targets ?? {}, set: stored.set };
+}
+var activeGoal = (root) => {
+  const goal = readGoal(root);
+  return goal.status === "active" ? goal : null;
+};
+
+// src/skills/chef-health-goals/scripts/lib/suggest.mjs
+var oneDecimal2 = (value) => Math.round(value * 10) / 10;
+function targetView(nutrient, bounds, servings) {
+  const values = servings.map((s) => s.values[nutrient]);
+  const average = oneDecimal2(values.reduce((a, b) => a + b, 0) / values.length);
+  const over = bounds.max === undefined ? [] : servings.filter((s) => s.values[nutrient] > bounds.max).map((s) => ({ date: s.date, slug: s.slug, per_serving: s.values[nutrient] }));
+  return {
+    nutrient,
+    ...bounds,
+    per_serving_average: average,
+    share_of_target: Math.round(average / (bounds.max ?? bounds.min) * 100),
+    ...over.length && { over_daily_max: over }
+  };
+}
+function healthSuggestions(plan, goal) {
+  if (plan.nutrition?.status !== "complete") {
+    return {
+      status: "unavailable",
+      goal: goal.goal,
+      reason: "some planned recipes have no complete nutrition, so Chef cannot compare the plan with your targets",
+      footer: NOT_MEDICAL_ADVICE
+    };
+  }
+  const servings = plan.nutrition.meals.map((m) => ({
+    date: m.date,
+    slug: m.slug,
+    values: Object.fromEntries(Object.entries(m.totals).map(([field, total]) => [field, oneDecimal2(total / m.servings)]))
+  }));
+  return {
+    status: "advisory",
+    goal: goal.goal,
+    basis: "one serving of each planned meal against your daily targets; the rest of each day is not counted",
+    targets: Object.entries(goal.targets).map(([nutrient, bounds]) => targetView(nutrient, bounds, servings)),
+    footer: NOT_MEDICAL_ADVICE
+  };
+}
+
 // src/skills/chef-meal-planning/scripts/lib/plan.mjs
 var PROFILE_PATH = wikiPath("household-profile", "profile");
 function household(root) {
-  const file = path9.join(root, PROFILE_PATH);
-  if (!fs8.existsSync(file))
+  const file = path10.join(root, PROFILE_PATH);
+  if (!fs9.existsSync(file))
     return { path: null, servings: 1, servings_source: "default" };
-  const page = parsePage(fs8.readFileSync(file, "utf8"));
+  const page = parsePage(fs9.readFileSync(file, "utf8"));
   const portions = page.frontmatter.portions_per_meal;
   const fromProfile = Number.isInteger(portions) && portions > 0;
   return { path: PROFILE_PATH, servings: fromProfile ? portions : 1, servings_source: fromProfile ? "profile" : "default" };
@@ -7814,7 +7875,7 @@ ${rows}
 `;
 }
 function applyHealthSuggestions(plan, goal) {
-  return goal ? { ...plan, suggestions: { status: "deferred" } } : plan;
+  return goal ? { ...plan, health_suggestions: healthSuggestions(plan, goal) } : plan;
 }
 function selectRecipes(allowed, bySlug, slots, days) {
   const used = new Set(slots.filter(Boolean));
@@ -7918,7 +7979,7 @@ function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
     ...avoidanceNotes.length && { avoidance_notes: avoidanceNotes },
     ...settings.warning && { settings_warning: settings.warning },
     ...calendarPayload(settings.settings.calendar, meals)
-  });
+  }, activeGoal(root));
 }
 
 // src/skills/chef-meal-planning/scripts/meal-planning.mjs

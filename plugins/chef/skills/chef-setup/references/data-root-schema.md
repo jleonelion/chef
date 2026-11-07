@@ -181,6 +181,31 @@ One-plan dietary overrides are also returned only for that invocation and are ne
 
 `data/notices.json` records one-time notices by key with the date shown, such as `{"training-setting": "2026-01-15"}`.
 
+## Health goals store
+
+`data/health-goals/goals.json` belongs to chef-health-goals; only its script writes it. No file, or `goal: null`, means health features are dormant: no reports, suggestions or health footers anywhere.
+
+```json
+{ "goal": "Lower sodium", "targets": { "sodium": { "max": 2300 }, "protein": { "min": 90 } }, "set": "2026-01-15", "updated": "2026-01-20" }
+```
+
+| Field | Value |
+|---|---|
+| `goal` | The user's own short description, or `null` after the goal is dropped |
+| `targets` | Daily, per-person targets keyed by nutrition field (`calories`, `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar`, `sodium`, `cholesterol`, in the units of `nutrition_per_serving`), each `{ min?, max? }`. Advisory only; never clinician-prescribed limits |
+| `set` | `YYYY-MM-DD` the current goal was first declared; absent after the goal is dropped |
+| `updated` | `YYYY-MM-DD` of the last change |
+
+The weekly report reads the meal log (`data/meal-log/log.json`, owned by chef-meal-logging) and writes nothing. A day counts toward targets only when every entry that day has `nutrition`. Meal-plan suggestions are returned with the saved plan and never stored on the meal-plan page. Declaring the first goal records the shared `training-setting` notice, if not already shown.
+
+## Meal log store
+
+`data/meal-log/log.json` belongs to `chef-meal-logging`; it is the only writer. The file is `{ "entries": [ ... ] }`.
+
+Each entry has `id` (stable `<date>-<slot>-<recipe-or-food-slug>`), `date` (`YYYY-MM-DD`), `slot` (`breakfast`, `lunch`, `dinner` or `snack`), `recipe` (recipe slug or `null`), `food` (free text when there is no recipe, otherwise `null`), `servings` (positive number), `cooked` (whether the user cooked it at home), `nutrition` (per-entry totals copied from complete recipe `nutrition_per_serving` and scaled by servings, otherwise `null`) and `logged_at` (ISO timestamp).
+
+A cooked recipe entry uses its `id` as the food-inventory deduction ID. Inventory deduction is idempotent and occurs after the entry is saved. Missing inventory ingredients and unit mismatches do not remove the logged entry. Editing or deleting a log entry never reverses a deduction automatically.
+
 ## Shopping lists
 
 `data/shopping-lists/<week-start>.md` belongs to chef-shopping-lists; only its script writes there. It is written only off Muse when `household_recipients` is set, as the household delivery copy, and is rewritten each time the list for that week is built. It holds the list as Markdown, the same text shown in chat. On Muse the list is emailed through the runtime's Gmail connector instead, and with no recipients it is only shown in chat; neither writes to the data root.
