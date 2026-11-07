@@ -7249,7 +7249,7 @@ function schemaWriteBlocker(root) {
 var WIKI_DIR = "knowledge/wiki";
 var RAW_DIR = "knowledge/raw";
 var DATA_DIR = "data";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household" };
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household", "meal-plan": "meal-plans" };
 var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function wikiPath(type, slug) {
   if (!Object.hasOwn(WIKI_FOLDERS, type))

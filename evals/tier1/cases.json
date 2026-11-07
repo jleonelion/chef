@@ -2355,6 +2355,207 @@
     ]
   },
   {
+    "id": "chef-meal-planning-saves-safe-week-with-rollup",
+    "description": "A weekly plan excludes a flagged recipe, saves seven safe meals with one nutrition rollup, considers inventory, and emits no calendar payload when calendar is unset.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/profile.md",
+        "content": "---\ntitle: Household profile\ntype: household-profile\nportions_per_meal: 3\nupdated: 2026-01-15\n---\n# Household profile\n\nSynthetic fixture household.\n"
+      },
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md",
+        "content": "---\ntype: recipe\ntitle: Chickpea Spinach Stew\nservings: 4\ntotal_minutes: 45\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-16\nupdated: 2026-01-16\ndietary_flags: []\nnutrition_status: complete\nnutrition_per_serving: {calories: 300, protein: 10, fat: 5, saturated_fat: 1, carbs: 50, fiber: 8, sugar: 6, sodium: 400, cholesterol: 0}\n---\n# Chickpea Spinach Stew\n\n## Ingredients\n\n- 2 can chickpeas\n- 150 g spinach\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "content": "---\ntype: recipe\ntitle: Lemon Garlic Pasta\nservings: 2\ntotal_minutes: 20\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [contains-dairy]\nnutrition_status: complete\nnutrition_per_serving: {calories: 500, protein: 15, fat: 20, saturated_fat: 8, carbs: 65, fiber: 3, sugar: 4, sodium: 600, cholesterol: 25}\n---\n# Lemon Garlic Pasta\n\n## Ingredients\n\n- 200 g spaghetti\n- 30 g parmesan\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/retired-rice.md",
+        "content": "---\ntype: recipe\ntitle: Retired Rice\nservings: 3\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\nlifecycle: retired\nretired: 2026-01-16\ndietary_flags: []\nnutrition_status: complete\nnutrition_per_serving: {calories: 200, protein: 4, fat: 1, saturated_fat: 0, carbs: 42, fiber: 1, sugar: 0, sodium: 5, cholesterol: 0}\n---\n# Retired Rice\n\n## Ingredients\n\n- 2 lb jasmine rice\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.meals.length",
+        "equals": 7
+      },
+      {
+        "path": "$.meals[*].slug",
+        "equals": ["chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew"]
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.nutrition.status",
+        "equals": "complete"
+      },
+      {
+        "path": "$.nutrition.totals.calories",
+        "equals": 6300
+      },
+      {
+        "path": "$.inventory.items_considered",
+        "equals": 5
+      },
+      {
+        "path": "$.dietary.footer",
+        "includes": "always check labels"
+      },
+      {
+        "path": "$.calendar",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition:\n  status: complete"
+          },
+          {
+            "path": "$.content",
+            "includes": "items_considered: 5"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-emits-calendar-payload-only-when-configured",
+    "description": "A configured calendar produces a runtime payload, while the saved plan retains an incomplete nutrition rollup and the never-asked dietary nudge.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"calendar\":\"Household meals\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-26"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.calendar.calendar",
+        "equals": "Household meals"
+      },
+      {
+        "path": "$.calendar.action",
+        "equals": "create-events"
+      },
+      {
+        "path": "$.calendar.events.length",
+        "equals": 7
+      },
+      {
+        "path": "$.calendar.instruction",
+        "includes": "does not call a calendar API"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "equals": "No dietary constraints recorded. Tell me about any allergies or foods someone must never eat."
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      },
+      {
+        "path": "$.nutrition.status",
+        "equals": "incomplete"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-26.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition:\n  status: incomplete"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-refuses-gated-chosen-recipe-without-writing",
+    "description": "A recipe chosen for a day still passes the dietary gate; a conflict refuses the plan with reasons and leaves git unchanged.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "content": "---\ntype: recipe\ntitle: Lemon Garlic Pasta\nservings: 2\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [contains-dairy]\n---\n# Lemon Garlic Pasta\n\n## Ingredients\n\n- 200 g spaghetti\n- 30 g parmesan\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-02-02",
+      "--days",
+      "1",
+      "--recipes",
+      "lemon-garlic-pasta"
+    ],
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.refused_choices[0].slug",
+        "equals": "lemon-garlic-pasta"
+      },
+      {
+        "path": "$.refused_choices[0].reasons.[0].why",
+        "equals": "flagged"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
     "id": "chef-recipe-decisions-auto-approve-dietary-conflict-stays-open",
     "description": "A standing auto-approve rule cannot accept or publish a proposal containing a declared allergen; the proposal stays open with the gate reasons.",
     "env": {

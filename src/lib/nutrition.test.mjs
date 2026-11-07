@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
 import { fdcClient } from './fdc.mjs';
-import { computeNutrition } from './nutrition.mjs';
+import { computeNutrition, rollupNutrition } from './nutrition.mjs';
 
 const samples = JSON.parse(fs.readFileSync(new URL('../../fixtures/usda/fdc-samples.json', import.meta.url), 'utf8'));
 const key = { ok: true, value: 'k', placement: { in: 'query', name: 'api_key' } };
@@ -85,4 +85,42 @@ test('uses a reviewed ingredient match before USDA search', async () => {
   const result = await computeNutrition({ lines: ['100 g EVOO'], servings: 1, fdc });
   assert.equal(result.status, 'complete');
   assert.deepEqual(result.sources, ['100 g EVOO: Oil, olive, salad or cooking (FDC 171413), 100 g']);
+});
+
+test('rolls complete recipe nutrition into meal and plan totals', () => {
+  const result = rollupNutrition([
+    {
+      date: '2026-01-19',
+      slug: 'bean-stew',
+      servings: 3,
+      nutrition_per_serving: { calories: 250, protein: 12, fat: 4.5, saturated_fat: 1, carbs: 40, fiber: 8, sugar: 5, sodium: 300, cholesterol: 0 },
+    },
+    {
+      date: '2026-01-20',
+      slug: 'pasta',
+      servings: 2,
+      nutrition_per_serving: { calories: 400, protein: 15, fat: 10, saturated_fat: 2.5, carbs: 60, fiber: 4, sugar: 3, sodium: 500, cholesterol: 10 },
+    },
+  ]);
+
+  assert.deepEqual(result, {
+    status: 'complete',
+    meals: [
+      { date: '2026-01-19', slug: 'bean-stew', servings: 3, totals: { calories: 750, protein: 36, fat: 13.5, saturated_fat: 3, carbs: 120, fiber: 24, sugar: 15, sodium: 900, cholesterol: 0 } },
+      { date: '2026-01-20', slug: 'pasta', servings: 2, totals: { calories: 800, protein: 30, fat: 20, saturated_fat: 5, carbs: 120, fiber: 8, sugar: 6, sodium: 1000, cholesterol: 20 } },
+    ],
+    totals: { calories: 1550, protein: 66, fat: 33.5, saturated_fat: 8, carbs: 240, fiber: 32, sugar: 21, sodium: 1900, cholesterol: 20 },
+  });
+});
+
+test('keeps a rollup on the plan when recipe nutrition is unavailable', () => {
+  const result = rollupNutrition([
+    { date: '2026-01-19', slug: 'bean-stew', servings: 3, nutrition_status: 'not-computed' },
+  ]);
+
+  assert.deepEqual(result, {
+    status: 'incomplete',
+    meals: [{ date: '2026-01-19', slug: 'bean-stew', servings: 3, status: 'not-computed' }],
+    missing: [{ date: '2026-01-19', slug: 'bean-stew', reason: 'recipe nutrition is not complete' }],
+  });
 });
