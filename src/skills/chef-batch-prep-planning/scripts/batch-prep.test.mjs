@@ -15,7 +15,7 @@ afterEach(() => {
   for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
 });
 
-function recipe(slug, title, steps) {
+function recipe(slug, title, steps, extra = {}) {
   return {
     path: `knowledge/wiki/recipes/${slug}.md`,
     content: serializePage(
@@ -28,18 +28,19 @@ function recipe(slug, title, steps) {
         created: '2026-01-15',
         updated: '2026-01-15',
         dietary_flags: [],
+        ...extra,
       },
       `# ${title}\n\n## Ingredients\n\n- 1 cup vegetables\n\n## Steps\n\n${steps.map((step, index) => `${index + 1}. ${step}`).join('\n')}\n`,
     ),
   };
 }
 
-function makeRoot() {
+function makeRoot({ riceExtra } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-batch-prep-test-'));
   roots.push(root);
   const files = [
     recipe('tomato-soup', 'Tomato Soup', ['Chop the vegetables.', 'Simmer the soup.']),
-    recipe('herbed-rice', 'Herbed Rice', ['Rinse the rice.', 'Cook until tender.']),
+    recipe('herbed-rice', 'Herbed Rice', ['Rinse the rice.', 'Cook until tender.'], riceExtra),
     {
       path: 'knowledge/wiki/meal-plans/2026-01-19.md',
       content: serializePage(
@@ -73,6 +74,25 @@ function makeRoot() {
   execFileSync('git', ['-c', 'user.name=Prep Test', '-c', 'user.email=prep-test@example.com', 'commit', '-q', '-m', 'fixture'], { cwd: root });
   return root;
 }
+
+const run = (root) => {
+  try {
+    return { code: 0, output: JSON.parse(execFileSync(process.execPath, [script, 'render', '--week-start', '2026-01-19'], { env: { ...process.env, CHEF_DATA_ROOT: root }, encoding: 'utf8' })) };
+  } catch (error) {
+    return { code: error.status, output: JSON.parse(error.stdout) };
+  }
+};
+
+test('a recipe retired since planning is refused and nothing is written', () => {
+  const root = makeRoot({ riceExtra: { lifecycle: 'retired', retired: '2026-01-16' } });
+
+  const { code, output } = run(root);
+
+  assert.equal(code, 2);
+  assert.equal(output.status, 'refused');
+  assert.deepEqual(output.blocked.map((entry) => entry.slug), ['herbed-rice']);
+  assert.equal(fs.existsSync(path.join(root, 'data/batch-prep-plans')), false);
+});
 
 test('saved meal plan renders as a valid committed PDF with one page per recipe', async () => {
   const root = makeRoot();

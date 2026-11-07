@@ -5,6 +5,7 @@ import { gateRecipe } from '../../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
+import { muse } from '../../../../runtime/muse.mjs';
 import { writeWiki } from '../../../../lib/wiki.mjs';
 
 const PLAN_DIR = 'knowledge/wiki/meal-plans';
@@ -111,11 +112,12 @@ export async function renderBatchPrep(root, weekStart) {
   const ruleset = readRuleset(root);
   const slugs = [...new Set(plan.meals.map((meal) => meal.slug))];
   const blocked = slugs.flatMap((slug) => {
-    const verdict = gateRecipe(bySlug.get(slug), ruleset);
-    return verdict.excluded ? [{ slug, title: bySlug.get(slug).frontmatter.title ?? slug, reasons: verdict.reasons }] : [];
+    const recipe = bySlug.get(slug);
+    const reasons = [...(recipe.frontmatter.lifecycle === 'retired' ? [{ why: 'retired' }] : []), ...gateRecipe(recipe, ruleset).reasons];
+    return reasons.length ? [{ slug, title: recipe.frontmatter.title ?? slug, reasons }] : [];
   });
   const dietary = dietaryNotes(ruleset);
-  if (blocked.length) return { status: 'refused', data_root: root, week_start: weekStart, reason: 'saved meal plan no longer passes the dietary gate', blocked, dietary };
+  if (blocked.length) return { status: 'refused', data_root: root, week_start: weekStart, reason: 'saved meal plan has recipes that are retired or no longer pass the dietary gate', blocked, dietary };
 
   const groups = slugs.map((slug) => {
     const recipe = bySlug.get(slug);
@@ -141,5 +143,6 @@ export async function renderBatchPrep(root, weekStart) {
     pages: groups.length,
     recipes: groups.map(({ slug, title }) => ({ slug, title })),
     dietary,
+    ...muse.attachment(path.join(root, output)),
   };
 }
