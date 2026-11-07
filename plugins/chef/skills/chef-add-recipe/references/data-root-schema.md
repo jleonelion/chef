@@ -180,3 +180,7 @@ One-plan dietary overrides are also returned only for that invocation and are ne
 ## Notices
 
 `data/notices.json` records one-time notices by key with the date shown, such as `{"training-setting": "2026-01-15"}`.
+
+## Batch prep PDFs
+
+`data/batch-prep-plans/<week-start>.pdf` belongs to chef-batch-prep-planning; only its script writes there, through the guarded writer, one commit per render. It is a derived artifact of `knowledge/wiki/meal-plans/<week-start>.md`: one page per unique planned recipe in first-appearance order, with that recipe's planned dates, servings and `## Steps`. Re-rendering overwrites it; never edit it by hand.

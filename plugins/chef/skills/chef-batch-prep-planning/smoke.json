@@ -1,0 +1,3 @@
+[
+  { "id": "render-needs-saved-plan", "script": "scripts/batch-prep.mjs", "args": ["render", "--week-start", "2026-01-19"], "expect": { "exit": 2, "status": "not-found" } }
+]
