@@ -1150,6 +1150,81 @@
     ]
   },
   {
+    "id": "food-inventory-cook-deduction-is-idempotent",
+    "description": "A cook event scales and converts recipe quantities, and retrying its deduction id changes inventory only once.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-food-inventory/scripts/inventory.mjs",
+          "edit",
+          "--path",
+          "pantry.grains.spaghetti",
+          "--amount",
+          "1",
+          "--unit",
+          "kg"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-food-inventory/scripts/inventory.mjs",
+          "deduct",
+          "--recipe",
+          "lemon-garlic-pasta",
+          "--servings",
+          "5",
+          "--deduction-id",
+          "cook-lemon-pasta-20260115"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "deduct",
+      "--recipe",
+      "lemon-garlic-pasta",
+      "--servings",
+      "5",
+      "--deduction-id",
+      "cook-lemon-pasta-20260115"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "duplicate"
+      },
+      {
+        "path": "$.deduction_id",
+        "equals": "cook-lemon-pasta-20260115"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.pantry.grains.spaghetti.amount",
+            "equals": 0.5
+          }
+        ]
+      },
+      {
+        "path": "data/food-inventory/audit.jsonl",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "\"deduction_id\":\"cook-lemon-pasta-20260115\""
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "chef-setup-set-refuses-schema-mismatch",
     "description": "A writing skill refuses to write to a data root on a different schema version and points the user at update Chef.",
     "seed": [
