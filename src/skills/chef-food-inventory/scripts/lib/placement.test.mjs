@@ -5,6 +5,7 @@ import { itemKey, placeItem } from './placement.mjs';
 test('shipped defaults place common foods', () => {
   assert.equal(placeItem('Whole Milk'), 'fridge.dairy');
   assert.equal(placeItem('baby spinach'), 'fridge.produce');
+  assert.equal(placeItem('bananas'), 'pantry.produce');
   assert.equal(placeItem('chicken thighs'), 'fridge.proteins');
   assert.equal(placeItem('frozen peas'), 'freezer.other');
   assert.equal(placeItem('jasmine rice'), 'pantry.grains');

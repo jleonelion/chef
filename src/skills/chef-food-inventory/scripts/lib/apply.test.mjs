@@ -10,9 +10,9 @@ const item = (over) => ({ name: 'bananas', quantity: 2, unit: 'lb', price: 1, ex
 test('adds new items at their default place and leaves the input untouched', () => {
   const { inventory, changes, rejected } = applyItems(base, [item()], { date: '2026-01-15', now });
   assert.deepEqual(rejected, []);
-  assert.deepEqual(changes, [{ path: 'fridge.produce.bananas', action: 'added', amount: 2, unit: 'lb' }]);
-  assert.deepEqual(inventory.fridge.produce.bananas, { name: 'bananas', amount: 2, unit: 'lb', purchased: '2026-01-15', updated: now });
-  assert.equal(base.fridge.produce, undefined);
+  assert.deepEqual(changes, [{ path: 'pantry.produce.bananas', action: 'added', amount: 2, unit: 'lb' }]);
+  assert.deepEqual(inventory.pantry.produce.bananas, { name: 'bananas', amount: 2, unit: 'lb', purchased: '2026-01-15', updated: now });
+  assert.equal(base.pantry, undefined);
   assert.equal(inventory.lastUpdated, now);
   assert.deepEqual(validateInventory(inventory), []);
 });

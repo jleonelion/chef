@@ -405,7 +405,7 @@
       {
         "path": "$.changes[*].path",
         "equals": [
-          "fridge.produce.bananas",
+          "pantry.produce.bananas",
           "fridge.dairy.whole_milk"
         ]
       }
@@ -416,11 +416,11 @@
         "parse": "json",
         "assertions": [
           {
-            "path": "$.fridge.produce.bananas.amount",
+            "path": "$.pantry.produce.bananas.amount",
             "equals": 2
           },
           {
-            "path": "$.fridge.produce.bananas.unit",
+            "path": "$.pantry.produce.bananas.unit",
             "equals": "lb"
           },
           {
@@ -496,7 +496,7 @@
             "equals": 1
           },
           {
-            "path": "$.fridge.produce.bananas",
+            "path": "$.pantry.produce.bananas",
             "absent": true
           }
         ]

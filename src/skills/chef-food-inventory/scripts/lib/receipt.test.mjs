@@ -22,7 +22,7 @@ test('receipt text becomes inventory items, audit, ledger, purchase, raw and rol
   const root = dataRoot();
   const result = addReceipt(root, base);
   assert.equal(result.status, 'added');
-  assert.deepEqual(listItems(loadInventory(root)).map((i) => i.path).sort(), ['fridge.dairy.whole_milk', 'fridge.produce.bananas']);
+  assert.deepEqual(listItems(loadInventory(root)).map((i) => i.path).sort(), ['fridge.dairy.whole_milk', 'pantry.produce.bananas']);
   const audit = read(root, STORE.audit).trim().split('\n').map((line) => JSON.parse(line));
   assert.equal(audit.length, 1);
   assert.equal(audit[0].before_hash, null);
