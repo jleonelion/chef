@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
 ---
 
 # Chef setup
@@ -70,7 +70,7 @@ Confirm what was saved from the `settings` field of the output. If the user skip
    - **Yes:** record each person as in **Dietary ruleset** below.
    - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.
 
-Then offer **Connect USDA nutrition**, and finish onboarding with **Verify install**.
+Then offer **Connect USDA nutrition**, then **Recurring tasks**, and finish onboarding with **Verify install**.
 
 ## Connect USDA nutrition
 
@@ -91,6 +91,33 @@ Optional. Chef computes recipe nutrition only from USDA FoodData Central; withou
 
 **Rotate** the key by reconnecting the connector (Muse) or changing the variable, then run `usda` again. **Remove** it by disconnecting the connector in Muse's connector settings or unsetting the variable; Chef then marks new nutrition "not computed".
 
+## Recurring tasks
+
+Optional. Chef's scripts never schedule anything; you create each task with the runtime's scheduler, and only the ones the user says yes to. Get the proposal:
+
+```sh
+node scripts/setup.mjs schedule
+```
+
+It writes nothing. `tasks` lists what Chef recommends for this user, each with `name`, `cadence`, `prompt` and `why`; `not_offered` lists the rest with a `reason` (no health goal, no household recipients, receipt forwarding off).
+
+1. Show the tasks one at a time: name, cadence and `why`. Ask "Do you want this one?" for each. The update notice is opt-in: offer it, never recommend it by default.
+2. A task gets created only after an explicit yes to that task. Silence, "sure, whatever you think" about the list, or a yes to a different task is not a yes. Never create a task the user did not confirm, and never create one from `not_offered`.
+3. Create each confirmed task following `runtime.instruction`, with exactly the given `name`, `cadence` and `prompt`. The user can ask for a different time; keep the name and prompt.
+4. List the tasks you created. If the runtime has no recurring tasks, tell the user and create nothing.
+
+When the user later asks to add, change or stop a Chef task, run `schedule` again and repeat these steps for that task only. Stop a task through the runtime's scheduler; Chef keeps no record of tasks.
+
+## Update notice check
+
+The "Chef update notice" task runs:
+
+```sh
+node scripts/setup.mjs check-update
+```
+
+It compares the installed release with the newest release tag and installs nothing. `update-available`: tell the user `latest` is out and that they can say "update Chef". `current`: say nothing. `refused`: say nothing in a recurring run; show `reason` if the user ran it.
+
 ## Change settings
 
 When the user asks to change a setting, run `set` with only that flag:
@@ -106,7 +133,7 @@ A list flag replaces the whole list, so to add one address, pass the current lis
 
 Act on the `set` output:
 
-- `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. A `units` change affects new output only; stored recipes are never rewritten.
+- `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. If household recipients or receipt senders went from none to some, offer **Recurring tasks** again for the task that is now offered. A `units` change affects new output only; stored recipes are never rewritten.
 - `invalid-input`: show the `problems` and ask the user for a corrected value.
 - `refused` with `content`: the settings file is broken or was written by a newer Chef. Show the user `reason` and `content`, and ask whether to replace it. Only if they agree, rerun the same command with `--rewrite`; that discards the old file's values.
 - `refused` without `content`: tell the user `reason` and change nothing.
