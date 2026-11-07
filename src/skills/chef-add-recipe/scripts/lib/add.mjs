@@ -17,7 +17,7 @@ function findExisting(root, slug, url) {
   return null;
 }
 
-function rawName(root, stem, ext) {
+export function rawName(root, stem, ext) {
   for (let n = 1; ; n += 1) {
     const rel = `${RAW_RECIPES}/${stem}${n === 1 ? '' : `-${n}`}${ext}`;
     if (!fs.existsSync(path.join(root, rel))) return rel;

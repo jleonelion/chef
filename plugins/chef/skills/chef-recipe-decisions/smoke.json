@@ -1,0 +1,4 @@
+[
+  { "id": "list", "script": "scripts/recipe-decisions.mjs", "args": ["list"], "expect": { "exit": 0, "status": "ok" } },
+  { "id": "rules", "script": "scripts/recipe-decisions.mjs", "args": ["rules"], "expect": { "exit": 0, "status": "ok" } }
+]
