@@ -18,6 +18,7 @@ Wiki page types and their folders:
 |---|---|
 | `recipe` | `knowledge/wiki/recipes/` |
 | `household-profile` | `knowledge/wiki/household/` |
+| `inventory-rollup` | `knowledge/wiki/household/` (generated from `data/food-inventory/`; never edited by hand) |
 
 A page's slug is its filename without `.md`: lowercase letters, digits and single hyphens.
 
@@ -72,3 +73,16 @@ One or two lines about the dish.
 | `dietary_flags`, `nutrition_per_serving` | no | Added by recipe enrichment. A missing field means "not checked yet", never "none" |
 
 The body holds the human-readable recipe. `## Ingredients` is a bulleted list, one ingredient per line; `## Steps` is a numbered list. Chef reads ingredients from the body, so the frontmatter never repeats them.
+
+## Inventory store
+
+`data/food-inventory/` belongs to chef-food-inventory; only its script writes there.
+
+| Path | Holds |
+|---|---|
+| `current.json` | Items on hand: `{ lastUpdated, pantry, fridge, freezer }`, each location `{ <category>: { <item_key>: item } }`. An item has `amount` (number, at least 0), `unit`, and optionally `name`, `purchased` and `expires` (`YYYY-MM-DD`), `updated` |
+| `audit.jsonl` | Append-only, one line per change: `ts`, `actor`, `action`, `before_hash`, `after_hash` (SHA-256 of `current.json`), `details` |
+| `receipt-ledger.json` | Processed receipts by id, so a receipt is never added twice |
+| `purchases/<date>-<receipt id>.json` | The items each receipt added |
+
+Receipt transcripts are kept as `knowledge/raw/receipts/<date>-<receipt id>.txt`. The `inventory-rollup` page is regenerated from `current.json` on every change. Sender email addresses are never stored.
