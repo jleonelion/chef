@@ -1,0 +1,2016 @@
+{
+  "_source": "USDA FoodData Central API responses captured 2026-11-06 with the public DEMO_KEY, trimmed to the fields Chef reads. Public domain (USDA).",
+  "search": {
+    "onion": {
+      "foods": [
+        {
+          "fdcId": 170000,
+          "description": "Onions, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 4.24
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.1
+            },
+            {
+              "nutrientId": 1005,
+              "value": 9.34
+            },
+            {
+              "nutrientId": 1008,
+              "value": 40.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.042
+            },
+            {
+              "nutrientId": 1003,
+              "value": 1.1
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 4.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            }
+          ]
+        },
+        {
+          "fdcId": 169844,
+          "description": "DENNY'S, onion rings",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 22.2
+            },
+            {
+              "nutrientId": 1005,
+              "value": 41.0
+            },
+            {
+              "nutrientId": 1008,
+              "value": 385
+            },
+            {
+              "nutrientId": 2000,
+              "value": 4.76
+            },
+            {
+              "nutrientId": 1003,
+              "value": 5.29
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.4
+            },
+            {
+              "nutrientId": 1093,
+              "value": 780
+            },
+            {
+              "nutrientId": 1258,
+              "value": 3.73
+            }
+          ]
+        },
+        {
+          "fdcId": 170002,
+          "description": "Onions, dehydrated flakes",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1008,
+              "value": 349
+            },
+            {
+              "nutrientId": 2000,
+              "value": 37.4
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.46
+            },
+            {
+              "nutrientId": 1005,
+              "value": 83.3
+            },
+            {
+              "nutrientId": 1003,
+              "value": 8.95
+            },
+            {
+              "nutrientId": 1079,
+              "value": 9.2
+            },
+            {
+              "nutrientId": 1093,
+              "value": 21.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.078
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            }
+          ]
+        },
+        {
+          "fdcId": 170008,
+          "description": "Onions, sweet, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 5.02
+            },
+            {
+              "nutrientId": 1005,
+              "value": 7.55
+            },
+            {
+              "nutrientId": 1008,
+              "value": 32.0
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.08
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.9
+            },
+            {
+              "nutrientId": 1093,
+              "value": 8.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.8
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            }
+          ]
+        },
+        {
+          "fdcId": 170007,
+          "description": "Onions, welsh, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 1.9
+            },
+            {
+              "nutrientId": 1093,
+              "value": 17.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.067
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.4
+            },
+            {
+              "nutrientId": 1005,
+              "value": 6.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 34.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.4
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.18
+            }
+          ]
+        },
+        {
+          "fdcId": 170004,
+          "description": "Onions, yellow, sauteed",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1008,
+              "value": 123
+            },
+            {
+              "nutrientId": 1005,
+              "value": 7.86
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 12.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.95
+            },
+            {
+              "nutrientId": 1004,
+              "value": 10.8
+            },
+            {
+              "nutrientId": 1258,
+              "value": 1.48
+            }
+          ]
+        },
+        {
+          "fdcId": 171327,
+          "description": "Spices, onion powder",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 6.63
+            },
+            {
+              "nutrientId": 1004,
+              "value": 1.04
+            },
+            {
+              "nutrientId": 1005,
+              "value": 79.1
+            },
+            {
+              "nutrientId": 1008,
+              "value": 341
+            },
+            {
+              "nutrientId": 1079,
+              "value": 15.2
+            },
+            {
+              "nutrientId": 1093,
+              "value": 73.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.219
+            },
+            {
+              "nutrientId": 1003,
+              "value": 10.4
+            }
+          ]
+        },
+        {
+          "fdcId": 169840,
+          "description": "APPLEBEE'S, crunchy onion rings",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 4.58
+            },
+            {
+              "nutrientId": 1079,
+              "value": 3.1
+            },
+            {
+              "nutrientId": 1093,
+              "value": 833
+            },
+            {
+              "nutrientId": 1258,
+              "value": 3.57
+            },
+            {
+              "nutrientId": 1004,
+              "value": 19.6
+            },
+            {
+              "nutrientId": 1005,
+              "value": 40.2
+            },
+            {
+              "nutrientId": 1008,
+              "value": 356
+            },
+            {
+              "nutrientId": 2000,
+              "value": 4.48
+            }
+          ]
+        },
+        {
+          "fdcId": 170771,
+          "description": "BURGER KING, Onion Rings",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 25.2
+            },
+            {
+              "nutrientId": 1005,
+              "value": 43.6
+            },
+            {
+              "nutrientId": 1008,
+              "value": 417
+            },
+            {
+              "nutrientId": 2000,
+              "value": 5.43
+            },
+            {
+              "nutrientId": 1258,
+              "value": 4.19
+            },
+            {
+              "nutrientId": 1093,
+              "value": 776
+            },
+            {
+              "nutrientId": 1003,
+              "value": 3.86
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.7
+            }
+          ]
+        },
+        {
+          "fdcId": 172812,
+          "description": "Crackers, matzo, egg and onion",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1079,
+              "value": 5.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 285
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.936
+            },
+            {
+              "nutrientId": 1003,
+              "value": 10.0
+            },
+            {
+              "nutrientId": 1004,
+              "value": 3.9
+            },
+            {
+              "nutrientId": 1005,
+              "value": 77.1
+            },
+            {
+              "nutrientId": 1008,
+              "value": 391
+            },
+            {
+              "nutrientId": 1253,
+              "value": 45.0
+            }
+          ]
+        }
+      ]
+    },
+    "olive oil": {
+      "foods": [
+        {
+          "fdcId": 167737,
+          "description": "Oil, corn, peanut, and olive",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 14.4
+            },
+            {
+              "nutrientId": 1004,
+              "value": 100
+            },
+            {
+              "nutrientId": 1005,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1008,
+              "value": 884
+            }
+          ]
+        },
+        {
+          "fdcId": 171413,
+          "description": "Oil, olive, salad or cooking",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 100
+            },
+            {
+              "nutrientId": 1005,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1008,
+              "value": 884
+            },
+            {
+              "nutrientId": 1093,
+              "value": 2.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 13.8
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.0
+            }
+          ]
+        },
+        {
+          "fdcId": 171443,
+          "description": "Mayonnaise, reduced fat, with olive oil",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 40.0
+            },
+            {
+              "nutrientId": 1005,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1008,
+              "value": 361
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.37
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 800
+            },
+            {
+              "nutrientId": 1253,
+              "value": 33.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 5.37
+            }
+          ]
+        }
+      ]
+    },
+    "spaghetti": {
+      "foods": [
+        {
+          "fdcId": 169845,
+          "description": "DENNY'S, spaghetti and meatballs",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 7.84
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.5
+            },
+            {
+              "nutrientId": 1093,
+              "value": 351
+            },
+            {
+              "nutrientId": 1253,
+              "value": 19.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 3.1
+            },
+            {
+              "nutrientId": 1004,
+              "value": 8.52
+            },
+            {
+              "nutrientId": 1005,
+              "value": 15.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 170
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.03
+            }
+          ]
+        },
+        {
+          "fdcId": 168912,
+          "description": "Spaghetti, spinach, cooked",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 0.63
+            },
+            {
+              "nutrientId": 1005,
+              "value": 26.2
+            },
+            {
+              "nutrientId": 1008,
+              "value": 130
+            },
+            {
+              "nutrientId": 1003,
+              "value": 4.58
+            },
+            {
+              "nutrientId": 1093,
+              "value": 14.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.091
+            }
+          ]
+        },
+        {
+          "fdcId": 168911,
+          "description": "Spaghetti, spinach, dry",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 2.72
+            },
+            {
+              "nutrientId": 1079,
+              "value": 10.6
+            },
+            {
+              "nutrientId": 1093,
+              "value": 36.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 13.4
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.226
+            },
+            {
+              "nutrientId": 1004,
+              "value": 1.57
+            },
+            {
+              "nutrientId": 1005,
+              "value": 74.8
+            },
+            {
+              "nutrientId": 1008,
+              "value": 372
+            }
+          ]
+        },
+        {
+          "fdcId": 169298,
+          "description": "Squash, winter, spaghetti, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1079,
+              "value": 1.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 31.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.117
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.64
+            },
+            {
+              "nutrientId": 1093,
+              "value": 17.0
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.57
+            },
+            {
+              "nutrientId": 1005,
+              "value": 6.91
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.76
+            }
+          ]
+        },
+        {
+          "fdcId": 168085,
+          "description": "OLIVE GARDEN, spaghetti with meat sauce",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1079,
+              "value": 1.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 209
+            },
+            {
+              "nutrientId": 1253,
+              "value": 8.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 1.02
+            },
+            {
+              "nutrientId": 1003,
+              "value": 5.8
+            },
+            {
+              "nutrientId": 1004,
+              "value": 3.28
+            },
+            {
+              "nutrientId": 1005,
+              "value": 17.2
+            },
+            {
+              "nutrientId": 1008,
+              "value": 121
+            },
+            {
+              "nutrientId": 2000,
+              "value": 1.67
+            }
+          ]
+        },
+        {
+          "fdcId": 169852,
+          "description": "OLIVE GARDEN, spaghetti with pomodoro sauce",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.336
+            },
+            {
+              "nutrientId": 1003,
+              "value": 4.26
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 183
+            },
+            {
+              "nutrientId": 1004,
+              "value": 1.85
+            },
+            {
+              "nutrientId": 1005,
+              "value": 17.1
+            },
+            {
+              "nutrientId": 1008,
+              "value": 102
+            },
+            {
+              "nutrientId": 2000,
+              "value": 1.77
+            }
+          ]
+        },
+        {
+          "fdcId": 169029,
+          "description": "Restaurant, family style, spaghetti and meatballs",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 19.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 3.1
+            },
+            {
+              "nutrientId": 1003,
+              "value": 7.84
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.5
+            },
+            {
+              "nutrientId": 1093,
+              "value": 351
+            },
+            {
+              "nutrientId": 1004,
+              "value": 8.52
+            },
+            {
+              "nutrientId": 1005,
+              "value": 15.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 170
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.03
+            }
+          ]
+        },
+        {
+          "fdcId": 167680,
+          "description": "Restaurant, Italian, spaghetti with meat sauce",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 3.59
+            },
+            {
+              "nutrientId": 1005,
+              "value": 16.4
+            },
+            {
+              "nutrientId": 1008,
+              "value": 121
+            },
+            {
+              "nutrientId": 2000,
+              "value": 1.82
+            },
+            {
+              "nutrientId": 1003,
+              "value": 5.79
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.6
+            },
+            {
+              "nutrientId": 1093,
+              "value": 230
+            },
+            {
+              "nutrientId": 1253,
+              "value": 9.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 1.06
+            }
+          ]
+        },
+        {
+          "fdcId": 172089,
+          "description": "Spaghetti with meat sauce, frozen entree",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1008,
+              "value": 90.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 238
+            },
+            {
+              "nutrientId": 1253,
+              "value": 6.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.35
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.8
+            },
+            {
+              "nutrientId": 1003,
+              "value": 5.05
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.6
+            },
+            {
+              "nutrientId": 1004,
+              "value": 1.01
+            },
+            {
+              "nutrientId": 1005,
+              "value": 15.2
+            }
+          ]
+        },
+        {
+          "fdcId": 172099,
+          "description": "Spaghetti, with meatballs in tomato sauce, canned",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 7.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 280
+            },
+            {
+              "nutrientId": 1258,
+              "value": 1.46
+            },
+            {
+              "nutrientId": 1003,
+              "value": 4.37
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.91
+            },
+            {
+              "nutrientId": 1004,
+              "value": 4.11
+            },
+            {
+              "nutrientId": 1005,
+              "value": 11.4
+            },
+            {
+              "nutrientId": 1008,
+              "value": 100
+            }
+          ]
+        }
+      ]
+    },
+    "parmesan": {
+      "foods": [
+        {
+          "fdcId": 171247,
+          "description": "Cheese, parmesan, grated",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 27.8
+            },
+            {
+              "nutrientId": 1005,
+              "value": 13.9
+            },
+            {
+              "nutrientId": 1008,
+              "value": 420
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.07
+            },
+            {
+              "nutrientId": 1003,
+              "value": 28.4
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1800.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 86.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 15.4
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            }
+          ]
+        },
+        {
+          "fdcId": 170848,
+          "description": "Cheese, parmesan, hard",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1093,
+              "value": 1180.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 14.8
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.11
+            },
+            {
+              "nutrientId": 1004,
+              "value": 25.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 68.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 35.8
+            },
+            {
+              "nutrientId": 1005,
+              "value": 3.22
+            },
+            {
+              "nutrientId": 1008,
+              "value": 392
+            }
+          ]
+        },
+        {
+          "fdcId": 173431,
+          "description": "Cheese, parmesan, shredded",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1008,
+              "value": 415
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.9
+            },
+            {
+              "nutrientId": 1003,
+              "value": 37.9
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1700.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 72.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 17.4
+            },
+            {
+              "nutrientId": 1004,
+              "value": 27.3
+            },
+            {
+              "nutrientId": 1005,
+              "value": 3.41
+            }
+          ]
+        },
+        {
+          "fdcId": 167705,
+          "description": "Cheese, parmesan, low sodium",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 0.85
+            },
+            {
+              "nutrientId": 1004,
+              "value": 30.0
+            },
+            {
+              "nutrientId": 1005,
+              "value": 3.7
+            },
+            {
+              "nutrientId": 1008,
+              "value": 451
+            },
+            {
+              "nutrientId": 1003,
+              "value": 41.6
+            },
+            {
+              "nutrientId": 1253,
+              "value": 79.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 19.1
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 63.0
+            }
+          ]
+        },
+        {
+          "fdcId": 172206,
+          "description": "Parmesan cheese topping, fat free",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 1.5
+            },
+            {
+              "nutrientId": 1004,
+              "value": 5.0
+            },
+            {
+              "nutrientId": 1005,
+              "value": 40.0
+            },
+            {
+              "nutrientId": 1008,
+              "value": 370
+            },
+            {
+              "nutrientId": 1003,
+              "value": 40.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1150.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 20.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 3.11
+            }
+          ]
+        },
+        {
+          "fdcId": 170789,
+          "description": "PIZZA HUT, breadstick, parmesan garlic",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 12.2
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.4
+            },
+            {
+              "nutrientId": 1093,
+              "value": 539
+            },
+            {
+              "nutrientId": 1253,
+              "value": 7.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 2.97
+            },
+            {
+              "nutrientId": 1004,
+              "value": 12.9
+            },
+            {
+              "nutrientId": 1005,
+              "value": 44.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 343
+            },
+            {
+              "nutrientId": 2000,
+              "value": 1.11
+            }
+          ]
+        },
+        {
+          "fdcId": 173452,
+          "description": "Cheese, parmesan, dry grated, reduced fat",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1258,
+              "value": 13.3
+            },
+            {
+              "nutrientId": 1005,
+              "value": 1.37
+            },
+            {
+              "nutrientId": 1008,
+              "value": 265
+            },
+            {
+              "nutrientId": 1004,
+              "value": 20.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1530.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 20.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 88.0
+            }
+          ]
+        },
+        {
+          "fdcId": 168062,
+          "description": "Restaurant, Italian, chicken parmesan without pasta",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 16.2
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.9
+            },
+            {
+              "nutrientId": 1093,
+              "value": 536
+            },
+            {
+              "nutrientId": 1253,
+              "value": 54.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 2.55
+            },
+            {
+              "nutrientId": 1004,
+              "value": 10.6
+            },
+            {
+              "nutrientId": 1005,
+              "value": 10.9
+            },
+            {
+              "nutrientId": 1008,
+              "value": 204
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.79
+            }
+          ]
+        },
+        {
+          "fdcId": 167595,
+          "description": "Pepperidge Farm, Goldfish, Baked Snack Crackers, Parmesan",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 17.3
+            },
+            {
+              "nutrientId": 1005,
+              "value": 64.7
+            },
+            {
+              "nutrientId": 1008,
+              "value": 459
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.83
+            },
+            {
+              "nutrientId": 1003,
+              "value": 11.2
+            },
+            {
+              "nutrientId": 1079,
+              "value": 3.5
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1190.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 2.61
+            }
+          ]
+        },
+        {
+          "fdcId": 169857,
+          "description": "CARRABBA'S ITALIAN GRILL, chicken parmesan without cavatappi pasta",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 19.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.9
+            },
+            {
+              "nutrientId": 1093,
+              "value": 467
+            },
+            {
+              "nutrientId": 1253,
+              "value": 67.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 3.52
+            },
+            {
+              "nutrientId": 1004,
+              "value": 11.0
+            },
+            {
+              "nutrientId": 1005,
+              "value": 7.8
+            },
+            {
+              "nutrientId": 1008,
+              "value": 206
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.89
+            }
+          ]
+        }
+      ]
+    },
+    "lemon": {
+      "foods": [
+        {
+          "fdcId": 167802,
+          "description": "Lemon juice from concentrate, bottled, REAL LEMON",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 0.07
+            },
+            {
+              "nutrientId": 1005,
+              "value": 5.66
+            },
+            {
+              "nutrientId": 1008,
+              "value": 17.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 1.59
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.027
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.47
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 26.0
+            }
+          ]
+        },
+        {
+          "fdcId": 167747,
+          "description": "Lemon juice, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.35
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.04
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.3
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 2.52
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.24
+            },
+            {
+              "nutrientId": 1005,
+              "value": 6.9
+            },
+            {
+              "nutrientId": 1008,
+              "value": 22.0
+            }
+          ]
+        },
+        {
+          "fdcId": 167749,
+          "description": "Lemon peel, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 4.17
+            },
+            {
+              "nutrientId": 1008,
+              "value": 47.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.039
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 10.6
+            },
+            {
+              "nutrientId": 1093,
+              "value": 6.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 1.5
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.3
+            },
+            {
+              "nutrientId": 1005,
+              "value": 16.0
+            }
+          ]
+        },
+        {
+          "fdcId": 172827,
+          "description": "Danish pastry, lemon, unenriched",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 18.5
+            },
+            {
+              "nutrientId": 1005,
+              "value": 47.8
+            },
+            {
+              "nutrientId": 1008,
+              "value": 371
+            },
+            {
+              "nutrientId": 1003,
+              "value": 5.4
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.9
+            },
+            {
+              "nutrientId": 1093,
+              "value": 354
+            },
+            {
+              "nutrientId": 1253,
+              "value": 40.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 2.83
+            }
+          ]
+        },
+        {
+          "fdcId": 168573,
+          "description": "Lemon grass (citronella), raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1005,
+              "value": 25.3
+            },
+            {
+              "nutrientId": 1008,
+              "value": 99.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 6.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 1.82
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.119
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.49
+            }
+          ]
+        },
+        {
+          "fdcId": 167746,
+          "description": "Lemons, raw, without peel",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 2.5
+            },
+            {
+              "nutrientId": 1003,
+              "value": 1.1
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.8
+            },
+            {
+              "nutrientId": 1093,
+              "value": 2.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.039
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.3
+            },
+            {
+              "nutrientId": 1005,
+              "value": 9.32
+            },
+            {
+              "nutrientId": 1008,
+              "value": 29.0
+            }
+          ]
+        },
+        {
+          "fdcId": 175064,
+          "description": "Pie, fried pies, lemon",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1079,
+              "value": 2.6
+            },
+            {
+              "nutrientId": 1093,
+              "value": 374
+            },
+            {
+              "nutrientId": 1003,
+              "value": 3.0
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1004,
+              "value": 16.1
+            },
+            {
+              "nutrientId": 1005,
+              "value": 42.6
+            },
+            {
+              "nutrientId": 1008,
+              "value": 316
+            },
+            {
+              "nutrientId": 1258,
+              "value": 2.46
+            }
+          ]
+        },
+        {
+          "fdcId": 167674,
+          "description": "Restaurant, Chinese, lemon chicken",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 13.6
+            },
+            {
+              "nutrientId": 1005,
+              "value": 20.6
+            },
+            {
+              "nutrientId": 1008,
+              "value": 252
+            },
+            {
+              "nutrientId": 2000,
+              "value": 8.18
+            },
+            {
+              "nutrientId": 1258,
+              "value": 2.03
+            },
+            {
+              "nutrientId": 1079,
+              "value": 1.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 252
+            },
+            {
+              "nutrientId": 1003,
+              "value": 11.9
+            },
+            {
+              "nutrientId": 1253,
+              "value": 32.0
+            }
+          ]
+        },
+        {
+          "fdcId": 173231,
+          "description": "Beverages, tea, instant, lemon, diet",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 0.02
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1005,
+              "value": 0.44
+            },
+            {
+              "nutrientId": 1008,
+              "value": 2.0
+            },
+            {
+              "nutrientId": 1093,
+              "value": 6.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 0.01
+            }
+          ]
+        },
+        {
+          "fdcId": 175088,
+          "description": "Beverages, tea, instant, lemon, unsweetened",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.047
+            },
+            {
+              "nutrientId": 1093,
+              "value": 55.0
+            },
+            {
+              "nutrientId": 2000,
+              "value": 4.52
+            },
+            {
+              "nutrientId": 1003,
+              "value": 7.4
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.18
+            },
+            {
+              "nutrientId": 1005,
+              "value": 78.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 345
+            },
+            {
+              "nutrientId": 1079,
+              "value": 5.0
+            }
+          ]
+        }
+      ]
+    },
+    "garlic": {
+      "foods": [
+        {
+          "fdcId": 1104647,
+          "description": "Garlic, raw",
+          "dataType": "Foundation",
+          "foodNutrients": [
+            {
+              "nutrientId": 1079,
+              "value": 2.7
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.38
+            },
+            {
+              "nutrientId": 1003,
+              "value": 6.62
+            },
+            {
+              "nutrientId": 1005,
+              "value": 28.2
+            },
+            {
+              "nutrientId": 1008,
+              "value": 143
+            }
+          ]
+        },
+        {
+          "fdcId": 169230,
+          "description": "Garlic, raw",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1005,
+              "value": 33.1
+            },
+            {
+              "nutrientId": 1008,
+              "value": 149
+            },
+            {
+              "nutrientId": 2000,
+              "value": 1.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 0.089
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.1
+            },
+            {
+              "nutrientId": 1093,
+              "value": 17.0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 6.36
+            },
+            {
+              "nutrientId": 1004,
+              "value": 0.5
+            }
+          ]
+        },
+        {
+          "fdcId": 167939,
+          "description": "Garlic bread, frozen",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1093,
+              "value": 544
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0.0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 5.28
+            },
+            {
+              "nutrientId": 1003,
+              "value": 8.36
+            },
+            {
+              "nutrientId": 1004,
+              "value": 16.6
+            },
+            {
+              "nutrientId": 1005,
+              "value": 41.7
+            },
+            {
+              "nutrientId": 1008,
+              "value": 350
+            },
+            {
+              "nutrientId": 2000,
+              "value": 3.69
+            },
+            {
+              "nutrientId": 1079,
+              "value": 2.5
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "food": {
+    "169230": {
+      "fdcId": 169230,
+      "description": "Garlic, raw",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1.00000000,
+          "modifier": "tsp",
+          "gramWeight": 2.80000000
+        },
+        {
+          "amount": 1.00000000,
+          "modifier": "clove",
+          "gramWeight": 3.00000000
+        },
+        {
+          "amount": 3.00000000,
+          "modifier": "cloves",
+          "gramWeight": 9.00000000
+        },
+        {
+          "amount": 1.00000000,
+          "modifier": "cup",
+          "gramWeight": 136.00000000
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 149.00000000
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 6.36000000
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 0.50000000
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 33.06000000
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 2.10000000
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 1.00000000
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 17.00000000
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0.08900000
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0E-8
+        }
+      ]
+    }
+  }
+}

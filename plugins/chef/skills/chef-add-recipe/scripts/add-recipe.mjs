@@ -3470,7 +3470,7 @@ ${pointer}
 
 // node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS((exports) => {
-  function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
+  function resolveProps(tokens2, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
     let spaceBefore = false;
     let atNewline = startOnNewline;
     let hasSpace = startOnNewline;
@@ -3485,7 +3485,7 @@ var require_resolve_props = __commonJS((exports) => {
     let comma = null;
     let found = null;
     let start = null;
-    for (const token of tokens) {
+    for (const token of tokens2) {
       if (reqSpace) {
         if (token.type !== "space" && token.type !== "newline" && token.type !== "comma")
           onError(token.offset, "MISSING_CHAR", "Tags and anchors must be separated from the next token by white space");
@@ -3575,7 +3575,7 @@ var require_resolve_props = __commonJS((exports) => {
           hasSpace = false;
       }
     }
-    const last = tokens[tokens.length - 1];
+    const last = tokens2[tokens2.length - 1];
     const end = last ? last.offset + last.source.length : offset;
     if (reqSpace && next && next.type !== "space" && next.type !== "newline" && next.type !== "comma" && (next.type !== "scalar" || next.source !== "")) {
       onError(next.offset, "MISSING_CHAR", "Tags and anchors must be separated from the next token by white space");
@@ -4877,8 +4877,8 @@ ${cb}` : comment;
         warnings: this.warnings
       };
     }
-    *compose(tokens, forceDoc = false, endOffset = -1) {
-      for (const token of tokens)
+    *compose(tokens2, forceDoc = false, endOffset = -1) {
+      for (const token of tokens2)
         yield* this.next(token);
       yield* this.end(forceDoc, endOffset);
     }
@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs = this.flowScalar(this.type);
+            const fs2 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs, sep: [] });
+              map.items.push({ start, key: fs2, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs);
+              this.stack.push(fs2);
             } else {
-              Object.assign(it, { key: fs, sep: [] });
+              Object.assign(it, { key: fs2, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs = this.flowScalar(this.type);
+            const fs2 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs, sep: [] });
+              fc.items.push({ start: [], key: fs2, sep: [] });
             else if (it.sep)
-              this.stack.push(fs);
+              this.stack.push(fs2);
             else
-              Object.assign(it, { key: fs, sep: [] });
+              Object.assign(it, { key: fs2, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6946,7 +6946,7 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-add-recipe/scripts/add-recipe.mjs
-import fs6 from "node:fs";
+import fs7 from "node:fs";
 import os3 from "node:os";
 import path8 from "node:path";
 import { parseArgs } from "node:util";
@@ -6956,16 +6956,49 @@ import os2 from "node:os";
 import path2 from "node:path";
 
 // src/runtime/muse.mjs
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
+var AUTHDC = "/opt/hatch/bin/authdc";
+var PROVIDERS = {
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+};
+var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
+function placementOf(text) {
+  const [kind, name] = text.split(":");
+  return { in: kind === "query_param" ? "query" : kind, name };
+}
+function fromConnector(spec, run) {
+  let entry;
+  try {
+    entry = JSON.parse(run(AUTHDC, ["cred", "surrogate", spec.connector])).credentials?.[0];
+  } catch {
+    return { ok: false, reason: "not-connected" };
+  }
+  if (typeof entry?.surrogate !== "string" || !entry.surrogate)
+    return { ok: false, reason: "not-connected" };
+  if (entry.placement !== spec.placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
+  },
+  credential(provider, { env = process.env, exists = fs.existsSync, run = runFile } = {}) {
+    const spec = PROVIDERS[provider];
+    if (!spec)
+      throw new Error(`unknown credential provider: ${provider}`);
+    if (exists(AUTHDC))
+      return fromConnector(spec, run);
+    const value = env[spec.env]?.trim();
+    return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   }
 };
 
@@ -6975,8 +7008,101 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
+// src/lib/fdc.mjs
+var BASE = "https://api.nal.usda.gov/fdc/v1";
+var DATA_TYPE = "SR Legacy";
+var TIMEOUT_MS = 15000;
+var NUTRIENTS = { calories: 1008, protein: 1003, fat: 1004, saturated_fat: 1258, carbs: 1005, fiber: 1079, sugar: 2000, sodium: 1093, cholesterol: 1253 };
+function per100g(foodNutrients = []) {
+  const byId = new Map(foodNutrients.map((n) => [n.nutrientId ?? n.nutrient?.id, n.value ?? n.amount]));
+  const values = {};
+  for (const [field, id] of Object.entries(NUTRIENTS))
+    if (typeof byId.get(id) === "number")
+      values[field] = byId.get(id);
+  return values;
+}
+var toFood = (raw) => ({
+  fdcId: raw.fdcId,
+  description: raw.description,
+  dataType: raw.dataType,
+  per100g: per100g(raw.foodNutrients),
+  portions: (raw.foodPortions ?? []).map(({ amount, modifier, gramWeight }) => ({ amount, modifier, gramWeight }))
+});
+function failure(status) {
+  if (status === 401 || status === 403)
+    return "rejected";
+  if (status === 429)
+    return "rate-limited";
+  return "unreachable";
+}
+var usdaClient = (adapter = muse) => fdcClient({ credential: adapter.credential("usda-fdc") });
+function fdcClient({ credential, fetchImpl = fetch }) {
+  async function get(pathname, params) {
+    if (!credential.ok)
+      return { ok: false, reason: credential.reason };
+    const url = new URL(`${BASE}${pathname}`);
+    for (const [name, value] of Object.entries(params))
+      url.searchParams.set(name, value);
+    if (credential.placement.in !== "query")
+      return { ok: false, reason: "wrong-placement" };
+    url.searchParams.set(credential.placement.name, credential.value);
+    try {
+      const response = await fetchImpl(url.href, { redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
+      if (!response.ok)
+        return { ok: false, reason: failure(response.status) };
+      return { ok: true, body: await response.json() };
+    } catch {
+      return { ok: false, reason: "unreachable" };
+    }
+  }
+  return {
+    unavailable: credential.ok ? null : credential.reason,
+    async search(query, { pageSize = 25 } = {}) {
+      const result = await get("/foods/search", { query, dataType: DATA_TYPE, requireAllWords: "true", pageSize: String(pageSize) });
+      return result.ok ? { ok: true, foods: (result.body.foods ?? []).map(toFood) } : result;
+    },
+    async food(fdcId) {
+      const result = await get(`/food/${Number(fdcId)}`, {});
+      return result.ok ? { ok: true, food: toFood(result.body) } : result;
+    }
+  };
+}
+var STOP = new Set(["and", "or", "with", "without", "in", "of", "from", "the", "a"]);
+var NEUTRAL = new Set(["raw", "fresh", "dry", "whole", "plain", "regular", "grated", "shredded", "ground", "enriched", "unenriched", "mature", "seed"]);
+var singular = (word) => word.replace(/ies$/, "y").replace(/(o|sh|ch|x)es$/, "$1").replace(/([^s])s$/, "$1");
+var tokens = (text) => text.toLowerCase().split(/[^a-z]+/).filter((w) => w && !STOP.has(w)).map(singular);
+var isBrand = (segment) => /\b[A-Z]{3,}\b/.test(segment) || /^restaurant\b/i.test(segment);
+function score(itemTokens, description) {
+  const segments = description.replace(/\([^)]*\)/g, "").split(",").map((s) => s.trim());
+  if (isBrand(segments[0]))
+    return null;
+  const [first, second = []] = segments.slice(0, 2).map(tokens);
+  const head = new Set([...first, ...second]);
+  if (!itemTokens.every((t) => head.has(t)))
+    return null;
+  const extras = [...head].filter((t) => !itemTokens.includes(t) && !NEUTRAL.has(t));
+  if (extras.length === 0)
+    return 0;
+  const categoryOnly = extras.length === 1 && first.includes(extras[0]) && itemTokens.some((t) => second.includes(t));
+  return categoryOnly ? 1 : null;
+}
+function bestMatch(item, foods) {
+  const itemTokens = tokens(item).filter((t) => !NEUTRAL.has(t));
+  if (itemTokens.length === 0)
+    return null;
+  let best = null;
+  for (const food of foods) {
+    if (food.dataType !== DATA_TYPE)
+      continue;
+    const s = score(itemTokens, food.description);
+    if (s !== null && (best === null || s < best.s))
+      best = { s, food };
+  }
+  return best?.food ?? null;
+}
+
 // src/lib/recipes.mjs
-import fs3 from "node:fs";
+import fs4 from "node:fs";
 import path5 from "node:path";
 
 // node_modules/yaml/dist/index.js
@@ -7044,14 +7170,14 @@ ${body}`;
 }
 
 // src/lib/wiki.mjs
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 import path4 from "node:path";
 
 // src/lib/git.mjs
-import { execFileSync } from "node:child_process";
+import { execFileSync as execFileSync2 } from "node:child_process";
 function git(cwd, args, { env } = {}) {
   const options = { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
-  return execFileSync("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
+  return execFileSync2("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
 }
 var FALLBACK_IDENTITY = ["-c", "user.name=chef", "-c", "user.email=chef@example.com"];
 function commit(cwd, message) {
@@ -7063,15 +7189,15 @@ function commit(cwd, message) {
 }
 
 // src/lib/schema.mjs
-import fs from "node:fs";
+import fs2 from "node:fs";
 import path3 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
   const file = path3.join(root, SCHEMA_FILE);
-  if (!fs.existsSync(file))
+  if (!fs2.existsSync(file))
     return null;
-  return JSON.parse(fs.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -7124,7 +7250,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs2.existsSync(path4.join(root, ".git")))
+  if (!fs3.existsSync(path4.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -7135,14 +7261,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs2.existsSync(path4.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs3.existsSync(path4.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
     const abs = path4.join(root, file.path);
-    fs2.mkdirSync(path4.dirname(abs), { recursive: true });
-    fs2.writeFileSync(abs, file.content);
+    fs3.mkdirSync(path4.dirname(abs), { recursive: true });
+    fs3.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -7153,19 +7279,27 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
   const dir = path5.join(root, RECIPES_DIR);
-  const files = fs3.existsSync(dir) ? fs3.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const files = fs4.existsSync(dir) ? fs4.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs3.readFileSync(path5.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs4.readFileSync(path5.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });
     }
   }
   return { recipes, unreadable };
+}
+function ingredientLines(body) {
+  const section = body.split(/^## /m).find((part) => /^ingredients\s*$/im.test(part.split(`
+`)[0]));
+  if (!section)
+    return [];
+  return section.split(`
+`).map((line) => line.match(/^\s*[-*]\s+(.+)$/)?.[1].trim()).filter(Boolean);
 }
 function normalizeUrl(value) {
   try {
@@ -7182,7 +7316,7 @@ function today(date = new Date) {
 }
 
 // src/skills/chef-add-recipe/scripts/lib/add.mjs
-import fs4 from "node:fs";
+import fs5 from "node:fs";
 import path6 from "node:path";
 
 // src/skills/chef-add-recipe/scripts/lib/draft.mjs
@@ -7265,7 +7399,7 @@ function findExisting(root, slug, url) {
 function rawName(root, stem, ext) {
   for (let n = 1;; n += 1) {
     const rel = `${RAW_RECIPES}/${stem}${n === 1 ? "" : `-${n}`}${ext}`;
-    if (!fs4.existsSync(path6.join(root, rel)))
+    if (!fs5.existsSync(path6.join(root, rel)))
       return rel;
   }
 }
@@ -7291,6 +7425,303 @@ function addRecipe(root, { draft, kind, url, source, date, dryRun = false }) {
   if (written.status !== "written")
     return written;
   return { status: "added", data_root: root, slug, title: recipe.title, path: pagePath, raw: written.raw };
+}
+
+// src/lib/dietary-flags.mjs
+var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
+var phrases = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?![a-z])`, "g");
+var free = (...list) => words(...list.map((w) => `${w}-free`));
+var WHEAT = [
+  "wheat",
+  "flour",
+  "bread",
+  "breadcrumb",
+  "panko",
+  "pasta",
+  "spaghetti",
+  "linguine",
+  "fettuccine",
+  "penne",
+  "macaroni",
+  "lasagna",
+  "lasagne",
+  "orzo",
+  "rigatoni",
+  "fusilli",
+  "tagliatelle",
+  "noodle",
+  "udon",
+  "ramen",
+  "couscous",
+  "bulgur",
+  "semolina",
+  "farro",
+  "spelt",
+  "durum",
+  "seitan",
+  "tortilla",
+  "pita",
+  "baguette",
+  "crouton",
+  "cracker",
+  "pastry",
+  "pastries",
+  "phyllo",
+  "filo",
+  "brioche",
+  "bagel",
+  "biscuit",
+  "soy sauce",
+  "teriyaki",
+  "hoisin"
+];
+var NOT_WHEAT = phrases("(?:almond|rice|coconut|chickpea|corn|oat|tapioca|potato|cassava|buckwheat|cauliflower|glass) (?:flour|tortillas?|noodles?|pasta|crackers?)");
+var PLANT = "(?:coconut|almond|oat|soy|rice|cashew|hemp|flax)";
+var TREE_NUT_NAMES = ["almond", "walnut", "pecan", "cashew", "pistachio", "hazelnut", "macadamia", "brazil nut", "pine nut", "pignoli", "chestnut"];
+var RULES = {
+  "contains-dairy": {
+    match: words("milk", "buttermilk", "butter", "cream", "cheese", "parmesan", "parmigiano", "mozzarella", "cheddar", "ricotta", "feta", "gruyere", "pecorino", "mascarpone", "paneer", "halloumi", "brie", "yogurt", "yoghurt", "ghee", "whey", "casein", "kefir", "creme fraiche", "crème fraîche", "half-and-half", "pesto"),
+    except: phrases(`${PLANT} (?:milk|cream|yogurt|yoghurt|butter)`, "(?:peanut|nut|seed|sunflower|apple|cocoa|shea) butter", "butter beans?", "cream of tartar"),
+    free: free("dairy", "milk")
+  },
+  "contains-egg": { match: words("egg", "yolk", "mayonnaise", "mayo", "meringue", "aioli"), except: phrases("vegan (?:mayo|mayonnaise)"), free: free("egg") },
+  "contains-fish": {
+    match: words("fish", "anchovy", "anchovies", "salmon", "tuna", "cod", "halibut", "tilapia", "trout", "sardine", "mackerel", "haddock", "snapper", "sea bass", "swordfish", "bonito", "dashi", "worcestershire", "caesar"),
+    free: free("fish")
+  },
+  "contains-gluten": { match: words(...WHEAT, "barley", "rye", "malt", "oat", "beer"), except: NOT_WHEAT, free: free("gluten") },
+  "contains-peanuts": { match: words("peanut", "groundnut", "satay", "nut"), except: phrases("(?:pine|brazil|tiger) nuts?"), free: free("peanut", "nut") },
+  "contains-sesame": { match: words("sesame", "tahini", "benne", "za'atar", "zaatar", "gomasio", "hummus", "furikake", "halva", "halvah"), free: free("sesame") },
+  "contains-shellfish": {
+    match: words("shellfish", "shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "langoustine", "scampi", "clam", "mussel", "oyster", "scallop", "squid", "calamari", "octopus"),
+    except: phrases("oyster mushrooms?"),
+    free: free("shellfish")
+  },
+  "contains-soy": { match: words("soy", "soya", "soybean", "tofu", "tempeh", "edamame", "miso", "tamari", "shoyu", "teriyaki", "natto", "hoisin"), free: free("soy") },
+  "contains-tree-nuts": { match: words(...TREE_NUT_NAMES, "praline", "marzipan", "frangipane", "nutella", "pesto", "nut"), free: free("tree-nut", "nut") },
+  "contains-wheat": { match: words(...WHEAT), except: NOT_WHEAT, free: free("gluten", "wheat") }
+};
+var DIETARY_FLAGS = Object.keys(RULES).sort();
+function lineHas(rule, line) {
+  if (rule.free.test(line))
+    return false;
+  const text = rule.except ? line.replace(rule.except, " ") : line;
+  return rule.match.test(text);
+}
+function dietaryFlags(lines) {
+  const lower = lines.map((line) => line.toLowerCase());
+  return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
+}
+
+// src/lib/ingredient-line.mjs
+var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
+var UNITS = {
+  g: ["g", "gram", "grams", "gr"],
+  kg: ["kg", "kilogram", "kilograms"],
+  oz: ["oz", "ounce", "ounces"],
+  lb: ["lb", "lbs", "pound", "pounds"],
+  tsp: ["tsp", "teaspoon", "teaspoons"],
+  tbsp: ["tbsp", "tbs", "tablespoon", "tablespoons"],
+  cup: ["cup", "cups", "c"],
+  ml: ["ml", "milliliter", "milliliters", "millilitre", "millilitres"],
+  l: ["l", "liter", "liters", "litre", "litres"],
+  floz: ["fl oz", "fluid ounce", "fluid ounces"],
+  pt: ["pint", "pints", "pt"],
+  qt: ["quart", "quarts", "qt"],
+  clove: ["clove", "cloves"],
+  slice: ["slice", "slices"],
+  can: ["can", "cans"],
+  stick: ["stick", "sticks"],
+  bunch: ["bunch", "bunches"],
+  head: ["head", "heads"],
+  sprig: ["sprig", "sprigs"],
+  piece: ["piece", "pieces"],
+  stalk: ["stalk", "stalks"],
+  leaf: ["leaf", "leaves"],
+  pinch: ["pinch", "pinches"],
+  dash: ["dash", "dashes"]
+};
+var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
+var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
+var GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var ML_PER = { tsp: 4.92892, tbsp: 14.7868, cup: 236.588, ml: 1, l: 1000, floz: 29.5735, pt: 473.176, qt: 946.353 };
+var TRACE = new Set(["pinch", "dash"]);
+var SIZES = ["small", "medium", "large"];
+var PREP = /\b(?:finely|roughly|thinly|freshly|fresh|chopped|diced|minced|sliced|grated|peeled|drained|rinsed|large|medium|small)\b/g;
+var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
+var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+function toNumber(text) {
+  return text.trim().split(/\s+/).reduce((sum, part) => {
+    const [n, d] = part.split("/").map(Number);
+    return sum + (d ? n / d : n);
+  }, 0);
+}
+var round2 = (n) => Math.round(n * 100) / 100;
+var unitOf = (text) => text ? UNIT_OF.get(text.toLowerCase().replace(/\s+/g, " ")) ?? null : null;
+function parseIngredientLine(line) {
+  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  const toTaste = /\bto taste\b/i.test(text);
+  text = text.replace(/\bto taste\b/i, "").trim();
+  const lead = text.match(LEAD);
+  const amount = lead ? toNumber(lead[1]) : null;
+  const packageUnit = lead && unitOf(lead[3]);
+  const packageGrams = packageUnit && GRAMS_PER[packageUnit] ? round2(toNumber(lead[2]) * GRAMS_PER[packageUnit]) : null;
+  const unit = lead ? unitOf(lead[4]) : null;
+  const rest = lead ? text.slice(lead[0].length) : text;
+  const lower = rest.toLowerCase();
+  const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
+  const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
+}
+
+// src/skills/chef-add-recipe/scripts/lib/nutrition.mjs
+var MG = new Set(["sodium", "cholesterol"]);
+var round = (field, value) => field === "calories" || MG.has(field) ? Math.round(value) : Math.round(value * 10) / 10;
+
+class Stop extends Error {
+}
+var unwrap = (result) => {
+  if (!result.ok)
+    throw new Stop(result.reason);
+  return result;
+};
+var portionWord = (portion) => portion.modifier.toLowerCase().split(/[^a-z]+/)[0].replace(/s$/, "");
+function gramsFromPortions(parsed, food) {
+  const { amount, unit, size } = parsed;
+  const portions = food.portions.filter((p) => p.amount > 0 && p.gramWeight > 0);
+  if (unit && ML_PER[unit]) {
+    const volume = portions.find((p) => portionWord(p) === unit) ?? portions.find((p) => ML_PER[portionWord(p)]);
+    return volume ? amount * ML_PER[unit] * volume.gramWeight / (volume.amount * ML_PER[portionWord(volume)]) : null;
+  }
+  const wanted = unit ? [unit] : [size ?? "medium"];
+  const count = portions.find((p) => wanted.includes(portionWord(p)));
+  return count ? amount * count.gramWeight / count.amount : null;
+}
+async function ingredient(line, lookup) {
+  const parsed = parseIngredientLine(line);
+  if (parsed.trace)
+    return { grams: 0 };
+  if (parsed.amount === null)
+    return { missing: `${line}: no amount` };
+  const food = await lookup.match(parsed.item);
+  if (!food)
+    return { missing: `${line}: no matching USDA food` };
+  let grams = parsed.packageGrams ? parsed.amount * parsed.packageGrams : GRAMS_PER[parsed.unit] && parsed.amount * GRAMS_PER[parsed.unit];
+  if (!grams)
+    grams = gramsFromPortions(parsed, await lookup.detail(food.fdcId));
+  if (!grams)
+    return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? "medium"}" portion for ${food.description}` };
+  const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
+  if (absent.length)
+    return { missing: `${line}: USDA has no ${absent.join(", ")} value for ${food.description}` };
+  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${Math.round(grams * 10) / 10} g` };
+}
+function memoLookup(fdc) {
+  const matches = new Map;
+  const details = new Map;
+  return {
+    async match(item) {
+      if (!matches.has(item))
+        matches.set(item, bestMatch(item, unwrap(await fdc.search(item)).foods));
+      return matches.get(item);
+    },
+    async detail(fdcId) {
+      if (!details.has(fdcId))
+        details.set(fdcId, unwrap(await fdc.food(fdcId)).food);
+      return details.get(fdcId);
+    }
+  };
+}
+async function computeNutrition({ lines, servings, fdc }) {
+  if (fdc.unavailable)
+    return { status: "not-computed", reason: fdc.unavailable };
+  if (!Number.isInteger(servings) || servings < 1)
+    return { status: "incomplete", missing: ["servings: the recipe does not say how many it serves"], sources: [] };
+  const lookup = memoLookup(fdc);
+  const totals = Object.fromEntries(Object.keys(NUTRIENTS).map((field) => [field, 0]));
+  const missing = [];
+  const sources = [];
+  try {
+    for (const line of lines) {
+      const result = await ingredient(line, lookup);
+      if (result.missing)
+        missing.push(result.missing);
+      if (!result.food)
+        continue;
+      sources.push(result.source);
+      for (const field of Object.keys(totals))
+        totals[field] += result.food.per100g[field] * result.grams / 100;
+    }
+  } catch (error) {
+    if (error instanceof Stop)
+      return { status: "not-computed", reason: error.message };
+    throw error;
+  }
+  if (missing.length)
+    return { status: "incomplete", missing, sources };
+  const per_serving = Object.fromEntries(Object.entries(totals).map(([field, total]) => [field, round(field, total / servings)]));
+  return { status: "complete", per_serving, sources };
+}
+
+// src/skills/chef-add-recipe/scripts/lib/enrich.mjs
+var NUTRITION_FIELDS = ["nutrition_status", "nutrition_per_serving", "nutrition_missing", "nutrition_sources"];
+var HINTS = {
+  "not-connected": "Nutrition not computed: Chef has no USDA FoodData Central connection. Run chef-setup to connect one.",
+  "wrong-placement": "Nutrition not computed: the USDA connector is set up differently than Chef expects. Run chef-setup to reconnect it.",
+  rejected: "Nutrition not computed: USDA rejected the key. Run chef-setup to reconnect the USDA connector.",
+  "rate-limited": "Nutrition not computed: USDA is limiting requests right now. Re-enrich later.",
+  unreachable: "Nutrition not computed: USDA FoodData Central could not be reached. Re-enrich later."
+};
+var needsEnrichment = (fm) => !Array.isArray(fm.dietary_flags) || fm.nutrition_status !== "complete";
+function nutritionFields(nutrition, previous) {
+  const kept = previous.nutrition_status === "complete" || previous.nutrition_status === "incomplete";
+  if (nutrition.status === "not-computed" && kept)
+    return Object.fromEntries(NUTRITION_FIELDS.filter((f) => (f in previous)).map((f) => [f, previous[f]]));
+  const fields = { nutrition_status: nutrition.status };
+  if (nutrition.per_serving)
+    fields.nutrition_per_serving = nutrition.per_serving;
+  if (nutrition.missing)
+    fields.nutrition_missing = nutrition.missing;
+  if (nutrition.sources?.length)
+    fields.nutrition_sources = nutrition.sources;
+  return fields;
+}
+async function enrichOne(recipe, fdc) {
+  const fm = recipe.frontmatter;
+  const lines = ingredientLines(recipe.body);
+  const previousFlags = Array.isArray(fm.dietary_flags) ? fm.dietary_flags : [];
+  const flags = [...new Set([...previousFlags, ...dietaryFlags(lines)])].sort();
+  const nutrition = await computeNutrition({ lines, servings: fm.servings, fdc });
+  const rest = Object.fromEntries(Object.entries(fm).filter(([key]) => key !== "dietary_flags" && !NUTRITION_FIELDS.includes(key)));
+  const frontmatter = { ...rest, dietary_flags: flags, ...nutritionFields(nutrition, fm) };
+  const report = { slug: recipe.slug, dietary_flags: flags, nutrition: nutrition.status };
+  if (nutrition.missing)
+    report.missing = nutrition.missing;
+  if (nutrition.reason)
+    report.reason = nutrition.reason;
+  const changed = JSON.stringify(frontmatter) !== JSON.stringify(fm);
+  return { report, reason: nutrition.reason, page: changed && { slug: recipe.slug, frontmatter, body: recipe.body } };
+}
+async function enrichRecipes(root, { slugs = [], unenriched = false, fdc, date }) {
+  const { recipes } = listRecipes(root);
+  const unknown = slugs.filter((slug) => !recipes.some((r) => r.slug === slug));
+  if (unknown.length)
+    return { status: "not-found", data_root: root, slugs: unknown };
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const chosen = recipes.filter((r) => slugs.includes(r.slug) || unenriched && needsEnrichment(r.frontmatter));
+  const results = [];
+  for (const recipe of chosen)
+    results.push(await enrichOne(recipe, fdc));
+  const pages = results.filter((r) => r.page).map((r) => ({ ...r.page, frontmatter: { ...r.page.frontmatter, updated: date } }));
+  const reason = results.find((r) => r.reason)?.reason;
+  const summary = { data_root: root, recipes: results.map((r) => r.report), ...reason && { hint: HINTS[reason] } };
+  if (!pages.length)
+    return { status: "unchanged", ...summary };
+  const message = pages.length === 1 ? `chef-add-recipe: enrich ${pages[0].slug}` : `chef-add-recipe: enrich ${pages.length} recipes`;
+  const written = writeWiki(root, { pages, message });
+  return written.status === "written" ? { status: "enriched", ...summary } : written;
 }
 
 // src/skills/chef-add-recipe/scripts/lib/fetch-page.mjs
@@ -7494,7 +7925,7 @@ function htmlToText(html) {
 }
 
 // src/skills/chef-add-recipe/scripts/lib/source-file.mjs
-import fs5 from "node:fs";
+import fs6 from "node:fs";
 import path7 from "node:path";
 var SOURCE_TYPES = {
   text: [".txt", ".md"],
@@ -7506,11 +7937,11 @@ function readSource(file, kind) {
   const ext = path7.extname(file ?? "").toLowerCase();
   if (!SOURCE_TYPES[kind]?.includes(ext))
     return { problem: `--source for kind ${kind} must be one of ${SOURCE_TYPES[kind]?.join(" ") ?? "(none)"}` };
-  if (!fs5.existsSync(file) || !fs5.statSync(file).isFile())
+  if (!fs6.existsSync(file) || !fs6.statSync(file).isFile())
     return { problem: `--source ${file} is not a file` };
-  if (fs5.statSync(file).size > MAX_BYTES)
+  if (fs6.statSync(file).size > MAX_BYTES)
     return { problem: `--source ${file} is larger than 20 MB` };
-  return { source: { ext: ext === ".htm" ? ".html" : ext, content: fs5.readFileSync(file) } };
+  return { source: { ext: ext === ".htm" ? ".html" : ext, content: fs6.readFileSync(file) } };
 }
 
 // src/skills/chef-add-recipe/scripts/add-recipe.mjs
@@ -7522,7 +7953,9 @@ var { values, positionals } = parseArgs({
     draft: { type: "string" },
     kind: { type: "string" },
     source: { type: "string" },
-    "dry-run": { type: "boolean" }
+    "dry-run": { type: "boolean" },
+    slug: { type: "string", multiple: true },
+    unenriched: { type: "boolean" }
   },
   allowPositionals: true
 });
@@ -7536,8 +7969,8 @@ async function loadPage(url) {
   return problem ? { ok: false, reason: problem } : { ok: true, html: source.content.toString("utf8") };
 }
 function needsDraft(url, html, problems) {
-  const pageFile = path8.join(fs6.mkdtempSync(path8.join(os3.tmpdir(), "chef-page-")), "page.html");
-  fs6.writeFileSync(pageFile, html);
+  const pageFile = path8.join(fs7.mkdtempSync(path8.join(os3.tmpdir(), "chef-page-")), "page.html");
+  fs7.writeFileSync(pageFile, html);
   const text = htmlToText(html);
   return { status: "needs-draft", data_root: root, url, page_file: pageFile, problems, page_text: text.slice(0, PAGE_TEXT_LIMIT), page_text_truncated: text.length > PAGE_TEXT_LIMIT };
 }
@@ -7567,13 +8000,25 @@ function fromDraft() {
     return invalid(problem);
   let draft;
   try {
-    draft = JSON.parse(fs6.readFileSync(values.draft ?? "", "utf8"));
+    draft = JSON.parse(fs7.readFileSync(values.draft ?? "", "utf8"));
   } catch (error) {
     return invalid(`--draft must be a readable JSON file: ${error.message}`);
   }
   return addRecipe(root, { draft, kind, url: values.url, source, date: today(), dryRun: values["dry-run"] });
 }
-var MODES = { url: fromUrl, draft: fromDraft };
+function enrich() {
+  if (!values.slug?.length && !values.unenriched)
+    return invalid("give --slug <slug> (repeatable) or --unenriched");
+  return enrichRecipes(root, { slugs: values.slug, unenriched: values.unenriched, fdc: usdaClient(), date: today() });
+}
+async function enrichAdded(result) {
+  if (result.status !== "added")
+    return result;
+  const enriched = await enrichRecipes(root, { slugs: [result.slug], fdc: usdaClient(), date: today() });
+  const { recipes, hint, reason, status } = enriched;
+  return { ...result, enrichment: recipes?.[0] ?? { status, reason }, ...hint && { hint } };
+}
+var MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich };
 var mode = positionals[0];
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);
@@ -7581,5 +8026,5 @@ if (!Object.hasOwn(MODES, mode)) {
 }
 var result = await MODES[mode]();
 console.log(JSON.stringify(result));
-if (["refused", "invalid-input", "fetch-failed"].includes(result.status))
+if (["refused", "invalid-input", "fetch-failed", "not-found"].includes(result.status))
   process.exitCode = 2;

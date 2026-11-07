@@ -10,16 +10,49 @@ import os2 from "node:os";
 import path2 from "node:path";
 
 // src/runtime/muse.mjs
+import { execFileSync } from "node:child_process";
+import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
+var AUTHDC = "/opt/hatch/bin/authdc";
+var PROVIDERS = {
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+};
+var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
+function placementOf(text) {
+  const [kind, name] = text.split(":");
+  return { in: kind === "query_param" ? "query" : kind, name };
+}
+function fromConnector(spec, run) {
+  let entry;
+  try {
+    entry = JSON.parse(run(AUTHDC, ["cred", "surrogate", spec.connector])).credentials?.[0];
+  } catch {
+    return { ok: false, reason: "not-connected" };
+  }
+  if (typeof entry?.surrogate !== "string" || !entry.surrogate)
+    return { ok: false, reason: "not-connected" };
+  if (entry.placement !== spec.placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
+  },
+  credential(provider, { env = process.env, exists = fs.existsSync, run = runFile } = {}) {
+    const spec = PROVIDERS[provider];
+    if (!spec)
+      throw new Error(`unknown credential provider: ${provider}`);
+    if (exists(AUTHDC))
+      return fromConnector(spec, run);
+    const value = env[spec.env]?.trim();
+    return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   }
 };
 
@@ -29,16 +62,78 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
+// src/lib/fdc.mjs
+var BASE = "https://api.nal.usda.gov/fdc/v1";
+var DATA_TYPE = "SR Legacy";
+var TIMEOUT_MS = 15000;
+var NUTRIENTS = { calories: 1008, protein: 1003, fat: 1004, saturated_fat: 1258, carbs: 1005, fiber: 1079, sugar: 2000, sodium: 1093, cholesterol: 1253 };
+function per100g(foodNutrients = []) {
+  const byId = new Map(foodNutrients.map((n) => [n.nutrientId ?? n.nutrient?.id, n.value ?? n.amount]));
+  const values = {};
+  for (const [field, id] of Object.entries(NUTRIENTS))
+    if (typeof byId.get(id) === "number")
+      values[field] = byId.get(id);
+  return values;
+}
+var toFood = (raw) => ({
+  fdcId: raw.fdcId,
+  description: raw.description,
+  dataType: raw.dataType,
+  per100g: per100g(raw.foodNutrients),
+  portions: (raw.foodPortions ?? []).map(({ amount, modifier, gramWeight }) => ({ amount, modifier, gramWeight }))
+});
+function failure(status) {
+  if (status === 401 || status === 403)
+    return "rejected";
+  if (status === 429)
+    return "rate-limited";
+  return "unreachable";
+}
+var usdaClient = (adapter = muse) => fdcClient({ credential: adapter.credential("usda-fdc") });
+function fdcClient({ credential, fetchImpl = fetch }) {
+  async function get(pathname, params) {
+    if (!credential.ok)
+      return { ok: false, reason: credential.reason };
+    const url = new URL(`${BASE}${pathname}`);
+    for (const [name, value] of Object.entries(params))
+      url.searchParams.set(name, value);
+    if (credential.placement.in !== "query")
+      return { ok: false, reason: "wrong-placement" };
+    url.searchParams.set(credential.placement.name, credential.value);
+    try {
+      const response = await fetchImpl(url.href, { redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
+      if (!response.ok)
+        return { ok: false, reason: failure(response.status) };
+      return { ok: true, body: await response.json() };
+    } catch {
+      return { ok: false, reason: "unreachable" };
+    }
+  }
+  return {
+    unavailable: credential.ok ? null : credential.reason,
+    async search(query, { pageSize = 25 } = {}) {
+      const result = await get("/foods/search", { query, dataType: DATA_TYPE, requireAllWords: "true", pageSize: String(pageSize) });
+      return result.ok ? { ok: true, foods: (result.body.foods ?? []).map(toFood) } : result;
+    },
+    async food(fdcId) {
+      const result = await get(`/food/${Number(fdcId)}`, {});
+      return result.ok ? { ok: true, food: toFood(result.body) } : result;
+    }
+  };
+}
+var STOP = new Set(["and", "or", "with", "without", "in", "of", "from", "the", "a"]);
+var NEUTRAL = new Set(["raw", "fresh", "dry", "whole", "plain", "regular", "grated", "shredded", "ground", "enriched", "unenriched", "mature", "seed"]);
+
 // src/lib/schema.mjs
-import fs from "node:fs";
+import fs2 from "node:fs";
 import path3 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
   const file = path3.join(root, SCHEMA_FILE);
-  if (!fs.existsSync(file))
+  if (!fs2.existsSync(file))
     return null;
-  return JSON.parse(fs.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -66,7 +161,7 @@ function schemaWriteBlocker(root) {
 }
 
 // src/lib/settings.mjs
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 1;
@@ -119,9 +214,9 @@ function classify(stored) {
 function readSettings(root, { locale } = {}) {
   const defaults = defaultSettings({ locale });
   const file = path4.join(root, SETTINGS_FILE);
-  if (!fs2.existsSync(file))
+  if (!fs3.existsSync(file))
     return { status: "missing", settings: defaults };
-  const content = fs2.readFileSync(file, "utf8");
+  const content = fs3.readFileSync(file, "utf8");
   const stored = parse(content);
   const { status, reason } = classify(stored);
   if (status !== "ok")
@@ -131,14 +226,14 @@ function readSettings(root, { locale } = {}) {
 }
 
 // src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
-import fs3 from "node:fs";
+import fs4 from "node:fs";
 import path5 from "node:path";
 
 // src/lib/git.mjs
-import { execFileSync } from "node:child_process";
+import { execFileSync as execFileSync2 } from "node:child_process";
 function git(cwd, args, { env } = {}) {
   const options = { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
-  return execFileSync("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
+  return execFileSync2("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
 }
 var FALLBACK_IDENTITY = ["-c", "user.name=chef", "-c", "user.email=chef@example.com"];
 function commit(cwd, message) {
@@ -162,13 +257,13 @@ function sourceProblem(source) {
     return null;
   if (/^[a-z][\w+.-]*::?/i.test(source) && !path5.isAbsolute(source))
     return `unsupported source "${source}": use an https or ssh git URL, or a local folder`;
-  return fs3.existsSync(source) && fs3.statSync(source).isDirectory() ? null : `no folder at ${source}`;
+  return fs4.existsSync(source) && fs4.statSync(source).isDirectory() ? null : `no folder at ${source}`;
 }
 var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path5.resolve(source);
 function targetProblem(root) {
   if (readSchemaVersion(root) !== null)
     return "there is already a Chef data root here; nothing was changed";
-  if (fs3.existsSync(root) && fs3.readdirSync(root).length > 0)
+  if (fs4.existsSync(root) && fs4.readdirSync(root).length > 0)
     return "directory is not empty and is not a Chef data root";
   return null;
 }
@@ -206,8 +301,8 @@ function adoptDataRoot(root, source) {
   const badTarget = targetProblem(root);
   if (badTarget)
     return { status: "refused", data_root: root, reason: badTarget };
-  fs3.mkdirSync(path5.dirname(root), { recursive: true });
-  const staging = fs3.mkdtempSync(path5.join(path5.dirname(root), `.${path5.basename(root)}.adopt-`));
+  fs4.mkdirSync(path5.dirname(root), { recursive: true });
+  const staging = fs4.mkdtempSync(path5.join(path5.dirname(root), `.${path5.basename(root)}.adopt-`));
   const clone = path5.join(staging, "data-root");
   try {
     const cloneFailed = cloneInto(clone, source);
@@ -217,30 +312,38 @@ function adoptDataRoot(root, source) {
     if (blocked)
       return { status: "refused", data_root: root, ...blocked };
     const removed_remotes = removeRemotes(clone);
-    if (fs3.existsSync(root))
-      fs3.rmdirSync(root);
-    fs3.renameSync(clone, root);
+    if (fs4.existsSync(root))
+      fs4.rmdirSync(root);
+    fs4.renameSync(clone, root);
     return { status: "adopted", data_root: root, schema_version: readSchemaVersion(root), removed_remotes };
   } finally {
-    fs3.rmSync(staging, { recursive: true, force: true });
+    fs4.rmSync(staging, { recursive: true, force: true });
   }
 }
 
+// src/skills/chef-setup/scripts/lib/check-usda.mjs
+async function checkUsda(fdc) {
+  const result = await fdc.search("apple", { pageSize: 1 });
+  if (!result.ok)
+    return { status: "not-connected", reason: result.reason };
+  return { status: "connected", food: result.foods[0]?.description ?? null };
+}
+
 // src/skills/chef-setup/scripts/lib/init-data-root.mjs
-import fs4 from "node:fs";
+import fs5 from "node:fs";
 import path6 from "node:path";
-var writeJson = (file, value) => fs4.writeFileSync(file, `${JSON.stringify(value)}
+var writeJson = (file, value) => fs5.writeFileSync(file, `${JSON.stringify(value)}
 `);
 function initDataRoot(root) {
   const existing = readSchemaVersion(root);
   if (existing !== null)
     return { status: "exists", data_root: root, schema_version: existing };
-  if (fs4.existsSync(root) && fs4.readdirSync(root).length > 0) {
+  if (fs5.existsSync(root) && fs5.readdirSync(root).length > 0) {
     return { status: "refused", data_root: root, reason: "directory is not empty and is not a Chef data root" };
   }
-  fs4.mkdirSync(root, { recursive: true });
+  fs5.mkdirSync(root, { recursive: true });
   git(root, ["init", "-q", "-b", "main"]);
-  fs4.writeFileSync(path6.join(root, ".gitignore"), `${SETTINGS_FILE}
+  fs5.writeFileSync(path6.join(root, ".gitignore"), `${SETTINGS_FILE}
 `);
   writeJson(path6.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
   writeJson(path6.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
@@ -265,11 +368,11 @@ function changesFromFlags(values) {
 }
 
 // src/skills/chef-setup/scripts/lib/verify-install.mjs
-import fs6 from "node:fs";
+import fs7 from "node:fs";
 
 // src/lib/smoke.mjs
 import { spawnSync } from "node:child_process";
-import fs5 from "node:fs";
+import fs6 from "node:fs";
 import os3 from "node:os";
 import path7 from "node:path";
 var SMOKE_FILE = "smoke.json";
@@ -282,10 +385,10 @@ function parseStatus(stdout) {
   }
 }
 function runCase(skillDir, testCase, fixture) {
-  const tmp = fs5.mkdtempSync(path7.join(os3.tmpdir(), "chef-smoke-"));
+  const tmp = fs6.mkdtempSync(path7.join(os3.tmpdir(), "chef-smoke-"));
   const dataRoot = path7.join(tmp, "data-root");
   try {
-    fs5.cpSync(fixture, dataRoot, { recursive: true });
+    fs6.cpSync(fixture, dataRoot, { recursive: true });
     const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
     const run = spawnSync(process.execPath, [path7.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000 });
     const status = parseStatus(run.stdout);
@@ -295,20 +398,20 @@ function runCase(skillDir, testCase, fixture) {
       return `status "${status}", expected "${testCase.expect.status}"`;
     return null;
   } finally {
-    fs5.rmSync(tmp, { recursive: true, force: true });
+    fs6.rmSync(tmp, { recursive: true, force: true });
   }
 }
 function uncovered(skillDir, cases) {
   const scripts = path7.join(skillDir, "scripts");
-  if (!fs5.existsSync(scripts))
+  if (!fs6.existsSync(scripts))
     return [];
   const covered = new Set(cases.map((c) => path7.normalize(c.script)));
-  return fs5.readdirSync(scripts).filter(isEntry).sort().map((f) => path7.join("scripts", f)).filter((f) => !covered.has(f));
+  return fs6.readdirSync(scripts).filter(isEntry).sort().map((f) => path7.join("scripts", f)).filter((f) => !covered.has(f));
 }
 function smokeSkill(skillsDir, skill, fixture) {
   const skillDir = path7.join(skillsDir, skill);
   const file = path7.join(skillDir, SMOKE_FILE);
-  const cases = fs5.existsSync(file) ? JSON.parse(fs5.readFileSync(file, "utf8")) : [];
+  const cases = fs6.existsSync(file) ? JSON.parse(fs6.readFileSync(file, "utf8")) : [];
   const gaps = uncovered(skillDir, cases).map((script) => ({ skill, id: "coverage", ok: false, detail: `no smoke case for ${script}` }));
   const results = cases.map((testCase) => {
     const problem = runCase(skillDir, testCase, fixture);
@@ -317,7 +420,7 @@ function smokeSkill(skillsDir, skill, fixture) {
   return [...gaps, ...results];
 }
 function runSmoke({ skillsDir, fixture }) {
-  const skills = fs5.readdirSync(skillsDir).filter((name) => fs5.statSync(path7.join(skillsDir, name)).isDirectory()).sort();
+  const skills = fs6.readdirSync(skillsDir).filter((name) => fs6.statSync(path7.join(skillsDir, name)).isDirectory()).sort();
   return skills.flatMap((skill) => smokeSkill(skillsDir, skill, fixture));
 }
 
@@ -329,10 +432,10 @@ function nodeCheck(version) {
   return result("node", major >= MIN_NODE ? null : `Node ${version} is too old; Chef needs Node ${MIN_NODE} or later`, version);
 }
 function dataRootCheck(root) {
-  if (!fs6.existsSync(root))
+  if (!fs7.existsSync(root))
     return result("data-root", `no data root at ${root}; run chef-setup init`);
   try {
-    fs6.accessSync(root, fs6.constants.W_OK);
+    fs7.accessSync(root, fs7.constants.W_OK);
     return result("data-root", null, `${root} is writable`);
   } catch {
     return result("data-root", `${root} is not writable`);
@@ -346,12 +449,12 @@ function verifyInstall(root, { skillsDir, fixture, nodeVersion = process.version
 }
 
 // src/skills/chef-setup/scripts/lib/write-settings.mjs
-import fs7 from "node:fs";
+import fs8 from "node:fs";
 import path8 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs7.existsSync(path8.join(root, ".git")))
+  if (!fs8.existsSync(path8.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -362,13 +465,13 @@ function isTracked(root) {
 }
 function ensureIgnored(root) {
   const file = path8.join(root, ".gitignore");
-  const content = fs7.existsSync(file) ? fs7.readFileSync(file, "utf8") : "";
+  const content = fs8.existsSync(file) ? fs8.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line) => IGNORE_LINES.has(line.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs7.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs8.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -404,7 +507,7 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs7.writeFileSync(path8.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs8.writeFileSync(path8.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
@@ -434,14 +537,15 @@ var MODES = {
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
-  verify: (root) => verifyInstall(root, { skillsDir: path9.dirname(skillDir), fixture: path9.join(skillDir, "fixture", "data-root") })
+  verify: (root) => verifyInstall(root, { skillsDir: path9.dirname(skillDir), fixture: path9.join(skillDir, "fixture", "data-root") }),
+  usda: () => checkUsda(usdaClient())
 };
 var mode = positionals[0] ?? "init";
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);
   process.exit(64);
 }
-var result2 = MODES[mode](resolveDataRoot({ flag: values["data-root"] }));
+var result2 = await MODES[mode](resolveDataRoot({ flag: values["data-root"] }));
 console.log(JSON.stringify(result2));
 if (result2.status === "refused" || result2.status === "invalid-input")
   process.exitCode = 2;
