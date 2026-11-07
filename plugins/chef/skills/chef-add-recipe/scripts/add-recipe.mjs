@@ -7270,8 +7270,31 @@ function addRecipe(root, { draft, kind, url, source, date, dryRun = false }) {
   return { status: "added", data_root: root, slug, title: recipe.title, path: pagePath, raw: written.raw };
 }
 
+// src/skills/chef-add-recipe/scripts/lib/public-address.mjs
+import { lookup } from "node:dns/promises";
+import { BlockList, isIP } from "node:net";
+var blocked = new BlockList;
+for (const [net, bits] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 3]]) {
+  blocked.addSubnet(net, bits, "ipv4");
+}
+for (const [net, bits] of [["::", 127], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8]]) {
+  blocked.addSubnet(net, bits, "ipv6");
+}
+function isPublicIp(ip) {
+  const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i)?.[1];
+  if (mapped)
+    return isPublicIp(mapped);
+  return !blocked.check(ip, isIP(ip) === 6 ? "ipv6" : "ipv4");
+}
+async function isPublicHost(hostname) {
+  const host = hostname.replace(/^\[|\]$/g, "");
+  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
+  return addresses.length > 0 && addresses.every(({ address }) => isPublicIp(address));
+}
+
 // src/skills/chef-add-recipe/scripts/lib/fetch-page.mjs
 var MAX_PAGE_BYTES = 5 * 1024 * 1024;
+var MAX_REDIRECTS = 5;
 function httpUrl(value) {
   try {
     const url = new URL(value);
@@ -7291,12 +7314,30 @@ async function readCapped(response, maxBytes) {
   }
   return Buffer.concat(chunks).toString("utf8");
 }
-async function fetchPage(value, { maxBytes = MAX_PAGE_BYTES, timeoutMs = 20000 } = {}) {
+async function follow(start, { publicOnly, signal }) {
+  let url = start;
+  for (let hop = 0;hop <= MAX_REDIRECTS; hop += 1) {
+    if (publicOnly && !await isPublicHost(url.hostname))
+      return { reason: `${url.hostname} is not a public internet address` };
+    const response = await fetch(url, { redirect: "manual", signal, headers: { accept: "text/html" } });
+    const location = response.headers.get("location");
+    if (response.status < 300 || response.status >= 400 || !location)
+      return { response };
+    await response.body?.cancel();
+    url = httpUrl(new URL(location, url).href);
+    if (!url)
+      return { reason: "redirected to an address that is not http or https" };
+  }
+  return { reason: `more than ${MAX_REDIRECTS} redirects` };
+}
+async function fetchPage(value, { maxBytes = MAX_PAGE_BYTES, timeoutMs = 20000, publicOnly = true } = {}) {
   const url = httpUrl(value);
   if (!url)
     return { ok: false, reason: "only http and https addresses can be fetched" };
   try {
-    const response = await fetch(url, { redirect: "follow", signal: AbortSignal.timeout(timeoutMs), headers: { accept: "text/html" } });
+    const { response, reason } = await follow(url, { publicOnly, signal: AbortSignal.timeout(timeoutMs) });
+    if (!response)
+      return { ok: false, reason };
     if (!response.ok)
       return { ok: false, reason: `HTTP ${response.status}` };
     if (!/html/i.test(response.headers.get("content-type") ?? ""))
