@@ -34,11 +34,29 @@ function fromConnector(spec, run) {
   return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: 'connector' };
 }
 
+const pluginManifest = (repository) => path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json');
+
+function findPluginRepository(skillDir) {
+  for (let candidate = path.resolve(skillDir); candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
+    if (fs.existsSync(pluginManifest(candidate))) return candidate;
+  }
+  return null;
+}
+
+function findWorkspaceRepository(skillsDir) {
+  const workspace = path.dirname(skillsDir);
+  const matches = fs.readdirSync(workspace, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name))))
+    .map((entry) => path.join(workspace, entry.name));
+  if (matches.length !== 1) throw new Error(`expected one Chef repository in ${workspace}; found ${matches.length}`);
+  return matches[0];
+}
+
 function updateInstall({ skillDir, repository }) {
   const skillsDir = path.dirname(skillDir);
   const customSkills = path.basename(skillsDir) === 'custom-skills';
   return {
-    repository,
+    repository: repository ?? (customSkills ? findWorkspaceRepository(skillsDir) : findPluginRepository(skillDir)),
     skillsDir,
     installedName: path.basename(skillDir),
     nameForSkill: customSkills ? 'underscores' : 'hyphens',

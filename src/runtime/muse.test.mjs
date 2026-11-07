@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -9,10 +10,12 @@ test('Muse data root default is ~/workspace/chef', () => {
 });
 
 test('update locations come from the adapter for Muse custom skills', () => {
-  const workspace = path.join(os.tmpdir(), 'chef-runtime-workspace');
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-runtime-workspace-'));
   const skillDir = path.join(workspace, 'custom-skills', 'chef_setup');
   const repository = path.join(workspace, 'chef-source');
-  assert.deepEqual(muse.updateInstall({ skillDir, repository }), {
+  fs.mkdirSync(path.join(repository, 'plugins', 'chef', '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), '{"name":"chef"}');
+  assert.deepEqual(muse.updateInstall({ skillDir }), {
     repository,
     skillsDir: path.join(workspace, 'custom-skills'),
     installedName: 'chef_setup',
@@ -21,9 +24,11 @@ test('update locations come from the adapter for Muse custom skills', () => {
 });
 
 test('update locations come from the adapter for Claude Code and Muse Code plugins', () => {
-  const repository = path.join(os.tmpdir(), 'chef-plugin-cache');
+  const repository = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-plugin-cache-'));
   const skillDir = path.join(repository, 'plugins', 'chef', 'skills', 'chef-setup');
-  assert.deepEqual(muse.updateInstall({ skillDir, repository }), {
+  fs.mkdirSync(path.join(repository, 'plugins', 'chef', '.claude-plugin'), { recursive: true });
+  fs.writeFileSync(path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), '{"name":"chef"}');
+  assert.deepEqual(muse.updateInstall({ skillDir }), {
     repository,
     skillsDir: path.join(repository, 'plugins', 'chef', 'skills'),
     installedName: 'chef-setup',
