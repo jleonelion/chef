@@ -128,17 +128,91 @@ function readSettings(root, { locale } = {}) {
   return { status, settings: { ...defaults, ...known }, stored };
 }
 
-// src/skills/chef-setup/scripts/lib/init-data-root.mjs
+// src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
 import fs3 from "node:fs";
 import path5 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync } from "node:child_process";
-function git(cwd, args) {
-  return execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+function git(cwd, args, { env } = {}) {
+  const options = { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
+  return execFileSync("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
+}
+
+// src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
+var URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
+var SAFE_CLONE = ["-c", "core.hooksPath=/dev/null", "-c", "protocol.ext.allow=never", "-c", "protocol.fd.allow=never"];
+var QUIET = { GIT_TERMINAL_PROMPT: "0" };
+function sourceProblem(source) {
+  if (typeof source !== "string" || !source.trim())
+    return "give the data root to adopt: an https or ssh git URL, or a local folder";
+  if (source.startsWith("-"))
+    return 'source must not start with "-"';
+  if (URL_FORMS.some((form) => form.test(source)))
+    return null;
+  if (/^[a-z][\w+.-]*::?/i.test(source) && !path5.isAbsolute(source))
+    return `unsupported source "${source}": use an https or ssh git URL, or a local folder`;
+  return fs3.existsSync(source) && fs3.statSync(source).isDirectory() ? null : `no folder at ${source}`;
+}
+var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path5.resolve(source);
+function targetProblem(root) {
+  if (readSchemaVersion(root) !== null)
+    return "there is already a Chef data root here; nothing was changed";
+  if (fs3.existsSync(root) && fs3.readdirSync(root).length > 0)
+    return "directory is not empty and is not a Chef data root";
+  return null;
+}
+function cloneInto(dest, source) {
+  try {
+    git(path5.dirname(dest), [...SAFE_CLONE, "clone", "-q", "--template=", "--no-recurse-submodules", "--", cloneSource(source), dest], { env: QUIET });
+    return null;
+  } catch (error) {
+    return `clone failed: ${String(error.stderr || error.message).trim().split(`
+`).pop()}`;
+  }
+}
+function cloneProblem(clone) {
+  if (readSchemaVersion(clone) === null)
+    return { reason: "the source is not a Chef data root (no schema-version.json)" };
+  return schemaWriteBlocker(clone);
+}
+function removeRemotes(root) {
+  const remotes = git(root, ["remote"]).split(`
+`).filter(Boolean);
+  for (const name of remotes)
+    git(root, ["remote", "remove", name]);
+  return remotes;
+}
+function adoptDataRoot(root, source) {
+  const badSource = sourceProblem(source);
+  if (badSource)
+    return { status: "invalid-input", data_root: root, problems: [badSource] };
+  const badTarget = targetProblem(root);
+  if (badTarget)
+    return { status: "refused", data_root: root, reason: badTarget };
+  fs3.mkdirSync(path5.dirname(root), { recursive: true });
+  const staging = fs3.mkdtempSync(path5.join(path5.dirname(root), `.${path5.basename(root)}.adopt-`));
+  const clone = path5.join(staging, "data-root");
+  try {
+    const cloneFailed = cloneInto(clone, source);
+    if (cloneFailed)
+      return { status: "refused", data_root: root, reason: cloneFailed };
+    const blocked = cloneProblem(clone);
+    if (blocked)
+      return { status: "refused", data_root: root, ...blocked };
+    const removed_remotes = removeRemotes(clone);
+    if (fs3.existsSync(root))
+      fs3.rmdirSync(root);
+    fs3.renameSync(clone, root);
+    return { status: "adopted", data_root: root, schema_version: readSchemaVersion(root), removed_remotes };
+  } finally {
+    fs3.rmSync(staging, { recursive: true, force: true });
+  }
 }
 
 // src/skills/chef-setup/scripts/lib/init-data-root.mjs
+import fs4 from "node:fs";
+import path6 from "node:path";
 var FALLBACK_IDENTITY = ["-c", "user.name=chef-setup", "-c", "user.email=chef-setup@example.com"];
 function identityArgs(cwd) {
   try {
@@ -147,21 +221,21 @@ function identityArgs(cwd) {
     return FALLBACK_IDENTITY;
   }
 }
-var writeJson = (file, value) => fs3.writeFileSync(file, `${JSON.stringify(value)}
+var writeJson = (file, value) => fs4.writeFileSync(file, `${JSON.stringify(value)}
 `);
 function initDataRoot(root) {
   const existing = readSchemaVersion(root);
   if (existing !== null)
     return { status: "exists", data_root: root, schema_version: existing };
-  if (fs3.existsSync(root) && fs3.readdirSync(root).length > 0) {
+  if (fs4.existsSync(root) && fs4.readdirSync(root).length > 0) {
     return { status: "refused", data_root: root, reason: "directory is not empty and is not a Chef data root" };
   }
-  fs3.mkdirSync(root, { recursive: true });
+  fs4.mkdirSync(root, { recursive: true });
   git(root, ["init", "-q", "-b", "main"]);
-  fs3.writeFileSync(path5.join(root, ".gitignore"), `${SETTINGS_FILE}
+  fs4.writeFileSync(path6.join(root, ".gitignore"), `${SETTINGS_FILE}
 `);
-  writeJson(path5.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
-  writeJson(path5.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
+  writeJson(path6.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
+  writeJson(path6.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
   git(root, ["add", ".gitignore", SCHEMA_FILE]);
   git(root, [...identityArgs(root), "commit", "-q", "-m", "chef-setup: create data root"]);
   return { status: "created", data_root: root, schema_version: SCHEMA_VERSION };
@@ -183,12 +257,12 @@ function changesFromFlags(values) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-settings.mjs
-import fs4 from "node:fs";
-import path6 from "node:path";
+import fs5 from "node:fs";
+import path7 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs4.existsSync(path6.join(root, ".git")))
+  if (!fs5.existsSync(path7.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -198,14 +272,14 @@ function isTracked(root) {
   }
 }
 function ensureIgnored(root) {
-  const file = path6.join(root, ".gitignore");
-  const content = fs4.existsSync(file) ? fs4.readFileSync(file, "utf8") : "";
+  const file = path7.join(root, ".gitignore");
+  const content = fs5.existsSync(file) ? fs5.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line) => IGNORE_LINES.has(line.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs4.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs5.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -241,7 +315,7 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs4.writeFileSync(path6.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs5.writeFileSync(path7.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
@@ -251,7 +325,7 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
 
 // src/skills/chef-setup/scripts/setup.mjs
 var { values, positionals } = parseArgs({
-  options: { "data-root": { type: "string" }, rewrite: { type: "boolean" }, ...SETTING_FLAGS },
+  options: { "data-root": { type: "string" }, source: { type: "string" }, rewrite: { type: "boolean" }, ...SETTING_FLAGS },
   allowPositionals: true
 });
 function set(root) {
@@ -267,6 +341,7 @@ function show(root) {
 }
 var MODES = {
   init: (root) => initDataRoot(root),
+  adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set
 };

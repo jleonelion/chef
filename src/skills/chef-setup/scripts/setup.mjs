@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// chef-setup entry point. Modes: init (create the data root), settings (show), set (change).
+// chef-setup entry point. Modes: init (create the data root), adopt (clone an existing one),
+// settings (show), set (change).
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
+import { adoptDataRoot } from './lib/adopt-data-root.mjs';
 import { initDataRoot } from './lib/init-data-root.mjs';
 import { changesFromFlags, SETTING_FLAGS } from './lib/settings-args.mjs';
 import { writeSettings } from './lib/write-settings.mjs';
 
 const { values, positionals } = parseArgs({
-  options: { 'data-root': { type: 'string' }, rewrite: { type: 'boolean' }, ...SETTING_FLAGS },
+  options: { 'data-root': { type: 'string' }, source: { type: 'string' }, rewrite: { type: 'boolean' }, ...SETTING_FLAGS },
   allowPositionals: true,
 });
 
@@ -26,6 +28,7 @@ function show(root) {
 
 const MODES = {
   init: (root) => initDataRoot(root),
+  adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
 };
