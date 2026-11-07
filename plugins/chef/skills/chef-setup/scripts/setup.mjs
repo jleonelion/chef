@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
 // src/skills/chef-setup/scripts/setup.mjs
+import path9 from "node:path";
+import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
 // src/lib/data-root.mjs
@@ -256,13 +258,94 @@ function changesFromFlags(values) {
   return Object.fromEntries(entries.map(([flag, [key, convert]]) => [key, convert(values[flag])]));
 }
 
-// src/skills/chef-setup/scripts/lib/write-settings.mjs
+// src/skills/chef-setup/scripts/lib/verify-install.mjs
+import fs6 from "node:fs";
+
+// src/lib/smoke.mjs
+import { spawnSync } from "node:child_process";
 import fs5 from "node:fs";
+import os3 from "node:os";
 import path7 from "node:path";
+var SMOKE_FILE = "smoke.json";
+var isEntry = (name) => name.endsWith(".mjs") && !name.endsWith(".test.mjs");
+function parseStatus(stdout) {
+  try {
+    return JSON.parse(stdout).status;
+  } catch {
+    return;
+  }
+}
+function runCase(skillDir, testCase, fixture) {
+  const tmp = fs5.mkdtempSync(path7.join(os3.tmpdir(), "chef-smoke-"));
+  const dataRoot = path7.join(tmp, "data-root");
+  try {
+    fs5.cpSync(fixture, dataRoot, { recursive: true });
+    const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
+    const run = spawnSync(process.execPath, [path7.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000 });
+    const status = parseStatus(run.stdout);
+    if (run.status !== testCase.expect.exit)
+      return `exit ${run.status}, expected ${testCase.expect.exit}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`;
+    if (status !== testCase.expect.status)
+      return `status "${status}", expected "${testCase.expect.status}"`;
+    return null;
+  } finally {
+    fs5.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+function uncovered(skillDir, cases) {
+  const scripts = path7.join(skillDir, "scripts");
+  if (!fs5.existsSync(scripts))
+    return [];
+  const covered = new Set(cases.map((c) => path7.normalize(c.script)));
+  return fs5.readdirSync(scripts).filter(isEntry).sort().map((f) => path7.join("scripts", f)).filter((f) => !covered.has(f));
+}
+function smokeSkill(skillsDir, skill, fixture) {
+  const skillDir = path7.join(skillsDir, skill);
+  const file = path7.join(skillDir, SMOKE_FILE);
+  const cases = fs5.existsSync(file) ? JSON.parse(fs5.readFileSync(file, "utf8")) : [];
+  const gaps = uncovered(skillDir, cases).map((script) => ({ skill, id: "coverage", ok: false, detail: `no smoke case for ${script}` }));
+  const results = cases.map((testCase) => {
+    const problem = runCase(skillDir, testCase, fixture);
+    return { skill, id: testCase.id, ok: problem === null, ...problem && { detail: problem } };
+  });
+  return [...gaps, ...results];
+}
+function runSmoke({ skillsDir, fixture }) {
+  const skills = fs5.readdirSync(skillsDir).filter((name) => fs5.statSync(path7.join(skillsDir, name)).isDirectory()).sort();
+  return skills.flatMap((skill) => smokeSkill(skillsDir, skill, fixture));
+}
+
+// src/skills/chef-setup/scripts/lib/verify-install.mjs
+var MIN_NODE = 20;
+var result = (name, problem, okDetail) => ({ name, ok: !problem, detail: problem ?? okDetail });
+function nodeCheck(version) {
+  const major = Number(version.replace(/^v/, "").split(".")[0]);
+  return result("node", major >= MIN_NODE ? null : `Node ${version} is too old; Chef needs Node ${MIN_NODE} or later`, version);
+}
+function dataRootCheck(root) {
+  if (!fs6.existsSync(root))
+    return result("data-root", `no data root at ${root}; run chef-setup init`);
+  try {
+    fs6.accessSync(root, fs6.constants.W_OK);
+    return result("data-root", null, `${root} is writable`);
+  } catch {
+    return result("data-root", `${root} is not writable`);
+  }
+}
+var schemaCheck = (root) => result("schema", schemaWriteBlocker(root)?.reason ?? null, "matches this Chef");
+function verifyInstall(root, { skillsDir, fixture, nodeVersion = process.version }) {
+  const smoke = runSmoke({ skillsDir, fixture }).map((r) => result(`smoke:${r.skill}/${r.id}`, r.ok ? null : r.detail, "passed"));
+  const checks = [nodeCheck(nodeVersion), dataRootCheck(root), schemaCheck(root), ...smoke];
+  return { status: checks.every((c) => c.ok) ? "pass" : "fail", data_root: root, checks };
+}
+
+// src/skills/chef-setup/scripts/lib/write-settings.mjs
+import fs7 from "node:fs";
+import path8 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs5.existsSync(path7.join(root, ".git")))
+  if (!fs7.existsSync(path8.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -272,14 +355,14 @@ function isTracked(root) {
   }
 }
 function ensureIgnored(root) {
-  const file = path7.join(root, ".gitignore");
-  const content = fs5.existsSync(file) ? fs5.readFileSync(file, "utf8") : "";
+  const file = path8.join(root, ".gitignore");
+  const content = fs7.existsSync(file) ? fs7.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line) => IGNORE_LINES.has(line.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs5.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs7.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -315,7 +398,7 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs5.writeFileSync(path7.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs7.writeFileSync(path8.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
@@ -324,6 +407,7 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
 }
 
 // src/skills/chef-setup/scripts/setup.mjs
+var skillDir = path9.resolve(path9.dirname(fileURLToPath(import.meta.url)), "..");
 var { values, positionals } = parseArgs({
   options: { "data-root": { type: "string" }, source: { type: "string" }, rewrite: { type: "boolean" }, ...SETTING_FLAGS },
   allowPositionals: true
@@ -343,14 +427,17 @@ var MODES = {
   init: (root) => initDataRoot(root),
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
-  set
+  set,
+  verify: (root) => verifyInstall(root, { skillsDir: path9.dirname(skillDir), fixture: path9.join(skillDir, "fixture", "data-root") })
 };
 var mode = positionals[0] ?? "init";
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);
   process.exit(64);
 }
-var result = MODES[mode](resolveDataRoot({ flag: values["data-root"] }));
-console.log(JSON.stringify(result));
-if (result.status === "refused" || result.status === "invalid-input")
+var result2 = MODES[mode](resolveDataRoot({ flag: values["data-root"] }));
+console.log(JSON.stringify(result2));
+if (result2.status === "refused" || result2.status === "invalid-input")
   process.exitCode = 2;
+if (result2.status === "fail")
+  process.exitCode = 1;

@@ -1,0 +1,5 @@
+[
+  { "id": "init-existing", "script": "scripts/setup.mjs", "args": ["init"], "expect": { "exit": 0, "status": "exists" } },
+  { "id": "settings", "script": "scripts/setup.mjs", "args": ["settings"], "expect": { "exit": 0, "status": "missing" } },
+  { "id": "set", "script": "scripts/setup.mjs", "args": ["set", "--units", "metric"], "expect": { "exit": 0, "status": "saved" } }
+]
