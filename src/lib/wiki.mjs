@@ -1,5 +1,5 @@
-// The one write path into a data root: wiki pages by type, append-only raw files, one git
-// commit per call. Refuses when the root's schema version is not the one Chef was built for.
+// The one write path into a data root: wiki pages by type, append-only raw files and
+// operational store files under data/, one git commit per call. Refuses when the root's schema version is not the one Chef was built for.
 import fs from 'node:fs';
 import path from 'node:path';
 import { serializePage } from './frontmatter.mjs';
@@ -8,7 +8,8 @@ import { readSchemaVersion, SCHEMA_VERSION } from './schema.mjs';
 
 export const WIKI_DIR = 'knowledge/wiki';
 export const RAW_DIR = 'knowledge/raw';
-export const WIKI_FOLDERS = { recipe: 'recipes', 'household-profile': 'household' };
+export const DATA_DIR = 'data';
+export const WIKI_FOLDERS = { recipe: 'recipes', 'household-profile': 'household', 'inventory-rollup': 'household' };
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 export function slugify(text) {
@@ -27,9 +28,9 @@ export function wikiPath(type, slug) {
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
 
-function rawPath(relative) {
+function pathUnder(dir, relative, kind) {
   const normalized = path.posix.normalize(relative);
-  if (!normalized.startsWith(`${RAW_DIR}/`)) throw new Error(`raw files must live under ${RAW_DIR}/: ${relative}`);
+  if (!normalized.startsWith(`${dir}/`)) throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
 }
 
@@ -45,15 +46,16 @@ export function writeRefusal(root) {
   return null;
 }
 
-export function writeWiki(root, { pages = [], raw = [], message }) {
+export function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const pageFiles = pages.map((page) => ({ path: wikiPath(page.frontmatter.type, page.slug), content: serializePage(page.frontmatter, page.body) }));
-  const rawFiles = raw.map((file) => ({ path: rawPath(file.path), content: file.content }));
+  const rawFiles = raw.map((file) => ({ path: pathUnder(RAW_DIR, file.path, 'raw'), content: file.content }));
+  const dataFiles = data.map((file) => ({ path: pathUnder(DATA_DIR, file.path, 'data'), content: file.content }));
   const refusal = writeRefusal(root);
   if (refusal) return refusal;
   const taken = rawFiles.find((file) => fs.existsSync(path.join(root, file.path)));
   if (taken) return { status: 'refused', data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
 
-  const files = [...rawFiles, ...pageFiles];
+  const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
     const abs = path.join(root, file.path);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -61,5 +63,5 @@ export function writeWiki(root, { pages = [], raw = [], message }) {
   }
   git(root, ['add', '--', ...files.map((file) => file.path)]);
   commit(root, message);
-  return { status: 'written', data_root: root, pages: pageFiles.map((f) => f.path), raw: rawFiles.map((f) => f.path) };
+  return { status: 'written', data_root: root, pages: pageFiles.map((f) => f.path), raw: rawFiles.map((f) => f.path), data: dataFiles.map((f) => f.path) };
 }

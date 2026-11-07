@@ -65,3 +65,24 @@ test('refuses to write outside a data root or on a schema mismatch', () => {
   assert.equal(result.status, 'refused');
   assert.match(result.reason, /update Chef/);
 });
+
+test('writes operational store files under data/ in the same commit as pages', () => {
+  const root = dataRoot();
+  const rollup = { slug: 'current-inventory', frontmatter: { type: 'inventory-rollup', title: 'Inventory' }, body: '# Inventory\n' };
+  const result = writeWiki(root, {
+    pages: [rollup],
+    data: [{ path: 'data/food-inventory/current.json', content: '{}\n' }],
+    message: 'chef-food-inventory: update',
+  });
+  assert.equal(result.status, 'written');
+  assert.deepEqual(result.pages, ['knowledge/wiki/household/current-inventory.md']);
+  assert.deepEqual(result.data, ['data/food-inventory/current.json']);
+  assert.equal(git(root, ['show', '--name-only', '--format=', 'HEAD']).split('\n').sort().join(','), 'data/food-inventory/current.json,knowledge/wiki/household/current-inventory.md');
+  assert.equal(git(root, ['status', '--porcelain']), '');
+});
+
+test('rejects data paths outside data/', () => {
+  const root = dataRoot();
+  assert.throws(() => writeWiki(root, { data: [{ path: 'data/../settings.json', content: '' }], message: 'm' }), /data\//);
+  assert.throws(() => writeWiki(root, { data: [{ path: 'knowledge/x.json', content: '' }], message: 'm' }), /data\//);
+});

@@ -18,6 +18,7 @@ Wiki page types and their folders:
 |---|---|
 | `recipe` | `knowledge/wiki/recipes/` |
 | `household-profile` | `knowledge/wiki/household/` |
+| `inventory-rollup` | `knowledge/wiki/household/` (generated from `data/food-inventory/`; never edited by hand) |
 
 A page's slug is its filename without `.md`: lowercase letters, digits and single hyphens.
 
