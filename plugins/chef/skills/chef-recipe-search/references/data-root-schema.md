@@ -109,6 +109,29 @@ A proposal has `id`, `slug`, `title`, `proposed` (`YYYY-MM-DD`), `draft` (the re
 
 A rule has `id`, `reason`, `created` and at least one of `title_includes` and `text_includes` (lists of phrases, all of which must match at the start of a word, any case). Reject rules are checked first.
 
+## Household-profile page
+
+`knowledge/wiki/household/profile.md` holds structured planning facts plus optional descriptive prose.
+
+```markdown
+---
+type: household-profile
+title: Household profile
+portions_per_meal: 3
+updated: 2026-01-15
+---
+# Household profile
+```
+
+| Field | Required | Value |
+|---|---|---|
+| `type` | yes | `household-profile` |
+| `title` | yes | Text |
+| `portions_per_meal` | no | Whole number greater than zero. Meal planning uses this as household servings; missing or invalid means the default of 1 |
+| `updated` | yes | `YYYY-MM-DD` |
+
+The body may describe household members and preferences, but scripts never parse servings from prose.
+
 ## Dietary ruleset page
 
 `knowledge/wiki/household/dietary-ruleset.md`. No page means the user was never asked; a page with no rules means none declared.
@@ -143,13 +166,16 @@ A page Chef cannot read leaves every recipe out of suggestions until `chef-setup
 | `title` | yes | Text |
 | `week_start`, `created` | yes | `YYYY-MM-DD` |
 | `household_profile` | yes | The profile path used, or `null` when none exists |
-| `meals` | yes | Seven entries with `date`, recipe `slug`, `title` and household `servings` |
+| `servings_source` | yes | `profile` when `portions_per_meal` supplied the servings, otherwise `default` |
+| `meals` | yes | One to seven entries with `date`, recipe `slug`, `title` and household `servings` |
 | `nutrition` | yes | The shared nutrition engine's rollup. `complete` has per-meal and weekly `totals`; `incomplete` lists meals whose recipe nutrition is unavailable and never estimates totals |
 | `dietary` | yes | Ruleset status plus the applicable `nudge`, `footer`, `caveats` or unreadable-ruleset `problem` |
 | `inventory` | yes | Inventory context considered while preferring recipes |
+| `avoidance_notes` | when a planned meal matches an avoidance | Meal date and recipe slug plus the affected member, avoidance and matching ingredient text |
 
 Calendar payloads are runtime instructions returned by the script only when `settings.calendar`
 is set. They are never stored on a meal-plan page, and Chef scripts never call a calendar API.
+One-plan dietary overrides are also returned only for that invocation and are never stored.
 
 ## Notices
 
