@@ -7082,6 +7082,14 @@ var RULES = {
   "contains-wheat": { match: words(...WHEAT), except: NOT_WHEAT }
 };
 var DIETARY_FLAGS = Object.keys(RULES).sort();
+function lineHas(rule, line) {
+  const text = rule.except ? line.replace(rule.except, " ") : line;
+  return rule.match.test(text);
+}
+function dietaryFlags(lines) {
+  const lower = lines.map((line) => line.toLowerCase());
+  return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
+}
 
 // node_modules/yaml/dist/index.js
 var composer = require_composer();
@@ -7278,10 +7286,28 @@ var ALIASES = {
   crustaceans: ["shellfish"],
   soya: ["soy"]
 };
+var suffix = (flag) => flag.slice("contains-".length);
+var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var ALLERGEN_WORDS = [
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag), [suffix(flag)]]),
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
+  ...Object.entries(ALIASES)
+].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
+function constraintsFor(name) {
+  if (ALIASES[name])
+    return ALIASES[name];
+  if (flagFor(name))
+    return [name];
+  const flags = new Set(dietaryFlags([name]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
+    if (pattern.test(name))
+      mapped.forEach((f) => flags.add(f));
+  return flags.size ? [...flags] : [name];
+}
 function normalizeConstraints(names) {
   const out = names.flatMap((raw) => {
     const name = String(raw).trim().toLowerCase().replace(/^contains-/, "");
-    return ALIASES[name] ?? (name ? [name] : []);
+    return name ? constraintsFor(name) : [];
   });
   return [...new Set(out)].sort();
 }

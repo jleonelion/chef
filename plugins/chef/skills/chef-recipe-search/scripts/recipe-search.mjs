@@ -7198,10 +7198,28 @@ var ALIASES = {
   crustaceans: ["shellfish"],
   soya: ["soy"]
 };
+var suffix = (flag) => flag.slice("contains-".length);
+var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var ALLERGEN_WORDS = [
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag), [suffix(flag)]]),
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
+  ...Object.entries(ALIASES)
+].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
+function constraintsFor(name) {
+  if (ALIASES[name])
+    return ALIASES[name];
+  if (flagFor(name))
+    return [name];
+  const flags = new Set(dietaryFlags([name]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
+    if (pattern.test(name))
+      mapped.forEach((f) => flags.add(f));
+  return flags.size ? [...flags] : [name];
+}
 function normalizeConstraints(names) {
   const out = names.flatMap((raw) => {
     const name = String(raw).trim().toLowerCase().replace(/^contains-/, "");
-    return ALIASES[name] ?? (name ? [name] : []);
+    return name ? constraintsFor(name) : [];
   });
   return [...new Set(out)].sort();
 }
@@ -7279,8 +7297,8 @@ function ingredientLines(body) {
 
 // src/lib/dietary-gate.mjs
 var AUTO_FLAGS_COUNT_AS_CHECKED = true;
-var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-var wordMatch = (term) => new RegExp(`(?<![a-z])${escape(term)}(?:s|es)?(?![a-z])`);
+var escape2 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var wordMatch = (term) => new RegExp(`(?<![a-z])${escape2(term)}(?:s|es)?(?![a-z])`);
 function constraintConflicts(recipe, constraint) {
   const lines = ingredientLines(recipe.body);
   const flag = flagFor(constraint);
@@ -7342,8 +7360,8 @@ function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLA
 }
 
 // src/skills/chef-recipe-search/scripts/lib/search.mjs
-var escape2 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-var wordStart = (needle) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape2(needle.trim())}`, "iu");
+var escape3 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var wordStart = (needle) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape3(needle.trim())}`, "iu");
 var lower = (value) => String(value ?? "").toLowerCase();
 var list = (value) => Array.isArray(value) ? value.map(lower) : [];
 function view(recipe) {

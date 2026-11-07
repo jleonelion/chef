@@ -72,3 +72,9 @@ export function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = A
   const avoidances = ruleset.avoid.flatMap((rule) => avoidanceMatches(recipe, rule));
   return { excluded: reasons.length > 0, reasons, overridden: all.filter(lifted), avoidances };
 }
+
+// The pure entry point for other skills: (ruleset from readRuleset, recipe from listRecipes) -> verdict.
+export function checkRecipe(ruleset, recipe, options) {
+  const { excluded, ...rest } = gateRecipe(recipe, ruleset, options);
+  return { allowed: !excluded, ...rest };
+}

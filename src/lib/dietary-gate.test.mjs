@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { gateRecipe, parseOverrides } from './dietary-gate.mjs';
+import { checkRecipe, gateRecipe, parseOverrides } from './dietary-gate.mjs';
 import { rulesetFromPage } from './dietary-ruleset.mjs';
 
 const ruleset = (...members) => rulesetFromPage({ type: 'dietary-ruleset', members });
@@ -87,6 +87,22 @@ test('avoidances are reported, never excluded', () => {
   const verdict = gateRecipe(recipe(['1 bunch cilantro']), ruleset(alex([], ['cilantro'])));
   assert.equal(verdict.excluded, false);
   assert.deepEqual(verdict.avoidances, [{ member: 'Alex Example', avoidance: 'cilantro', detail: '1 bunch cilantro' }]);
+});
+
+test('free-text allergen wording excludes on the flag even when the ingredient text differs', () => {
+  const pairs = [['peanut allergy', 'contains-peanuts'], ['sesame seeds', 'contains-sesame'], ['shellfish allergy', 'contains-shellfish'], ['tree nut', 'contains-tree-nuts']];
+  for (const [wording, flag] of pairs) {
+    const verdict = gateRecipe(recipe(['1 cup rice'], { dietary_flags: [flag] }), ruleset(alex([wording])));
+    assert.deepEqual(whys(verdict), ['flagged'], wording);
+  }
+});
+
+test('checkRecipe is the small pure entry point other skills call', () => {
+  const r = ruleset(alex(['egg']));
+  assert.deepEqual(checkRecipe(r, recipe(['1 onion'])), { allowed: true, reasons: [], overridden: [], avoidances: [] });
+  const blocked = checkRecipe(r, recipe(['1 egg']));
+  assert.equal(blocked.allowed, false);
+  assert.deepEqual(whys(blocked), ['ingredient-text']);
 });
 
 test('an unreadable ruleset leaves every recipe out', () => {

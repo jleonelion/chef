@@ -23,6 +23,22 @@ test('constraint names normalize to the flag set, with aliases', () => {
   assert.equal(flagFor('mustard'), null);
 });
 
+test('free-text allergen wording maps to its flag, never silently to text-only', () => {
+  const cases = {
+    peanut: ['peanuts'], 'Peanut allergy': ['peanuts'], 'sesame seeds': ['sesame'], 'shellfish allergy': ['shellfish'],
+    'tree nut': ['tree-nuts'], 'tree nut allergy': ['peanuts', 'tree-nuts'], 'milk allergy': ['dairy'],
+    'egg allergy': ['egg'], 'gluten intolerance': ['gluten'], 'lactose intolerant': ['dairy'], 'soy sauce': ['soy', 'gluten', 'wheat'].sort(),
+    'wheat allergy': ['gluten', 'wheat'], 'fish allergy': ['fish'], 'severe celiac disease': ['gluten'], 'contains-peanuts': ['peanuts'],
+  };
+  for (const [input, expected] of Object.entries(cases)) assert.deepEqual(normalizeConstraints([input]), expected, input);
+  assert.deepEqual(normalizeConstraints(['mustard', 'coconut']), ['coconut', 'mustard']);
+});
+
+test('a ruleset page with free-text allergen wording still yields flag constraints', () => {
+  const ruleset = readRuleset(root(page([{ name: 'Alex Example', hard_constraints: ['peanut allergy'] }])));
+  assert.deepEqual(ruleset.hard, [{ member: 'Alex Example', constraint: 'peanuts' }]);
+});
+
 test('no ruleset page means never asked', () => {
   assert.equal(readRuleset(root()).status, 'never-asked');
 });

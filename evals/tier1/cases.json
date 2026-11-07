@@ -1720,5 +1720,96 @@
         "includes": "https://"
       }
     ]
+  },
+  {
+    "id": "dietary-gate-free-text-allergen-maps-to-flag",
+    "description": "Hard constraints written as free text (\"peanut allergy\", \"sesame seeds\", \"shellfish allergy\") map to their contains-* flags: flagged recipes are excluded even when the ingredient wording does not match, never downgraded to text-only.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"peanut allergy\",\"sesame seeds\",\"shellfish allergy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/satay-bowl.md",
+        "content": "---\ntype: recipe\ntitle: Satay Bowl\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [\"contains-peanuts\"]\n---\n# Satay Bowl\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 cup rice\n- 1 cucumber\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/seed-crackers.md",
+        "content": "---\ntype: recipe\ntitle: Seed Crackers\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [\"contains-sesame\"]\n---\n# Seed Crackers\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 cup rice\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/seafood-rice.md",
+        "content": "---\ntype: recipe\ntitle: Seafood Rice\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [\"contains-shellfish\"]\n---\n# Seafood Rice\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 cup rice\n- 200 g mixed seafood\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "content": "---\ntype: recipe\ntitle: Plain Rice\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: []\n---\n# Plain Rice\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 cup rice\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "rice"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "plain-rice"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='satay-bowl')].reasons.[?(@constraint=='peanuts')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='seed-crackers')].reasons.[?(@constraint=='sesame')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='seafood-rice')].reasons.[?(@constraint=='shellfish')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.dietary.caveats",
+        "absent": true
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-free-text-allergen-saved-as-flag",
+    "description": "set-dietary stores free-text allergen wording under its flag name, so no caveat is shown and the gate matches the flag.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Alex Example",
+      "--hard",
+      "Peanut allergy, tree nut"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.ruleset.members[0].hard_constraints",
+        "equals": [
+          "peanuts",
+          "tree-nuts"
+        ]
+      },
+      {
+        "path": "$.caveats",
+        "absent": true
+      }
+    ]
   }
 ]

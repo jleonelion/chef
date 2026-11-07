@@ -3,7 +3,7 @@
 // A page Chef cannot read is `unreadable`, and the gate then leaves every recipe out.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DIETARY_FLAGS } from './dietary-flags.mjs';
+import { DIETARY_FLAGS, dietaryFlags } from './dietary-flags.mjs';
 import { parsePage } from './frontmatter.mjs';
 import { GUARANTEE_LINE, NEVER_ASKED_NUDGE, textOnlyCaveat } from './safety-text.mjs';
 import { wikiPath } from './wiki.mjs';
@@ -18,11 +18,31 @@ const ALIASES = {
   crustaceans: ['shellfish'], soya: ['soy'],
 };
 
+const suffix = (flag) => flag.slice('contains-'.length);
+const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// Allergen words to look for inside free text: flag names (either spelling) and alias keys.
+const ALLERGEN_WORDS = [
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag), [suffix(flag)]]),
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace('-', ' '), [suffix(flag)]]),
+  ...Object.entries(ALIASES),
+].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
+
+// Fail closed: any allergen wording ("peanut allergy", "sesame seeds", "gluten intolerance")
+// maps to its flag through the enrichment matcher plus an allergen-word scan. Only text with no
+// allergen word at all stays a text-only constraint.
+function constraintsFor(name) {
+  if (ALIASES[name]) return ALIASES[name];
+  if (flagFor(name)) return [name];
+  const flags = new Set(dietaryFlags([name]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS) if (pattern.test(name)) mapped.forEach((f) => flags.add(f));
+  return flags.size ? [...flags] : [name];
+}
+
 // Lowercase names; flag-set members by their flag suffix (gluten, tree-nuts), others as written.
 export function normalizeConstraints(names) {
   const out = names.flatMap((raw) => {
     const name = String(raw).trim().toLowerCase().replace(/^contains-/, '');
-    return ALIASES[name] ?? (name ? [name] : []);
+    return name ? constraintsFor(name) : [];
   });
   return [...new Set(out)].sort();
 }
