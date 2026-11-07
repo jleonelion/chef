@@ -77,3 +77,36 @@ test('logging the same cooked recipe twice stores one entry and deducts inventor
   const audit = fs.readFileSync(path.join(root, STORE.audit), 'utf8').trim().split('\n').map(JSON.parse);
   assert.equal(audit.filter((entry) => entry.action === 'deduct').length, 1);
 });
+
+test('logging a recipe copies complete nutrition totals scaled by servings', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'test-pasta',
+      frontmatter: {
+        type: 'recipe',
+        title: 'Test Pasta',
+        servings: 2,
+        source_kind: 'text',
+        source_raw: [],
+        created: '2026-01-15',
+        updated: '2026-01-15',
+        nutrition_status: 'complete',
+        nutrition_per_serving: { calories: 120, protein: 4.5, sodium: 80 },
+      },
+      body: '# Test Pasta\n\n## Ingredients\n\n- 200 g pasta\n\n## Steps\n\n1. Cook.\n',
+    }],
+    message: 'test: add nutrition',
+  });
+
+  const result = logMeal(root, {
+    date: '2026-01-17',
+    slot: 'lunch',
+    recipe: 'test-pasta',
+    servings: 2.5,
+    cooked: false,
+    loggedAt: '2026-01-17T12:30:00.000Z',
+  });
+
+  assert.deepEqual(result.entry.nutrition, { calories: 300, protein: 11.25, sodium: 200 });
+});

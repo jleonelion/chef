@@ -14,6 +14,9 @@ function readLog(root) {
 function entryFor(root, input) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
   const subject = input.recipe ?? slugify(input.food);
+  const perServing = recipe?.frontmatter.nutrition_status === 'complete'
+    ? recipe.frontmatter.nutrition_per_serving
+    : null;
   return {
     id: `${input.date}-${input.slot}-${subject}`,
     date: input.date,
@@ -22,7 +25,9 @@ function entryFor(root, input) {
     food: input.recipe ? null : input.food,
     servings: input.servings,
     cooked: input.cooked,
-    nutrition: recipe?.frontmatter.nutrition_status === 'complete' ? recipe.frontmatter.nutrition_per_serving : null,
+    nutrition: perServing
+      ? Object.fromEntries(Object.entries(perServing).map(([field, value]) => [field, value * input.servings]))
+      : null,
     logged_at: input.loggedAt,
   };
 }
