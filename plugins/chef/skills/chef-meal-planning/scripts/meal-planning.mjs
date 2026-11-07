@@ -7031,10 +7031,6 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
-// src/skills/chef-meal-planning/scripts/lib/plan.mjs
-import fs8 from "node:fs";
-import path9 from "node:path";
-
 // src/lib/dietary-flags.mjs
 var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
 var phrases = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?![a-z])`, "g");
@@ -7468,6 +7464,21 @@ function avoidanceMatches(recipe, { member, avoidance }) {
   const line = ingredientLines(recipe.body).find((l) => wordMatch(avoidance).test(l.toLowerCase()));
   return line ? [{ member, avoidance, detail: line }] : [];
 }
+function parseOverrides(raws = [], ruleset) {
+  const overrides = [];
+  const problems = [];
+  for (const raw of raws) {
+    const at = raw.lastIndexOf(":");
+    const member = raw.slice(0, at).trim();
+    const constraints = at > 0 ? normalizeConstraints([raw.slice(at + 1)]) : [];
+    const declared = constraints.length > 0 && constraints.every((constraint) => ruleset.hard.some((h) => h.member === member && h.constraint === constraint));
+    if (declared)
+      overrides.push(...constraints.map((constraint) => ({ member, constraint })));
+    else
+      problems.push(`--override "${raw}" must be <member>:<constraint> for a hard constraint that member declared`);
+  }
+  return { overrides, problems };
+}
 function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLAGS_COUNT_AS_CHECKED } = {}) {
   if (ruleset.status === "unreadable")
     return { excluded: true, reasons: [{ why: "ruleset-unreadable" }], overridden: [], avoidances: [] };
@@ -7477,6 +7488,10 @@ function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLA
   const avoidances = ruleset.avoid.flatMap((rule) => avoidanceMatches(recipe, rule));
   return { excluded: reasons.length > 0, reasons, overridden: all.filter(lifted), avoidances };
 }
+
+// src/skills/chef-meal-planning/scripts/lib/plan.mjs
+import fs8 from "node:fs";
+import path9 from "node:path";
 
 // src/lib/fdc.mjs
 var NUTRIENTS = { calories: 1008, protein: 1003, fat: 1004, saturated_fat: 1258, carbs: 1005, fiber: 1079, sugar: 2000, sodium: 1093, cholesterol: 1253 };
@@ -7736,10 +7751,11 @@ var PROFILE_PATH = wikiPath("household-profile", "profile");
 function household(root) {
   const file = path9.join(root, PROFILE_PATH);
   if (!fs8.existsSync(file))
-    return { path: null, servings: 1 };
+    return { path: null, servings: 1, servings_source: "default" };
   const page = parsePage(fs8.readFileSync(file, "utf8"));
-  const portions = [...page.body.matchAll(/\b(\d+)\s+portions?\s+per\s+meal\b/gi)].map((match) => Number(match[1]));
-  return { path: PROFILE_PATH, servings: portions.reduce((sum, value) => sum + value, 0) || 1 };
+  const portions = page.frontmatter.portions_per_meal;
+  const fromProfile = Number.isInteger(portions) && portions > 0;
+  return { path: PROFILE_PATH, servings: fromProfile ? portions : 1, servings_source: fromProfile ? "profile" : "default" };
 }
 function dateAt(weekStart, offset) {
   const date = new Date(`${weekStart}T00:00:00Z`);
@@ -7781,20 +7797,68 @@ ${rows}
 function applyHealthSuggestions(plan, goal) {
   return goal ? { ...plan, suggestions: { status: "deferred" } } : plan;
 }
-function planWeek(root, { weekStart }) {
+function selectRecipes(allowed, bySlug, slots, days) {
+  const used = new Set(slots.filter(Boolean));
+  return Array.from({ length: days }, (_, index) => {
+    const chosen = slots[index];
+    if (chosen)
+      return bySlug.get(chosen);
+    let candidate = allowed.find(({ recipe }) => !used.has(recipe.slug));
+    if (!candidate) {
+      used.clear();
+      candidate = allowed[0];
+    }
+    used.add(candidate.recipe.slug);
+    return candidate.recipe;
+  });
+}
+function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
   const ruleset = readRuleset(root);
   const { recipes, unreadable } = listRecipes(root);
-  const active = recipes.filter((recipe) => recipe.frontmatter.type === "recipe" && recipe.frontmatter.lifecycle !== "retired");
-  const judged = active.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset) }));
-  const excluded = judged.filter(({ verdict }) => verdict.excluded).map(({ recipe, verdict }) => ({ slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, reasons: verdict.reasons }));
+  const candidates = recipes.filter((recipe) => recipe.frontmatter.type === "recipe");
+  const judged = candidates.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset, { overrides }) }));
+  const active = judged.filter(({ recipe }) => recipe.frontmatter.lifecycle !== "retired");
+  const excluded = active.filter(({ verdict }) => verdict.excluded).map(({ recipe, verdict }) => ({ slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, reasons: verdict.reasons }));
+  const bySlug = new Map(judged.map((entry) => [entry.recipe.slug, entry]));
+  const refusedChoices = slots.flatMap((slug, index) => {
+    if (!slug)
+      return [];
+    const entry = bySlug.get(slug);
+    if (!entry)
+      return [{ slot: index + 1, slug, reasons: [{ why: "not-found" }] }];
+    const reasons = [
+      ...entry.recipe.frontmatter.lifecycle === "retired" ? [{ why: "retired" }] : [],
+      ...entry.verdict.reasons
+    ];
+    return reasons.length ? [{ slot: index + 1, slug, reasons }] : [];
+  });
+  if (refusedChoices.length) {
+    return {
+      status: "refused",
+      data_root: root,
+      week_start: weekStart,
+      reason: "chosen recipes cannot be planned",
+      refused_choices: refusedChoices,
+      dietary: dietaryNotes(ruleset)
+    };
+  }
   const inventoryItems = listItems(loadInventory(root));
-  const allowed = judged.filter(({ verdict }) => !verdict.excluded).sort((a, b) => inventoryScore(b.recipe, inventoryItems) - inventoryScore(a.recipe, inventoryItems) || a.recipe.slug.localeCompare(b.recipe.slug));
+  const allowed = active.filter(({ verdict }) => !verdict.excluded).sort((a, b) => Number(Boolean(a.verdict.avoidances.length)) - Number(Boolean(b.verdict.avoidances.length)) || inventoryScore(b.recipe, inventoryItems) - inventoryScore(a.recipe, inventoryItems) || a.recipe.slug.localeCompare(b.recipe.slug));
   if (!allowed.length) {
     return { status: "no-plan", data_root: root, week_start: weekStart, meals: [], excluded, unreadable, dietary: dietaryNotes(ruleset) };
   }
   const profile = household(root);
-  const selected = Array.from({ length: 7 }, (_, index) => allowed[index % allowed.length].recipe);
+  const activeBySlug = new Map(active.map(({ recipe }) => [recipe.slug, recipe]));
+  const selected = selectRecipes(allowed, activeBySlug, slots, days);
   const meals = selected.map((recipe, index) => mealView(recipe, dateAt(weekStart, index), profile.servings));
+  const overridden = [...new Set(selected.map((recipe) => recipe.slug))].flatMap((slug) => {
+    const reasons = bySlug.get(slug).verdict.overridden;
+    return reasons.length ? [{ slug, reasons }] : [];
+  });
+  const avoidanceNotes = meals.flatMap((meal) => {
+    const avoidances = bySlug.get(meal.slug).verdict.avoidances;
+    return avoidances.length ? [{ date: meal.date, slug: meal.slug, avoidances }] : [];
+  });
   const nutrition = rollupNutrition(meals.map((meal, index) => nutritionInput(meal, selected[index])));
   const dietary = dietaryNotes(ruleset);
   const inventory = { items_considered: inventoryItems.length };
@@ -7804,10 +7868,12 @@ function planWeek(root, { weekStart }) {
     week_start: weekStart,
     created: today(),
     household_profile: profile.path,
+    servings_source: profile.servings_source,
     meals,
     nutrition,
     dietary,
-    inventory
+    inventory,
+    ...avoidanceNotes.length && { avoidance_notes: avoidanceNotes }
   };
   const write = writeWiki(root, {
     pages: [{ slug: weekStart, frontmatter, body: planBody(weekStart, meals) }],
@@ -7825,31 +7891,49 @@ function planWeek(root, { weekStart }) {
     excluded,
     unreadable,
     household: profile,
+    servings_source: profile.servings_source,
     inventory,
     nutrition,
     dietary,
+    ...overridden.length && { overridden },
+    ...avoidanceNotes.length && { avoidance_notes: avoidanceNotes },
     ...settings.warning && { settings_warning: settings.warning },
     ...calendarPayload(settings.settings.calendar, meals)
   });
 }
 
 // src/skills/chef-meal-planning/scripts/meal-planning.mjs
+var many = { type: "string", multiple: true };
 var { values, positionals } = parseArgs({
   options: {
     "data-root": { type: "string" },
-    "week-start": { type: "string" }
+    "week-start": { type: "string" },
+    days: { type: "string" },
+    recipes: { type: "string" },
+    override: many
   },
   allowPositionals: true
 });
 var root = resolveDataRoot({ flag: values["data-root"] });
 var mode = positionals[0];
+var days = values.days === undefined ? 7 : /^\d+$/.test(values.days) ? Number(values.days) : NaN;
+var slots = values.recipes === undefined ? [] : values.recipes.split(",").map((slug) => slug.trim());
 var result;
 if (mode !== "plan")
   result = { status: "invalid-input", data_root: root, problems: ["supported command: plan"] };
 else if (!/^\d{4}-\d{2}-\d{2}$/.test(values["week-start"] ?? "") || Number.isNaN(Date.parse(`${values["week-start"]}T00:00:00Z`))) {
   result = { status: "invalid-input", data_root: root, problems: ["--week-start must be YYYY-MM-DD"] };
-} else
-  result = planWeek(root, { weekStart: values["week-start"] });
+} else {
+  const { overrides, problems } = parseOverrides(values.override, readRuleset(root));
+  if (!Number.isInteger(days) || days < 1 || days > 7)
+    problems.push("--days must be a whole number from 1 to 7");
+  if (slots.length > days)
+    problems.push("--recipes cannot contain more slots than --days");
+  if (problems.length)
+    result = { status: "invalid-input", data_root: root, problems };
+  else
+    result = planWeek(root, { weekStart: values["week-start"], days, slots, overrides });
+}
 console.log(JSON.stringify(result));
 if (["invalid-input", "refused", "no-plan"].includes(result.status))
   process.exitCode = 2;

@@ -2505,5 +2505,50 @@
     "git": {
       "clean": true
     }
+  },
+  {
+    "id": "chef-meal-planning-refuses-gated-chosen-recipe-without-writing",
+    "description": "A recipe chosen for a day still passes the dietary gate; a conflict refuses the plan with reasons and leaves git unchanged.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "content": "---\ntype: recipe\ntitle: Lemon Garlic Pasta\nservings: 2\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [contains-dairy]\n---\n# Lemon Garlic Pasta\n\n## Ingredients\n\n- 200 g spaghetti\n- 30 g parmesan\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-02-02",
+      "--days",
+      "1",
+      "--recipes",
+      "lemon-garlic-pasta"
+    ],
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.refused_choices[0].slug",
+        "equals": "lemon-garlic-pasta"
+      },
+      {
+        "path": "$.refused_choices[0].reasons.[0].why",
+        "equals": "flagged"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
   }
 ]
