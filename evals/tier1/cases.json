@@ -2359,6 +2359,10 @@
     "description": "A weekly plan excludes a flagged recipe, saves seven safe meals with one nutrition rollup, considers inventory, and emits no calendar payload when calendar is unset.",
     "seed": [
       {
+        "path": "knowledge/wiki/household/profile.md",
+        "content": "---\ntitle: Household profile\ntype: household-profile\nportions_per_meal: 3\nupdated: 2026-01-15\n---\n# Household profile\n\nSynthetic fixture household.\n"
+      },
+      {
         "path": "knowledge/wiki/household/dietary-ruleset.md",
         "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
       },
