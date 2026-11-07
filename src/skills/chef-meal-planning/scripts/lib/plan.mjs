@@ -78,20 +78,42 @@ function selectRecipes(allowed, bySlug, slots, days) {
 export function planWeek(root, { weekStart, days = 7, slots = [] }) {
   const ruleset = readRuleset(root);
   const { recipes, unreadable } = listRecipes(root);
-  const active = recipes.filter((recipe) => recipe.frontmatter.type === 'recipe' && recipe.frontmatter.lifecycle !== 'retired');
-  const judged = active.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset) }));
-  const excluded = judged.filter(({ verdict }) => verdict.excluded)
+  const candidates = recipes.filter((recipe) => recipe.frontmatter.type === 'recipe');
+  const judged = candidates.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset) }));
+  const active = judged.filter(({ recipe }) => recipe.frontmatter.lifecycle !== 'retired');
+  const excluded = active.filter(({ verdict }) => verdict.excluded)
     .map(({ recipe, verdict }) => ({ slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, reasons: verdict.reasons }));
+  const bySlug = new Map(judged.map((entry) => [entry.recipe.slug, entry]));
+  const refusedChoices = slots.flatMap((slug, index) => {
+    if (!slug) return [];
+    const entry = bySlug.get(slug);
+    if (!entry) return [{ slot: index + 1, slug, reasons: [{ why: 'not-found' }] }];
+    const reasons = [
+      ...(entry.recipe.frontmatter.lifecycle === 'retired' ? [{ why: 'retired' }] : []),
+      ...entry.verdict.reasons,
+    ];
+    return reasons.length ? [{ slot: index + 1, slug, reasons }] : [];
+  });
+  if (refusedChoices.length) {
+    return {
+      status: 'refused',
+      data_root: root,
+      week_start: weekStart,
+      reason: 'chosen recipes cannot be planned',
+      refused_choices: refusedChoices,
+      dietary: dietaryNotes(ruleset),
+    };
+  }
   const inventoryItems = listItems(loadInventory(root));
-  const allowed = judged.filter(({ verdict }) => !verdict.excluded)
+  const allowed = active.filter(({ verdict }) => !verdict.excluded)
     .sort((a, b) => inventoryScore(b.recipe, inventoryItems) - inventoryScore(a.recipe, inventoryItems) || a.recipe.slug.localeCompare(b.recipe.slug));
   if (!allowed.length) {
     return { status: 'no-plan', data_root: root, week_start: weekStart, meals: [], excluded, unreadable, dietary: dietaryNotes(ruleset) };
   }
 
   const profile = household(root);
-  const bySlug = new Map(active.map((recipe) => [recipe.slug, recipe]));
-  const selected = selectRecipes(allowed, bySlug, slots, days);
+  const activeBySlug = new Map(active.map(({ recipe }) => [recipe.slug, recipe]));
+  const selected = selectRecipes(allowed, activeBySlug, slots, days);
   const meals = selected.map((recipe, index) => mealView(recipe, dateAt(weekStart, index), profile.servings));
   const nutrition = rollupNutrition(meals.map((meal, index) => nutritionInput(meal, selected[index])));
   const dietary = dietaryNotes(ruleset);

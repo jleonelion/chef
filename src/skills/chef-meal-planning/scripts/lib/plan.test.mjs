@@ -48,6 +48,16 @@ function makeRoot(files = []) {
   return root;
 }
 
+function ruleset(members) {
+  return {
+    path: 'knowledge/wiki/household/dietary-ruleset.md',
+    content: serializePage(
+      { type: 'dietary-ruleset', title: 'Dietary ruleset', members, updated: '2026-01-15' },
+      '# Dietary ruleset\n',
+    ),
+  };
+}
+
 test('chosen day slots stay ordered and only empty slots are auto-filled', () => {
   const root = makeRoot([recipe('alpha'), recipe('beta'), recipe('gamma')]);
 
@@ -56,4 +66,25 @@ test('chosen day slots stay ordered and only empty slots are auto-filled', () =>
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.meals.map((meal) => meal.slug), ['beta', 'gamma', 'alpha']);
   assert.equal(fs.existsSync(path.join(root, 'knowledge/wiki/meal-plans/2026-01-19.md')), true);
+});
+
+test('a gated chosen recipe is refused with reasons before anything is written', () => {
+  const root = makeRoot([
+    recipe('safe'),
+    recipe('dairy', { frontmatter: { dietary_flags: ['contains-dairy'] }, ingredients: ['30 g parmesan'] }),
+    ruleset([{ name: 'Alex Example', hard_constraints: ['dairy'] }]),
+  ]);
+  const beforeHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
+
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 1, slots: ['dairy'] });
+
+  assert.equal(result.status, 'refused');
+  assert.equal(result.reason, 'chosen recipes cannot be planned');
+  assert.deepEqual(result.refused_choices, [{
+    slot: 1,
+    slug: 'dairy',
+    reasons: [{ member: 'Alex Example', constraint: 'dairy', why: 'flagged', detail: 'contains-dairy' }, { member: 'Alex Example', constraint: 'dairy', why: 'ingredient-text', detail: '30 g parmesan' }],
+  }]);
+  assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }), beforeHead);
+  assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
 });
