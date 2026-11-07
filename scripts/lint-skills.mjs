@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Skill-format lint over source and built skills. Exits 1 on any error.
+// Missing v1 skills fail only in release mode: plugin version >= 1.0.0 or --release.
 import fs from 'node:fs';
 import path from 'node:path';
-import { hasHomePath, skillErrors } from './lib/skill-format.mjs';
+import { hasHomePath, isRelease, missingSkills, rosterErrors, skillErrors, V1_SKILLS } from './lib/skill-format.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
 const roots = { src: path.join(repo, 'src', 'skills'), built: path.join(repo, 'plugins', 'chef', 'skills') };
@@ -21,6 +22,13 @@ for (const [label, root] of Object.entries(roots)) {
   }
 }
 if (list(roots.src).join() !== list(roots.built).join()) errors.push('built skills do not match src/skills; run bun run build');
+
+const { version } = JSON.parse(fs.readFileSync(path.join(repo, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), 'utf8'));
+const release = isRelease(version, process.argv.includes('--release'));
+const names = [...new Set([...list(roots.src), ...list(roots.built)])];
+errors.push(...rosterErrors(names, release));
+const missing = missingSkills(names);
+console.log(`${V1_SKILLS.length - missing.length}/${V1_SKILLS.length} v1 skills present${missing.length ? `; missing: ${missing.join(', ')}` : ''}`);
 
 for (const e of errors) console.error(`error: ${e}`);
 if (errors.length) process.exit(1);

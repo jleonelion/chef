@@ -1,4 +1,4 @@
-// Skill-format rules: chef- prefix, valid Agent Skills frontmatter, no hardcoded home paths.
+// Skill-format rules: chef- prefix, valid Agent Skills frontmatter, no hardcoded home paths, v1 roster.
 const NAME = /^chef-[a-z0-9]+(-[a-z0-9]+)*$/;
 const HOME_PATH = /\/(Users|home)\/[A-Za-z0-9._-]+/;
 
@@ -26,3 +26,23 @@ export function skillErrors(dirName, skillMd) {
 }
 
 export const hasHomePath = (text) => HOME_PATH.test(text);
+
+// The 10 v1 skills (lionclaw-config wayfinder/chef-muse/SPEC.md, Package shape).
+export const V1_SKILLS = Object.freeze([
+  'chef-setup', 'chef-add-recipe', 'chef-recipe-search', 'chef-recipe-decisions', 'chef-meal-planning',
+  'chef-meal-logging', 'chef-food-inventory', 'chef-shopping-lists', 'chef-batch-prep-planning', 'chef-health-goals',
+]);
+
+export const missingSkills = (names) => V1_SKILLS.filter((n) => !names.includes(n));
+
+// Release mode: plugin version major >= 1, or an explicit --release.
+export const isRelease = (version, flag) => flag || Number.parseInt(version, 10) >= 1;
+
+// Unknown skills always fail; missing v1 skills fail only in release mode.
+export function rosterErrors(names, release) {
+  const errors = names.filter((n) => !V1_SKILLS.includes(n))
+    .map((n) => `${n}: not a v1 skill (see V1_SKILLS in scripts/lib/skill-format.mjs)`);
+  const missing = missingSkills(names);
+  if (release && missing.length) errors.push(`${missing.length} v1 skill(s) missing before release: ${missing.join(', ')}`);
+  return errors;
+}
