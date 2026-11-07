@@ -50,7 +50,11 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 
 ## Safety
 
-Chef is not medical advice. (Full safety section lands with the dietary skills.)
+- Chef gives general information, not medical advice.
+- Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.
+- Tell Chef about allergies and foods someone must never eat (during setup, or any time). Recipes that conflict, or that Chef hasn't checked, are left out and listed with the reason. You can mark a recipe you checked yourself as safe; that is saved with the date. Setting a constraint aside works for one plan only and is never saved.
+- Allergen flags cover the US major food allergens plus gluten. Anything else is matched on ingredient wording only.
+- What you tell Chef stays in your data root. On Muse, the "Help improve our AI models" setting may cover it; see [Muse's privacy policy](https://muse.ai/privacy).
 
 ## Development
 

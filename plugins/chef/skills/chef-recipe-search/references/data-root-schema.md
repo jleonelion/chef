@@ -19,6 +19,7 @@ Wiki page types and their folders:
 | `recipe` | `knowledge/wiki/recipes/` |
 | `household-profile` | `knowledge/wiki/household/` |
 | `inventory-rollup` | `knowledge/wiki/household/` (generated from `data/food-inventory/`; never edited by hand) |
+| `dietary-ruleset` | `knowledge/wiki/household/` (one page, `dietary-ruleset.md`; only `chef-setup` writes it) |
 
 A page's slug is its filename without `.md`: lowercase letters, digits and single hyphens.
 
@@ -71,6 +72,7 @@ One or two lines about the dish.
 | `source_raw` | yes | Paths, relative to the data root, of the raw files this page was made from |
 | `created`, `updated` | yes | `YYYY-MM-DD` |
 | `dietary_flags` | no | Added by recipe enrichment: sorted `contains-*` flags from `contains-dairy`, `contains-egg`, `contains-fish`, `contains-gluten`, `contains-peanuts`, `contains-sesame`, `contains-shellfish`, `contains-soy`, `contains-tree-nuts`, `contains-wheat`, read from the ingredient wording. A missing field means "not checked yet", never "none"; `[]` means checked and none found in the wording. Enrichment never removes a flag |
+| `verified_by_user` | no | The user's own check that the recipe is safe for a hard constraint Chef could not vouch for: `{ <constraint>: YYYY-MM-DD }`. Permanent; the first date is kept and Chef never removes an entry. Never clears a conflict the ingredients show |
 | `nutrition_status` | no | `complete`, `incomplete` or `not-computed` (no USDA access). Missing means not attempted yet |
 | `nutrition_per_serving` | only when `complete` | `calories` (kcal), `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar` (g, 1 decimal), `sodium`, `cholesterol` (mg). Only from USDA FoodData Central, never estimated |
 | `nutrition_missing` | when `incomplete` | One line per ingredient (or `servings`) that blocked the calculation, with the reason |
@@ -90,3 +92,31 @@ The body holds the human-readable recipe. `## Ingredients` is a bulleted list, o
 | `purchases/<date>-<receipt id>.json` | The items each receipt added |
 
 Receipt transcripts are kept as `knowledge/raw/receipts/<date>-<receipt id>.txt`. The `inventory-rollup` page is regenerated from `current.json` on every change. Sender email addresses are never stored.
+
+## Dietary ruleset page
+
+`knowledge/wiki/household/dietary-ruleset.md`. No page means the user was never asked; a page with no rules means none declared.
+
+```markdown
+---
+type: dietary-ruleset
+title: Dietary ruleset
+members:
+  - name: Alex Example
+    hard_constraints: [gluten, mustard]
+    avoidances: [olives]
+updated: 2026-01-15
+---
+# Dietary ruleset
+```
+
+| Field | Required | Value |
+|---|---|---|
+| `members` | no | One entry per person with at least one rule. `name` (text, required), `hard_constraints` (must never appear: flag-set names `dairy`, `egg`, `fish`, `gluten`, `peanuts`, `sesame`, `shellfish`, `soy`, `tree-nuts`, `wheat`, or any other lowercase food, matched on ingredient wording only), `avoidances` (lowercase dislikes) |
+| `updated` | yes | `YYYY-MM-DD` |
+
+A page Chef cannot read leaves every recipe out of suggestions until `chef-setup` fixes it.
+
+## Notices
+
+`data/notices.json` records one-time notices by key with the date shown, such as `{"training-setting": "2026-01-15"}`.

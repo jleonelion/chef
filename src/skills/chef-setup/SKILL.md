@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create or adopt the Chef data root, onboard the user, change Chef settings, and verify the install. Use when the user installs Chef or asks to set it up, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
+description: Create or adopt the Chef data root, onboard the user, change Chef settings, and verify the install. Use when the user installs Chef or asks to set it up, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
 ---
 
 # Chef setup
@@ -43,6 +43,14 @@ node scripts/setup.mjs adopt --source <git URL or folder>
 
 ## Onboarding
 
+First show the safety screen, once, as one short message:
+
+```sh
+node scripts/setup.mjs safety
+```
+
+Show each line of `screen` as given, keeping the link. Do not reword the second line; it is Chef's allergen guarantee.
+
 Every question is optional. If the user skips one, or all of them, leave that setting at its default; Chef still works. Ask in this order, one at a time:
 
 1. **Units.** Run `node scripts/setup.mjs settings` and read `settings.units` (the default from the user's locale). Ask: "Chef will use US units (cups, ounces, °F). Would you rather use metric?" Swap the wording if the default is `metric`.
@@ -56,6 +64,11 @@ node scripts/setup.mjs set --units metric --household-recipients "a@example.com,
 ```
 
 Confirm what was saved from the `settings` field of the output. If the user skipped everything, do not run `set`.
+
+4. **Allergies.** Ask: "Does anyone in your household have allergies or foods they must never eat?" This is household data, not a setting.
+   - **No:** run `node scripts/setup.mjs set-dietary --none`.
+   - **Yes:** record each person as in **Dietary ruleset** below.
+   - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.
 
 Then offer **Connect USDA nutrition**, and finish onboarding with **Verify install**.
 
@@ -99,6 +112,24 @@ Act on the `set` output:
 - `refused` without `content`: tell the user `reason` and change nothing.
 
 When another chef- skill reports a settings warning, run `node scripts/setup.mjs settings`. If `status` is `invalid` or `unknown-version`, show the user `warning` and `content`, then offer to fix it with `set ... --rewrite`.
+
+## Dietary ruleset
+
+The household's hard constraints (allergies, celiac disease, anything someone must never eat) and avoidances (dislikes) live on one data-root page. The rules Chef follows are in `references/dietary-safety.md`. Show the current ruleset with `node scripts/setup.mjs dietary`.
+
+Record or change one person at a time. A flag replaces that person's whole list, so pass their current list plus the change:
+
+```sh
+node scripts/setup.mjs set-dietary --member "Alex Example" --hard "peanuts,tree nuts" --avoid "olives"
+```
+
+Use the name the user gives for each person. Allergen names may be plain words (`milk`, `celiac`, `nuts`); Chef maps them to its flags.
+
+- `saved`: confirm `ruleset.members`. Pass on every `caveats` line. If there is a `notice`, show it once, as given, with its link. If `removed_hard_constraints` is present, confirm the user meant to remove them.
+- Before removing anyone's hard constraint (`--hard ""` clears the list), ask the user to confirm; removing one lets those recipes back into plans.
+- `refused` with `content`: the ruleset page is broken. Until it is fixed Chef leaves every recipe out. Show `reason`, then rerun the change with `--rewrite` only if the user agrees to replace the page.
+- `refused` without `content`: show `reason`. `--none` is refused while constraints are declared.
+- `invalid-input`: show `problems`.
 
 ## Verify install
 
