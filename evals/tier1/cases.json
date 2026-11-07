@@ -2353,5 +2353,87 @@
         ]
       }
     ]
+  },
+  {
+    "id": "chef-meal-planning-saves-safe-week-with-rollup",
+    "description": "A weekly plan excludes a flagged recipe, saves seven safe meals with one nutrition rollup, considers inventory, and emits no calendar payload when calendar is unset.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md",
+        "content": "---\ntype: recipe\ntitle: Chickpea Spinach Stew\nservings: 4\ntotal_minutes: 45\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-16\nupdated: 2026-01-16\ndietary_flags: []\nnutrition_status: complete\nnutrition_per_serving: {calories: 300, protein: 10, fat: 5, saturated_fat: 1, carbs: 50, fiber: 8, sugar: 6, sodium: 400, cholesterol: 0}\n---\n# Chickpea Spinach Stew\n\n## Ingredients\n\n- 2 can chickpeas\n- 150 g spinach\n\n## Steps\n\n1. Cook.\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "content": "---\ntype: recipe\ntitle: Lemon Garlic Pasta\nservings: 2\ntotal_minutes: 20\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\ndietary_flags: [contains-dairy]\nnutrition_status: complete\nnutrition_per_serving: {calories: 500, protein: 15, fat: 20, saturated_fat: 8, carbs: 65, fiber: 3, sugar: 4, sodium: 600, cholesterol: 25}\n---\n# Lemon Garlic Pasta\n\n## Ingredients\n\n- 200 g spaghetti\n- 30 g parmesan\n\n## Steps\n\n1. Cook.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.meals.length",
+        "equals": 7
+      },
+      {
+        "path": "$.meals[*].slug",
+        "equals": ["chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew"]
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.nutrition.status",
+        "equals": "complete"
+      },
+      {
+        "path": "$.nutrition.totals.calories",
+        "equals": 6300
+      },
+      {
+        "path": "$.inventory.items_considered",
+        "equals": 5
+      },
+      {
+        "path": "$.dietary.footer",
+        "includes": "always check labels"
+      },
+      {
+        "path": "$.calendar",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition:\n  status: complete"
+          },
+          {
+            "path": "$.content",
+            "includes": "items_considered: 5"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
   }
 ]

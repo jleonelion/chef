@@ -1,0 +1,3 @@
+[
+  { "id": "plan-needs-git-history", "script": "scripts/meal-planning.mjs", "args": ["plan", "--week-start", "2026-01-19"], "expect": { "exit": 2, "status": "refused" } }
+]

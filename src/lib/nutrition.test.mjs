@@ -112,3 +112,15 @@ test('rolls complete recipe nutrition into meal and plan totals', () => {
     totals: { calories: 1550, protein: 66, fat: 33.5, saturated_fat: 8, carbs: 240, fiber: 32, sugar: 21, sodium: 1900, cholesterol: 20 },
   });
 });
+
+test('keeps a rollup on the plan when recipe nutrition is unavailable', () => {
+  const result = rollupNutrition([
+    { date: '2026-01-19', slug: 'bean-stew', servings: 3, nutrition_status: 'not-computed' },
+  ]);
+
+  assert.deepEqual(result, {
+    status: 'incomplete',
+    meals: [{ date: '2026-01-19', slug: 'bean-stew', servings: 3, status: 'not-computed' }],
+    missing: [{ date: '2026-01-19', slug: 'bean-stew', reason: 'recipe nutrition is not complete' }],
+  });
+});

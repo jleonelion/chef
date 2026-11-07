@@ -7222,7 +7222,7 @@ function schemaWriteBlocker(root) {
 var WIKI_DIR = "knowledge/wiki";
 var RAW_DIR = "knowledge/raw";
 var DATA_DIR = "data";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household" };
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household", "meal-plan": "meal-plans" };
 var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function slugify(text) {
   return text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80).replace(/^-+|-+$/g, "");
@@ -7651,7 +7651,6 @@ function parseIngredientLine(line) {
 var MG = new Set(["sodium", "cholesterol"]);
 var oneDecimal = (value) => Math.round(value * 10) / 10;
 var round = (field, value) => field === "calories" || MG.has(field) ? Math.round(value) : oneDecimal(value);
-
 class UsdaUnavailable extends Error {
 }
 var usdaAnswer = (result) => {
