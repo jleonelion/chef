@@ -60,7 +60,22 @@ export function applyHealthSuggestions(plan, goal) {
   return goal ? { ...plan, suggestions: { status: 'deferred' } } : plan;
 }
 
-export function planWeek(root, { weekStart }) {
+function selectRecipes(allowed, bySlug, slots, days) {
+  const used = new Set(slots.filter(Boolean));
+  return Array.from({ length: days }, (_, index) => {
+    const chosen = slots[index];
+    if (chosen) return bySlug.get(chosen);
+    let candidate = allowed.find(({ recipe }) => !used.has(recipe.slug));
+    if (!candidate) {
+      used.clear();
+      candidate = allowed[0];
+    }
+    used.add(candidate.recipe.slug);
+    return candidate.recipe;
+  });
+}
+
+export function planWeek(root, { weekStart, days = 7, slots = [] }) {
   const ruleset = readRuleset(root);
   const { recipes, unreadable } = listRecipes(root);
   const active = recipes.filter((recipe) => recipe.frontmatter.type === 'recipe' && recipe.frontmatter.lifecycle !== 'retired');
@@ -75,7 +90,8 @@ export function planWeek(root, { weekStart }) {
   }
 
   const profile = household(root);
-  const selected = Array.from({ length: 7 }, (_, index) => allowed[index % allowed.length].recipe);
+  const bySlug = new Map(active.map((recipe) => [recipe.slug, recipe]));
+  const selected = selectRecipes(allowed, bySlug, slots, days);
   const meals = selected.map((recipe, index) => mealView(recipe, dateAt(weekStart, index), profile.servings));
   const nutrition = rollupNutrition(meals.map((meal, index) => nutritionInput(meal, selected[index])));
   const dietary = dietaryNotes(ruleset);
