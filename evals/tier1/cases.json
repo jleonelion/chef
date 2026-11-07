@@ -2398,7 +2398,15 @@
       },
       {
         "path": "$.meals[*].slug",
-        "equals": ["chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew", "chickpea-spinach-stew"]
+        "equals": [
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew"
+        ]
       },
       {
         "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].why",
@@ -2827,5 +2835,102 @@
         ]
       }
     ]
+  },
+  {
+    "id": "chef-meal-logging-cooked-meal-deducts-inventory-once",
+    "description": "Logging a cooked saved recipe stores one entry and deducts its scaled ingredients; logging the same entry again changes neither the log nor inventory.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-food-inventory/scripts/inventory.mjs",
+          "edit",
+          "--path",
+          "pantry.grains.spaghetti",
+          "--amount",
+          "1",
+          "--unit",
+          "kg"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+          "log",
+          "--date",
+          "2026-01-15",
+          "--slot",
+          "dinner",
+          "--recipe",
+          "lemon-garlic-pasta",
+          "--servings",
+          "5",
+          "--cooked",
+          "--logged-at",
+          "2026-01-15T19:30:00.000Z"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+      "log",
+      "--date",
+      "2026-01-15",
+      "--slot",
+      "dinner",
+      "--recipe",
+      "lemon-garlic-pasta",
+      "--servings",
+      "5",
+      "--cooked",
+      "--logged-at",
+      "2026-01-15T19:30:00.000Z"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "unchanged"
+      },
+      {
+        "path": "$.entry.id",
+        "equals": "2026-01-15-dinner-lemon-garlic-pasta"
+      },
+      {
+        "path": "$.inventory.status",
+        "equals": "duplicate"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.pantry.grains.spaghetti.amount",
+            "equals": 0.5
+          }
+        ]
+      },
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.entries.length",
+            "equals": 1
+          },
+          {
+            "path": "$.entries[0].cooked",
+            "equals": true
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
   }
 ]

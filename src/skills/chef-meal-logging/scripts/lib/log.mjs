@@ -5,6 +5,7 @@ import { slugify, writeWiki } from '../../../../lib/wiki.mjs';
 import { deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
 
 export const MEAL_LOG_FILE = 'data/meal-log/log.json';
+const SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
 
 function readLog(root) {
   const file = path.join(root, MEAL_LOG_FILE);
@@ -32,7 +33,22 @@ function entryFor(root, input) {
   };
 }
 
+function validate(root, input) {
+  const problems = [];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date ?? '') || Number.isNaN(Date.parse(`${input.date}T00:00:00Z`))) problems.push('date: must be YYYY-MM-DD');
+  if (!SLOTS.has(input.slot)) problems.push('slot: must be breakfast, lunch, dinner or snack');
+  if (Boolean(input.recipe) === Boolean(input.food?.trim())) problems.push('provide exactly one of recipe or food');
+  if (!Number.isFinite(input.servings) || input.servings <= 0) problems.push('servings: must be a positive number');
+  if (typeof input.cooked !== 'boolean') problems.push('cooked: must be a boolean');
+  if (Number.isNaN(Date.parse(input.loggedAt))) problems.push('logged_at: must be an ISO timestamp');
+  if (input.recipe && !listRecipes(root).recipes.some((candidate) => candidate.slug === input.recipe)) problems.push(`recipe not found: ${input.recipe}`);
+  if (!input.recipe && !slugify(input.food ?? '')) problems.push('food: must contain letters or numbers');
+  return problems;
+}
+
 export function logMeal(root, input) {
+  const problems = validate(root, input);
+  if (problems.length) return { status: 'invalid-input', problems };
   const entry = entryFor(root, input);
   const store = readLog(root);
   const existing = store.entries.find((candidate) => candidate.id === entry.id);
