@@ -43,7 +43,7 @@ test('the same receipt twice is a duplicate and changes nothing', () => {
 
 test('a forwarded email from an untrusted sender is refused before anything is read or written', () => {
   const root = dataRoot();
-  const result = addReceipt(root, { ...base, source: 'email', from: 'Market <receipts@example.net>', trustedSenders: ['receipts@example.com'] });
+  const result = addReceipt(root, { ...base, source: 'email', from: 'Market <orders@example.com>', trustedSenders: ['receipts@example.com'] });
   assert.equal(result.status, 'refused');
   assert.equal(fs.existsSync(path.join(root, STORE.inventory)), false);
 });

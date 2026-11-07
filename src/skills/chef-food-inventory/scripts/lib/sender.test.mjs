@@ -22,13 +22,13 @@ test('accepts a trusted sender case-insensitively', () => {
 });
 
 test('a display name that looks trusted does not spoof the gate', () => {
-  const result = checkSender('"receipts@example.com" <attacker@example.net>', trusted);
+  const result = checkSender('"receipts@example.com" <attacker@example.com>', trusted);
   assert.equal(result.ok, false);
   assert.match(result.reason, /not a trusted receipt sender/);
 });
 
 test('lookalike addresses are refused', () => {
-  assert.equal(checkSender('receipts@example.com.evil.example', trusted).ok, false);
+  assert.equal(checkSender('receipts+x@example.com', trusted).ok, false);
   assert.equal(checkSender('xreceipts@example.com', trusted).ok, false);
 });
 
