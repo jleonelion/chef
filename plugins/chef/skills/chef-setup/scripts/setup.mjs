@@ -140,6 +140,14 @@ function git(cwd, args, { env } = {}) {
   const options = { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] };
   return execFileSync("git", args, env ? { ...options, env: { ...process.env, ...env } } : options).trim();
 }
+var FALLBACK_IDENTITY = ["-c", "user.name=chef", "-c", "user.email=chef@example.com"];
+function commit(cwd, message) {
+  let configured = "";
+  try {
+    configured = git(cwd, ["config", "user.email"]);
+  } catch {}
+  git(cwd, [...configured ? [] : FALLBACK_IDENTITY, "commit", "-q", "-m", message]);
+}
 
 // src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
 var URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
@@ -221,14 +229,6 @@ function adoptDataRoot(root, source) {
 // src/skills/chef-setup/scripts/lib/init-data-root.mjs
 import fs4 from "node:fs";
 import path6 from "node:path";
-var FALLBACK_IDENTITY = ["-c", "user.name=chef-setup", "-c", "user.email=chef-setup@example.com"];
-function identityArgs(cwd) {
-  try {
-    return git(cwd, ["config", "user.email"]) ? [] : FALLBACK_IDENTITY;
-  } catch {
-    return FALLBACK_IDENTITY;
-  }
-}
 var writeJson = (file, value) => fs4.writeFileSync(file, `${JSON.stringify(value)}
 `);
 function initDataRoot(root) {
@@ -245,7 +245,7 @@ function initDataRoot(root) {
   writeJson(path6.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
   writeJson(path6.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
   git(root, ["add", ".gitignore", SCHEMA_FILE]);
-  git(root, [...identityArgs(root), "commit", "-q", "-m", "chef-setup: create data root"]);
+  commit(root, "chef-setup: create data root");
   return { status: "created", data_root: root, schema_version: SCHEMA_VERSION };
 }
 

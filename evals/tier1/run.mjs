@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // Tier1 deterministic evals: run each case's built script against a throwaway data root,
 // then assert on its output and on what it wrote. `seed` writes files into the data root
-// first; `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
+// first (the fixture is then committed to a fresh git repo); `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 //   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>]
 //   (defaults: plugins/chef/skills, fixtures/data-root)
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,11 +17,26 @@ import { assertCase } from './assertions.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
+// A real data root is a git repo; skills commit every write. `seed` paths starting with ../
+// land beside the data root (inputs such as receipt transcripts) and are not committed.
+function commitFixture(dataRoot) {
+  const git = (...args) => execFileSync('git', args, { cwd: dataRoot, stdio: 'ignore' });
+  git('init', '-q', '-b', 'main');
+  git('add', '-A');
+  git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'fixture');
+}
+
 function prepare(testCase, fixture) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
   const dataRoot = path.join(tmp, 'data-root');
-  if ((testCase.fixture ?? 'data-root') === 'data-root') fs.cpSync(fixture, dataRoot, { recursive: true });
-  for (const file of testCase.seed ?? []) fs.writeFileSync(path.join(dataRoot, file.path), file.content);
+  const useFixture = (testCase.fixture ?? 'data-root') === 'data-root';
+  if (useFixture) fs.cpSync(fixture, dataRoot, { recursive: true });
+  for (const file of testCase.seed ?? []) {
+    const abs = path.join(dataRoot, file.path);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, file.content);
+  }
+  if (useFixture) commitFixture(dataRoot);
   return { tmp, dataRoot };
 }
 
@@ -42,15 +57,21 @@ function runCase(testCase, skillsDir, fixture) {
   const { tmp, dataRoot } = prepare(testCase, fixture);
   try {
     const expand = (arg) => arg.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot);
-    const [cmd, ...args] = testCase.command.map(expand);
-    const result = spawnSync(cmd, args, {
-      cwd: tmp,
-      env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
-      encoding: 'utf8',
-      timeout: 30000,
-    });
-    const expected = testCase.expectedStatus ?? 0;
-    assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);
+    const run = (step) => {
+      const [cmd, ...args] = step.command.map(expand);
+      const result = spawnSync(cmd, args, {
+        cwd: tmp,
+        env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
+        encoding: 'utf8',
+        timeout: 30000,
+      });
+      const expected = step.expectedStatus ?? 0;
+      assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);
+      return result;
+    };
+    // `steps` run first, in order, each expected to exit 0 unless it says otherwise.
+    for (const step of testCase.steps ?? []) run(step);
+    const result = run(testCase);
     const evaluation = parseOutput(testCase.parse, result);
     for (const assertion of testCase.assertions ?? []) assertCase(evaluation, assertion);
     for (const target of testCase.files ?? []) {

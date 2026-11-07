@@ -377,6 +377,575 @@
     ]
   },
   {
+    "id": "chef-add-recipe-url-then-search-finds-it",
+    "description": "Adding a recipe page with schema.org data writes a v1 wiki page; chef-recipe-search then finds it by ingredient, cuisine and time.",
+    "seed": [
+      {
+        "path": "page.html",
+        "content": "<html><head><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Recipe\",\"name\":\"Miso Mushroom Noodles\",\"recipeYield\":\"2 servings\",\"prepTime\":\"PT10M\",\"cookTime\":\"PT15M\",\"recipeCuisine\":\"Japanese\",\"keywords\":\"noodles, weeknight\",\"recipeIngredient\":[\"200 g udon noodles\",\"150 g shiitake mushrooms\",\"1 tbsp white miso\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Cook the noodles.\"},{\"@type\":\"HowToStep\",\"text\":\"Fry the mushrooms, stir in the miso and toss with the noodles.\"}]}</script></head><body><p>Synthetic test page.</p></body></html>"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "url",
+          "--url",
+          "https://example.com/miso-noodles",
+          "--html",
+          "{data_root}/page.html"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "mushroom",
+      "--cuisine",
+      "japanese",
+      "--max-minutes",
+      "30"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "miso-mushroom-noodles"
+      },
+      {
+        "path": "$.recipes[0].total_minutes",
+        "equals": 25
+      },
+      {
+        "path": "$.recipes[0].servings",
+        "equals": 2
+      },
+      {
+        "path": "$.recipes[0].dietary_flags",
+        "equals": null
+      },
+      {
+        "path": "$.missing_data",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/miso-mushroom-noodles.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "type: recipe"
+          },
+          {
+            "path": "$.content",
+            "includes": "source_url: https://example.com/miso-noodles"
+          },
+          {
+            "path": "$.content",
+            "includes": "- knowledge/raw/recipes/"
+          },
+          {
+            "path": "$.content",
+            "includes": "- 150 g shiitake mushrooms"
+          },
+          {
+            "path": "$.content",
+            "includes": "2. Fry the mushrooms"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-draft-then-show",
+    "description": "A recipe drafted from pasted text is saved with its raw source and chef-recipe-search show returns it.",
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Toasted Oat Porridge\", \"servings\": 1, \"cook_minutes\": 10, \"ingredients\": [\"50 g rolled oats\", \"200 ml milk\"], \"steps\": [\"Toast the oats.\", \"Simmer in the milk.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Toasted oat porridge for one. Synthetic test source.\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "draft",
+          "--kind",
+          "text",
+          "--source",
+          "{data_root}/pasted.txt",
+          "--draft",
+          "{data_root}/draft.json"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "toasted-oat-porridge"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.frontmatter.source_kind",
+        "equals": "text"
+      },
+      {
+        "path": "$.frontmatter.source_url",
+        "absent": true
+      },
+      {
+        "path": "$.body",
+        "includes": "- 50 g rolled oats"
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-duplicate-reports-existing",
+    "description": "Adding a recipe whose title matches a saved recipe changes nothing and reports the existing page.",
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Lemon Garlic Pasta\", \"ingredients\": [\"spaghetti\"], \"steps\": [\"Cook.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Synthetic duplicate.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "exists"
+      },
+      {
+        "path": "$.matched",
+        "equals": "slug"
+      },
+      {
+        "path": "$.path",
+        "equals": "knowledge/wiki/recipes/lemon-garlic-pasta.md"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- 200 g spaghetti"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-page-without-recipe-data-needs-draft",
+    "description": "A page with no schema.org recipe data returns needs-draft with the page text and writes nothing.",
+    "seed": [
+      {
+        "path": "page.html",
+        "content": "<html><body><h1>Bean Salad</h1><p>Mix the beans.</p></body></html>"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "url",
+      "--url",
+      "https://example.com/bean-salad",
+      "--html",
+      "{data_root}/page.html"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "needs-draft"
+      },
+      {
+        "path": "$.page_text",
+        "includes": "Mix the beans."
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-refuses-schema-mismatch",
+    "description": "chef-add-recipe refuses to write when the data root's schema version differs and points to update Chef.",
+    "seed": [
+      {
+        "path": "schema-version.json",
+        "content": "{\"schema_version\":2}\n"
+      },
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Toasted Oat Porridge\", \"servings\": 1, \"cook_minutes\": 10, \"ingredients\": [\"50 g rolled oats\", \"200 ml milk\"], \"steps\": [\"Toast the oats.\", \"Simmer in the milk.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Synthetic.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "update Chef"
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-search-counts-missing-time",
+    "description": "A time facet leaves out recipes with no recorded time and counts them in missing_data.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "content": "---\ntype: recipe\ntitle: Plain Rice\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-17\nupdated: 2026-01-17\n---\n\n# Plain Rice\n\n## Ingredients\n\n- 1 cup rice\n\n## Steps\n\n1. Simmer.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--max-minutes",
+      "60"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.total_recipes",
+        "equals": 3
+      },
+      {
+        "path": "$.missing_data.total_minutes",
+        "equals": 1
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-receipt-text-yields-items",
+    "description": "Receipt text becomes inventory items: a new item is placed by name, a targeted item is added to, and the rollup page is regenerated.",
+    "seed": [
+      {
+        "path": "../receipt.txt",
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n- 1 gal whole milk \u2014 $3.49 -> fridge.dairy.whole_milk\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "add-receipt",
+      "--transcript-file",
+      "{data_root}/../receipt.txt",
+      "--source",
+      "text",
+      "--date",
+      "2026-01-15"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "added"
+      },
+      {
+        "path": "$.changes[*].path",
+        "equals": [
+          "pantry.produce.bananas",
+          "fridge.dairy.whole_milk"
+        ]
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.pantry.produce.bananas.amount",
+            "equals": 2
+          },
+          {
+            "path": "$.pantry.produce.bananas.unit",
+            "equals": "lb"
+          },
+          {
+            "path": "$.fridge.dairy.whole_milk.amount",
+            "equals": 2
+          }
+        ]
+      },
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- bananas: 2 lb"
+          },
+          {
+            "path": "$.content",
+            "includes": "- whole milk: 2 gal (expires 2026-01-21)"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-untrusted-sender-refused",
+    "description": "A forwarded receipt from a sender not in trusted_receipt_senders is refused and nothing changes, even when the display name looks trusted.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"trusted_receipt_senders\": [\"receipts@example.com\"]}\n"
+      },
+      {
+        "path": "../receipt.txt",
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n- 1 gal whole milk \u2014 $3.49 -> fridge.dairy.whole_milk\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "add-receipt",
+      "--transcript-file",
+      "{data_root}/../receipt.txt",
+      "--source",
+      "email",
+      "--from",
+      "\"receipts@example.com\" <orders@example.com>",
+      "--receipt-id",
+      "<r1@example.com>"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "orders@example.com is not a trusted receipt sender"
+      },
+      {
+        "path": "$.changes",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.dairy.whole_milk.amount",
+            "equals": 1
+          },
+          {
+            "path": "$.pantry.produce.bananas",
+            "absent": true
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-forwarding-off-refused",
+    "description": "With no trusted senders set, forwarded receipts are refused because forwarding is off.",
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "check-sender",
+      "--from",
+      "receipts@example.com"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "forwarding is off"
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-trusted-sender-accepted",
+    "description": "A trusted sender passes the gate case-insensitively.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"trusted_receipt_senders\": [\"receipts@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "check-sender",
+      "--from",
+      "Example Market <Receipts@Example.com>"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "trusted"
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-rollup-matches-store",
+    "description": "The health check finds the fixture store valid, matching its audit log and ledger, and the rollup page matching the store.",
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "health",
+      "--today",
+      "2026-01-16",
+      "--days",
+      "3"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "healthy"
+      },
+      {
+        "path": "$.problems",
+        "equals": []
+      },
+      {
+        "path": "$.stats",
+        "equals": {
+          "items": 5,
+          "empty": 0,
+          "expired": 0,
+          "expiring_soon": 1,
+          "receipts": 1
+        }
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-health-detects-edited-rollup",
+    "description": "A hand-edited rollup page no longer matches the store and the health check says so.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "content": "---\ntype: inventory-rollup\ntitle: Current inventory\n---\n# Current inventory\n\n- caviar: 9 jar\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "health",
+      "--today",
+      "2026-01-16"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "problems"
+      },
+      {
+        "path": "$.problems",
+        "includes": "the rollup page does not match the store"
+      }
+    ]
+  },
+  {
+    "id": "food-inventory-expiring-soonest-first",
+    "description": "Expiration tracking lists stocked items expiring within the window, soonest first, and expired items separately.",
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "expiring",
+      "--today",
+      "2026-01-18",
+      "--days",
+      "5"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.expired.length",
+        "equals": 1
+      },
+      {
+        "path": "$.expired[0].path",
+        "equals": "fridge.produce.spinach"
+      },
+      {
+        "path": "$.soon.length",
+        "equals": 1
+      },
+      {
+        "path": "$.soon[0].path",
+        "equals": "fridge.dairy.whole_milk"
+      },
+      {
+        "path": "$.soon[0].days_left",
+        "equals": 3
+      }
+    ]
+  },
+  {
     "id": "chef-setup-set-refuses-schema-mismatch",
     "description": "A writing skill refuses to write to a data root on a different schema version and points the user at update Chef.",
     "seed": [

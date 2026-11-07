@@ -1,0 +1,4 @@
+[
+  { "id": "view", "script": "scripts/inventory.mjs", "args": ["view"], "expect": { "exit": 0, "status": "ok" } },
+  { "id": "expiring", "script": "scripts/inventory.mjs", "args": ["expiring"], "expect": { "exit": 0, "status": "ok" } }
+]

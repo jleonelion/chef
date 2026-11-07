@@ -1,13 +1,15 @@
 #!/usr/bin/env bun
 // Builds src/skills/<skill> into self-contained plugins/chef/skills/<skill> folders:
-// each top-level scripts/*.mjs is bundled to one Node file; SKILL.md, smoke.json and references/
-// are copied. chef-setup also gets the synthetic fixture data root for "verify install".
+// each top-level scripts/*.mjs is bundled to one Node file; SKILL.md, smoke.json, the skill's own
+// references/ and the shared src/references/ files are copied. chef-setup also gets the synthetic
+// fixture data root for "verify install".
 import fs from 'node:fs';
 import path from 'node:path';
 
 const repo = path.resolve(import.meta.dir, '..');
 const srcSkills = path.join(repo, 'src', 'skills');
 const outSkills = path.join(repo, 'plugins', 'chef', 'skills');
+const sharedRefs = path.join(repo, 'src', 'references');
 
 const isEntry = (name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs');
 
@@ -24,6 +26,7 @@ async function buildSkill(name) {
   if (fs.existsSync(path.join(src, 'references'))) {
     fs.cpSync(path.join(src, 'references'), path.join(out, 'references'), { recursive: true });
   }
+  fs.cpSync(sharedRefs, path.join(out, 'references'), { recursive: true });
   const scripts = path.join(src, 'scripts');
   if (!fs.existsSync(scripts)) return;
   for (const file of fs.readdirSync(scripts).filter(isEntry).sort()) {

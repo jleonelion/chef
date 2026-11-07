@@ -1,0 +1,11 @@
+{
+  "receipts": {
+    "a86049add033951e": {
+      "date": "2026-01-14",
+      "source": "text",
+      "store": "Example Market",
+      "processed_at": "2026-01-14T18:00:00.000Z",
+      "items": 5
+    }
+  }
+}
