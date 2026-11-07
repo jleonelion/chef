@@ -2,6 +2,7 @@
 // or a standing rule decides it. Proposals are keyed by recipe slug, so a rejected recipe (same
 // title or source address) is never proposed again.
 import { checkRecipe } from '../../../../lib/dietary-gate.mjs';
+import { dietaryFlags } from '../../../../lib/dietary-flags.mjs';
 import { readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { listRecipes, normalizeUrl } from '../../../../lib/recipes.mjs';
 import { slugify, writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
@@ -47,6 +48,7 @@ export function propose(root, { draft, url, note, date }) {
   record.proposed = date;
   if (match?.action === 'approve') {
     const page = recipePage(record.draft, { sourceKind: 'proposal', sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
     const verdict = checkRecipe(readRuleset(root), { slug: record.slug, ...page });
     if (!verdict.allowed) {
       record.gate_reasons = verdict.reasons;
