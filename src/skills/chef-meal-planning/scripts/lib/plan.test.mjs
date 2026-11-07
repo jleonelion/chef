@@ -158,3 +158,19 @@ test('a one-plan override allows the chosen recipe and reports lifted reasons', 
   }]);
   assert.doesNotMatch(fs.readFileSync(path.join(root, result.path), 'utf8'), /overrid(?:e|den)/);
 });
+
+test('unknown and retired chosen recipes are refused with slot-specific reasons', () => {
+  const root = makeRoot([
+    recipe('retired-soup', { frontmatter: { lifecycle: 'retired', retired: '2026-01-16' } }),
+    recipe('active-soup'),
+  ]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 2, slots: ['missing-soup', 'retired-soup'] });
+
+  assert.equal(result.status, 'refused');
+  assert.deepEqual(result.refused_choices, [
+    { slot: 1, slug: 'missing-soup', reasons: [{ why: 'not-found' }] },
+    { slot: 2, slug: 'retired-soup', reasons: [{ why: 'retired' }] },
+  ]);
+  assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
+});
