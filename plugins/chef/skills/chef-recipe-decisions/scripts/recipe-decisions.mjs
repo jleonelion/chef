@@ -7735,6 +7735,7 @@ function propose(root, { draft, url, note, date }) {
   record.proposed = date;
   if (match?.action === "approve") {
     const page = recipePage(record.draft, { sourceKind: "proposal", sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
     const verdict = checkRecipe(readRuleset(root), { slug: record.slug, ...page });
     if (!verdict.allowed) {
       record.gate_reasons = verdict.reasons;
@@ -8153,6 +8154,7 @@ function blockedByDietaryGate(root, records, date) {
   const ruleset = readRuleset(root);
   return records.flatMap((record) => {
     const page = recipePage(record.draft, { sourceKind: "proposal", sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
     const verdict = checkRecipe(ruleset, { slug: record.slug, ...page });
     return verdict.allowed ? [] : [{ id: record.id, slug: record.slug, title: record.title, reasons: verdict.reasons }];
   });
@@ -8168,11 +8170,13 @@ function publishProposals(root, { ids, date, confirm = false }) {
   if (!chosen.length)
     return { status: "unchanged", data_root: root, published: [] };
   const blocked = blockedByDietaryGate(root, chosen, date);
-  if (blocked.length && !confirm) {
+  const confirmedIds = new Set(confirm ? ids ?? [] : []);
+  const allBlockedNamed = blocked.every((record) => confirmedIds.has(record.id));
+  if (blocked.length && !allBlockedNamed) {
     return {
       status: "refused",
       data_root: root,
-      reason: "The dietary hard-constraint gate did not allow publication. Explicit confirmation is required.",
+      reason: "The dietary hard-constraint gate did not allow publication. Explicit confirmation is required for each blocked proposal named with --id.",
       blocked
     };
   }
