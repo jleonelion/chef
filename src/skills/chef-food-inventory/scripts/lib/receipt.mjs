@@ -28,10 +28,10 @@ function files(id, ledger, purchase, transcript) {
   };
 }
 
-export function addReceipt(root, { transcript, source, from, id: givenId, date, store, trustedSenders, now }) {
+export function addReceipt(root, { transcript, source, from, authenticated, id: givenId, date, store, trustedSenders, now }) {
   if (!SOURCES.includes(source)) return invalid([`source must be one of ${SOURCES.join(', ')}`]);
   if (source === 'email') {
-    const gate = checkSender(from, trustedSenders);
+    const gate = checkSender(from, trustedSenders, { authenticated });
     if (!gate.ok) return { status: 'refused', reason: gate.reason };
   }
   const parsed = readItems(transcript);

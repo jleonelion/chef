@@ -32,7 +32,7 @@ function rollup(root) {
 const MODES = {
   view: (root) => ({ status: 'ok', items: listItems(loadInventory(root)).map(({ path, name, amount, unit, expires }) => ({ path, name, amount, unit, expires: expires ?? null })) }),
   'check-sender': (root, settings) => {
-    const gate = checkSender(values.from, settings.trusted_receipt_senders);
+    const gate = checkSender(values.from, settings.trusted_receipt_senders, { authenticated: values.authenticated });
     return gate.ok ? { status: 'trusted' } : { status: 'refused', reason: gate.reason };
   },
   'add-receipt': (root, settings) =>
@@ -40,6 +40,7 @@ const MODES = {
       transcript: readTranscript(values['transcript-file']),
       source: values.source ?? 'text',
       from: values.from,
+      authenticated: values.authenticated,
       id: values['receipt-id'],
       date: values.date ?? today(),
       store: values.store?.slice(0, 80),

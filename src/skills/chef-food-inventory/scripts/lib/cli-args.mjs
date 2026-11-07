@@ -5,6 +5,7 @@ export const OPTIONS = {
   'transcript-file': { type: 'string' },
   source: { type: 'string' },
   from: { type: 'string' },
+  authenticated: { type: 'string' },
   'receipt-id': { type: 'string' },
   date: { type: 'string' },
   store: { type: 'string' },

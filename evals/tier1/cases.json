@@ -1029,7 +1029,7 @@
   },
   {
     "id": "food-inventory-trusted-sender-accepted",
-    "description": "A trusted sender passes the gate case-insensitively.",
+    "description": "A trusted sender whose domain the mail provider authenticated passes the gate case-insensitively.",
     "seed": [
       {
         "path": "settings.json",
@@ -1041,7 +1041,9 @@
       "{skills}/chef-food-inventory/scripts/inventory.mjs",
       "check-sender",
       "--from",
-      "Example Market <Receipts@Example.com>"
+      "Example Market <Receipts@Example.com>",
+      "--authenticated",
+      "example.com"
     ],
     "parse": "json",
     "assertions": [
@@ -3594,5 +3596,50 @@
     "git": {
       "clean": true
     }
+  },
+  {
+    "id": "food-inventory-spoofed-trusted-sender-refused",
+    "description": "A receipt email whose From is a trusted sender but whose domain was not authenticated (spoofed From) is refused, and nothing is written.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"trusted_receipt_senders\": [\"receipts@example.com\"]}\n"
+      },
+      {
+        "path": "../receipt.txt",
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas — $1.38\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "add-receipt",
+      "--transcript-file",
+      "{data_root}/../receipt.txt",
+      "--source",
+      "email",
+      "--from",
+      "Example Market <receipts@example.com>",
+      "--authenticated",
+      "attacker.example.net",
+      "--receipt-id",
+      "<spoof1@example.com>"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "not authenticated"
+      }
+    ]
   }
 ]

@@ -48,9 +48,21 @@ test('a forwarded email from an untrusted sender is refused before anything is r
   assert.equal(fs.existsSync(path.join(root, STORE.inventory)), false);
 });
 
-test('a forwarded email from a trusted sender is accepted and the sender is not stored', () => {
+test('a trusted From without matching authentication (spoofed) is refused and nothing is written', () => {
   const root = dataRoot();
-  const result = addReceipt(root, { ...base, source: 'email', from: 'Market <Receipts@Example.com>', id: '<abc@example.com>', trustedSenders: ['receipts@example.com'] });
+  const head = git(root, ['rev-parse', 'HEAD']);
+  for (const authenticated of [undefined, 'attacker.example.net']) {
+    const result = addReceipt(root, { ...base, source: 'email', from: 'receipts@example.com', authenticated, trustedSenders: ['receipts@example.com'] });
+    assert.equal(result.status, 'refused');
+    assert.match(result.reason, /not authenticated/);
+  }
+  assert.equal(git(root, ['rev-parse', 'HEAD']), head);
+  assert.equal(fs.existsSync(path.join(root, STORE.inventory)), false);
+});
+
+test('a forwarded email from a trusted, authenticated sender is accepted and the sender is not stored', () => {
+  const root = dataRoot();
+  const result = addReceipt(root, { ...base, source: 'email', from: 'Market <Receipts@Example.com>', authenticated: 'example.com', id: '<abc@example.com>', trustedSenders: ['receipts@example.com'] });
   assert.equal(result.status, 'added');
   assert.throws(() => git(root, ['grep', '-i', '-q', 'receipts@example.com', 'HEAD']), 'sender address must not be committed');
 });
