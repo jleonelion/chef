@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
-import { bestMatch, fdcClient } from './fdc.mjs';
+import { fdcClient } from './fdc.mjs';
 
-const samples = JSON.parse(fs.readFileSync(new URL('./__fixtures__/fdc-samples.json', import.meta.url), 'utf8'));
+const samples = JSON.parse(fs.readFileSync(new URL('../../fixtures/usda/fdc-samples.json', import.meta.url), 'utf8'));
 const key = { ok: true, value: 'hsurr:secret', placement: { in: 'query', name: 'api_key' } };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
@@ -55,19 +55,4 @@ test('failures map to reasons and never carry the key', async () => {
 test('no credential means no request', async () => {
   const client = fdcClient({ credential: { ok: false, reason: 'not-connected' }, fetchImpl: async () => assert.fail('must not fetch') });
   assert.deepEqual(await client.search('onion'), { ok: false, reason: 'not-connected' });
-});
-
-const foods = async (name) => (await fdcClient({ credential: key, fetchImpl: async () => json(samples.search[name]) }).search(name)).foods;
-
-test('bestMatch takes the plain food, not brands, products or other foods', async () => {
-  assert.equal(bestMatch('onion', await foods('onion'))?.description, 'Onions, raw');
-  assert.equal(bestMatch('olive oil', await foods('olive oil'))?.description, 'Oil, olive, salad or cooking');
-  assert.equal(bestMatch('parmesan', await foods('parmesan'))?.description, 'Cheese, parmesan, grated');
-  assert.equal(bestMatch('lemon', await foods('lemon'))?.description, 'Lemons, raw, without peel');
-  assert.equal(bestMatch('garlic', await foods('garlic'))?.description, 'Garlic, raw');
-});
-
-test('bestMatch returns nothing rather than a different food', async () => {
-  assert.equal(bestMatch('spaghetti', await foods('spaghetti')), null);
-  assert.equal(bestMatch('onion', []), null);
 });

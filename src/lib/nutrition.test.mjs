@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
-import { fdcClient } from '../../../../lib/fdc.mjs';
+import { fdcClient } from './fdc.mjs';
 import { computeNutrition } from './nutrition.mjs';
 
-const samples = JSON.parse(fs.readFileSync(new URL('../../../../lib/__fixtures__/fdc-samples.json', import.meta.url), 'utf8'));
+const samples = JSON.parse(fs.readFileSync(new URL('../../fixtures/usda/fdc-samples.json', import.meta.url), 'utf8'));
 const key = { ok: true, value: 'k', placement: { in: 'query', name: 'api_key' } };
 
 // Serves the recorded USDA responses; anything not recorded is a 404.

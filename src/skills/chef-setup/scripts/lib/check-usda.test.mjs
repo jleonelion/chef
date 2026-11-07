@@ -17,7 +17,7 @@ test('a harmless one-food search proves the connection', async () => {
 
 test('reports why the connection does not work', async () => {
   const none = fdcClient({ credential: { ok: false, reason: 'not-connected' } });
-  assert.deepEqual(await checkUsda(none), { status: 'not-connected', reason: 'not-connected' });
+  assert.deepEqual(await checkUsda(none), { status: 'failed', reason: 'not-connected' });
   const refused = fdcClient({ credential: key, fetchImpl: async () => new Response('{}', { status: 403 }) });
-  assert.deepEqual(await checkUsda(refused), { status: 'not-connected', reason: 'rejected' });
+  assert.deepEqual(await checkUsda(refused), { status: 'failed', reason: 'rejected' });
 });

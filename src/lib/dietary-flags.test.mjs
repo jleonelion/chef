@@ -28,10 +28,9 @@ test('look-alike ingredients do not raise a flag', () => {
   assert.deepEqual(dietaryFlags(['1 cup almond flour']), ['contains-tree-nuts']);
 });
 
-test('an explicit "-free" qualifier clears that allergen on its own line only', () => {
-  assert.deepEqual(dietaryFlags(['200 g gluten-free spaghetti']), []);
-  assert.deepEqual(dietaryFlags(['200 g gluten-free spaghetti', '1 cup flour']), ['contains-gluten', 'contains-wheat']);
-  assert.deepEqual(dietaryFlags(['2 tbsp dairy-free butter']), []);
+test('"-free" wording is a label claim Chef cannot verify, so the flag stays (fail closed)', () => {
+  assert.deepEqual(dietaryFlags(['200 g gluten-free spaghetti']), ['contains-gluten', 'contains-wheat']);
+  assert.deepEqual(dietaryFlags(['2 tbsp dairy-free butter']), ['contains-dairy']);
 });
 
 test('no lines means no flags', () => {

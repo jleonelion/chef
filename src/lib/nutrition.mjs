@@ -2,20 +2,23 @@
 // resolve to a USDA food, a gram weight (from the line itself or a USDA portion of that food)
 // and every tracked nutrient. Anything short of that leaves the recipe "incomplete" with
 // reasons, and no numbers. No USDA access at all means "not-computed".
-import { bestMatch, NUTRIENTS } from '../../../../lib/fdc.mjs';
-import { GRAMS_PER, ML_PER, parseIngredientLine } from '../../../../lib/ingredient-line.mjs';
+import { NUTRIENTS } from './fdc.mjs';
+import { bestMatch, singular } from './fdc-match.mjs';
+import { GRAMS_PER, ML_PER, parseIngredientLine } from './ingredient-line.mjs';
 
 const MG = new Set(['sodium', 'cholesterol']);
-const round = (field, value) => (field === 'calories' || MG.has(field) ? Math.round(value) : Math.round(value * 10) / 10);
+const oneDecimal = (value) => Math.round(value * 10) / 10;
+const round = (field, value) => (field === 'calories' || MG.has(field) ? Math.round(value) : oneDecimal(value));
 
-class Stop extends Error {}
-const unwrap = (result) => {
-  if (!result.ok) throw new Stop(result.reason);
+// Thrown when USDA cannot answer at all; the whole recipe is then "not-computed".
+class UsdaUnavailable extends Error {}
+const usdaAnswer = (result) => {
+  if (!result.ok) throw new UsdaUnavailable(result.reason);
   return result;
 };
 
 // A USDA portion modifier such as "cup", "cloves" or "medium (2-1/2\" dia)".
-const portionWord = (portion) => portion.modifier.toLowerCase().split(/[^a-z]+/)[0].replace(/s$/, '');
+const portionWord = (portion) => singular(portion.modifier.toLowerCase().split(/[^a-z]+/)[0]);
 
 function gramsFromPortions(parsed, food) {
   const { amount, unit, size } = parsed;
@@ -40,7 +43,7 @@ async function ingredient(line, lookup) {
   if (!grams) return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? 'medium'}" portion for ${food.description}` };
   const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
   if (absent.length) return { missing: `${line}: USDA has no ${absent.join(', ')} value for ${food.description}` };
-  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${Math.round(grams * 10) / 10} g` };
+  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g` };
 }
 
 function memoLookup(fdc) {
@@ -48,11 +51,11 @@ function memoLookup(fdc) {
   const details = new Map();
   return {
     async match(item) {
-      if (!matches.has(item)) matches.set(item, bestMatch(item, unwrap(await fdc.search(item)).foods));
+      if (!matches.has(item)) matches.set(item, bestMatch(item, usdaAnswer(await fdc.search(item)).foods));
       return matches.get(item);
     },
     async detail(fdcId) {
-      if (!details.has(fdcId)) details.set(fdcId, unwrap(await fdc.food(fdcId)).food);
+      if (!details.has(fdcId)) details.set(fdcId, usdaAnswer(await fdc.food(fdcId)).food);
       return details.get(fdcId);
     },
   };
@@ -74,7 +77,7 @@ export async function computeNutrition({ lines, servings, fdc }) {
       for (const field of Object.keys(totals)) totals[field] += (result.food.per100g[field] * result.grams) / 100;
     }
   } catch (error) {
-    if (error instanceof Stop) return { status: 'not-computed', reason: error.message };
+    if (error instanceof UsdaUnavailable) return { status: 'not-computed', reason: error.message };
     throw error;
   }
   if (missing.length) return { status: 'incomplete', missing, sources };

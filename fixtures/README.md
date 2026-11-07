@@ -8,3 +8,7 @@ no real people, recipe text written for this repo.
 shipped. Never edit them. `bun run migrations` migrates each to the current schema and runs
 tier1 against it. A PR that bumps `SCHEMA_VERSION` adds the migration step in
 `src/lib/migrations.mjs` and freezes `fixtures/schema-v<new>/` from `data-root/`.
+
+`usda/fdc-samples.json` holds real USDA FoodData Central API replies (public domain), captured
+with USDA's public `DEMO_KEY` and trimmed to the fields Chef reads. Unit tests serve them in
+place of the live API. Brand names in USDA food descriptions are USDA's data, not people.

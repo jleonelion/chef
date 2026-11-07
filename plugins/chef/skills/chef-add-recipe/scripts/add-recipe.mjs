@@ -3470,7 +3470,7 @@ ${pointer}
 
 // node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS((exports) => {
-  function resolveProps(tokens2, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
+  function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
     let spaceBefore = false;
     let atNewline = startOnNewline;
     let hasSpace = startOnNewline;
@@ -3485,7 +3485,7 @@ var require_resolve_props = __commonJS((exports) => {
     let comma = null;
     let found = null;
     let start = null;
-    for (const token of tokens2) {
+    for (const token of tokens) {
       if (reqSpace) {
         if (token.type !== "space" && token.type !== "newline" && token.type !== "comma")
           onError(token.offset, "MISSING_CHAR", "Tags and anchors must be separated from the next token by white space");
@@ -3575,7 +3575,7 @@ var require_resolve_props = __commonJS((exports) => {
           hasSpace = false;
       }
     }
-    const last = tokens2[tokens2.length - 1];
+    const last = tokens[tokens.length - 1];
     const end = last ? last.offset + last.source.length : offset;
     if (reqSpace && next && next.type !== "space" && next.type !== "newline" && next.type !== "comma" && (next.type !== "scalar" || next.source !== "")) {
       onError(next.offset, "MISSING_CHAR", "Tags and anchors must be separated from the next token by white space");
@@ -4877,8 +4877,8 @@ ${cb}` : comment;
         warnings: this.warnings
       };
     }
-    *compose(tokens2, forceDoc = false, endOffset = -1) {
-      for (const token of tokens2)
+    *compose(tokens, forceDoc = false, endOffset = -1) {
+      for (const token of tokens)
         yield* this.next(token);
       yield* this.end(forceDoc, endOffset);
     }
@@ -7035,17 +7035,16 @@ function failure(status) {
     return "rate-limited";
   return "unreachable";
 }
-var usdaClient = (adapter = muse) => fdcClient({ credential: adapter.credential("usda-fdc") });
+var usdaClient = () => fdcClient({ credential: muse.credential("usda-fdc") });
 function fdcClient({ credential, fetchImpl = fetch }) {
   async function get(pathname, params) {
     if (!credential.ok)
       return { ok: false, reason: credential.reason };
-    const url = new URL(`${BASE}${pathname}`);
-    for (const [name, value] of Object.entries(params))
-      url.searchParams.set(name, value);
     if (credential.placement.in !== "query")
       return { ok: false, reason: "wrong-placement" };
-    url.searchParams.set(credential.placement.name, credential.value);
+    const url = new URL(`${BASE}${pathname}`);
+    for (const [name, value] of Object.entries({ ...params, [credential.placement.name]: credential.value }))
+      url.searchParams.set(name, value);
     try {
       const response = await fetchImpl(url.href, { redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!response.ok)
@@ -7062,43 +7061,12 @@ function fdcClient({ credential, fetchImpl = fetch }) {
       return result.ok ? { ok: true, foods: (result.body.foods ?? []).map(toFood) } : result;
     },
     async food(fdcId) {
-      const result = await get(`/food/${Number(fdcId)}`, {});
+      if (!Number.isInteger(fdcId))
+        return { ok: false, reason: "unreachable" };
+      const result = await get(`/food/${fdcId}`, {});
       return result.ok ? { ok: true, food: toFood(result.body) } : result;
     }
   };
-}
-var STOP = new Set(["and", "or", "with", "without", "in", "of", "from", "the", "a"]);
-var NEUTRAL = new Set(["raw", "fresh", "dry", "whole", "plain", "regular", "grated", "shredded", "ground", "enriched", "unenriched", "mature", "seed"]);
-var singular = (word) => word.replace(/ies$/, "y").replace(/(o|sh|ch|x)es$/, "$1").replace(/([^s])s$/, "$1");
-var tokens = (text) => text.toLowerCase().split(/[^a-z]+/).filter((w) => w && !STOP.has(w)).map(singular);
-var isBrand = (segment) => /\b[A-Z]{3,}\b/.test(segment) || /^restaurant\b/i.test(segment);
-function score(itemTokens, description) {
-  const segments = description.replace(/\([^)]*\)/g, "").split(",").map((s) => s.trim());
-  if (isBrand(segments[0]))
-    return null;
-  const [first, second = []] = segments.slice(0, 2).map(tokens);
-  const head = new Set([...first, ...second]);
-  if (!itemTokens.every((t) => head.has(t)))
-    return null;
-  const extras = [...head].filter((t) => !itemTokens.includes(t) && !NEUTRAL.has(t));
-  if (extras.length === 0)
-    return 0;
-  const categoryOnly = extras.length === 1 && first.includes(extras[0]) && itemTokens.some((t) => second.includes(t));
-  return categoryOnly ? 1 : null;
-}
-function bestMatch(item, foods) {
-  const itemTokens = tokens(item).filter((t) => !NEUTRAL.has(t));
-  if (itemTokens.length === 0)
-    return null;
-  let best = null;
-  for (const food of foods) {
-    if (food.dataType !== DATA_TYPE)
-      continue;
-    const s = score(itemTokens, food.description);
-    if (s !== null && (best === null || s < best.s))
-      best = { s, food };
-  }
-  return best?.food ?? null;
 }
 
 // src/lib/recipes.mjs
@@ -7427,10 +7395,12 @@ function addRecipe(root, { draft, kind, url, source, date, dryRun = false }) {
   return { status: "added", data_root: root, slug, title: recipe.title, path: pagePath, raw: written.raw };
 }
 
+// src/skills/chef-add-recipe/scripts/lib/enrich.mjs
+import { isDeepStrictEqual } from "node:util";
+
 // src/lib/dietary-flags.mjs
 var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
 var phrases = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?![a-z])`, "g");
-var free = (...list) => words(...list.map((w) => `${w}-free`));
 var WHEAT = [
   "wheat",
   "flour",
@@ -7481,36 +7451,66 @@ var TREE_NUT_NAMES = ["almond", "walnut", "pecan", "cashew", "pistachio", "hazel
 var RULES = {
   "contains-dairy": {
     match: words("milk", "buttermilk", "butter", "cream", "cheese", "parmesan", "parmigiano", "mozzarella", "cheddar", "ricotta", "feta", "gruyere", "pecorino", "mascarpone", "paneer", "halloumi", "brie", "yogurt", "yoghurt", "ghee", "whey", "casein", "kefir", "creme fraiche", "crème fraîche", "half-and-half", "pesto"),
-    except: phrases(`${PLANT} (?:milk|cream|yogurt|yoghurt|butter)`, "(?:peanut|nut|seed|sunflower|apple|cocoa|shea) butter", "butter beans?", "cream of tartar"),
-    free: free("dairy", "milk")
+    except: phrases(`${PLANT} (?:milk|cream|yogurt|yoghurt|butter)`, "(?:peanut|nut|seed|sunflower|apple|cocoa|shea) butter", "butter beans?", "cream of tartar")
   },
-  "contains-egg": { match: words("egg", "yolk", "mayonnaise", "mayo", "meringue", "aioli"), except: phrases("vegan (?:mayo|mayonnaise)"), free: free("egg") },
+  "contains-egg": { match: words("egg", "yolk", "mayonnaise", "mayo", "meringue", "aioli"), except: phrases("vegan (?:mayo|mayonnaise)") },
   "contains-fish": {
-    match: words("fish", "anchovy", "anchovies", "salmon", "tuna", "cod", "halibut", "tilapia", "trout", "sardine", "mackerel", "haddock", "snapper", "sea bass", "swordfish", "bonito", "dashi", "worcestershire", "caesar"),
-    free: free("fish")
+    match: words("fish", "anchovy", "anchovies", "salmon", "tuna", "cod", "halibut", "tilapia", "trout", "sardine", "mackerel", "haddock", "snapper", "sea bass", "swordfish", "bonito", "dashi", "worcestershire", "caesar")
   },
-  "contains-gluten": { match: words(...WHEAT, "barley", "rye", "malt", "oat", "beer"), except: NOT_WHEAT, free: free("gluten") },
-  "contains-peanuts": { match: words("peanut", "groundnut", "satay", "nut"), except: phrases("(?:pine|brazil|tiger) nuts?"), free: free("peanut", "nut") },
-  "contains-sesame": { match: words("sesame", "tahini", "benne", "za'atar", "zaatar", "gomasio", "hummus", "furikake", "halva", "halvah"), free: free("sesame") },
+  "contains-gluten": { match: words(...WHEAT, "barley", "rye", "malt", "oat", "beer"), except: NOT_WHEAT },
+  "contains-peanuts": { match: words("peanut", "groundnut", "satay", "nut"), except: phrases("(?:pine|brazil|tiger) nuts?") },
+  "contains-sesame": { match: words("sesame", "tahini", "benne", "za'atar", "zaatar", "gomasio", "hummus", "furikake", "halva", "halvah") },
   "contains-shellfish": {
     match: words("shellfish", "shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "langoustine", "scampi", "clam", "mussel", "oyster", "scallop", "squid", "calamari", "octopus"),
-    except: phrases("oyster mushrooms?"),
-    free: free("shellfish")
+    except: phrases("oyster mushrooms?")
   },
-  "contains-soy": { match: words("soy", "soya", "soybean", "tofu", "tempeh", "edamame", "miso", "tamari", "shoyu", "teriyaki", "natto", "hoisin"), free: free("soy") },
-  "contains-tree-nuts": { match: words(...TREE_NUT_NAMES, "praline", "marzipan", "frangipane", "nutella", "pesto", "nut"), free: free("tree-nut", "nut") },
-  "contains-wheat": { match: words(...WHEAT), except: NOT_WHEAT, free: free("gluten", "wheat") }
+  "contains-soy": { match: words("soy", "soya", "soybean", "tofu", "tempeh", "edamame", "miso", "tamari", "shoyu", "teriyaki", "natto", "hoisin") },
+  "contains-tree-nuts": { match: words(...TREE_NUT_NAMES, "praline", "marzipan", "frangipane", "nutella", "pesto", "nut") },
+  "contains-wheat": { match: words(...WHEAT), except: NOT_WHEAT }
 };
 var DIETARY_FLAGS = Object.keys(RULES).sort();
 function lineHas(rule, line) {
-  if (rule.free.test(line))
-    return false;
   const text = rule.except ? line.replace(rule.except, " ") : line;
   return rule.match.test(text);
 }
 function dietaryFlags(lines) {
   const lower = lines.map((line) => line.toLowerCase());
   return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
+}
+
+// src/lib/fdc-match.mjs
+var STOP = new Set(["and", "or", "with", "without", "in", "of", "from", "the", "a"]);
+var NEUTRAL = new Set(["raw", "fresh", "dry", "whole", "plain", "regular", "grated", "shredded", "ground", "enriched", "unenriched", "mature", "seed"]);
+var singular = (word) => word.replace(/ies$/, "y").replace(/eaves$/, "eaf").replace(/(o|sh|ch|x)es$/, "$1").replace(/([^s])s$/, "$1");
+var tokens = (text) => text.toLowerCase().split(/[^a-z]+/).filter((w) => w && !STOP.has(w)).map(singular);
+var isBrand = (segment) => /\b[A-Z]{3,}\b/.test(segment) || /^restaurant\b/i.test(segment);
+function matchRank(itemTokens, description) {
+  const segments = description.replace(/\([^)]*\)/g, "").split(",").map((s) => s.trim());
+  if (isBrand(segments[0]))
+    return null;
+  const [first, second = []] = segments.slice(0, 2).map(tokens);
+  const head = new Set([...first, ...second]);
+  if (!itemTokens.every((t) => head.has(t)))
+    return null;
+  const extras = [...head].filter((t) => !itemTokens.includes(t) && !NEUTRAL.has(t));
+  if (extras.length === 0)
+    return 0;
+  const categoryOnly = extras.length === 1 && first.includes(extras[0]) && itemTokens.some((t) => second.includes(t));
+  return categoryOnly ? 1 : null;
+}
+function bestMatch(item, foods) {
+  const itemTokens = tokens(item).filter((t) => !NEUTRAL.has(t));
+  if (itemTokens.length === 0)
+    return null;
+  let best = null;
+  for (const food of foods) {
+    if (food.dataType !== DATA_TYPE)
+      continue;
+    const rank = matchRank(itemTokens, food.description);
+    if (rank !== null && (best === null || rank < best.rank))
+      best = { rank, food };
+  }
+  return best?.food ?? null;
 }
 
 // src/lib/ingredient-line.mjs
@@ -7574,18 +7574,19 @@ function parseIngredientLine(line) {
   return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
 }
 
-// src/skills/chef-add-recipe/scripts/lib/nutrition.mjs
+// src/lib/nutrition.mjs
 var MG = new Set(["sodium", "cholesterol"]);
-var round = (field, value) => field === "calories" || MG.has(field) ? Math.round(value) : Math.round(value * 10) / 10;
+var oneDecimal = (value) => Math.round(value * 10) / 10;
+var round = (field, value) => field === "calories" || MG.has(field) ? Math.round(value) : oneDecimal(value);
 
-class Stop extends Error {
+class UsdaUnavailable extends Error {
 }
-var unwrap = (result) => {
+var usdaAnswer = (result) => {
   if (!result.ok)
-    throw new Stop(result.reason);
+    throw new UsdaUnavailable(result.reason);
   return result;
 };
-var portionWord = (portion) => portion.modifier.toLowerCase().split(/[^a-z]+/)[0].replace(/s$/, "");
+var portionWord = (portion) => singular(portion.modifier.toLowerCase().split(/[^a-z]+/)[0]);
 function gramsFromPortions(parsed, food) {
   const { amount, unit, size } = parsed;
   const portions = food.portions.filter((p) => p.amount > 0 && p.gramWeight > 0);
@@ -7614,7 +7615,7 @@ async function ingredient(line, lookup) {
   const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
   if (absent.length)
     return { missing: `${line}: USDA has no ${absent.join(", ")} value for ${food.description}` };
-  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${Math.round(grams * 10) / 10} g` };
+  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g` };
 }
 function memoLookup(fdc) {
   const matches = new Map;
@@ -7622,12 +7623,12 @@ function memoLookup(fdc) {
   return {
     async match(item) {
       if (!matches.has(item))
-        matches.set(item, bestMatch(item, unwrap(await fdc.search(item)).foods));
+        matches.set(item, bestMatch(item, usdaAnswer(await fdc.search(item)).foods));
       return matches.get(item);
     },
     async detail(fdcId) {
       if (!details.has(fdcId))
-        details.set(fdcId, unwrap(await fdc.food(fdcId)).food);
+        details.set(fdcId, usdaAnswer(await fdc.food(fdcId)).food);
       return details.get(fdcId);
     }
   };
@@ -7653,7 +7654,7 @@ async function computeNutrition({ lines, servings, fdc }) {
         totals[field] += result.food.per100g[field] * result.grams / 100;
     }
   } catch (error) {
-    if (error instanceof Stop)
+    if (error instanceof UsdaUnavailable)
       return { status: "not-computed", reason: error.message };
     throw error;
   }
@@ -7674,8 +7675,8 @@ var HINTS = {
 };
 var needsEnrichment = (fm) => !Array.isArray(fm.dietary_flags) || fm.nutrition_status !== "complete";
 function nutritionFields(nutrition, previous) {
-  const kept = previous.nutrition_status === "complete" || previous.nutrition_status === "incomplete";
-  if (nutrition.status === "not-computed" && kept)
+  const hasUsdaResult = previous.nutrition_status === "complete" || previous.nutrition_status === "incomplete";
+  if (nutrition.status === "not-computed" && hasUsdaResult)
     return Object.fromEntries(NUTRITION_FIELDS.filter((f) => (f in previous)).map((f) => [f, previous[f]]));
   const fields = { nutrition_status: nutrition.status };
   if (nutrition.per_serving)
@@ -7699,7 +7700,7 @@ async function enrichOne(recipe, fdc) {
     report.missing = nutrition.missing;
   if (nutrition.reason)
     report.reason = nutrition.reason;
-  const changed = JSON.stringify(frontmatter) !== JSON.stringify(fm);
+  const changed = !isDeepStrictEqual(frontmatter, fm);
   return { report, reason: nutrition.reason, page: changed && { slug: recipe.slug, frontmatter, body: recipe.body } };
 }
 async function enrichRecipes(root, { slugs = [], unenriched = false, fdc, date }) {

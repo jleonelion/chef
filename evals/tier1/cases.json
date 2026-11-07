@@ -782,7 +782,7 @@
     "assertions": [
       {
         "path": "$.status",
-        "equals": "not-connected"
+        "equals": "failed"
       },
       {
         "path": "$.reason",

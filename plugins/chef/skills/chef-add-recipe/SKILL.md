@@ -59,7 +59,7 @@ If you already fetched the page with your own web tool, save the HTML to a `.htm
 
 Every saved recipe gets, in its own commit:
 
-- **Dietary flags**: `contains-*` flags for the US major food allergens plus gluten (`dairy`, `egg`, `fish`, `shellfish`, `tree-nuts`, `peanuts`, `wheat`, `soy`, `sesame`, `gluten`), read from the ingredient wording. An empty list means none were found in the wording, not that the dish is safe.
+- **Dietary flags**: `contains-*` flags for the US major food allergens plus gluten (`dairy`, `egg`, `fish`, `shellfish`, `tree-nuts`, `peanuts`, `wheat`, `soy`, `sesame`, `gluten`), read from the ingredient wording. Wording such as "gluten-free" never clears a flag, because Chef cannot check the label. An empty list means none were found in the wording, not that the dish is safe.
 - **Nutrition per serving** from USDA FoodData Central, only when every ingredient matches a USDA food with a known weight. Otherwise nutrition is `incomplete` (with `missing` reasons) or `not-computed`, and no numbers are stored. Never estimate nutrition yourself or fill in numbers.
 
 Report `enrichment` briefly: the flags, and the nutrition status. When `nutrition` is `incomplete`, list `missing`. When the output has a `hint`, pass it on in one line: if it mentions `chef-setup`, offer to connect USDA nutrition there.

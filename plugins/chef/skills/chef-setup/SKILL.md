@@ -74,7 +74,7 @@ Optional. Chef computes recipe nutrition only from USDA FoodData Central; withou
    ```
 
    - `connected`: tell the user nutrition is on (`food` is the test match). Offer to fill in nutrition for saved recipes with `chef-add-recipe`'s `enrich --unenriched`.
-   - `not-connected`: by `reason`. `not-connected`: the connector or variable is missing; repeat step 2. `wrong-placement`: the connector's placement differs from step 2; reconnect it with those details. `rejected`: USDA refused the key; reconnect with the key from USDA's email. `rate-limited` or `unreachable`: try again later.
+   - `failed` (exit code 0, since USDA access is optional): act on `reason`. `not-connected`: the connector or variable is missing; repeat step 2. `wrong-placement`: the connector's placement differs from step 2; reconnect it with those details. `rejected`: USDA refused the key; reconnect with the key from USDA's email. `rate-limited` or `unreachable`: try again later.
 
 **Rotate** the key by reconnecting the connector (Muse) or changing the variable, then run `usda` again. **Remove** it by disconnecting the connector in Muse's connector settings or unsetting the variable; Chef then marks new nutrition "not computed".
 

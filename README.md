@@ -67,6 +67,9 @@ Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/dat
 synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per
 released schema version (see `fixtures/README.md`). CI fails if the built output differs from a fresh build.
 
+Tests never call USDA. Tier1 runs off Muse with `CHEF_USDA_FDC_KEY` cleared; on a Muse VM with
+a USDA connector, the connector takes precedence and tier1 would reach the live API.
+
 The skill-format lint only accepts the 10 v1 skill names (`V1_SKILLS` in
 `scripts/lib/skill-format.mjs`) and reports which are still missing. Missing skills become an
 error once the plugin version reaches 1.0.0, or with `node scripts/lint-skills.mjs --release`.

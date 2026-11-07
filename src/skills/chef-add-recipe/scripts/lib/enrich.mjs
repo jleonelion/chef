@@ -1,10 +1,11 @@
 // Recipe enrichment: dietary flags from the ingredient text, nutrition from USDA. Runs after
 // every add and on request (re-enrich). Frontmatter only; the body is never changed. Flags are
 // never removed, and earlier nutrition survives a run that cannot reach USDA.
+import { isDeepStrictEqual } from 'node:util';
 import { dietaryFlags } from '../../../../lib/dietary-flags.mjs';
 import { ingredientLines, listRecipes } from '../../../../lib/recipes.mjs';
 import { writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
-import { computeNutrition } from './nutrition.mjs';
+import { computeNutrition } from '../../../../lib/nutrition.mjs';
 
 const NUTRITION_FIELDS = ['nutrition_status', 'nutrition_per_serving', 'nutrition_missing', 'nutrition_sources'];
 const HINTS = {
@@ -18,8 +19,8 @@ const HINTS = {
 const needsEnrichment = (fm) => !Array.isArray(fm.dietary_flags) || fm.nutrition_status !== 'complete';
 
 function nutritionFields(nutrition, previous) {
-  const kept = previous.nutrition_status === 'complete' || previous.nutrition_status === 'incomplete';
-  if (nutrition.status === 'not-computed' && kept) return Object.fromEntries(NUTRITION_FIELDS.filter((f) => f in previous).map((f) => [f, previous[f]]));
+  const hasUsdaResult = previous.nutrition_status === 'complete' || previous.nutrition_status === 'incomplete';
+  if (nutrition.status === 'not-computed' && hasUsdaResult) return Object.fromEntries(NUTRITION_FIELDS.filter((f) => f in previous).map((f) => [f, previous[f]]));
   const fields = { nutrition_status: nutrition.status };
   if (nutrition.per_serving) fields.nutrition_per_serving = nutrition.per_serving;
   if (nutrition.missing) fields.nutrition_missing = nutrition.missing;
@@ -38,7 +39,7 @@ async function enrichOne(recipe, fdc) {
   const report = { slug: recipe.slug, dietary_flags: flags, nutrition: nutrition.status };
   if (nutrition.missing) report.missing = nutrition.missing;
   if (nutrition.reason) report.reason = nutrition.reason;
-  const changed = JSON.stringify(frontmatter) !== JSON.stringify(fm);
+  const changed = !isDeepStrictEqual(frontmatter, fm);
   return { report, reason: nutrition.reason, page: changed && { slug: recipe.slug, frontmatter, body: recipe.body } };
 }
 

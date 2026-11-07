@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fdcClient } from '../../../../lib/fdc.mjs';
-import { parsePage } from '../../../../lib/frontmatter.mjs';
+import { parsePage, serializePage } from '../../../../lib/frontmatter.mjs';
 import { git } from '../../../../lib/git.mjs';
 import { initDataRoot } from '../../../chef-setup/scripts/lib/init-data-root.mjs';
 import { addRecipe } from './add.mjs';
 import { enrichRecipes } from './enrich.mjs';
 
-const samples = JSON.parse(fs.readFileSync(new URL('../../../../lib/__fixtures__/fdc-samples.json', import.meta.url), 'utf8'));
+const samples = JSON.parse(fs.readFileSync(new URL('../../../../../fixtures/usda/fdc-samples.json', import.meta.url), 'utf8'));
 const usda = fdcClient({
   credential: { ok: true, value: 'k', placement: { in: 'query', name: 'api_key' } },
   fetchImpl: async (href) => {
@@ -81,6 +81,17 @@ test('unenriched picks recipes without flags or complete nutrition; nothing to d
   const head = git(root, ['rev-parse', 'HEAD']);
   assert.deepEqual(await enrichRecipes(root, { unenriched: true, fdc: usda, date: '2026-02-02' }), { status: 'unchanged', data_root: root, recipes: [] });
   assert.equal(git(root, ['rev-parse', 'HEAD']), head);
+});
+
+test('a page whose fields are only in a different order is unchanged', async () => {
+  const { root, slug } = withRecipe({ title: 'Onion Garlic', servings: 1, ingredients: ['100 g onion', '2 cloves garlic'] });
+  await enrichRecipes(root, { slugs: [slug], fdc: usda, date: '2026-02-01' });
+  const file = path.join(root, 'knowledge/wiki/recipes/onion-garlic.md');
+  const { frontmatter, body } = parsePage(fs.readFileSync(file, 'utf8'));
+  const { dietary_flags, ...rest } = frontmatter;
+  fs.writeFileSync(file, serializePage({ dietary_flags, ...rest }, body));
+  git(root, ['commit', '-qam', 'reorder', '--author', 't <t@example.com>']);
+  assert.equal((await enrichRecipes(root, { slugs: [slug], fdc: usda, date: '2026-03-01' })).status, 'unchanged');
 });
 
 test('unknown slugs are reported and nothing is written', async () => {

@@ -89,17 +89,16 @@ function failure(status) {
     return "rate-limited";
   return "unreachable";
 }
-var usdaClient = (adapter = muse) => fdcClient({ credential: adapter.credential("usda-fdc") });
+var usdaClient = () => fdcClient({ credential: muse.credential("usda-fdc") });
 function fdcClient({ credential, fetchImpl = fetch }) {
   async function get(pathname, params) {
     if (!credential.ok)
       return { ok: false, reason: credential.reason };
-    const url = new URL(`${BASE}${pathname}`);
-    for (const [name, value] of Object.entries(params))
-      url.searchParams.set(name, value);
     if (credential.placement.in !== "query")
       return { ok: false, reason: "wrong-placement" };
-    url.searchParams.set(credential.placement.name, credential.value);
+    const url = new URL(`${BASE}${pathname}`);
+    for (const [name, value] of Object.entries({ ...params, [credential.placement.name]: credential.value }))
+      url.searchParams.set(name, value);
     try {
       const response = await fetchImpl(url.href, { redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
       if (!response.ok)
@@ -116,13 +115,13 @@ function fdcClient({ credential, fetchImpl = fetch }) {
       return result.ok ? { ok: true, foods: (result.body.foods ?? []).map(toFood) } : result;
     },
     async food(fdcId) {
-      const result = await get(`/food/${Number(fdcId)}`, {});
+      if (!Number.isInteger(fdcId))
+        return { ok: false, reason: "unreachable" };
+      const result = await get(`/food/${fdcId}`, {});
       return result.ok ? { ok: true, food: toFood(result.body) } : result;
     }
   };
 }
-var STOP = new Set(["and", "or", "with", "without", "in", "of", "from", "the", "a"]);
-var NEUTRAL = new Set(["raw", "fresh", "dry", "whole", "plain", "regular", "grated", "shredded", "ground", "enriched", "unenriched", "mature", "seed"]);
 
 // src/lib/schema.mjs
 import fs2 from "node:fs";
@@ -325,7 +324,7 @@ function adoptDataRoot(root, source) {
 async function checkUsda(fdc) {
   const result = await fdc.search("apple", { pageSize: 1 });
   if (!result.ok)
-    return { status: "not-connected", reason: result.reason };
+    return { status: "failed", reason: result.reason };
   return { status: "connected", food: result.foods[0]?.description ?? null };
 }
 
