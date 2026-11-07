@@ -7222,7 +7222,7 @@ function schemaWriteBlocker(root) {
 var WIKI_DIR = "knowledge/wiki";
 var RAW_DIR = "knowledge/raw";
 var DATA_DIR = "data";
-var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household" };
+var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household" };
 var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function slugify(text) {
   return text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80).replace(/^-+|-+$/g, "");
@@ -7868,6 +7868,115 @@ async function fetchPage(value, { maxBytes = MAX_PAGE_BYTES, timeoutMs = 20000, 
   }
 }
 
+// src/lib/safety-text.mjs
+var GUARANTEE_LINE = "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.";
+var NOT_MEDICAL_ADVICE = "Chef gives general information, not medical advice.";
+var TRAINING_SETTING_URL = "https://muse.ai/privacy";
+var TRAINING_NOTICE = `Your dietary and health details are saved in your Chef data root. On Muse, the "Help improve our AI models" setting may cover them; see ${TRAINING_SETTING_URL}.`;
+var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
+
+// src/lib/dietary-ruleset.mjs
+var RULESET_TYPE = "dietary-ruleset";
+var RULESET_SLUG = "dietary-ruleset";
+var RULESET_PATH = wikiPath(RULESET_TYPE, RULESET_SLUG);
+var ALIASES = {
+  milk: ["dairy"],
+  lactose: ["dairy"],
+  eggs: ["egg"],
+  peanut: ["peanuts"],
+  "tree nut": ["tree-nuts"],
+  "tree nuts": ["tree-nuts"],
+  nuts: ["peanuts", "tree-nuts"],
+  nut: ["peanuts", "tree-nuts"],
+  celiac: ["gluten"],
+  coeliac: ["gluten"],
+  crustacean: ["shellfish"],
+  crustaceans: ["shellfish"],
+  soya: ["soy"]
+};
+var suffix = (flag) => flag.slice("contains-".length);
+var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var ALLERGEN_WORDS = [
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag), [suffix(flag)]]),
+  ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
+  ...Object.entries(ALIASES)
+].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
+var FILLER = /(?<![a-z])(?:allerg(?:y|ies|ic)|intoleran(?:ce|t)|free|seeds?|no|to|an?)(?![a-z])/g;
+var core = (name) => name.replace(/[-_]/g, " ").replace(FILLER, " ").replace(/\s+/g, " ").trim();
+function exactFlags(text) {
+  for (const word of [text, `${text}s`, text.replace(/s$/, "")]) {
+    if (ALIASES[word])
+      return ALIASES[word];
+    const flag = word.replace(/ /g, "-");
+    if (flagFor(flag))
+      return [flag];
+  }
+  return null;
+}
+function scannedFlags(text) {
+  const spaced = text.replace(/[-_]/g, " ");
+  const flags = new Set(dietaryFlags([text, spaced]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
+    if (pattern.test(spaced))
+      mapped.forEach((f) => flags.add(f));
+  return [...flags];
+}
+function constraintsFor(name) {
+  const exact = exactFlags(core(name));
+  if (exact)
+    return exact;
+  const scanned = scannedFlags(name);
+  return scanned.length ? scanned : [name];
+}
+var clean = (raw) => String(raw).trim().toLowerCase().replace(/^contains-/, "");
+function normalizeConstraints(names) {
+  const out = names.map(clean).filter(Boolean).flatMap(constraintsFor);
+  return [...new Set(out)].sort();
+}
+var flagFor = (constraint) => DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null;
+
+// src/lib/dietary-gate.mjs
+var escape2 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+var wordMatch = (term) => new RegExp(`(?<![a-z])${escape2(term)}(?:s|es)?(?![a-z])`);
+function constraintConflicts(recipe, constraint) {
+  const lines = ingredientLines(recipe.body);
+  const flag = flagFor(constraint);
+  const flags = recipe.frontmatter.dietary_flags;
+  const conflicts = [];
+  if (flag && Array.isArray(flags) && flags.includes(flag))
+    conflicts.push({ why: "flagged", detail: flag });
+  const matches = flag ? (line2) => dietaryFlags([line2]).includes(flag) : (line2) => wordMatch(constraint).test(line2.toLowerCase());
+  const line = lines.find(matches);
+  if (line)
+    conflicts.push({ why: "ingredient-text", detail: line });
+  return conflicts;
+}
+
+// src/skills/chef-add-recipe/scripts/lib/verify.mjs
+function verifyRecipe(root, { slug, constraints, date }) {
+  const names = normalizeConstraints(constraints);
+  if (!names.length)
+    return { status: "invalid-input", data_root: root, problems: ["give --constraint <name>"] };
+  const recipe = listRecipes(root).recipes.find((r) => r.slug === slug);
+  if (!recipe)
+    return { status: "not-found", data_root: root, slugs: [slug] };
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const conflicts = names.flatMap((constraint) => constraintConflicts(recipe, constraint).map((c) => ({ constraint, ...c })));
+  if (conflicts.length) {
+    return { status: "refused", data_root: root, slug, conflicts, reason: "the recipe shows a conflict, so it cannot be verified; a one-plan override is the only way to use it" };
+  }
+  const previous = recipe.frontmatter.verified_by_user ?? {};
+  const added = names.filter((name) => !previous[name]);
+  if (!added.length)
+    return { status: "unchanged", data_root: root, slug, verified_by_user: previous };
+  const verified_by_user = { ...previous, ...Object.fromEntries(added.map((name) => [name, date])) };
+  const frontmatter = { ...recipe.frontmatter, verified_by_user, updated: date };
+  const written = writeWiki(root, { pages: [{ slug, frontmatter, body: recipe.body }], message: `chef-add-recipe: verify ${slug} for ${added.join(", ")}` });
+  return written.status === "written" ? { status: "verified", data_root: root, slug, verified_by_user } : written;
+}
+
 // src/skills/chef-add-recipe/scripts/lib/jsonld.mjs
 var ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", mdash: "—", ndash: "–", hellip: "…", deg: "°", frac12: "½", frac14: "¼", frac34: "¾" };
 function decode(text) {
@@ -7878,7 +7987,7 @@ function decode(text) {
     return ENTITIES[name.toLowerCase()] ?? match;
   });
 }
-var clean = (value) => typeof value === "string" ? decode(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "";
+var clean2 = (value) => typeof value === "string" ? decode(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "";
 var first = (value) => Array.isArray(value) ? value[0] : value;
 function minutesFromIso(value) {
   const match = typeof value === "string" && value.trim().match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:\d+(?:\.\d+)?S)?)?$/i);
@@ -7908,34 +8017,34 @@ function recipesIn(html) {
 }
 function steps(node) {
   if (typeof node === "string")
-    return decode(node).split(/\n+/).map(clean).filter(Boolean);
+    return decode(node).split(/\n+/).map(clean2).filter(Boolean);
   if (Array.isArray(node))
     return node.flatMap(steps);
   if (!node || typeof node !== "object")
     return [];
   if (node.itemListElement)
     return steps(node.itemListElement);
-  return [clean(node.text ?? node.name)].filter(Boolean);
+  return [clean2(node.text ?? node.name)].filter(Boolean);
 }
 var servings = (value) => {
   const n = Number.parseInt(String(first(value) ?? ""), 10);
   return Number.isInteger(n) && n > 0 ? n : undefined;
 };
-var tags = (value) => (Array.isArray(value) ? value : String(value ?? "").split(",")).map(clean).filter(Boolean);
+var tags = (value) => (Array.isArray(value) ? value : String(value ?? "").split(",")).map(clean2).filter(Boolean);
 function draftFromHtml(html) {
   const recipe = recipesIn(html)[0];
   if (!recipe)
     return null;
   const draft = {
-    title: clean(first(recipe.name)),
-    description: clean(first(recipe.description)) || undefined,
+    title: clean2(first(recipe.name)),
+    description: clean2(first(recipe.description)) || undefined,
     servings: servings(recipe.recipeYield),
     prep_minutes: minutesFromIso(recipe.prepTime),
     cook_minutes: minutesFromIso(recipe.cookTime),
     total_minutes: minutesFromIso(recipe.totalTime),
-    cuisine: clean(first(recipe.recipeCuisine)) || undefined,
+    cuisine: clean2(first(recipe.recipeCuisine)) || undefined,
     tags: tags(recipe.keywords),
-    ingredients: [recipe.recipeIngredient ?? recipe.ingredients ?? []].flat().map(clean).filter(Boolean),
+    ingredients: [recipe.recipeIngredient ?? recipe.ingredients ?? []].flat().map(clean2).filter(Boolean),
     steps: steps(recipe.recipeInstructions)
   };
   if (!draft.tags.length)
@@ -7984,7 +8093,8 @@ var { values, positionals } = parseArgs({
     source: { type: "string" },
     "dry-run": { type: "boolean" },
     slug: { type: "string", multiple: true },
-    unenriched: { type: "boolean" }
+    unenriched: { type: "boolean" },
+    constraint: { type: "string", multiple: true }
   },
   allowPositionals: true
 });
@@ -8047,7 +8157,12 @@ async function enrichAdded(result) {
   const { recipes, hint, reason, status } = enriched;
   return { ...result, enrichment: recipes?.[0] ?? { status, reason }, ...hint && { hint } };
 }
-var MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich };
+function verify() {
+  if (values.slug?.length !== 1)
+    return invalid("give exactly one --slug <slug>");
+  return verifyRecipe(root, { slug: values.slug[0], constraints: values.constraint ?? [], date: today() });
+}
+var MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich, verify };
 var mode = positionals[0];
 if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);

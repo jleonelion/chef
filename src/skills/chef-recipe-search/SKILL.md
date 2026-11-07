@@ -39,13 +39,22 @@ The output has `count` (all matches), `recipes` (summaries: `slug`, `title`, `cu
 - `unreadable`: pages Chef could not read. Mention them so the user can get them fixed.
 - No matches: say so plainly. Offer to drop a facet or add a new recipe with `chef-add-recipe`.
 
+## Dietary safety
+
+Every search applies the household's dietary ruleset; follow `references/dietary-safety.md`.
+
+- `excluded`: matching recipes left out for a hard constraint, each with `reasons` (`member`, `constraint`, `why`, `detail`). When you suggest recipes, name them briefly with the reason. Never suggest them.
+- `dietary`: `status`, plus `nudge`, `footer`, `caveats` or `problem` to pass on as that reference says.
+- `avoidances` on a recipe: it has something a member dislikes. Prefer other recipes, or mention it.
+- `--override "<member>:<constraint>"` (repeatable): only when that member asks to set their own hard constraint aside for this one plan or search. The result marks such recipes with `dietary_override`; say so. Nothing is saved, so the next search excludes them again.
+
 ## Show one recipe
 
 ```sh
 node scripts/recipe-search.mjs show --slug lemon-garlic-pasta
 ```
 
-Returns `frontmatter` and `body` (the Markdown with ingredients and steps). `not-found` means there is no recipe with that slug; search for it instead.
+Returns `frontmatter` and `body` (the Markdown with ingredients and steps). `not-found` means there is no recipe with that slug; search for it instead. `dietary_conflicts` means the gate would leave this recipe out; show the recipe the user asked for, but warn them with the reasons first.
 
 ## Rules
 

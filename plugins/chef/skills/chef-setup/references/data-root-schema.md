@@ -19,6 +19,7 @@ Wiki page types and their folders:
 | `recipe` | `knowledge/wiki/recipes/` |
 | `household-profile` | `knowledge/wiki/household/` |
 | `inventory-rollup` | `knowledge/wiki/household/` (generated from `data/food-inventory/`; never edited by hand) |
+| `dietary-ruleset` | `knowledge/wiki/household/` (one page, `dietary-ruleset.md`; only `chef-setup` writes it) |
 
 A page's slug is its filename without `.md`: lowercase letters, digits and single hyphens.
 
@@ -71,6 +72,7 @@ One or two lines about the dish.
 | `source_raw` | yes | Paths, relative to the data root, of the raw files this page was made from |
 | `created`, `updated` | yes | `YYYY-MM-DD` |
 | `dietary_flags` | no | Added by recipe enrichment: sorted `contains-*` flags from `contains-dairy`, `contains-egg`, `contains-fish`, `contains-gluten`, `contains-peanuts`, `contains-sesame`, `contains-shellfish`, `contains-soy`, `contains-tree-nuts`, `contains-wheat`, read from the ingredient wording. A missing field means "not checked yet", never "none"; `[]` means checked and none found in the wording. Enrichment never removes a flag |
+| `verified_by_user` | no | The user's own check that the recipe is safe for a hard constraint Chef could not vouch for: `{ <constraint>: YYYY-MM-DD }`. Permanent; the first date is kept and Chef never removes an entry. Never clears a conflict the ingredients show |
 | `nutrition_status` | no | `complete`, `incomplete` or `not-computed` (no USDA access). Missing means not attempted yet |
 | `nutrition_per_serving` | only when `complete` | `calories` (kcal), `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar` (g, 1 decimal), `sodium`, `cholesterol` (mg). Only from USDA FoodData Central, never estimated |
 | `nutrition_missing` | when `incomplete` | One line per ingredient (or `servings`) that blocked the calculation, with the reason |
@@ -105,3 +107,31 @@ Receipt transcripts are kept as `knowledge/raw/receipts/<date>-<receipt id>.txt`
 A proposal has `id`, `slug`, `title`, `proposed` (`YYYY-MM-DD`), `draft` (the recipe as proposed, in the `chef-add-recipe` draft shape), optionally `source_url` and `note`, `decisions` and, once published, `published`. `decisions` is the history, oldest first: each has `outcome` (`accept`, `reject`, `defer` or `revise`), `date`, `by` (`user` or `rule:<rule id>`) and optionally `reason`. The latest decision sets the proposal's state: `accept` → accepted, `reject` → rejected, otherwise open. A proposal with the same slug or source address as an earlier one is never recorded twice, so a rejected recipe is not proposed again. `published` is `{ date, path }` plus `linked: true` when a page with that slug already existed and was left unchanged. A published recipe's raw source is the accepted draft, saved as `knowledge/raw/recipes/<date>-<slug>.json`.
 
 A rule has `id`, `reason`, `created` and at least one of `title_includes` and `text_includes` (lists of phrases, all of which must match at the start of a word, any case). Reject rules are checked first.
+
+## Dietary ruleset page
+
+`knowledge/wiki/household/dietary-ruleset.md`. No page means the user was never asked; a page with no rules means none declared.
+
+```markdown
+---
+type: dietary-ruleset
+title: Dietary ruleset
+members:
+  - name: Alex Example
+    hard_constraints: [gluten, mustard]
+    avoidances: [olives]
+updated: 2026-01-15
+---
+# Dietary ruleset
+```
+
+| Field | Required | Value |
+|---|---|---|
+| `members` | no | One entry per person with at least one rule. `name` (text, required), `hard_constraints` (must never appear: flag-set names `dairy`, `egg`, `fish`, `gluten`, `peanuts`, `sesame`, `shellfish`, `soy`, `tree-nuts`, `wheat`, or any other lowercase food, matched on ingredient wording only), `avoidances` (lowercase dislikes) |
+| `updated` | yes | `YYYY-MM-DD` |
+
+A page Chef cannot read leaves every recipe out of suggestions until `chef-setup` fixes it.
+
+## Notices
+
+`data/notices.json` records one-time notices by key with the date shown, such as `{"training-setting": "2026-01-15"}`.

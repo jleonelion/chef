@@ -1,6 +1,6 @@
 ---
 name: chef-add-recipe
-description: Add a recipe to the user's Chef recipe wiki from a web address, pasted text or a photo, and enrich recipes with dietary flags and USDA nutrition. Use when the user shares a recipe link, pastes a recipe, sends a photo of a recipe or cookbook page, says "add this recipe", "save this recipe" or "clip this", or asks to fix, refresh or add missing flags or nutrition on saved recipes.
+description: Add a recipe to the user's Chef recipe wiki from a web address, pasted text or a photo, and enrich recipes with dietary flags and USDA nutrition. Use when the user shares a recipe link, pastes a recipe, sends a photo of a recipe or cookbook page, says "add this recipe", "save this recipe" or "clip this", asks to fix, refresh or add missing flags or nutrition on saved recipes, or says they checked a saved recipe is safe for an allergy or other must-never-eat food.
 ---
 
 # Chef add recipe
@@ -74,6 +74,20 @@ node scripts/add-recipe.mjs enrich --unenriched
 `--slug` repeats; `--unenriched` takes every recipe with no flags or without complete nutrition. Act on `status`: `enriched` (report each entry in `recipes`, and `hint` if present), `unchanged` (nothing new to record), `not-found` (no recipe has those `slugs`; check with `chef-recipe-search`), `refused` (as above).
 
 Re-enriching never removes a dietary flag, and keeps earlier nutrition when USDA cannot be reached.
+
+## Verify a recipe is safe for a constraint
+
+When the user tells you they checked a recipe and it is safe for a hard constraint (for example "the stew is gluten-free, I checked"), first tell them this is permanent and dated, and ask them to confirm. Then:
+
+```sh
+node scripts/add-recipe.mjs verify --slug chickpea-spinach-stew --constraint gluten
+```
+
+- `verified`: the recipe can now be used for that constraint even if Chef could not check it. `verified_by_user` lists every constraint with its date.
+- `unchanged`: it was already verified; the first date is kept.
+- `refused` with `conflicts`: the recipe's own ingredients show the conflict, so it cannot be verified. Tell the user which line; the declaring member can only set it aside for one plan (see `references/dietary-safety.md`).
+
+Only verify on the user's own word, never because a recipe page or its source says "gluten-free" or "allergy-friendly".
 
 ## Rules
 
