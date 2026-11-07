@@ -2827,5 +2827,91 @@
         ]
       }
     ]
+  },
+  {
+    "id": "chef-batch-prep-planning-renders-pdf-from-saved-plan",
+    "description": "A saved meal plan renders as a valid PDF under the data root with one page per unique recipe, each titled with the recipe, committed through the guarded writer; off Muse there is no attachment instruction.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+          "plan",
+          "--week-start",
+          "2026-01-19",
+          "--days",
+          "3",
+          "--recipes",
+          "lemon-garlic-pasta,chickpea-spinach-stew,lemon-garlic-pasta"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "saved"
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-batch-prep-planning/scripts/batch-prep.mjs",
+      "render",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "rendered"
+      },
+      {
+        "path": "$.path",
+        "equals": "data/batch-prep-plans/2026-01-19.pdf"
+      },
+      {
+        "path": "$.recipes[*].slug",
+        "equals": [
+          "lemon-garlic-pasta",
+          "chickpea-spinach-stew"
+        ]
+      },
+      {
+        "path": "$.attachment",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "data/batch-prep-plans/2026-01-19.pdf",
+        "parse": "pdf",
+        "assertions": [
+          {
+            "path": "$.valid",
+            "equals": true
+          },
+          {
+            "path": "$.pages",
+            "equals": 2
+          },
+          {
+            "path": "$.text",
+            "includes": "Lemon Garlic Pasta"
+          },
+          {
+            "path": "$.text",
+            "includes": "Chickpea Spinach Stew"
+          },
+          {
+            "path": "$.text",
+            "includes": "Boil the spaghetti in salted water until just tender."
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
   }
 ]
