@@ -1,4 +1,5 @@
-// Ported from chef-core evals/tier1/run.mjs: a small JSONPath-ish query plus equals/includes/min asserts.
+// Ported from chef-core evals/tier1/run.mjs: a small JSONPath-ish query plus equals/includes/min/absent asserts.
+// query() returns the single match as-is, or the match list when a fan-out ([*], filter) yields 0 or 2+ matches.
 import assert from 'node:assert/strict';
 
 function step(current, segment, expression) {
@@ -33,9 +34,10 @@ export function query(value, expression) {
 
 export function assertCase(evaluation, assertion) {
   const actual = query(evaluation, assertion.path);
-  if (Object.hasOwn(assertion, 'equals')) {
-    const value = Array.isArray(actual) && actual.length === 1 ? actual[0] : actual;
-    assert.deepEqual(value, assertion.equals, assertion.path);
+  if (Object.hasOwn(assertion, 'equals')) assert.deepEqual(actual, assertion.equals, assertion.path);
+  if (Object.hasOwn(assertion, 'absent')) {
+    const want = assertion.absent ? 'absent' : 'present';
+    assert.equal(actual === undefined, assertion.absent, `${assertion.path}: expected ${want}, got ${JSON.stringify(actual)}`);
   }
   if (Object.hasOwn(assertion, 'includes')) {
     assert(typeof actual === 'string' || Array.isArray(actual), `${assertion.path}: includes target is not a string or array`);

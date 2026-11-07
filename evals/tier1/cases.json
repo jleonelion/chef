@@ -94,6 +94,10 @@
       {
         "path": "$.settings.calendar",
         "equals": null
+      },
+      {
+        "path": "$.warning",
+        "absent": true
       }
     ]
   },
@@ -253,7 +257,9 @@
       },
       {
         "path": "$.side_effects",
-        "includes": "recreate-delivery-tasks"
+        "equals": [
+          "recreate-delivery-tasks"
+        ]
       }
     ],
     "files": [
