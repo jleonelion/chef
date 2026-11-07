@@ -17,7 +17,7 @@ function findExisting(root, slug, url) {
   return null;
 }
 
-function rawName(root, stem, ext) {
+export function rawName(root, stem, ext) {
   for (let n = 1; ; n += 1) {
     const rel = `${RAW_RECIPES}/${stem}${n === 1 ? '' : `-${n}`}${ext}`;
     if (!fs.existsSync(path.join(root, rel))) return rel;
@@ -33,7 +33,10 @@ export function addRecipe(root, { draft, kind, url, source, date, dryRun = false
   if (refusal) return refusal;
 
   const existing = findExisting(root, slug, url);
-  if (existing) return { status: 'exists', data_root: root, slug: existing.recipe.slug, path: existing.recipe.path, matched: existing.matched };
+  if (existing) {
+    const retired = existing.recipe.frontmatter.lifecycle === 'retired' && { lifecycle: 'retired' };
+    return { status: 'exists', data_root: root, slug: existing.recipe.slug, path: existing.recipe.path, matched: existing.matched, ...retired };
+  }
 
   const raw = rawName(root, `${date.replaceAll('-', '')}-${slug}`, source.ext);
   const page = recipePage(recipe, { sourceKind: kind, sourceUrl: url, sourceRaw: [raw], date });

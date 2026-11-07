@@ -6984,9 +6984,35 @@ function fromConnector(spec, run) {
     return { ok: false, reason: "wrong-placement" };
   return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
 }
+var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
+function findPluginRepository(skillDir) {
+  for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
+    if (fs.existsSync(pluginManifest(candidate)))
+      return candidate;
+  }
+  return null;
+}
+function findWorkspaceRepository(skillsDir) {
+  const workspace = path.dirname(skillsDir);
+  const matches = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => path.join(workspace, entry.name));
+  if (matches.length !== 1)
+    throw new Error(`expected one Chef repository in ${workspace}; found ${matches.length}`);
+  return matches[0];
+}
+function updateInstall({ skillDir, repository }) {
+  const skillsDir = path.dirname(skillDir);
+  const customSkills = path.basename(skillsDir) === "custom-skills";
+  return {
+    repository: repository ?? (customSkills ? findWorkspaceRepository(skillsDir) : findPluginRepository(skillDir)),
+    skillsDir,
+    installedName: path.basename(skillDir),
+    nameForSkill: customSkills ? "underscores" : "hyphens"
+  };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
+  updateInstall,
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
@@ -7382,8 +7408,10 @@ function addRecipe(root, { draft, kind, url, source, date, dryRun = false }) {
   if (refusal)
     return refusal;
   const existing = findExisting(root, slug, url);
-  if (existing)
-    return { status: "exists", data_root: root, slug: existing.recipe.slug, path: existing.recipe.path, matched: existing.matched };
+  if (existing) {
+    const retired = existing.recipe.frontmatter.lifecycle === "retired" && { lifecycle: "retired" };
+    return { status: "exists", data_root: root, slug: existing.recipe.slug, path: existing.recipe.path, matched: existing.matched, ...retired };
+  }
   const raw = rawName(root, `${date.replaceAll("-", "")}-${slug}`, source.ext);
   const page = recipePage(recipe, { sourceKind: kind, sourceUrl: url, sourceRaw: [raw], date });
   const pagePath = wikiPath("recipe", slug);

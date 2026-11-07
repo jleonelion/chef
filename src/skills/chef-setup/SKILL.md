@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create or adopt the Chef data root, onboard the user, change Chef settings, and verify the install. Use when the user installs Chef or asks to set it up, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
 ---
 
 # Chef setup
@@ -143,6 +143,30 @@ It checks Node, that the data root is writable and on this Chef's schema version
 
 - `pass`: tell the user Chef is installed and working.
 - `fail`: for each entry in `checks` with `ok: false`, tell the user its `name` and `detail`. A `data-root` failure means run `init` or fix folder permissions. A `schema` failure means Chef needs updating. A `node` failure means the runtime needs Node 20 or later. A `smoke:` failure means the install is damaged; reinstall Chef.
+
+## Update Chef
+
+Run the preview first, without `--confirm`:
+
+```sh
+node scripts/setup.mjs update
+```
+
+This commits all pending tracked and untracked files in the data root before changing the install, checks out the newest semver release tag, and makes the installed `chef-` skills match that release exactly. On Muse, the runtime adapter updates the flattened `custom-skills` folders; on Claude Code and Muse Code it updates the plugin path. It never removes anything from the data root, and `settings.json` remains git-ignored.
+
+For `confirmation-required`, show the user `release` and every entry under `changes`: added, replaced and removed skills, plus pending data-root and settings migrations. Ask whether to apply those migrations. Do not imply that the migrations have already run.
+
+Only after the user explicitly agrees, run:
+
+```sh
+node scripts/setup.mjs update --confirm
+```
+
+- `updated`: report the release and that verify-install passed.
+- `fail`: the update ran but verify-install found problems. Show each failed check from `verify.checks`.
+- `refused`: show `reason` and change nothing manually. Never delete user data to repair an update.
+
+Settings key renames and removals are major-release migrations and run only in the confirmed step, with the data-root schema migrations.
 
 ## Schema mismatch
 

@@ -6946,7 +6946,7 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-setup/scripts/setup.mjs
-import path13 from "node:path";
+import path16 from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -6983,9 +6983,35 @@ function fromConnector(spec, run) {
     return { ok: false, reason: "wrong-placement" };
   return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
 }
+var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
+function findPluginRepository(skillDir) {
+  for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
+    if (fs.existsSync(pluginManifest(candidate)))
+      return candidate;
+  }
+  return null;
+}
+function findWorkspaceRepository(skillsDir) {
+  const workspace = path.dirname(skillsDir);
+  const matches = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => path.join(workspace, entry.name));
+  if (matches.length !== 1)
+    throw new Error(`expected one Chef repository in ${workspace}; found ${matches.length}`);
+  return matches[0];
+}
+function updateInstall({ skillDir, repository }) {
+  const skillsDir = path.dirname(skillDir);
+  const customSkills = path.basename(skillsDir) === "custom-skills";
+  return {
+    repository: repository ?? (customSkills ? findWorkspaceRepository(skillsDir) : findPluginRepository(skillDir)),
+    skillsDir,
+    installedName: path.basename(skillDir),
+    nameForSkill: customSkills ? "underscores" : "hyphens"
+  };
+}
 var muse = {
   name: "muse",
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
+  updateInstall,
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
@@ -7627,14 +7653,97 @@ function changesFromFlags(values) {
   return Object.fromEntries(entries.map(([flag, [key, convert]]) => [key, convert(values[flag])]));
 }
 
-// src/skills/chef-setup/scripts/lib/verify-install.mjs
+// src/skills/chef-setup/scripts/lib/update-chef.mjs
+import fs12 from "node:fs";
+import path12 from "node:path";
+
+// src/lib/migrations.mjs
+import fs8 from "node:fs";
+import path9 from "node:path";
+var MIGRATIONS = {};
+var stamp = (root, version) => fs8.writeFileSync(path9.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
+`);
+function migrationPlan(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION } = {}) {
+  const from = readSchemaVersion(root);
+  if (!Number.isInteger(from))
+    throw new Error(`${root} has no integer schema version`);
+  if (from > target)
+    throw new Error(`schema ${from} is newer than this Chef (${target})`);
+  const steps = [];
+  for (let version = from;version < target; version += 1)
+    steps.push(version);
+  const missing = steps.find((version) => typeof migrations[version] !== "function");
+  if (missing !== undefined)
+    throw new Error(`no migration from schema ${missing}`);
+  return { from, to: target, applied: steps };
+}
+function migrate(root, options = {}) {
+  const { migrations = MIGRATIONS } = options;
+  const plan = migrationPlan(root, options);
+  const steps = plan.applied;
+  for (const version of steps) {
+    migrations[version](root);
+    stamp(root, version + 1);
+  }
+  return plan;
+}
+
+// src/lib/settings-migrations.mjs
 import fs9 from "node:fs";
+import path10 from "node:path";
+var SETTINGS_MIGRATIONS = {};
+function storedSettings(root) {
+  const file = path10.join(root, SETTINGS_FILE);
+  if (!fs9.existsSync(file))
+    return null;
+  let stored;
+  try {
+    stored = JSON.parse(fs9.readFileSync(file, "utf8"));
+  } catch {
+    throw new Error(`${SETTINGS_FILE} is not valid JSON; fix it with chef-setup before updating`);
+  }
+  if (stored === null || typeof stored !== "object" || Array.isArray(stored) || !Number.isInteger(stored.settings_version)) {
+    throw new Error(`${SETTINGS_FILE} has no integer settings_version; fix it with chef-setup before updating`);
+  }
+  return stored;
+}
+function settingsMigrationPlan(root, { migrations = SETTINGS_MIGRATIONS, target = SETTINGS_VERSION } = {}) {
+  const stored = storedSettings(root);
+  if (stored === null)
+    return { from: target, to: target, applied: [] };
+  const from = stored.settings_version;
+  if (from > target)
+    throw new Error(`settings ${from} are newer than this Chef (${target})`);
+  const applied = Array.from({ length: target - from }, (_, index) => from + index);
+  const missing = applied.find((version) => typeof migrations[version] !== "function");
+  if (missing !== undefined)
+    throw new Error(`no settings migration from version ${missing}`);
+  return { from, to: target, applied };
+}
+function migrateSettings(root, options = {}) {
+  const { migrations = SETTINGS_MIGRATIONS } = options;
+  const plan = settingsMigrationPlan(root, options);
+  if (plan.applied.length === 0)
+    return plan;
+  let stored = storedSettings(root);
+  for (const version of plan.applied) {
+    stored = migrations[version](stored);
+    if (stored?.settings_version !== version + 1)
+      throw new Error(`settings migration ${version} did not stamp version ${version + 1}`);
+  }
+  fs9.writeFileSync(path10.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
+`);
+  return plan;
+}
+
+// src/skills/chef-setup/scripts/lib/verify-install.mjs
+import fs11 from "node:fs";
 
 // src/lib/smoke.mjs
 import { spawnSync } from "node:child_process";
-import fs8 from "node:fs";
+import fs10 from "node:fs";
 import os3 from "node:os";
-import path9 from "node:path";
+import path11 from "node:path";
 var SMOKE_FILE = "smoke.json";
 var isEntry = (name) => name.endsWith(".mjs") && !name.endsWith(".test.mjs");
 function parseStatus(stdout) {
@@ -7645,12 +7754,12 @@ function parseStatus(stdout) {
   }
 }
 function runCase(skillDir, testCase, fixture) {
-  const tmp = fs8.mkdtempSync(path9.join(os3.tmpdir(), "chef-smoke-"));
-  const dataRoot = path9.join(tmp, "data-root");
+  const tmp = fs10.mkdtempSync(path11.join(os3.tmpdir(), "chef-smoke-"));
+  const dataRoot = path11.join(tmp, "data-root");
   try {
-    fs8.cpSync(fixture, dataRoot, { recursive: true });
+    fs10.cpSync(fixture, dataRoot, { recursive: true });
     const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
-    const run = spawnSync(process.execPath, [path9.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000 });
+    const run = spawnSync(process.execPath, [path11.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000 });
     const status = parseStatus(run.stdout);
     if (run.status !== testCase.expect.exit)
       return `exit ${run.status}, expected ${testCase.expect.exit}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`;
@@ -7658,20 +7767,20 @@ function runCase(skillDir, testCase, fixture) {
       return `status "${status}", expected "${testCase.expect.status}"`;
     return null;
   } finally {
-    fs8.rmSync(tmp, { recursive: true, force: true });
+    fs10.rmSync(tmp, { recursive: true, force: true });
   }
 }
 function uncovered(skillDir, cases) {
-  const scripts = path9.join(skillDir, "scripts");
-  if (!fs8.existsSync(scripts))
+  const scripts = path11.join(skillDir, "scripts");
+  if (!fs10.existsSync(scripts))
     return [];
-  const covered = new Set(cases.map((c) => path9.normalize(c.script)));
-  return fs8.readdirSync(scripts).filter(isEntry).sort().map((f) => path9.join("scripts", f)).filter((f) => !covered.has(f));
+  const covered = new Set(cases.map((c) => path11.normalize(c.script)));
+  return fs10.readdirSync(scripts).filter(isEntry).sort().map((f) => path11.join("scripts", f)).filter((f) => !covered.has(f));
 }
 function smokeSkill(skillsDir, skill, fixture) {
-  const skillDir = path9.join(skillsDir, skill);
-  const file = path9.join(skillDir, SMOKE_FILE);
-  const cases = fs8.existsSync(file) ? JSON.parse(fs8.readFileSync(file, "utf8")) : [];
+  const skillDir = path11.join(skillsDir, skill);
+  const file = path11.join(skillDir, SMOKE_FILE);
+  const cases = fs10.existsSync(file) ? JSON.parse(fs10.readFileSync(file, "utf8")) : [];
   const gaps = uncovered(skillDir, cases).map((script) => ({ skill, id: "coverage", ok: false, detail: `no smoke case for ${script}` }));
   const results = cases.map((testCase) => {
     const problem = runCase(skillDir, testCase, fixture);
@@ -7680,7 +7789,7 @@ function smokeSkill(skillsDir, skill, fixture) {
   return [...gaps, ...results];
 }
 function runSmoke({ skillsDir, fixture }) {
-  const skills = fs8.readdirSync(skillsDir).filter((name) => fs8.statSync(path9.join(skillsDir, name)).isDirectory()).sort();
+  const skills = fs10.readdirSync(skillsDir).filter((name) => fs10.statSync(path11.join(skillsDir, name)).isDirectory()).sort();
   return skills.flatMap((skill) => smokeSkill(skillsDir, skill, fixture));
 }
 
@@ -7692,10 +7801,10 @@ function nodeCheck(version) {
   return result("node", major >= MIN_NODE ? null : `Node ${version} is too old; Chef needs Node ${MIN_NODE} or later`, version);
 }
 function dataRootCheck(root) {
-  if (!fs9.existsSync(root))
+  if (!fs11.existsSync(root))
     return result("data-root", `no data root at ${root}; run chef-setup init`);
   try {
-    fs9.accessSync(root, fs9.constants.W_OK);
+    fs11.accessSync(root, fs11.constants.W_OK);
     return result("data-root", null, `${root} is writable`);
   } catch {
     return result("data-root", `${root} is not writable`);
@@ -7708,17 +7817,144 @@ function verifyInstall(root, { skillsDir, fixture, nodeVersion = process.version
   return { status: checks.every((c) => c.ok) ? "pass" : "fail", data_root: root, checks };
 }
 
+// src/skills/chef-setup/scripts/lib/update-chef.mjs
+var TAG = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$/;
+function semver(tag) {
+  const match = tag.match(TAG);
+  if (!match)
+    return null;
+  return { tag, numbers: match.slice(1, 4).map(Number), prerelease: match[4]?.split(".") ?? [] };
+}
+function compareIdentifier(left, right) {
+  const leftNumber = /^\d+$/.test(left) ? Number(left) : null;
+  const rightNumber = /^\d+$/.test(right) ? Number(right) : null;
+  if (leftNumber !== null && rightNumber !== null)
+    return leftNumber - rightNumber;
+  if (leftNumber !== null)
+    return -1;
+  if (rightNumber !== null)
+    return 1;
+  return left.localeCompare(right);
+}
+function compareSemver(left, right) {
+  for (let index = 0;index < 3; index += 1) {
+    if (left.numbers[index] !== right.numbers[index])
+      return left.numbers[index] - right.numbers[index];
+  }
+  if (left.prerelease.length === 0 || right.prerelease.length === 0)
+    return right.prerelease.length - left.prerelease.length;
+  const length = Math.max(left.prerelease.length, right.prerelease.length);
+  for (let index = 0;index < length; index += 1) {
+    if (left.prerelease[index] === undefined)
+      return -1;
+    if (right.prerelease[index] === undefined)
+      return 1;
+    const compared = compareIdentifier(left.prerelease[index], right.prerelease[index]);
+    if (compared !== 0)
+      return compared;
+  }
+  return 0;
+}
+function latestTag(repository) {
+  const remotes = git(repository, ["remote"]).split(`
+`).filter(Boolean);
+  if (remotes.includes("origin")) {
+    git(repository, ["fetch", "--tags", "--force", "origin"]);
+  }
+  const releases = git(repository, ["tag", "--list"]).split(`
+`).filter(Boolean).map(semver).filter(Boolean).sort(compareSemver);
+  if (releases.length === 0)
+    throw new Error("Chef repository has no semver release tags");
+  return releases.at(-1).tag;
+}
+function commitPending(root, message) {
+  git(root, ["add", "-A"]);
+  if (!git(root, ["status", "--short"]))
+    return false;
+  commit(root, message);
+  return true;
+}
+var chefFolder = (name) => /^chef[-_][a-z0-9_-]+$/.test(name);
+var installedName = (sourceName, style) => style === "underscores" ? sourceName.replaceAll("-", "_") : sourceName;
+function taggedSkills(repository, tag) {
+  return git(repository, ["ls-tree", "--name-only", `${tag}:plugins/chef/skills`]).split(`
+`).filter(chefFolder).sort();
+}
+function skillChanges(skillsDir, expected) {
+  const current = fs12.existsSync(skillsDir) ? fs12.readdirSync(skillsDir).filter(chefFolder).sort() : [];
+  return {
+    added: expected.filter((name) => !current.includes(name)),
+    replaced: expected.filter((name) => current.includes(name)),
+    removed: current.filter((name) => !expected.includes(name))
+  };
+}
+function syncSkills(repository, skillsDir, sourceNames, expectedNames) {
+  const source = path12.join(repository, "plugins", "chef", "skills");
+  if (path12.resolve(source) === path12.resolve(skillsDir)) {
+    for (const name of fs12.readdirSync(skillsDir).filter(chefFolder)) {
+      if (!expectedNames.includes(name))
+        fs12.rmSync(path12.join(skillsDir, name), { recursive: true, force: true });
+    }
+    return;
+  }
+  fs12.mkdirSync(skillsDir, { recursive: true });
+  const staging = fs12.mkdtempSync(path12.join(path12.dirname(skillsDir), ".chef-update-"));
+  try {
+    for (let index = 0;index < sourceNames.length; index += 1) {
+      fs12.cpSync(path12.join(source, sourceNames[index]), path12.join(staging, expectedNames[index]), { recursive: true });
+    }
+    for (const name of fs12.readdirSync(skillsDir).filter(chefFolder))
+      fs12.rmSync(path12.join(skillsDir, name), { recursive: true, force: true });
+    for (const name of expectedNames)
+      fs12.renameSync(path12.join(staging, name), path12.join(skillsDir, name));
+  } finally {
+    fs12.rmSync(staging, { recursive: true, force: true });
+  }
+}
+function updateChef(root, {
+  adapter = muse,
+  skillDir,
+  fixture,
+  confirm = false,
+  migrations = MIGRATIONS,
+  settingsMigrations = SETTINGS_MIGRATIONS,
+  targetSchema = SCHEMA_VERSION,
+  targetSettings = SETTINGS_VERSION
+} = {}) {
+  const install = adapter.updateInstall({ skillDir });
+  commitPending(root, "Before Chef update");
+  const release = latestTag(install.repository);
+  const sourceNames = taggedSkills(install.repository, release);
+  const expectedNames = sourceNames.map((name) => installedName(name, install.nameForSkill));
+  const skills = skillChanges(install.skillsDir, expectedNames);
+  const dataPlan = migrationPlan(root, { migrations, target: targetSchema });
+  const settingsPlan = settingsMigrationPlan(root, { migrations: settingsMigrations, target: targetSettings });
+  git(install.repository, ["checkout", "--detach", release]);
+  const repositoryChanges = git(install.repository, ["status", "--short", "--untracked-files=all"]);
+  if (repositoryChanges)
+    throw new Error(`Chef repository is not clean after checking out ${release}`);
+  syncSkills(install.repository, install.skillsDir, sourceNames, expectedNames);
+  const changes = { skills, migrations: { data_root: dataPlan.applied, settings: settingsPlan.applied } };
+  if (!confirm)
+    return { status: "confirmation-required", data_root: root, release, changes };
+  migrate(root, { migrations, target: targetSchema });
+  migrateSettings(root, { migrations: settingsMigrations, target: targetSettings });
+  commitPending(root, `Migrate Chef data root to schema ${targetSchema}`);
+  const verify = verifyInstall(root, { skillsDir: install.skillsDir, fixture });
+  return { status: verify.status === "pass" ? "updated" : "fail", data_root: root, release, changes, verify };
+}
+
 // src/skills/chef-setup/scripts/lib/write-ruleset.mjs
-import fs11 from "node:fs";
-import path11 from "node:path";
+import fs14 from "node:fs";
+import path14 from "node:path";
 
 // src/lib/notices.mjs
-import fs10 from "node:fs";
-import path10 from "node:path";
+import fs13 from "node:fs";
+import path13 from "node:path";
 var NOTICES_PATH = "data/notices.json";
 function readNotices(root) {
   try {
-    return JSON.parse(fs10.readFileSync(path10.join(root, NOTICES_PATH), "utf8"));
+    return JSON.parse(fs13.readFileSync(path13.join(root, NOTICES_PATH), "utf8"));
   } catch {
     return {};
   }
@@ -7772,7 +8008,7 @@ function writeRuleset(root, change, { date, rewrite = false }) {
     return refusal;
   const current = readRuleset(root);
   if (current.status === "unreadable" && !rewrite) {
-    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs11.readFileSync(path11.join(root, RULESET_PATH), "utf8") };
+    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs14.readFileSync(path14.join(root, RULESET_PATH), "utf8") };
   }
   if (change.none && current.status === "declared") {
     return { status: "refused", data_root: root, reason: "dietary constraints are declared; remove them one member at a time instead" };
@@ -7802,12 +8038,12 @@ function writeRuleset(root, change, { date, rewrite = false }) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-settings.mjs
-import fs12 from "node:fs";
-import path12 from "node:path";
+import fs15 from "node:fs";
+import path15 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs12.existsSync(path12.join(root, ".git")))
+  if (!fs15.existsSync(path15.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -7817,14 +8053,14 @@ function isTracked(root) {
   }
 }
 function ensureIgnored(root) {
-  const file = path12.join(root, ".gitignore");
-  const content = fs12.existsSync(file) ? fs12.readFileSync(file, "utf8") : "";
+  const file = path15.join(root, ".gitignore");
+  const content = fs15.existsSync(file) ? fs15.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line2) => IGNORE_LINES.has(line2.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs12.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs15.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -7860,7 +8096,7 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs12.writeFileSync(path12.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs15.writeFileSync(path15.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
@@ -7869,12 +8105,13 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
 }
 
 // src/skills/chef-setup/scripts/setup.mjs
-var skillDir = path13.resolve(path13.dirname(fileURLToPath(import.meta.url)), "..");
+var skillDir = path16.resolve(path16.dirname(fileURLToPath(import.meta.url)), "..");
 var { values, positionals } = parseArgs({
   options: {
     "data-root": { type: "string" },
     source: { type: "string" },
     rewrite: { type: "boolean" },
+    confirm: { type: "boolean" },
     ...SETTING_FLAGS,
     member: { type: "string" },
     hard: { type: "string" },
@@ -7894,6 +8131,17 @@ function show(root) {
     return { status: "refused", data_root: root, reason: "not a Chef data root; run chef-setup init first" };
   return { data_root: root, ...readSettings(root) };
 }
+function update(root) {
+  try {
+    return updateChef(root, {
+      skillDir,
+      fixture: path16.join(skillDir, "fixture", "data-root"),
+      confirm: values.confirm ?? false
+    });
+  } catch (error) {
+    return { status: "refused", data_root: root, reason: error instanceof Error ? error.message : String(error) };
+  }
+}
 var list = (raw) => raw?.split(",").map((item) => item.trim()).filter(Boolean);
 var NOT_A_ROOT = { status: "refused", reason: "not a Chef data root; run chef-setup init first" };
 function dietary(root) {
@@ -7911,7 +8159,8 @@ var MODES = {
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
-  verify: (root) => verifyInstall(root, { skillsDir: path13.dirname(skillDir), fixture: path13.join(skillDir, "fixture", "data-root") }),
+  update,
+  verify: (root) => verifyInstall(root, { skillsDir: path16.dirname(skillDir), fixture: path16.join(skillDir, "fixture", "data-root") }),
   usda: () => checkUsda(usdaClient()),
   safety: () => ({ status: "ok", screen: SAFETY_SCREEN }),
   dietary,

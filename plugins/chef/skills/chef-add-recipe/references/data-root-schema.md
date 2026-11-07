@@ -67,8 +67,8 @@ One or two lines about the dish.
 | `prep_minutes`, `cook_minutes`, `total_minutes` | no | Whole minutes |
 | `cuisine` | no | Lowercase text, such as `italian` |
 | `tags` | no | List of lowercase text |
-| `source_kind` | yes | `url`, `text` or `photo` |
-| `source_url` | when `source_kind` is `url` | The `http` or `https` address the recipe came from |
+| `source_kind` | yes | `url`, `text`, `photo`, or `proposal` (Chef proposed it and the user accepted it; see Recipe decisions store) |
+| `source_url` | when `source_kind` is `url`; optional for `proposal` | The `http` or `https` address the recipe came from |
 | `source_raw` | yes | Paths, relative to the data root, of the raw files this page was made from |
 | `created`, `updated` | yes | `YYYY-MM-DD` |
 | `dietary_flags` | no | Added by recipe enrichment: sorted `contains-*` flags from `contains-dairy`, `contains-egg`, `contains-fish`, `contains-gluten`, `contains-peanuts`, `contains-sesame`, `contains-shellfish`, `contains-soy`, `contains-tree-nuts`, `contains-wheat`, read from the ingredient wording. A missing field means "not checked yet", never "none"; `[]` means checked and none found in the wording. Enrichment never removes a flag |
@@ -77,6 +77,8 @@ One or two lines about the dish.
 | `nutrition_per_serving` | only when `complete` | `calories` (kcal), `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar` (g, 1 decimal), `sodium`, `cholesterol` (mg). Only from USDA FoodData Central, never estimated |
 | `nutrition_missing` | when `incomplete` | One line per ingredient (or `servings`) that blocked the calculation, with the reason |
 | `nutrition_sources` | no | One line per ingredient: the USDA food and grams used |
+| `lifecycle` | no | `active` or `retired`. Missing means `active`. Retired recipes stay on disk but leave recipe search; restoring sets `active` |
+| `retired`, `retired_reason` | when `lifecycle` is `retired` | Retirement date (`YYYY-MM-DD`) and, optionally, the user's reason |
 
 The body holds the human-readable recipe. `## Ingredients` is a bulleted list, one ingredient per line; `## Steps` is a numbered list. Chef reads ingredients from the body, so the frontmatter never repeats them.
 
@@ -92,6 +94,19 @@ The body holds the human-readable recipe. `## Ingredients` is a bulleted list, o
 | `purchases/<date>-<receipt id>.json` | The items each receipt added |
 
 Receipt transcripts are kept as `knowledge/raw/receipts/<date>-<receipt id>.txt`. The `inventory-rollup` page is regenerated from `current.json` on every change. Sender email addresses are never stored.
+
+## Recipe decisions store
+
+`data/recipe-decisions/` belongs to chef-recipe-decisions; only its script writes there.
+
+| Path | Holds |
+|---|---|
+| `proposals.json` | `{ proposals: { <id>: proposal } }`. The `id` is the recipe slug when first proposed |
+| `standing-rules.json` | `{ auto_reject: [rule], auto_approve: [rule] }` |
+
+A proposal has `id`, `slug`, `title`, `proposed` (`YYYY-MM-DD`), `draft` (the recipe as proposed, in the `chef-add-recipe` draft shape), optionally `source_url` and `note`, `decisions` and, once published, `published`. `decisions` is the history, oldest first: each has `outcome` (`accept`, `reject`, `defer` or `revise`), `date`, `by` (`user` or `rule:<rule id>`) and optionally `reason`. The latest decision sets the proposal's state: `accept` → accepted, `reject` → rejected, otherwise open. A proposal with the same slug or source address as an earlier one is never recorded twice, so a rejected recipe is not proposed again. `published` is `{ date, path }` plus `linked: true` when a page with that slug already existed and was left unchanged. A published recipe's raw source is the accepted draft, saved as `knowledge/raw/recipes/<date>-<slug>.json`.
+
+A rule has `id`, `reason`, `created` and at least one of `title_includes` and `text_includes` (lists of phrases, all of which must match at the start of a word, any case). Reject rules are checked first.
 
 ## Dietary ruleset page
 
