@@ -16,6 +16,10 @@ export const STORE = {
 };
 export const LOCATIONS = ['pantry', 'fridge', 'freezer'];
 const KEY = /^[a-z0-9]+(_[a-z0-9]+)*$/;
+const RESERVED = new Set(Object.getOwnPropertyNames(Object.prototype).map((name) => name.toLowerCase()));
+
+// A category or item key: lower-case snake_case and never an Object.prototype name.
+export const isKey = (key) => KEY.test(key) && !RESERVED.has(key);
 
 export const sha256 = (text) => crypto.createHash('sha256').update(text, 'utf8').digest('hex');
 export const serializeInventory = (inventory) => `${JSON.stringify(inventory, null, 2)}\n`;
@@ -35,9 +39,9 @@ function itemProblems(item, at) {
 function locationProblems(tree, location) {
   if (!isObject(tree)) return [`${location}: not an object`];
   return Object.entries(tree).flatMap(([category, items]) => {
-    if (!KEY.test(category) || !isObject(items)) return [`${location}.${category}: bad category`];
+    if (!isKey(category) || !isObject(items)) return [`${location}.${category}: bad category`];
     return Object.entries(items).flatMap(([key, item]) =>
-      KEY.test(key) ? itemProblems(item, `${location}.${category}.${key}`) : [`${location}.${category}.${key}: bad item key`],
+      isKey(key) ? itemProblems(item, `${location}.${category}.${key}`) : [`${location}.${category}.${key}: bad item key`],
     );
   });
 }

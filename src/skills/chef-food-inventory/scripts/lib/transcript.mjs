@@ -13,6 +13,7 @@ const ITEM_LINE = new RegExp(
   'i',
 );
 const TARGET = /^(pantry|fridge|freezer)\.[a-z0-9]+(_[a-z0-9]+)*(\.[a-z0-9]+(_[a-z0-9]+)*)?$/;
+const MAX_QUANTITY = 10000;
 const EXPIRES = /^expires (\d{4}-\d{2}-\d{2})$/i;
 
 
@@ -33,7 +34,9 @@ function parseItemLine(line) {
   if (!parsedDetail) return null;
   const name = rawName.trim();
   if (!/[a-z]{2,}/i.test(name) || name.length > 80) return null;
-  return { name, quantity: Number(quantity), unit: canonicalUnit(unit), price: Number(price), ...parsedDetail, target: target ?? null };
+  const amount = Number(quantity);
+  if (!(amount > 0 && amount <= MAX_QUANTITY)) return null;
+  return { name, quantity: amount, unit: canonicalUnit(unit), price: Number(price), ...parsedDetail, target: target ?? null };
 }
 
 export function parseTranscript(text) {

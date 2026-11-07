@@ -36,3 +36,9 @@ test('rejects a unit mismatch instead of converting', () => {
   assert.equal(rejected[0].lineNumber, 4);
   assert.match(rejected[0].reason, /gal/);
 });
+
+test('reserved property names in a target are rejected, not followed', () => {
+  const { rejected } = applyItems(base, [item({ target: 'pantry.constructor.x' }), item({ target: 'pantry.other.__proto__' }), item({ target: 'fridge.hasownproperty' })], { date: '2026-01-15', now });
+  assert.equal(rejected.length, 3);
+  assert.equal(Object.hasOwn(Object, 'x'), false);
+});

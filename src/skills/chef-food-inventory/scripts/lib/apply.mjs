@@ -1,15 +1,15 @@
 // Applies parsed receipt items to an inventory and returns a new inventory; never mutates input.
 import { canonicalUnit } from './units.mjs';
 import { itemKey, placeItem } from './placement.mjs';
+import { isKey } from './store.mjs';
 
 const round = (value) => Math.round(value * 1000) / 1000;
 const earliest = (a, b) => [a, b].filter(Boolean).sort()[0];
 
 function resolvePath(item) {
   const parts = (item.target ?? placeItem(item.name)).split('.');
-  if (parts.length === 3) return parts;
-  const key = itemKey(item.name);
-  return key ? [...parts, key] : null;
+  if (parts.length === 2) parts.push(itemKey(item.name));
+  return parts.slice(1).every((part) => part && isKey(part)) ? parts : null;
 }
 
 function addTo(entry, item, { date, now }) {
@@ -24,6 +24,9 @@ function create(items, key, item, { date, now }) {
   return { action: 'added' };
 }
 
+// The own child object at `key`, created when missing; never an inherited property.
+const child = (parent, key) => (Object.hasOwn(parent, key) ? parent[key] : (parent[key] = {}));
+
 export function applyItems(inventory, items, when) {
   const next = structuredClone(inventory);
   const changes = [];
@@ -31,11 +34,11 @@ export function applyItems(inventory, items, when) {
   for (const item of items) {
     const parts = resolvePath(item);
     if (!parts) {
-      rejected.push({ lineNumber: item.lineNumber, reason: 'item name has no letters or digits' });
+      rejected.push({ lineNumber: item.lineNumber, reason: 'no valid place for this item; check the name and target' });
       continue;
     }
     const [location, category, key] = parts;
-    const bucket = ((next[location] ??= {})[category] ??= {});
+    const bucket = child(child(next, location), category);
     const result = Object.hasOwn(bucket, key) ? addTo(bucket[key], item, when) : create(bucket, key, item, when);
     if (result.reason) rejected.push({ lineNumber: item.lineNumber, reason: `${parts.join('.')}: ${result.reason}` });
     else changes.push({ path: parts.join('.'), action: result.action, amount: item.quantity, unit: item.unit });

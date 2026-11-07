@@ -1,3 +1,5 @@
+import { isKey } from './store.mjs';
+
 // Shipped placement defaults: where a new item goes when the receipt line names no target.
 // First matching rule wins; keywords match whole words in the item name.
 const RULES = [
@@ -11,7 +13,6 @@ const RULES = [
   ['pantry.condiments', ['oil', 'vinegar', 'sauce', 'ketchup', 'mustard', 'mayo', 'dressing', 'salt', 'spice']],
   ['pantry.beverages', ['juice', 'soda', 'water', 'coffee', 'tea']],
 ];
-const RESERVED = new Set(Object.getOwnPropertyNames(Object.prototype));
 
 export function placeItem(name) {
   const words = ` ${name.toLowerCase().replace(/[^a-z]+/g, ' ')} `;
@@ -23,5 +24,5 @@ export function placeItem(name) {
 export function itemKey(name) {
   const key = name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 60).replace(/_+$/, '');
   if (!key) return null;
-  return RESERVED.has(key) ? `${key}_item` : key;
+  return isKey(key) ? key : `${key}_item`;
 }

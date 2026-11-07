@@ -35,3 +35,7 @@ test('a missing store loads as empty; a broken one throws', () => {
   fs.writeFileSync(path.join(root, STORE.inventory), '{"lastUpdated": 1}');
   assert.throws(() => loadInventory(root), /lastUpdated/);
 });
+
+test('reserved names are not valid keys', () => {
+  assert.equal(validateInventory({ lastUpdated: '2026-01-15T00:00:00.000Z', pantry: { constructor: {} } }).length, 1);
+});

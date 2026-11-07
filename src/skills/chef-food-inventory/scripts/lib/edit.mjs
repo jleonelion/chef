@@ -2,13 +2,13 @@
 import { commitInventory } from './commit.mjs';
 import { canonicalUnit } from './units.mjs';
 import { isIsoDate } from './dates.mjs';
-import { loadInventory, validateInventory } from './store.mjs';
+import { isKey, loadInventory } from './store.mjs';
 
 const PATH = /^(pantry|fridge|freezer)\.[a-z0-9]+(_[a-z0-9]+)*\.[a-z0-9]+(_[a-z0-9]+)*$/;
 const invalid = (problem) => ({ status: 'invalid-input', problems: [problem] });
 
 function problemWith({ path, amount, unit, expires, remove }, exists) {
-  if (!PATH.test(path ?? '')) return 'path must be <pantry|fridge|freezer>.<category>.<item>, lower case with underscores';
+  if (!PATH.test(path ?? '') || !path.split('.').slice(1).every(isKey)) return 'path must be <pantry|fridge|freezer>.<category>.<item>, lower case with underscores';
   if (remove) return exists ? null : `${path} is not in the inventory`;
   if (amount !== undefined && !(Number.isFinite(amount) && amount >= 0)) return 'amount must be a number >= 0';
   if (expires !== undefined && expires !== null && !isIsoDate(expires)) return 'expires must be YYYY-MM-DD or none';
@@ -28,16 +28,16 @@ function applyEdit(entry, key, { amount, unit, expires, now }) {
 export function editItem(root, edit) {
   const inventory = structuredClone(loadInventory(root));
   const [location, category, key] = (edit.path ?? '').split('.');
-  const exists = Object.hasOwn(inventory[location]?.[category] ?? {}, key);
+  const exists = Object.hasOwn(inventory, location) && Object.hasOwn(inventory[location], category) && Object.hasOwn(inventory[location][category], key);
   const problem = problemWith(edit, exists);
   if (problem) return invalid(problem);
   if (edit.remove && !edit.reason?.trim()) return invalid('removing an item needs a reason');
-  const bucket = ((inventory[location] ??= {})[category] ??= {});
+  if (!Object.hasOwn(inventory, location)) inventory[location] = {};
+  if (!Object.hasOwn(inventory[location], category)) inventory[location][category] = {};
+  const bucket = inventory[location][category];
   if (edit.remove) delete bucket[key];
   else bucket[key] = applyEdit(bucket[key], key, edit);
   inventory.lastUpdated = edit.now;
-  const problems = validateInventory(inventory);
-  if (problems.length) return { status: 'invalid-input', problems };
   const action = edit.remove ? 'remove' : 'edit';
   const written = commitInventory(root, { inventory, action, details: { path: edit.path, reason: edit.reason ?? null }, message: `chef-food-inventory: ${action} ${edit.path}` });
   return written.status === 'written' ? { status: 'saved', path: edit.path, item: bucket[key] ?? null } : written;

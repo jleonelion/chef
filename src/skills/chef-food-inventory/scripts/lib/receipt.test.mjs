@@ -71,3 +71,11 @@ test('the rollup page matches the store after successive receipts', () => {
   assert.ok(read(root, ROLLUP_PATH).endsWith(expected.body));
   assert.equal(loadInventory(root).fridge.dairy.whole_milk.amount, 2);
 });
+
+test('commitInventory refuses an invalid inventory', async () => {
+  const { commitInventory } = await import('./commit.mjs');
+  const root = dataRoot();
+  const result = commitInventory(root, { inventory: { lastUpdated: 'x' }, action: 'edit', details: {}, message: 'm' });
+  assert.equal(result.status, 'invalid-input');
+  assert.equal(fs.existsSync(path.join(root, STORE.inventory)), false);
+});
