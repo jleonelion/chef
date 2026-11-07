@@ -1,7 +1,7 @@
 // "Adopt existing data root": clone a data root (a backup, or the import tool's hand-off
 // repo) into the data-root folder, then drop its remotes so the data root stays local-only.
-// The source is untrusted: no shell, no hooks, no submodules, no exotic transports, and
-// symlinks check out as plain files so no later write can follow one out of the data root.
+// The source is untrusted: no shell, no hooks, no submodules, no exotic transports, and no
+// symlinks or gitlinks in its tree, so no later write can follow a link out of the data root.
 import fs from 'node:fs';
 import path from 'node:path';
 import { git } from '../../../../lib/git.mjs';
@@ -37,7 +37,13 @@ function cloneInto(dest, source) {
   }
 }
 
+// Mode 120000 is a symlink, 160000 a submodule gitlink. A data root holds neither.
+function hasLinks(clone) {
+  return git(clone, ['ls-files', '-s']).split('\n').some((line) => /^1[26]0000 /.test(line));
+}
+
 function cloneProblem(clone) {
+  if (hasLinks(clone)) return { reason: 'the source contains symlinks or submodules, which a Chef data root never has' };
   if (readSchemaVersion(clone) === null) return { reason: 'the source is not a Chef data root (no schema-version.json)' };
   return schemaWriteBlocker(clone);
 }

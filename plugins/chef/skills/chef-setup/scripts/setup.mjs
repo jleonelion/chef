@@ -173,7 +173,13 @@ function cloneInto(dest, source) {
 `).pop()}`;
   }
 }
+function hasLinks(clone) {
+  return git(clone, ["ls-files", "-s"]).split(`
+`).some((line) => /^1[26]0000 /.test(line));
+}
 function cloneProblem(clone) {
+  if (hasLinks(clone))
+    return { reason: "the source contains symlinks or submodules, which a Chef data root never has" };
   if (readSchemaVersion(clone) === null)
     return { reason: "the source is not a Chef data root (no schema-version.json)" };
   return schemaWriteBlocker(clone);

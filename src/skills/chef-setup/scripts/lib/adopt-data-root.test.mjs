@@ -101,11 +101,10 @@ test('accepts only git URLs and existing folders', () => {
   }
 });
 
-test('checks symlinks out as plain files so later writes cannot leave the data root', () => {
-  const outside = path.join(tmp(), 'outside.json');
+test('refuses a source holding symlinks, which could point writes outside the data root', () => {
   const target = path.join(tmp(), 'chef');
-  assert.equal(adoptDataRoot(target, bareSource({ symlink: outside })).status, 'adopted');
-  const file = path.join(target, 'settings.json');
-  assert.equal(fs.lstatSync(file).isSymbolicLink(), false);
-  assert.equal(fs.readFileSync(file, 'utf8'), outside);
+  const result = adoptDataRoot(target, bareSource({ symlink: path.join(tmp(), 'outside.json') }));
+  assert.equal(result.status, 'refused');
+  assert.match(result.reason, /symlink/);
+  assert.deepEqual(fs.readdirSync(path.dirname(target)), []);
 });
