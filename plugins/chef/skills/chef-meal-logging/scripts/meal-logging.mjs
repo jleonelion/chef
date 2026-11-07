@@ -75,17 +75,17 @@ var require_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  function visit_(key, node, visitor, path3) {
-    const ctrl = callVisitor(key, node, visitor, path3);
+  function visit_(key, node, visitor, path4) {
+    const ctrl = callVisitor(key, node, visitor, path4);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path3, ctrl);
-      return visit_(key, ctrl, visitor, path3);
+      replaceNode(key, path4, ctrl);
+      return visit_(key, ctrl, visitor, path4);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path3 = Object.freeze(path3.concat(node));
+        path4 = Object.freeze(path4.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = visit_(i, node.items[i], visitor, path3);
+          const ci = visit_(i, node.items[i], visitor, path4);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -96,13 +96,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path3 = Object.freeze(path3.concat(node));
-        const ck = visit_("key", node.key, visitor, path3);
+        path4 = Object.freeze(path4.concat(node));
+        const ck = visit_("key", node.key, visitor, path4);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = visit_("value", node.value, visitor, path3);
+        const cv = visit_("value", node.value, visitor, path4);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -123,17 +123,17 @@ var require_visit = __commonJS((exports) => {
   visitAsync.BREAK = BREAK;
   visitAsync.SKIP = SKIP;
   visitAsync.REMOVE = REMOVE;
-  async function visitAsync_(key, node, visitor, path3) {
-    const ctrl = await callVisitor(key, node, visitor, path3);
+  async function visitAsync_(key, node, visitor, path4) {
+    const ctrl = await callVisitor(key, node, visitor, path4);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path3, ctrl);
-      return visitAsync_(key, ctrl, visitor, path3);
+      replaceNode(key, path4, ctrl);
+      return visitAsync_(key, ctrl, visitor, path4);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path3 = Object.freeze(path3.concat(node));
+        path4 = Object.freeze(path4.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = await visitAsync_(i, node.items[i], visitor, path3);
+          const ci = await visitAsync_(i, node.items[i], visitor, path4);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -144,13 +144,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path3 = Object.freeze(path3.concat(node));
-        const ck = await visitAsync_("key", node.key, visitor, path3);
+        path4 = Object.freeze(path4.concat(node));
+        const ck = await visitAsync_("key", node.key, visitor, path4);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = await visitAsync_("value", node.value, visitor, path3);
+        const cv = await visitAsync_("value", node.value, visitor, path4);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -177,23 +177,23 @@ var require_visit = __commonJS((exports) => {
     }
     return visitor;
   }
-  function callVisitor(key, node, visitor, path3) {
+  function callVisitor(key, node, visitor, path4) {
     if (typeof visitor === "function")
-      return visitor(key, node, path3);
+      return visitor(key, node, path4);
     if (identity.isMap(node))
-      return visitor.Map?.(key, node, path3);
+      return visitor.Map?.(key, node, path4);
     if (identity.isSeq(node))
-      return visitor.Seq?.(key, node, path3);
+      return visitor.Seq?.(key, node, path4);
     if (identity.isPair(node))
-      return visitor.Pair?.(key, node, path3);
+      return visitor.Pair?.(key, node, path4);
     if (identity.isScalar(node))
-      return visitor.Scalar?.(key, node, path3);
+      return visitor.Scalar?.(key, node, path4);
     if (identity.isAlias(node))
-      return visitor.Alias?.(key, node, path3);
+      return visitor.Alias?.(key, node, path4);
     return;
   }
-  function replaceNode(key, path3, node) {
-    const parent = path3[path3.length - 1];
+  function replaceNode(key, path4, node) {
+    const parent = path4[path4.length - 1];
     if (identity.isCollection(parent)) {
       parent.items[key] = node;
     } else if (identity.isPair(parent)) {
@@ -754,10 +754,10 @@ var require_Collection = __commonJS((exports) => {
   var createNode = require_createNode();
   var identity = require_identity();
   var Node = require_Node();
-  function collectionFromPath(schema, path3, value) {
+  function collectionFromPath(schema, path4, value) {
     let v = value;
-    for (let i = path3.length - 1;i >= 0; --i) {
-      const k = path3[i];
+    for (let i = path4.length - 1;i >= 0; --i) {
+      const k = path4[i];
       if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
         const a = [];
         a[k] = v;
@@ -776,7 +776,7 @@ var require_Collection = __commonJS((exports) => {
       sourceObjects: new Map
     });
   }
-  var isEmptyPath = (path3) => path3 == null || typeof path3 === "object" && !!path3[Symbol.iterator]().next().done;
+  var isEmptyPath = (path4) => path4 == null || typeof path4 === "object" && !!path4[Symbol.iterator]().next().done;
 
   class Collection extends Node.NodeBase {
     constructor(type, schema) {
@@ -797,11 +797,11 @@ var require_Collection = __commonJS((exports) => {
         copy.range = this.range.slice();
       return copy;
     }
-    addIn(path3, value) {
-      if (isEmptyPath(path3))
+    addIn(path4, value) {
+      if (isEmptyPath(path4))
         this.add(value);
       else {
-        const [key, ...rest] = path3;
+        const [key, ...rest] = path4;
         const node = this.get(key, true);
         if (identity.isCollection(node))
           node.addIn(rest, value);
@@ -811,8 +811,8 @@ var require_Collection = __commonJS((exports) => {
           throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
       }
     }
-    deleteIn(path3) {
-      const [key, ...rest] = path3;
+    deleteIn(path4) {
+      const [key, ...rest] = path4;
       if (rest.length === 0)
         return this.delete(key);
       const node = this.get(key, true);
@@ -821,8 +821,8 @@ var require_Collection = __commonJS((exports) => {
       else
         throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
     }
-    getIn(path3, keepScalar) {
-      const [key, ...rest] = path3;
+    getIn(path4, keepScalar) {
+      const [key, ...rest] = path4;
       const node = this.get(key, true);
       if (rest.length === 0)
         return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -837,15 +837,15 @@ var require_Collection = __commonJS((exports) => {
         return n == null || allowScalar && identity.isScalar(n) && n.value == null && !n.commentBefore && !n.comment && !n.tag;
       });
     }
-    hasIn(path3) {
-      const [key, ...rest] = path3;
+    hasIn(path4) {
+      const [key, ...rest] = path4;
       if (rest.length === 0)
         return this.has(key);
       const node = this.get(key, true);
       return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
-    setIn(path3, value) {
-      const [key, ...rest] = path3;
+    setIn(path4, value) {
+      const [key, ...rest] = path4;
       if (rest.length === 0) {
         this.set(key, value);
       } else {
@@ -3238,9 +3238,9 @@ var require_Document = __commonJS((exports) => {
       if (assertCollection(this.contents))
         this.contents.add(value);
     }
-    addIn(path3, value) {
+    addIn(path4, value) {
       if (assertCollection(this.contents))
-        this.contents.addIn(path3, value);
+        this.contents.addIn(path4, value);
     }
     createAlias(node, name) {
       if (!node.anchor) {
@@ -3289,30 +3289,30 @@ var require_Document = __commonJS((exports) => {
     delete(key) {
       return assertCollection(this.contents) ? this.contents.delete(key) : false;
     }
-    deleteIn(path3) {
-      if (Collection.isEmptyPath(path3)) {
+    deleteIn(path4) {
+      if (Collection.isEmptyPath(path4)) {
         if (this.contents == null)
           return false;
         this.contents = null;
         return true;
       }
-      return assertCollection(this.contents) ? this.contents.deleteIn(path3) : false;
+      return assertCollection(this.contents) ? this.contents.deleteIn(path4) : false;
     }
     get(key, keepScalar) {
       return identity.isCollection(this.contents) ? this.contents.get(key, keepScalar) : undefined;
     }
-    getIn(path3, keepScalar) {
-      if (Collection.isEmptyPath(path3))
+    getIn(path4, keepScalar) {
+      if (Collection.isEmptyPath(path4))
         return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-      return identity.isCollection(this.contents) ? this.contents.getIn(path3, keepScalar) : undefined;
+      return identity.isCollection(this.contents) ? this.contents.getIn(path4, keepScalar) : undefined;
     }
     has(key) {
       return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
-    hasIn(path3) {
-      if (Collection.isEmptyPath(path3))
+    hasIn(path4) {
+      if (Collection.isEmptyPath(path4))
         return this.contents !== undefined;
-      return identity.isCollection(this.contents) ? this.contents.hasIn(path3) : false;
+      return identity.isCollection(this.contents) ? this.contents.hasIn(path4) : false;
     }
     set(key, value) {
       if (this.contents == null) {
@@ -3321,13 +3321,13 @@ var require_Document = __commonJS((exports) => {
         this.contents.set(key, value);
       }
     }
-    setIn(path3, value) {
-      if (Collection.isEmptyPath(path3)) {
+    setIn(path4, value) {
+      if (Collection.isEmptyPath(path4)) {
         this.contents = value;
       } else if (this.contents == null) {
-        this.contents = Collection.collectionFromPath(this.schema, Array.from(path3), value);
+        this.contents = Collection.collectionFromPath(this.schema, Array.from(path4), value);
       } else if (assertCollection(this.contents)) {
-        this.contents.setIn(path3, value);
+        this.contents.setIn(path4, value);
       }
     }
     setSchema(version, options = {}) {
@@ -5223,9 +5223,9 @@ var require_cst_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  visit.itemAtPath = (cst, path3) => {
+  visit.itemAtPath = (cst, path4) => {
     let item = cst;
-    for (const [field, index] of path3) {
+    for (const [field, index] of path4) {
       const tok = item?.[field];
       if (tok && "items" in tok) {
         item = tok.items[index];
@@ -5234,23 +5234,23 @@ var require_cst_visit = __commonJS((exports) => {
     }
     return item;
   };
-  visit.parentCollection = (cst, path3) => {
-    const parent = visit.itemAtPath(cst, path3.slice(0, -1));
-    const field = path3[path3.length - 1][0];
+  visit.parentCollection = (cst, path4) => {
+    const parent = visit.itemAtPath(cst, path4.slice(0, -1));
+    const field = path4[path4.length - 1][0];
     const coll = parent?.[field];
     if (coll && "items" in coll)
       return coll;
     throw new Error("Parent collection not found");
   };
-  function _visit(path3, item, visitor) {
-    let ctrl = visitor(item, path3);
+  function _visit(path4, item, visitor) {
+    let ctrl = visitor(item, path4);
     if (typeof ctrl === "symbol")
       return ctrl;
     for (const field of ["key", "value"]) {
       const token = item[field];
       if (token && "items" in token) {
         for (let i = 0;i < token.items.length; ++i) {
-          const ci = _visit(Object.freeze(path3.concat([[field, i]])), token.items[i], visitor);
+          const ci = _visit(Object.freeze(path4.concat([[field, i]])), token.items[i], visitor);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -5261,10 +5261,10 @@ var require_cst_visit = __commonJS((exports) => {
           }
         }
         if (typeof ctrl === "function" && field === "key")
-          ctrl = ctrl(item, path3);
+          ctrl = ctrl(item, path4);
       }
     }
-    return typeof ctrl === "function" ? ctrl(item, path3) : ctrl;
+    return typeof ctrl === "function" ? ctrl(item, path4) : ctrl;
   }
   exports.visit = visit;
 });
@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs2 = this.flowScalar(this.type);
+            const fs3 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs2, sep: [] });
+              map.items.push({ start, key: fs3, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs2);
+              this.stack.push(fs3);
             } else {
-              Object.assign(it, { key: fs2, sep: [] });
+              Object.assign(it, { key: fs3, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs2 = this.flowScalar(this.type);
+            const fs3 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs2, sep: [] });
+              fc.items.push({ start: [], key: fs3, sep: [] });
             else if (it.sep)
-              this.stack.push(fs2);
+              this.stack.push(fs3);
             else
-              Object.assign(it, { key: fs2, sep: [] });
+              Object.assign(it, { key: fs3, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -7031,13 +7031,27 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
-// src/skills/chef-meal-logging/scripts/lib/log.mjs
-import fs6 from "node:fs";
-import path7 from "node:path";
+// src/lib/meal-log.mjs
+import fs2 from "node:fs";
+import path3 from "node:path";
+var MEAL_LOG_PATH = "data/meal-log/log.json";
+function readMealLog(root) {
+  const file = path3.join(root, MEAL_LOG_PATH);
+  if (!fs2.existsSync(file))
+    return { entries: [] };
+  try {
+    const log = JSON.parse(fs2.readFileSync(file, "utf8"));
+    if (!Array.isArray(log?.entries))
+      throw new Error("no entries list");
+    return { entries: log.entries };
+  } catch {
+    return { problem: `${MEAL_LOG_PATH} can't be read` };
+  }
+}
 
 // src/lib/recipes.mjs
-import fs4 from "node:fs";
-import path5 from "node:path";
+import fs5 from "node:fs";
+import path6 from "node:path";
 
 // node_modules/yaml/dist/index.js
 var composer = require_composer();
@@ -7104,8 +7118,8 @@ ${body}`;
 }
 
 // src/lib/wiki.mjs
-import fs3 from "node:fs";
-import path4 from "node:path";
+import fs4 from "node:fs";
+import path5 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -7123,15 +7137,15 @@ function commit(cwd, message) {
 }
 
 // src/lib/schema.mjs
-import fs2 from "node:fs";
-import path3 from "node:path";
+import fs3 from "node:fs";
+import path4 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
-  const file = path3.join(root, SCHEMA_FILE);
-  if (!fs2.existsSync(file))
+  const file = path4.join(root, SCHEMA_FILE);
+  if (!fs3.existsSync(file))
     return null;
-  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs3.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -7175,7 +7189,7 @@ function wikiPath(type, slug) {
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
 function pathUnder(dir, relative, kind) {
-  const normalized = path4.posix.normalize(relative);
+  const normalized = path5.posix.normalize(relative);
   if (!normalized.startsWith(`${dir}/`))
     throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
@@ -7184,7 +7198,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs3.existsSync(path4.join(root, ".git")))
+  if (!fs4.existsSync(path5.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -7195,14 +7209,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs3.existsSync(path4.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs4.existsSync(path5.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
-    const abs = path4.join(root, file.path);
-    fs3.mkdirSync(path4.dirname(abs), { recursive: true });
-    fs3.writeFileSync(abs, file.content);
+    const abs = path5.join(root, file.path);
+    fs4.mkdirSync(path5.dirname(abs), { recursive: true });
+    fs4.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -7212,14 +7226,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
 // src/lib/recipes.mjs
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
-  const dir = path5.join(root, RECIPES_DIR);
-  const files = fs4.existsSync(dir) ? fs4.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const dir = path6.join(root, RECIPES_DIR);
+  const files = fs5.existsSync(dir) ? fs5.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs4.readFileSync(path5.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs5.readFileSync(path6.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });
@@ -7374,8 +7388,8 @@ function convertQuantity(amount, fromUnit, toUnit) {
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs5 from "node:fs";
-import path6 from "node:path";
+import fs6 from "node:fs";
+import path7 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
 function isIsoDate(value) {
@@ -7441,8 +7455,8 @@ function listItems(inventory) {
   return LOCATIONS.flatMap((location) => Object.entries(inventory[location] ?? {}).flatMap(([category, items]) => Object.entries(items).map(([key, item]) => ({ ...item, name: item.name ?? key.replaceAll("_", " "), path: `${location}.${category}.${key}`, location, category, key }))));
 }
 var readText = (root, relative) => {
-  const file = path6.join(root, relative);
-  return fs5.existsSync(file) ? fs5.readFileSync(file, "utf8") : null;
+  const file = path7.join(root, relative);
+  return fs6.existsSync(file) ? fs6.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -7619,12 +7633,8 @@ function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Dat
 }
 
 // src/skills/chef-meal-logging/scripts/lib/log.mjs
-var MEAL_LOG_FILE = "data/meal-log/log.json";
+var MEAL_LOG_FILE = MEAL_LOG_PATH;
 var SLOTS = new Set(["breakfast", "lunch", "dinner", "snack"]);
-function readLog(root) {
-  const file = path7.join(root, MEAL_LOG_FILE);
-  return fs6.existsSync(file) ? JSON.parse(fs6.readFileSync(file, "utf8")) : { entries: [] };
-}
 function entryFor(root, input) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
   const subject = input.recipe ?? slugify(input.food);
@@ -7666,7 +7676,9 @@ function logMeal(root, input) {
   if (problems.length)
     return { status: "invalid-input", problems };
   const entry = entryFor(root, input);
-  const store = readLog(root);
+  const store = readMealLog(root);
+  if (store.problem)
+    return { status: "refused", reason: store.problem };
   const existing = store.entries.find((candidate) => candidate.id === entry.id);
   let status = "unchanged";
   if (!existing) {

@@ -181,6 +181,23 @@ One-plan dietary overrides are also returned only for that invocation and are ne
 
 `data/notices.json` records one-time notices by key with the date shown, such as `{"training-setting": "2026-01-15"}`.
 
+## Health goals store
+
+`data/health-goals/goals.json` belongs to chef-health-goals; only its script writes it. No file, or `goal: null`, means health features are dormant: no reports, suggestions or health footers anywhere.
+
+```json
+{ "goal": "Lower sodium", "targets": { "sodium": { "max": 2300 }, "protein": { "min": 90 } }, "set": "2026-01-15", "updated": "2026-01-20" }
+```
+
+| Field | Value |
+|---|---|
+| `goal` | The user's own short description, or `null` after the goal is dropped |
+| `targets` | Daily, per-person targets keyed by nutrition field (`calories`, `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar`, `sodium`, `cholesterol`, in the units of `nutrition_per_serving`), each `{ min?, max? }`. Advisory only; never clinician-prescribed limits |
+| `set` | `YYYY-MM-DD` the current goal was first declared; absent after the goal is dropped |
+| `updated` | `YYYY-MM-DD` of the last change |
+
+The weekly report reads the meal log (`data/meal-log/log.json`, owned by chef-meal-logging) and writes nothing. A day counts toward targets only when every entry that day has `nutrition`. Meal-plan suggestions are returned with the saved plan and never stored on the meal-plan page. Declaring the first goal records the shared `training-setting` notice, if not already shown.
+
 ## Meal log store
 
 `data/meal-log/log.json` belongs to `chef-meal-logging`; it is the only writer. The file is `{ "entries": [ ... ] }`.

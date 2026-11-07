@@ -1,0 +1,4 @@
+[
+  { "id": "status", "script": "scripts/health-goals.mjs", "args": ["status"], "expect": { "exit": 0, "status": "dormant" } },
+  { "id": "report-dormant", "script": "scripts/health-goals.mjs", "args": ["report", "--week-start", "2026-01-19"], "expect": { "exit": 0, "status": "dormant" } }
+]

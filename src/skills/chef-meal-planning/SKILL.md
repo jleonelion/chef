@@ -41,9 +41,9 @@ Pass each requested override separately. Report `overridden`. Overrides affect t
 
 When the `calendar` setting is absent, output has no `calendar` field and nothing should be sent to a calendar. When it is set, `calendar` is a payload for the runtime's calendar connector. Follow its `instruction`; the script never calls a calendar API.
 
-## Health suggestions seam
+## Health suggestions
 
-Health-aware suggestions belong to `chef-health-goals`. With no declared goal, planning is unchanged. Do not infer a goal or provide health advice here.
+When the user has declared a goal with `chef-health-goals`, a saved plan includes `health_suggestions`: one serving of each planned meal compared with the daily targets. Report them as advice after the plan, ending with their `footer` exactly as given. They never change the planned meals or what the dietary gate allowed. With no `health_suggestions`, say nothing about health; never infer a goal.
 
 ## Rules
 

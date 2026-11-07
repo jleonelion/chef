@@ -174,3 +174,30 @@ test('unknown and retired chosen recipes are refused with slot-specific reasons'
   ]);
   assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
 });
+
+const perServing = (sodium) => ({ calories: 400, protein: 20, fat: 10, saturated_fat: 2, carbs: 50, fiber: 5, sugar: 5, sodium, cholesterol: 0 });
+const measured = (slug, sodium, { ingredients, frontmatter } = {}) =>
+  recipe(slug, { ingredients, frontmatter: { nutrition_status: 'complete', nutrition_per_serving: perServing(sodium), ...frontmatter } });
+const goalsFile = { path: 'data/health-goals/goals.json', content: '{"goal":"Lower sodium","targets":{"sodium":{"max":2300}},"set":"2026-01-10","updated":"2026-01-10"}\n' };
+
+test('with no declared goal, planning has no health output', () => {
+  const root = makeRoot([measured('soup', 2500)]);
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 1 });
+  assert.equal(result.status, 'saved');
+  assert.equal(result.health_suggestions, undefined);
+});
+
+test('with a declared goal, the saved plan gets advisory health suggestions that never override the dietary gate', () => {
+  const root = makeRoot([
+    measured('soup', 2500),
+    measured('cheesy', 100, { ingredients: ['30 g parmesan'], frontmatter: { dietary_flags: ['contains-dairy'] } }),
+    ruleset([{ name: 'Alex Example', hard_constraints: ['dairy'] }]),
+    goalsFile,
+  ]);
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 1 });
+  assert.deepEqual(result.meals.map((meal) => meal.slug), ['soup']);
+  assert.equal(result.health_suggestions.status, 'advisory');
+  assert.equal(result.health_suggestions.footer, 'Chef gives general information, not medical advice.');
+  assert.deepEqual(result.health_suggestions.targets[0].over_daily_max, [{ date: '2026-01-19', slug: 'soup', per_serving: 2500 }]);
+  assert.doesNotMatch(JSON.stringify(result.health_suggestions), /cheesy/);
+});

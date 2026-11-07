@@ -167,6 +167,26 @@ test('a unit mismatch is reported while the cooked meal stays logged', () => {
   assert.equal(loadInventory(root).pantry.grains.pasta.amount, 3);
 });
 
+test('an unreadable meal log is refused, not overwritten', () => {
+  const root = dataRoot();
+  const file = path.join(root, MEAL_LOG_FILE);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, 'not json');
+
+  const result = logMeal(root, {
+    date: '2026-01-18',
+    slot: 'snack',
+    food: 'apple',
+    servings: 1,
+    cooked: false,
+    loggedAt: '2026-01-18T15:00:00.000Z',
+  });
+
+  assert.equal(result.status, 'refused');
+  assert.match(result.reason, /can't be read/);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'not json');
+});
+
 test('invalid input is rejected without creating the meal log', () => {
   const root = dataRoot();
   const result = logMeal(root, {

@@ -1,16 +1,10 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import { MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-log.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { slugify, writeWiki } from '../../../../lib/wiki.mjs';
 import { deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
 
-export const MEAL_LOG_FILE = 'data/meal-log/log.json';
+export const MEAL_LOG_FILE = MEAL_LOG_PATH;
 const SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
-
-function readLog(root) {
-  const file = path.join(root, MEAL_LOG_FILE);
-  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { entries: [] };
-}
 
 function entryFor(root, input) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
@@ -50,7 +44,8 @@ export function logMeal(root, input) {
   const problems = validate(root, input);
   if (problems.length) return { status: 'invalid-input', problems };
   const entry = entryFor(root, input);
-  const store = readLog(root);
+  const store = readMealLog(root);
+  if (store.problem) return { status: 'refused', reason: store.problem };
   const existing = store.entries.find((candidate) => candidate.id === entry.id);
   let status = 'unchanged';
   if (!existing) {
