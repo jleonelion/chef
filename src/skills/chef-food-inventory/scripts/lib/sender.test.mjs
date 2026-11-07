@@ -17,19 +17,42 @@ test('rejects ambiguous or malformed senders', () => {
   assert.equal(senderAddress(undefined), null);
 });
 
+const AUTH = { authenticated: 'example.com' };
+
 test('accepts a trusted sender case-insensitively', () => {
-  assert.deepEqual(checkSender('Market <RECEIPTS@example.com>', trusted), { ok: true });
+  assert.deepEqual(checkSender('Market <RECEIPTS@example.com>', trusted, AUTH), { ok: true });
 });
 
 test('a display name that looks trusted does not spoof the gate', () => {
-  const result = checkSender('"receipts@example.com" <attacker@example.com>', trusted);
+  const result = checkSender('"receipts@example.com" <attacker@example.com>', trusted, AUTH);
   assert.equal(result.ok, false);
   assert.match(result.reason, /not a trusted receipt sender/);
 });
 
 test('lookalike addresses are refused', () => {
-  assert.equal(checkSender('receipts+x@example.com', trusted).ok, false);
-  assert.equal(checkSender('xreceipts@example.com', trusted).ok, false);
+  assert.equal(checkSender('receipts+x@example.com', trusted, AUTH).ok, false);
+  assert.equal(checkSender('xreceipts@example.com', trusted, AUTH).ok, false);
+});
+
+test('a trusted From is refused without authentication evidence for its domain', () => {
+  const result = checkSender('receipts@example.com', trusted);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /not authenticated/);
+});
+
+test('a trusted From is refused when the authenticated domain differs (spoofed From)', () => {
+  const result = checkSender('receipts@example.com', trusted, { authenticated: 'attacker.example.net' });
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /not authenticated/);
+});
+
+test('a matching authenticated domain passes, case- and space-insensitively', () => {
+  assert.deepEqual(checkSender('receipts@example.com', trusted, { authenticated: ' Example.COM ' }), { ok: true });
+});
+
+test('a parent or child domain is not a match', () => {
+  assert.equal(checkSender('receipts@example.com', trusted, { authenticated: 'com' }).ok, false);
+  assert.equal(checkSender('receipts@example.com', trusted, { authenticated: 'mail.example.com' }).ok, false);
 });
 
 test('an empty trusted list means forwarding is off', () => {

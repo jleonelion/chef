@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { DELIVERY_TASKS } from '../lib/recurring-tasks.mjs';
 
 const LOCALE_VARS = ['LC_ALL', 'LC_MEASUREMENT', 'LANG'];
 const isUsable = (value) => Boolean(value) && value !== 'C' && value !== 'POSIX' && !value.startsWith('C.');
@@ -64,9 +65,9 @@ function updateInstall({ skillDir, repository }) {
   };
 }
 
-// Recurring Chef tasks that email household recipients. Muse pins a task's send grant to the
-// recipients at approval time, so a recipient change means re-creating these tasks.
-const DELIVERY_TASKS = [{ name: 'Chef shopping list', skill: 'chef-shopping-lists' }];
+// Recurring Chef tasks that email household recipients (DELIVERY_TASKS). Muse pins a task's
+// send grant to the recipients at approval time, so a recipient change means re-creating them.
+const SCHEDULE_SETUP = 'Create each task only after the user gives an explicit yes to that task. Ask Muse to create it as a recurring task with exactly the given name, cadence (in the user\'s timezone) and prompt, then list the tasks you created. If a task with that name already exists, leave it as it is. Approve any Gmail send grant Muse asks for only with the user.';
 
 export const muse = {
   name: 'muse',
@@ -89,6 +90,8 @@ export const muse = {
       instruction: 'Re-create each of these recurring Chef tasks that exists, so Muse asks the user to approve the new recipients, then list the tasks you re-created. Do not create a task that did not exist.',
     };
   },
+  // How the agent turns a confirmed chef-setup schedule proposal into recurring tasks.
+  scheduleSetup: () => ({ scheduler: 'muse-recurring-tasks', instruction: SCHEDULE_SETUP }),
   defaultDataRoot: () => path.join(os.homedir(), 'workspace', 'chef'),
   updateInstall,
   locale(env = process.env) {

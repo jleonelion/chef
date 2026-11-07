@@ -1029,7 +1029,7 @@
   },
   {
     "id": "food-inventory-trusted-sender-accepted",
-    "description": "A trusted sender passes the gate case-insensitively.",
+    "description": "A trusted sender whose domain the mail provider authenticated passes the gate case-insensitively.",
     "seed": [
       {
         "path": "settings.json",
@@ -1041,7 +1041,9 @@
       "{skills}/chef-food-inventory/scripts/inventory.mjs",
       "check-sender",
       "--from",
-      "Example Market <Receipts@Example.com>"
+      "Example Market <Receipts@Example.com>",
+      "--authenticated",
+      "example.com"
     ],
     "parse": "json",
     "assertions": [
@@ -3402,6 +3404,114 @@
     ]
   },
   {
+    "id": "chef-setup-schedule-proposes-and-writes-nothing",
+    "description": "With default settings and no health goal, chef-setup proposes only the morning briefing and update notice, says why the rest are not offered, and writes nothing.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "schedule"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "proposal"
+      },
+      {
+        "path": "$.tasks[*].name",
+        "equals": [
+          "Chef morning briefing",
+          "Chef update notice"
+        ]
+      },
+      {
+        "path": "$.not_offered[*].name",
+        "equals": [
+          "Chef weekly health report",
+          "Chef shopping list",
+          "Chef receipt check"
+        ]
+      },
+      {
+        "path": "$.runtime.instruction",
+        "includes": "explicit yes"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-schedule-offers-conditional-tasks",
+    "description": "An active health goal, household recipients and receipt senders unlock the weekly health report, shopping-list delivery task and receipt check; still nothing is written.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"More protein\",\"targets\":{\"protein\":{\"min\":90}}}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"household_recipients\":[\"cook@example.com\"],\"trusted_receipt_senders\":[\"receipts@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "schedule"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.tasks[*].name",
+        "equals": [
+          "Chef morning briefing",
+          "Chef weekly health report",
+          "Chef shopping list",
+          "Chef update notice",
+          "Chef receipt check"
+        ]
+      },
+      {
+        "path": "$.not_offered",
+        "equals": []
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef shopping list')].skill",
+        "equals": "chef-shopping-lists"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-check-update-reports-current",
+    "description": "The update notice check compares the installed release with the newest tag and installs nothing.",
+    "updateInstall": true,
+    "command": [
+      "node",
+      "{skills}/chef_setup/scripts/setup.mjs",
+      "check-update"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "current"
+      },
+      {
+        "path": "$.latest",
+        "equals": "v0.1.0"
+      }
+    ]
+  },
+  {
     "id": "chef-batch-prep-planning-renders-pdf-from-saved-plan",
     "description": "A saved meal plan renders as a valid PDF under the data root with one page per unique recipe, each titled with the recipe, committed through the guarded writer; off Muse there is no attachment instruction.",
     "steps": [
@@ -3486,5 +3596,50 @@
     "git": {
       "clean": true
     }
+  },
+  {
+    "id": "food-inventory-spoofed-trusted-sender-refused",
+    "description": "A receipt email whose From is a trusted sender but whose domain was not authenticated (spoofed From) is refused, and nothing is written.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"trusted_receipt_senders\": [\"receipts@example.com\"]}\n"
+      },
+      {
+        "path": "../receipt.txt",
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas — $1.38\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "add-receipt",
+      "--transcript-file",
+      "{data_root}/../receipt.txt",
+      "--source",
+      "email",
+      "--from",
+      "Example Market <receipts@example.com>",
+      "--authenticated",
+      "attacker.example.net",
+      "--receipt-id",
+      "<spoof1@example.com>"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "not authenticated"
+      }
+    ]
   }
 ]
