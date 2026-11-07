@@ -88,3 +88,21 @@ test('a gated chosen recipe is refused with reasons before anything is written',
   assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }), beforeHead);
   assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
 });
+
+test('auto-fill ranks avoidances last and reports planned avoidance matches', () => {
+  const root = makeRoot([
+    recipe('a-olive-pasta', { ingredients: ['100 g olives'] }),
+    recipe('z-tomato-pasta', { ingredients: ['100 g tomatoes'] }),
+    ruleset([{ name: 'Sam Example', avoidances: ['olives'] }]),
+  ]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 2 });
+
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(result.meals.map((meal) => meal.slug), ['z-tomato-pasta', 'a-olive-pasta']);
+  assert.deepEqual(result.avoidance_notes, [{
+    date: '2026-01-20',
+    slug: 'a-olive-pasta',
+    avoidances: [{ member: 'Sam Example', avoidance: 'olives', detail: '100 g olives' }],
+  }]);
+});

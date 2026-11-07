@@ -106,7 +106,9 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
   }
   const inventoryItems = listItems(loadInventory(root));
   const allowed = active.filter(({ verdict }) => !verdict.excluded)
-    .sort((a, b) => inventoryScore(b.recipe, inventoryItems) - inventoryScore(a.recipe, inventoryItems) || a.recipe.slug.localeCompare(b.recipe.slug));
+    .sort((a, b) => Number(Boolean(a.verdict.avoidances.length)) - Number(Boolean(b.verdict.avoidances.length))
+      || inventoryScore(b.recipe, inventoryItems) - inventoryScore(a.recipe, inventoryItems)
+      || a.recipe.slug.localeCompare(b.recipe.slug));
   if (!allowed.length) {
     return { status: 'no-plan', data_root: root, week_start: weekStart, meals: [], excluded, unreadable, dietary: dietaryNotes(ruleset) };
   }
@@ -115,6 +117,10 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
   const activeBySlug = new Map(active.map(({ recipe }) => [recipe.slug, recipe]));
   const selected = selectRecipes(allowed, activeBySlug, slots, days);
   const meals = selected.map((recipe, index) => mealView(recipe, dateAt(weekStart, index), profile.servings));
+  const avoidanceNotes = meals.flatMap((meal) => {
+    const avoidances = bySlug.get(meal.slug).verdict.avoidances;
+    return avoidances.length ? [{ date: meal.date, slug: meal.slug, avoidances }] : [];
+  });
   const nutrition = rollupNutrition(meals.map((meal, index) => nutritionInput(meal, selected[index])));
   const dietary = dietaryNotes(ruleset);
   const inventory = { items_considered: inventoryItems.length };
@@ -128,6 +134,7 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
     nutrition,
     dietary,
     inventory,
+    ...(avoidanceNotes.length && { avoidance_notes: avoidanceNotes }),
   };
   const write = writeWiki(root, {
     pages: [{ slug: weekStart, frontmatter, body: planBody(weekStart, meals) }],
@@ -147,6 +154,7 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
     inventory,
     nutrition,
     dietary,
+    ...(avoidanceNotes.length && { avoidance_notes: avoidanceNotes }),
     ...(settings.warning && { settings_warning: settings.warning }),
     ...calendarPayload(settings.settings.calendar, meals),
   });
