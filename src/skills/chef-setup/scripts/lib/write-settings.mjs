@@ -5,6 +5,7 @@ import path from 'node:path';
 import { git } from '../../../../lib/git.mjs';
 import { schemaWriteBlocker } from '../../../../lib/schema.mjs';
 import { readSettings, SETTING_KEYS, SETTINGS_FILE, SETTINGS_VERSION, validateSettings } from '../../../../lib/settings.mjs';
+import { muse } from '../../../../runtime/muse.mjs';
 
 const IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 const SIDE_EFFECTS = { household_recipients: 'recreate-delivery-tasks' };
@@ -64,5 +65,6 @@ export function writeSettings(root, changes, { locale, rewrite = false } = {}) {
   const saved = readSettings(root, { locale });
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
   const side_effects = changed.map((key) => SIDE_EFFECTS[key]).filter(Boolean);
-  return { status: 'saved', data_root: root, settings: saved.settings, changed, side_effects };
+  const recipients = changed.includes('household_recipients') && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
+  return { status: 'saved', data_root: root, settings: saved.settings, changed, side_effects, ...recipients };
 }
