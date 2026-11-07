@@ -27,6 +27,7 @@ Every facet given must match. Leave a facet out to not filter on it.
 | `--flag <flag>` | Has every dietary flag given |
 | `--max-minutes <n>` | Total time at most `n` minutes |
 | `--limit <n>` | At most `n` results (default 20) |
+| `--include-retired` | Also return retired recipes (marked `lifecycle: retired`) |
 
 Use singular, plain ingredient names: `--ingredient chickpea` also matches "chickpeas".
 
@@ -34,6 +35,7 @@ The output has `count` (all matches), `recipes` (summaries: `slug`, `title`, `cu
 
 - `missing_data`: recipes left out only because they lack the time or dietary flags a facet needs. Tell the user how many, for example "2 more recipes have no cooking time recorded".
 - `dietary_flags: null` means flags were never checked. It never means the recipe is free of anything.
+- `retired_hidden`: matching recipes the user retired, left out. Mention them only if the user is looking for one; `chef-recipe-decisions` restores a recipe.
 - `unreadable`: pages Chef could not read. Mention them so the user can get them fixed.
 - No matches: say so plainly. Offer to drop a facet or add a new recipe with `chef-add-recipe`.
 

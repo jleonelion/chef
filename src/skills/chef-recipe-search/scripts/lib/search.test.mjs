@@ -59,3 +59,13 @@ test('summaries carry the facet fields and null for unknown flags', () => {
     dietary_flags: null,
   });
 });
+
+test('retired recipes are left out and counted unless asked for', () => {
+  const book = [...recipes, recipe('old', { lifecycle: 'retired' }, ['3 cloves garlic'])];
+  const result = searchRecipes(book, { ingredient: ['garlic'] });
+  assert.deepEqual(result.recipes.map((r) => r.slug), ['pasta', 'stew']);
+  assert.equal(result.retired_hidden, 1);
+  const all = searchRecipes(book, { ingredient: ['garlic'], include_retired: true });
+  assert.deepEqual(all.recipes.map((r) => [r.slug, r.lifecycle]), [['pasta', undefined], ['stew', undefined], ['old', 'retired']]);
+  assert.equal(all.retired_hidden, undefined);
+});

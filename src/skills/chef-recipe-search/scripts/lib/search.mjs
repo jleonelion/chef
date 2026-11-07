@@ -1,5 +1,6 @@
 // Facet search over recipe pages (from lib/recipes.mjs). Every facet must match. A recipe
 // missing the data a facet needs (time, dietary flags) never matches it and is counted.
+// Retired recipes (lifecycle: retired) are left out unless include_retired; matches hidden that way are counted.
 import { ingredientLines } from '../../../../lib/recipes.mjs';
 
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -37,16 +38,23 @@ function summary({ recipe, fm, tags, flags }) {
     total_minutes: fm.total_minutes ?? null,
     servings: fm.servings ?? null,
     dietary_flags: flags,
+    ...(fm.lifecycle === 'retired' && { lifecycle: 'retired' }),
   };
 }
 
-export function searchRecipes(recipes, { limit = 20, ...facets }) {
+export function searchRecipes(recipes, { limit = 20, include_retired = false, ...facets }) {
   const active = Object.entries(facets).filter(([key, value]) => Object.hasOwn(CHECKS, key) && value !== undefined && !(Array.isArray(value) && !value.length));
   const matches = [];
   const missing = {};
+  let retiredHidden = 0;
   for (const v of recipes.filter((r) => r.frontmatter.type === 'recipe').map(view)) {
     const results = active.map(([key, value]) => CHECKS[key](v, value));
-    if (results.every((r) => r === true)) matches.push(v);
+    const retired = v.fm.lifecycle === 'retired' && !include_retired;
+    if (results.every((r) => r === true)) {
+      if (retired) retiredHidden += 1;
+      else matches.push(v);
+    }
+    if (retired) continue;
     const gap = results.find((r) => typeof r === 'string');
     if (gap && results.every((r) => r !== false)) {
       const field = gap.slice('missing:'.length);
@@ -55,5 +63,6 @@ export function searchRecipes(recipes, { limit = 20, ...facets }) {
   }
   const result = { count: matches.length, recipes: matches.slice(0, limit).map(summary) };
   if (Object.keys(missing).length) result.missing_data = missing;
+  if (retiredHidden) result.retired_hidden = retiredHidden;
   return result;
 }

@@ -8,7 +8,7 @@ export const MIGRATIONS = {};
 
 const stamp = (root, version) => fs.writeFileSync(path.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}\n`);
 
-export function migrate(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION } = {}) {
+export function migrationPlan(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION } = {}) {
   const from = readSchemaVersion(root);
   if (!Number.isInteger(from)) throw new Error(`${root} has no integer schema version`);
   if (from > target) throw new Error(`schema ${from} is newer than this Chef (${target})`);
@@ -16,9 +16,16 @@ export function migrate(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION
   for (let version = from; version < target; version += 1) steps.push(version);
   const missing = steps.find((version) => typeof migrations[version] !== 'function');
   if (missing !== undefined) throw new Error(`no migration from schema ${missing}`);
+  return { from, to: target, applied: steps };
+}
+
+export function migrate(root, options = {}) {
+  const { migrations = MIGRATIONS } = options;
+  const plan = migrationPlan(root, options);
+  const steps = plan.applied;
   for (const version of steps) {
     migrations[version](root);
     stamp(root, version + 1);
   }
-  return { from, to: target, applied: steps };
+  return plan;
 }
