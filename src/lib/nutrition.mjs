@@ -10,6 +10,21 @@ const MG = new Set(['sodium', 'cholesterol']);
 const oneDecimal = (value) => Math.round(value * 10) / 10;
 const round = (field, value) => (field === 'calories' || MG.has(field) ? Math.round(value) : oneDecimal(value));
 
+export function rollupNutrition(meals) {
+  const fields = Object.keys(NUTRIENTS);
+  const totals = Object.fromEntries(fields.map((field) => [field, 0]));
+  const rolled = meals.map((meal) => {
+    const mealTotals = Object.fromEntries(fields.map((field) => [field, round(field, meal.nutrition_per_serving[field] * meal.servings)]));
+    for (const field of fields) totals[field] += mealTotals[field];
+    return { date: meal.date, slug: meal.slug, servings: meal.servings, totals: mealTotals };
+  });
+  return {
+    status: 'complete',
+    meals: rolled,
+    totals: Object.fromEntries(fields.map((field) => [field, round(field, totals[field])])),
+  };
+}
+
 // Thrown when USDA cannot answer at all; the whole recipe is then "not-computed".
 class UsdaUnavailable extends Error {}
 const usdaAnswer = (result) => {
