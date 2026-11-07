@@ -7148,6 +7148,9 @@ var OPTIONS = {
   expires: { type: "string" },
   remove: { type: "boolean" },
   reason: { type: "string" },
+  recipe: { type: "string" },
+  servings: { type: "string" },
+  "deduction-id": { type: "string" },
   today: { type: "string" },
   days: { type: "string" }
 };
@@ -7428,8 +7431,281 @@ function commitInventory(root, { inventory, action, details, data = [], raw = []
   });
 }
 
-// src/skills/chef-food-inventory/scripts/lib/units.mjs
+// src/lib/recipes.mjs
+import fs7 from "node:fs";
+import path7 from "node:path";
+var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
+function listRecipes(root) {
+  const dir = path7.join(root, RECIPES_DIR);
+  const files = fs7.existsSync(dir) ? fs7.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const recipes = [];
+  const unreadable = [];
+  for (const file of files) {
+    const rel = `${RECIPES_DIR}/${file}`;
+    try {
+      const { frontmatter, body } = parsePage(fs7.readFileSync(path7.join(root, rel), "utf8"));
+      recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
+    } catch (error) {
+      unreadable.push({ path: rel, reason: error.message });
+    }
+  }
+  return { recipes, unreadable };
+}
+function ingredientLines(body) {
+  const section = body.split(/^## /m).find((part) => /^ingredients\s*$/im.test(part.split(`
+`)[0]));
+  if (!section)
+    return [];
+  return section.split(`
+`).map((line) => line.match(/^\s*[-*]\s+(.+)$/)?.[1].trim()).filter(Boolean);
+}
+
+// src/lib/ingredient-line.mjs
+var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
+var UNITS = {
+  g: ["g", "gram", "grams", "gr"],
+  kg: ["kg", "kilogram", "kilograms"],
+  oz: ["oz", "ounce", "ounces"],
+  lb: ["lb", "lbs", "pound", "pounds"],
+  tsp: ["tsp", "teaspoon", "teaspoons"],
+  tbsp: ["tbsp", "tbs", "tablespoon", "tablespoons"],
+  cup: ["cup", "cups", "c"],
+  ml: ["ml", "milliliter", "milliliters", "millilitre", "millilitres"],
+  l: ["l", "liter", "liters", "litre", "litres"],
+  floz: ["fl oz", "fluid ounce", "fluid ounces"],
+  pt: ["pint", "pints", "pt"],
+  qt: ["quart", "quarts", "qt"],
+  clove: ["clove", "cloves"],
+  slice: ["slice", "slices"],
+  can: ["can", "cans"],
+  stick: ["stick", "sticks"],
+  bunch: ["bunch", "bunches"],
+  head: ["head", "heads"],
+  sprig: ["sprig", "sprigs"],
+  piece: ["piece", "pieces"],
+  stalk: ["stalk", "stalks"],
+  leaf: ["leaf", "leaves"],
+  pinch: ["pinch", "pinches"],
+  dash: ["dash", "dashes"]
+};
+var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
+var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
+var GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var TRACE = new Set(["pinch", "dash"]);
+var SIZES = ["small", "medium", "large"];
+var PREP = /\b(?:finely|roughly|thinly|freshly|fresh|chopped|diced|minced|sliced|grated|peeled|drained|rinsed|large|medium|small)\b/g;
+var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
+var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+function toNumber(text) {
+  return text.trim().split(/\s+/).reduce((sum, part) => {
+    const [n, d] = part.split("/").map(Number);
+    return sum + (d ? n / d : n);
+  }, 0);
+}
+var round2 = (n) => Math.round(n * 100) / 100;
+var unitOf = (text) => text ? UNIT_OF.get(text.toLowerCase().replace(/\s+/g, " ")) ?? null : null;
+function parseIngredientLine(line) {
+  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  const toTaste = /\bto taste\b/i.test(text);
+  text = text.replace(/\bto taste\b/i, "").trim();
+  const lead = text.match(LEAD);
+  const amount = lead ? toNumber(lead[1]) : null;
+  const packageUnit = lead && unitOf(lead[3]);
+  const packageGrams = packageUnit && GRAMS_PER[packageUnit] ? round2(toNumber(lead[2]) * GRAMS_PER[packageUnit]) : null;
+  const unit = lead ? unitOf(lead[4]) : null;
+  const rest = lead ? text.slice(lead[0].length) : text;
+  const lower = rest.toLowerCase();
+  const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
+  const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
+}
+
+// src/lib/quantity.mjs
+var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
+var MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
 var ALIASES = {
+  teaspoons: "tsp",
+  teaspoon: "tsp",
+  tablespoons: "tbsp",
+  tablespoon: "tbsp",
+  cups: "cup",
+  milliliters: "ml",
+  milliliter: "ml",
+  millilitres: "ml",
+  millilitre: "ml",
+  liters: "l",
+  liter: "l",
+  litres: "l",
+  litre: "l",
+  "fl oz": "floz",
+  "fluid ounce": "floz",
+  "fluid ounces": "floz",
+  pints: "pt",
+  pint: "pt",
+  quarts: "qt",
+  quart: "qt",
+  gallons: "gal",
+  gallon: "gal",
+  grams: "g",
+  gram: "g",
+  kilograms: "kg",
+  kilogram: "kg",
+  ounces: "oz",
+  ounce: "oz",
+  lbs: "lb",
+  pounds: "lb",
+  pound: "lb",
+  pieces: "piece",
+  slices: "slice",
+  cloves: "clove",
+  cans: "can",
+  jars: "jar",
+  bunches: "bunch",
+  heads: "head",
+  sprigs: "sprig",
+  sticks: "stick",
+  boxes: "box",
+  dozens: "dozen"
+};
+var normalizeUnit = (unit) => ALIASES[String(unit ?? "").trim().toLowerCase()] ?? String(unit ?? "").trim().toLowerCase();
+function quantityDimension(unit) {
+  const normalized = normalizeUnit(unit);
+  if (Object.hasOwn(VOLUME, normalized))
+    return "volume";
+  if (Object.hasOwn(MASS, normalized))
+    return "mass";
+  if (COUNT.has(normalized))
+    return "count";
+  return null;
+}
+function convertQuantity(amount, fromUnit, toUnit) {
+  const from = normalizeUnit(fromUnit);
+  const to = normalizeUnit(toUnit);
+  const dimension = quantityDimension(from);
+  if (!dimension || dimension !== quantityDimension(to))
+    return null;
+  if (dimension === "volume")
+    return amount * VOLUME[from] / VOLUME[to];
+  if (dimension === "mass")
+    return amount * MASS[from] / MASS[to];
+  if (from === "dozen")
+    return amount * 12 / (to === "dozen" ? 12 : 1);
+  if (to === "dozen")
+    return amount / 12;
+  return amount;
+}
+
+// src/skills/chef-food-inventory/scripts/lib/deduct.mjs
+var round = (value) => Math.round(value * 1e6) / 1e6;
+var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function alreadyApplied(root, deductionId) {
+  return (readText(root, STORE.audit) ?? "").trim().split(`
+`).filter(Boolean).some((line) => {
+    try {
+      const entry = JSON.parse(line);
+      return entry.action === "deduct" && entry.details?.deduction_id === deductionId;
+    } catch {
+      return false;
+    }
+  });
+}
+function findItem(items, ingredient) {
+  const wanted = itemName(ingredient);
+  return items.find((item) => itemName(item.name) === wanted || itemName(item.key.replaceAll("_", " ")) === wanted);
+}
+function publicDeduction(entry) {
+  const { location, category, key, ...deduction } = entry;
+  return deduction;
+}
+function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Date().toISOString() }) {
+  const problems = [];
+  if (!slug)
+    problems.push("recipe: required");
+  if (!Number.isFinite(servings) || servings <= 0)
+    problems.push("servings: must be a positive number");
+  if (!deductionId?.trim())
+    problems.push("deduction_id: required");
+  if (problems.length)
+    return { status: "invalid-input", problems };
+  if (alreadyApplied(root, deductionId))
+    return { status: "duplicate", deduction_id: deductionId };
+  const { recipes, unreadable } = listRecipes(root);
+  const recipe = recipes.find((candidate) => candidate.slug === slug);
+  if (!recipe) {
+    const unreadableRecipe = unreadable.find((candidate) => candidate.path.endsWith(`/${slug}.md`));
+    return { status: "invalid-input", problems: [unreadableRecipe ? `recipe ${slug} is unreadable: ${unreadableRecipe.reason}` : `recipe not found: ${slug}`] };
+  }
+  const baseServings = Number(recipe.frontmatter.servings);
+  if (!Number.isFinite(baseServings) || baseServings <= 0)
+    return { status: "invalid-input", problems: [`recipe ${slug} has no valid servings`] };
+  const inventory = loadInventory(root);
+  const items = listItems(inventory);
+  const multiplier = servings / baseServings;
+  const planned = [];
+  const notFound = [];
+  const unitMismatches = [];
+  for (const line of ingredientLines(recipe.body)) {
+    const ingredient = parseIngredientLine(line);
+    const match = findItem(items, ingredient.item);
+    if (!match) {
+      notFound.push(ingredient.item || line);
+      continue;
+    }
+    if (ingredient.amount === null) {
+      unitMismatches.push({ ingredient: ingredient.item, recipe_unit: "", inventory_unit: match.unit, reason: "recipe ingredient has no quantity" });
+      continue;
+    }
+    const recipeUnit = ingredient.unit ?? "each";
+    const amount = convertQuantity(ingredient.amount * multiplier, recipeUnit, match.unit);
+    if (amount === null) {
+      unitMismatches.push({
+        ingredient: ingredient.item,
+        recipe_unit: recipeUnit,
+        inventory_unit: match.unit,
+        recipe_dimension: quantityDimension(recipeUnit),
+        inventory_dimension: quantityDimension(match.unit),
+        reason: `cannot convert ${normalizeUnit(recipeUnit) || "unitless"} to ${normalizeUnit(match.unit) || "unitless"}`
+      });
+      continue;
+    }
+    const deducted = Math.min(amount, match.amount);
+    planned.push({
+      ingredient: ingredient.item,
+      recipe_amount: round(ingredient.amount * multiplier),
+      recipe_unit: recipeUnit,
+      inventory_unit: match.unit,
+      inventory_path: match.path,
+      previous_amount: match.amount,
+      new_amount: round(Math.max(0, match.amount - amount)),
+      deducted: round(deducted),
+      shortfall: round(Math.max(0, amount - match.amount)),
+      location: match.location,
+      category: match.category,
+      key: match.key
+    });
+  }
+  if (unitMismatches.length)
+    return { status: "invalid-input", problems: ["recipe and inventory units do not match"], unit_mismatches: unitMismatches, not_found: notFound };
+  const next = structuredClone(inventory);
+  next.lastUpdated = now;
+  for (const deduction of planned) {
+    Object.assign(next[deduction.location][deduction.category][deduction.key], { amount: deduction.new_amount, updated: now });
+  }
+  const deductions = planned.map(publicDeduction);
+  const written = commitInventory(root, {
+    inventory: next,
+    action: "deduct",
+    details: { deduction_id: deductionId, recipe: slug, servings, multiplier, deductions, not_found: notFound },
+    message: `chef-food-inventory: deduct ${slug}`
+  });
+  if (written.status !== "written")
+    return written;
+  return { status: "deducted", deduction_id: deductionId, recipe: slug, servings, base_servings: baseServings, multiplier, deductions, not_found: notFound };
+}
+
+// src/skills/chef-food-inventory/scripts/lib/units.mjs
+var ALIASES2 = {
   ct: "each",
   x: "each",
   ea: "each",
@@ -7455,23 +7731,23 @@ var ALIASES = {
   box: "box",
   dozen: "dozen"
 };
-var UNIT_WORDS = new Set(Object.keys(ALIASES));
-var canonicalUnit = (unit) => ALIASES[String(unit).toLowerCase()] ?? String(unit).toLowerCase();
+var UNIT_WORDS = new Set(Object.keys(ALIASES2));
+var canonicalUnit = (unit) => ALIASES2[String(unit).toLowerCase()] ?? String(unit).toLowerCase();
 
 // src/skills/chef-food-inventory/scripts/lib/edit.mjs
 var PATH = /^(pantry|fridge|freezer)\.[a-z0-9]+(_[a-z0-9]+)*\.[a-z0-9]+(_[a-z0-9]+)*$/;
 var invalid = (problem) => ({ status: "invalid-input", problems: [problem] });
-function problemWith({ path: path7, amount, unit, expires, remove }, exists) {
-  if (!PATH.test(path7 ?? "") || !path7.split(".").slice(1).every(isKey))
+function problemWith({ path: path8, amount, unit, expires, remove }, exists) {
+  if (!PATH.test(path8 ?? "") || !path8.split(".").slice(1).every(isKey))
     return "path must be <pantry|fridge|freezer>.<category>.<item>, lower case with underscores";
   if (remove)
-    return exists ? null : `${path7} is not in the inventory`;
+    return exists ? null : `${path8} is not in the inventory`;
   if (amount !== undefined && !(Number.isFinite(amount) && amount >= 0))
     return "amount must be a number >= 0";
   if (expires !== undefined && expires !== null && !isIsoDate(expires))
     return "expires must be YYYY-MM-DD or none";
   if (!exists && (amount === undefined || !unit))
-    return `${path7} is new, so it needs an amount and a unit`;
+    return `${path8} is new, so it needs an amount and a unit`;
   return null;
 }
 function applyEdit(entry, key, { amount, unit, expires, now }) {
@@ -7512,7 +7788,7 @@ function editItem(root, edit) {
 
 // src/skills/chef-food-inventory/scripts/lib/expiration.mjs
 function expiringItems(inventory, { today: today2, days }) {
-  const dated = listItems(inventory).filter((item) => item.expires && item.amount > 0).map(({ path: path7, name, amount, unit, expires }) => ({ path: path7, name, amount, unit, expires, days_left: daysBetween(today2, expires) })).sort((a, b) => a.expires.localeCompare(b.expires) || a.path.localeCompare(b.path));
+  const dated = listItems(inventory).filter((item) => item.expires && item.amount > 0).map(({ path: path8, name, amount, unit, expires }) => ({ path: path8, name, amount, unit, expires, days_left: daysBetween(today2, expires) })).sort((a, b) => a.expires.localeCompare(b.expires) || a.path.localeCompare(b.path));
   return {
     expired: dated.filter((item) => item.days_left < 0),
     soon: dated.filter((item) => item.days_left >= 0 && item.days_left <= days)
@@ -7520,8 +7796,8 @@ function expiringItems(inventory, { today: today2, days }) {
 }
 
 // src/skills/chef-food-inventory/scripts/lib/health.mjs
-import fs7 from "node:fs";
-import path7 from "node:path";
+import fs8 from "node:fs";
+import path8 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/ledger.mjs
 function loadLedger(root) {
@@ -7554,7 +7830,7 @@ function rollupProblems(root, inventory) {
   return same ? [] : ["the rollup page does not match the store"];
 }
 function ledgerProblems(root, ledger) {
-  return Object.entries(ledger.receipts).filter(([id, entry]) => !fs7.existsSync(path7.join(root, STORE.purchases, `${entry.date}-${id}.json`))).map(([id]) => `receipt ${id} has no purchase record`);
+  return Object.entries(ledger.receipts).filter(([id, entry]) => !fs8.existsSync(path8.join(root, STORE.purchases, `${entry.date}-${id}.json`))).map(([id]) => `receipt ${id} has no purchase record`);
 }
 function stats(inventory, ledger, window) {
   const items = listItems(inventory);
@@ -7600,7 +7876,7 @@ function itemKey(name) {
 }
 
 // src/skills/chef-food-inventory/scripts/lib/apply.mjs
-var round = (value) => Math.round(value * 1000) / 1000;
+var round3 = (value) => Math.round(value * 1000) / 1000;
 var earliest = (a, b) => [a, b].filter(Boolean).sort()[0];
 function resolvePath(item) {
   const parts = (item.target ?? placeItem(item.name)).split(".");
@@ -7612,7 +7888,7 @@ function addTo(entry, item, { date, now }) {
   if (canonicalUnit(entry.unit) !== item.unit)
     return { reason: `stored in ${entry.unit}, receipt says ${item.unit}` };
   const expires = earliest(entry.expires, item.expires);
-  Object.assign(entry, { amount: round(entry.amount + item.quantity), purchased: date, updated: now }, expires ? { expires } : {});
+  Object.assign(entry, { amount: round3(entry.amount + item.quantity), purchased: date, updated: now }, expires ? { expires } : {});
   return { action: "updated" };
 }
 function create(items, key, item, { date, now }) {
@@ -7780,7 +8056,7 @@ function rollup(root) {
   return written.status === "written" ? { status: "regenerated", rollup: written.pages[0] } : written;
 }
 var MODES = {
-  view: (root) => ({ status: "ok", items: listItems(loadInventory(root)).map(({ path: path8, name, amount, unit, expires }) => ({ path: path8, name, amount, unit, expires: expires ?? null })) }),
+  view: (root) => ({ status: "ok", items: listItems(loadInventory(root)).map(({ path: path9, name, amount, unit, expires }) => ({ path: path9, name, amount, unit, expires: expires ?? null })) }),
   "check-sender": (root, settings) => {
     const gate = checkSender(values.from, settings.trusted_receipt_senders);
     return gate.ok ? { status: "trusted" } : { status: "refused", reason: gate.reason };
@@ -7802,6 +8078,12 @@ var MODES = {
     expires: values.expires === "none" ? null : values.expires,
     remove: values.remove ?? false,
     reason: values.reason,
+    now
+  }),
+  deduct: (root) => deductRecipe(root, {
+    recipe: values.recipe,
+    servings: Number(values.servings),
+    deductionId: values["deduction-id"],
     now
   }),
   expiring: (root) => ({ status: "ok", ...window(), ...expiringItems(loadInventory(root), window()) }),

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // chef-food-inventory entry point; the only reader and writer of data/food-inventory/.
-// Modes: view, check-sender, add-receipt, edit, expiring, health, rollup. Prints one JSON object.
+// Modes: view, check-sender, add-receipt, edit, deduct, expiring, health, rollup. Prints one JSON object.
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
 import { OPTIONS, readTranscript, today } from './lib/cli-args.mjs';
 import { commitInventory } from './lib/commit.mjs';
+import { deductRecipe } from './lib/deduct.mjs';
 import { editItem } from './lib/edit.mjs';
 import { expiringItems } from './lib/expiration.mjs';
 import { checkHealth } from './lib/health.mjs';
@@ -55,6 +56,12 @@ const MODES = {
       reason: values.reason,
       now,
     }),
+  deduct: (root) => deductRecipe(root, {
+    recipe: values.recipe,
+    servings: Number(values.servings),
+    deductionId: values['deduction-id'],
+    now,
+  }),
   expiring: (root) => ({ status: 'ok', ...window(), ...expiringItems(loadInventory(root), window()) }),
   health: (root) => checkHealth(root, window()),
   rollup,
