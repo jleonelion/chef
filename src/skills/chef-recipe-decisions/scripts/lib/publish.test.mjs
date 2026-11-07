@@ -96,6 +96,27 @@ test('publishing a dietary conflict without confirmation is refused without writ
   assert.equal(readJson(root, PROPOSALS_FILE).proposals[id].decisions.at(-1).outcome, 'accept');
 });
 
+test('explicit confirmation publishes a dietary conflict and records the user decision', () => {
+  const root = dataRoot();
+  declareDairy(root);
+  propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
+  decide(root, { id, outcome: 'accept', date });
+
+  const result = publishProposals(root, { date, confirm: true });
+
+  assert.equal(result.status, 'published');
+  assert.equal(exists(root, page), true);
+  const decisions = readJson(root, PROPOSALS_FILE).proposals[id].decisions;
+  assert.deepEqual(decisions.at(-1), {
+    outcome: 'accept',
+    date,
+    by: 'user',
+    reason: 'Confirmed publication despite the dietary hard-constraint gate.',
+  });
+  assert.equal(decisions.length, 2);
+  assert.equal(exists(root, 'data/recipe-decisions/standing-rules.json'), false);
+});
+
 test('a refused publication keeps the decision for a later retry', () => {
   const root = accepted();
   fs.writeFileSync(path.join(root, 'schema-version.json'), '{"schema_version": 99}');

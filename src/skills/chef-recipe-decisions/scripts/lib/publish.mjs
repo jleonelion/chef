@@ -38,7 +38,7 @@ function blockedByDietaryGate(root, records, date) {
   });
 }
 
-export function publishProposals(root, { ids, date }) {
+export function publishProposals(root, { ids, date, confirm = false }) {
   const refusal = writeRefusal(root);
   if (refusal) return refusal;
   const store = readProposals(root);
@@ -46,13 +46,24 @@ export function publishProposals(root, { ids, date }) {
   if (problem) return { data_root: root, ...problem };
   if (!chosen.length) return { status: 'unchanged', data_root: root, published: [] };
   const blocked = blockedByDietaryGate(root, chosen, date);
-  if (blocked.length) {
+  if (blocked.length && !confirm) {
     return {
       status: 'refused',
       data_root: root,
       reason: 'The dietary hard-constraint gate did not allow publication. Explicit confirmation is required.',
       blocked,
     };
+  }
+  if (blocked.length) {
+    const blockedIds = new Set(blocked.map((record) => record.id));
+    for (const record of chosen.filter((candidate) => blockedIds.has(candidate.id))) {
+      record.decisions.push({
+        outcome: 'accept',
+        date,
+        by: 'user',
+        reason: 'Confirmed publication despite the dietary hard-constraint gate.',
+      });
+    }
   }
 
   const slugsInBook = new Set(listRecipes(root).recipes.map((r) => r.slug));
@@ -69,8 +80,8 @@ export function publishProposals(root, { ids, date }) {
 }
 
 // Publish, then enrich the newly written pages the way chef-add-recipe does.
-export async function publishAndEnrich(root, { ids, date, fdc }) {
-  const result = publishProposals(root, { ids, date });
+export async function publishAndEnrich(root, { ids, date, fdc, confirm = false }) {
+  const result = publishProposals(root, { ids, date, confirm });
   const fresh = result.published?.filter((p) => !p.linked).map((p) => p.slug) ?? [];
   if (result.status !== 'published' || !fresh.length) return result;
   const { recipes, hint, status, reason } = await enrichRecipes(root, { slugs: fresh, fdc, date });
