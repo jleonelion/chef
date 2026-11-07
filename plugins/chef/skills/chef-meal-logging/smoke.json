@@ -1,0 +1,8 @@
+[
+  {
+    "id": "log-needs-git-history",
+    "script": "scripts/meal-logging.mjs",
+    "args": ["log", "--date", "2026-01-16", "--slot", "snack", "--food", "test snack", "--servings", "1"],
+    "expect": { "exit": 2, "status": "refused" }
+  }
+]

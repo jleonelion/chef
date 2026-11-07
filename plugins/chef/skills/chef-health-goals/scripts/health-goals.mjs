@@ -7299,7 +7299,7 @@ function clearGoal(root, { date }) {
   return written.status === "written" ? { status: "cleared", data_root: root } : written;
 }
 
-// src/skills/chef-health-goals/scripts/lib/meal-log.mjs
+// src/lib/meal-log.mjs
 import fs6 from "node:fs";
 import path7 from "node:path";
 var MEAL_LOG_PATH = "data/meal-log/log.json";

@@ -4,7 +4,7 @@
 import { NUTRIENTS } from '../../../../lib/fdc.mjs';
 import { NOT_MEDICAL_ADVICE } from '../../../../lib/safety-text.mjs';
 import { activeGoal } from './goals.mjs';
-import { readMealLog } from './meal-log.mjs';
+import { readMealLog } from '../../../../lib/meal-log.mjs';
 
 const FIELDS = Object.keys(NUTRIENTS);
 const oneDecimal = (value) => Math.round(value * 10) / 10;

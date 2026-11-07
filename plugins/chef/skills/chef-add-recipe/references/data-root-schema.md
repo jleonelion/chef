@@ -197,3 +197,11 @@ One-plan dietary overrides are also returned only for that invocation and are ne
 | `updated` | `YYYY-MM-DD` of the last change |
 
 The weekly report reads the meal log (`data/meal-log/log.json`, owned by chef-meal-logging) and writes nothing. A day counts toward targets only when every entry that day has `nutrition`. Meal-plan suggestions are returned with the saved plan and never stored on the meal-plan page. Declaring the first goal records the shared `training-setting` notice, if not already shown.
+
+## Meal log store
+
+`data/meal-log/log.json` belongs to `chef-meal-logging`; it is the only writer. The file is `{ "entries": [ ... ] }`.
+
+Each entry has `id` (stable `<date>-<slot>-<recipe-or-food-slug>`), `date` (`YYYY-MM-DD`), `slot` (`breakfast`, `lunch`, `dinner` or `snack`), `recipe` (recipe slug or `null`), `food` (free text when there is no recipe, otherwise `null`), `servings` (positive number), `cooked` (whether the user cooked it at home), `nutrition` (per-entry totals copied from complete recipe `nutrition_per_serving` and scaled by servings, otherwise `null`) and `logged_at` (ISO timestamp).
+
+A cooked recipe entry uses its `id` as the food-inventory deduction ID. Inventory deduction is idempotent and occurs after the entry is saved. Missing inventory ingredients and unit mismatches do not remove the logged entry. Editing or deleting a log entry never reverses a deduction automatically.
