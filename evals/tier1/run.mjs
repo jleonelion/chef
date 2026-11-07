@@ -58,15 +58,21 @@ function runCase(testCase, skillsDir) {
   const { tmp, dataRoot } = prepare(testCase);
   try {
     const expand = (arg) => arg.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot);
-    const [cmd, ...args] = testCase.command.map(expand);
-    const result = spawnSync(cmd, args, {
-      cwd: tmp,
-      env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
-      encoding: 'utf8',
-      timeout: 30000,
-    });
-    const expected = testCase.expectedStatus ?? 0;
-    assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);
+    const run = (step) => {
+      const [cmd, ...args] = step.command.map(expand);
+      const result = spawnSync(cmd, args, {
+        cwd: tmp,
+        env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
+        encoding: 'utf8',
+        timeout: 30000,
+      });
+      const expected = step.expectedStatus ?? 0;
+      assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);
+      return result;
+    };
+    // `steps` run first, in order, each expected to exit 0 unless it says otherwise.
+    for (const step of testCase.steps ?? []) run(step);
+    const result = run(testCase);
     const evaluation = parseOutput(testCase.parse, result);
     for (const assertion of testCase.assertions ?? []) assertCase(evaluation, assertion);
     for (const target of testCase.files ?? []) {
