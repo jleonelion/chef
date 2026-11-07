@@ -123,9 +123,9 @@ Record or change one person at a time. A flag replaces that person's whole list,
 node scripts/setup.mjs set-dietary --member "Alex Example" --hard "peanuts,tree nuts" --avoid "olives"
 ```
 
-Use the name the user gives for each person. Allergen names may be plain words (`milk`, `celiac`, `nuts`); Chef maps them to its flags.
+Use the name the user gives for each person. Pass hard constraints in the user's own words (`peanut allergy`, `celiac`, `tree-nut`, `dairy-free`); Chef maps any allergen wording to its flags, and leans toward more flags when unsure.
 
-- `saved`: confirm `ruleset.members`. Pass on every `caveats` line. If there is a `notice`, show it once, as given, with its link. If `removed_hard_constraints` is present, confirm the user meant to remove them.
+- `saved`: show how each entry was read from `read_as`, one per line, for example "peanut allergy -> peanuts", and ask the user to correct anything read wrong. Then confirm `ruleset.members`. Pass on every `caveats` line. If there is a `notice`, show it once, as given, with its link. If `removed_hard_constraints` is present, confirm the user meant to remove them.
 - Before removing anyone's hard constraint (`--hard ""` clears the list), ask the user to confirm; removing one lets those recipes back into plans.
 - `refused` with `content`: the ruleset page is broken. Until it is fixed Chef leaves every recipe out. Show `reason`, then rerun the change with `--rewrite` only if the user agrees to replace the page.
 - `refused` without `content`: show `reason`. `--none` is refused while constraints are declared.

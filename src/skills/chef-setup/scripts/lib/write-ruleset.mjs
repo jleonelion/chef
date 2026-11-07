@@ -2,7 +2,7 @@
 // The first hard constraint also records the one-time training-setting notice, in the same commit.
 import fs from 'node:fs';
 import path from 'node:path';
-import { dietaryNotes, normalizeConstraints, readRuleset, rulesetFromPage, RULESET_PATH, RULESET_SLUG, RULESET_TYPE } from '../../../../lib/dietary-ruleset.mjs';
+import { constraintReadings, dietaryNotes, normalizeConstraints, readRuleset, rulesetFromPage, RULESET_PATH, RULESET_SLUG, RULESET_TYPE } from '../../../../lib/dietary-ruleset.mjs';
 import { noticeToRecord } from '../../../../lib/notices.mjs';
 import { TRAINING_NOTICE } from '../../../../lib/safety-text.mjs';
 import { writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
@@ -62,6 +62,6 @@ export function writeRuleset(root, change, { date, rewrite = false }) {
   const { status, caveats } = dietaryNotes(saved);
   return {
     status: 'saved', data_root: root, ruleset: { status, members },
-    ...(caveats && { caveats }), ...(notice && { notice: TRAINING_NOTICE }), ...(removed.length && { removed_hard_constraints: removed }),
+    ...(change.hard?.length && { read_as: constraintReadings(change.hard) }), ...(caveats && { caveats }), ...(notice && { notice: TRAINING_NOTICE }), ...(removed.length && { removed_hard_constraints: removed }),
   };
 }

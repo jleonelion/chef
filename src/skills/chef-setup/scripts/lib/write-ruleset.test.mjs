@@ -26,6 +26,17 @@ test('"no" to the allergy question records none declared, with no notice', () =>
   assert.equal(git(root, ['status', '--porcelain']), '');
 });
 
+test('free-text entries are stored as canonical names and reported as read', () => {
+  const root = dataRoot();
+  const result = writeRuleset(root, { member: 'Alex Example', hard: ['peanut allergy', 'Tree-nut'] }, { date: DATE });
+  assert.deepEqual(result.read_as, [
+    { entry: 'peanut allergy', read_as: ['peanuts'] },
+    { entry: 'Tree-nut', read_as: ['tree-nuts'] },
+  ]);
+  assert.deepEqual(result.ruleset.members[0].hard_constraints, ['peanuts', 'tree-nuts']);
+  assert.match(fs.readFileSync(path.join(root, RULESET_PATH), 'utf8'), /hard_constraints:\n\s+- peanuts\n\s+- tree-nuts/);
+});
+
 test('a first hard constraint saves the ruleset and shows the training notice once', () => {
   const root = dataRoot();
   const first = writeRuleset(root, { member: 'Alex Example', hard: ['Celiac', 'mustard'] }, { date: DATE });

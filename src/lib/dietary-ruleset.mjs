@@ -27,25 +27,49 @@ const ALLERGEN_WORDS = [
   ...Object.entries(ALIASES),
 ].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
 
-// Fail closed: any allergen wording ("peanut allergy", "sesame seeds", "gluten intolerance")
-// maps to its flag through the enrichment matcher plus an allergen-word scan. Only text with no
-// allergen word at all stays a text-only constraint.
-function constraintsFor(name) {
-  if (ALIASES[name]) return ALIASES[name];
-  if (flagFor(name)) return [name];
-  const flags = new Set(dietaryFlags([name]).map(suffix));
-  for (const { pattern, flags: mapped } of ALLERGEN_WORDS) if (pattern.test(name)) mapped.forEach((f) => flags.add(f));
-  return flags.size ? [...flags] : [name];
+const FILLER = /(?<![a-z])(?:allerg(?:y|ies|ic)|intoleran(?:ce|t)|free|seeds?|no|to|an?)(?![a-z])/g;
+
+// "Tree-nut allergy" -> "tree nut": hyphens to spaces, filler words dropped.
+const core = (name) => name.replace(/[-_]/g, ' ').replace(FILLER, ' ').replace(/\s+/g, ' ').trim();
+
+// The one flag set an entry names exactly, allowing singular/plural, else null.
+function exactFlags(text) {
+  for (const word of [text, `${text}s`, text.replace(/s$/, '')]) {
+    if (ALIASES[word]) return ALIASES[word];
+    const flag = word.replace(/ /g, '-');
+    if (flagFor(flag)) return [flag];
+  }
+  return null;
 }
+
+// Every flag any allergen word in the text raises: the enrichment matcher plus a flag/alias word scan.
+function scannedFlags(text) {
+  const spaced = text.replace(/[-_]/g, ' ');
+  const flags = new Set(dietaryFlags([text, spaced]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS) if (pattern.test(spaced)) mapped.forEach((f) => flags.add(f));
+  return [...flags];
+}
+
+// Fail closed: allergen wording ("peanut allergy", "tree-nut", "dairy-free") maps to its flag;
+// wording that mentions allergens without naming one exactly maps to every flag it raises.
+// Only text with no allergen word at all stays a text-only constraint.
+function constraintsFor(name) {
+  const exact = exactFlags(core(name));
+  if (exact) return exact;
+  const scanned = scannedFlags(name);
+  return scanned.length ? scanned : [name];
+}
+
+const clean = (raw) => String(raw).trim().toLowerCase().replace(/^contains-/, '');
 
 // Lowercase names; flag-set members by their flag suffix (gluten, tree-nuts), others as written.
 export function normalizeConstraints(names) {
-  const out = names.flatMap((raw) => {
-    const name = String(raw).trim().toLowerCase().replace(/^contains-/, '');
-    return name ? constraintsFor(name) : [];
-  });
+  const out = names.map(clean).filter(Boolean).flatMap(constraintsFor);
   return [...new Set(out)].sort();
 }
+
+// How each entry the user gave was read, to show them: [{ entry, read_as }].
+export const constraintReadings = (names) => names.filter((n) => clean(n)).map((entry) => ({ entry, read_as: normalizeConstraints([entry]) }));
 
 export const flagFor = (constraint) => (DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null);
 

@@ -7873,22 +7873,36 @@ var ALLERGEN_WORDS = [
   ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
   ...Object.entries(ALIASES)
 ].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
-function constraintsFor(name) {
-  if (ALIASES[name])
-    return ALIASES[name];
-  if (flagFor(name))
-    return [name];
-  const flags = new Set(dietaryFlags([name]).map(suffix));
-  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
-    if (pattern.test(name))
-      mapped.forEach((f) => flags.add(f));
-  return flags.size ? [...flags] : [name];
+var FILLER = /(?<![a-z])(?:allerg(?:y|ies|ic)|intoleran(?:ce|t)|free|seeds?|no|to|an?)(?![a-z])/g;
+var core = (name) => name.replace(/[-_]/g, " ").replace(FILLER, " ").replace(/\s+/g, " ").trim();
+function exactFlags(text) {
+  for (const word of [text, `${text}s`, text.replace(/s$/, "")]) {
+    if (ALIASES[word])
+      return ALIASES[word];
+    const flag = word.replace(/ /g, "-");
+    if (flagFor(flag))
+      return [flag];
+  }
+  return null;
 }
+function scannedFlags(text) {
+  const spaced = text.replace(/[-_]/g, " ");
+  const flags = new Set(dietaryFlags([text, spaced]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
+    if (pattern.test(spaced))
+      mapped.forEach((f) => flags.add(f));
+  return [...flags];
+}
+function constraintsFor(name) {
+  const exact = exactFlags(core(name));
+  if (exact)
+    return exact;
+  const scanned = scannedFlags(name);
+  return scanned.length ? scanned : [name];
+}
+var clean = (raw) => String(raw).trim().toLowerCase().replace(/^contains-/, "");
 function normalizeConstraints(names) {
-  const out = names.flatMap((raw) => {
-    const name = String(raw).trim().toLowerCase().replace(/^contains-/, "");
-    return name ? constraintsFor(name) : [];
-  });
+  const out = names.map(clean).filter(Boolean).flatMap(constraintsFor);
   return [...new Set(out)].sort();
 }
 var flagFor = (constraint) => DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null;
@@ -7945,7 +7959,7 @@ function decode(text) {
     return ENTITIES[name.toLowerCase()] ?? match;
   });
 }
-var clean = (value) => typeof value === "string" ? decode(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "";
+var clean2 = (value) => typeof value === "string" ? decode(value).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim() : "";
 var first = (value) => Array.isArray(value) ? value[0] : value;
 function minutesFromIso(value) {
   const match = typeof value === "string" && value.trim().match(/^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:\d+(?:\.\d+)?S)?)?$/i);
@@ -7975,34 +7989,34 @@ function recipesIn(html) {
 }
 function steps(node) {
   if (typeof node === "string")
-    return decode(node).split(/\n+/).map(clean).filter(Boolean);
+    return decode(node).split(/\n+/).map(clean2).filter(Boolean);
   if (Array.isArray(node))
     return node.flatMap(steps);
   if (!node || typeof node !== "object")
     return [];
   if (node.itemListElement)
     return steps(node.itemListElement);
-  return [clean(node.text ?? node.name)].filter(Boolean);
+  return [clean2(node.text ?? node.name)].filter(Boolean);
 }
 var servings = (value) => {
   const n = Number.parseInt(String(first(value) ?? ""), 10);
   return Number.isInteger(n) && n > 0 ? n : undefined;
 };
-var tags = (value) => (Array.isArray(value) ? value : String(value ?? "").split(",")).map(clean).filter(Boolean);
+var tags = (value) => (Array.isArray(value) ? value : String(value ?? "").split(",")).map(clean2).filter(Boolean);
 function draftFromHtml(html) {
   const recipe = recipesIn(html)[0];
   if (!recipe)
     return null;
   const draft = {
-    title: clean(first(recipe.name)),
-    description: clean(first(recipe.description)) || undefined,
+    title: clean2(first(recipe.name)),
+    description: clean2(first(recipe.description)) || undefined,
     servings: servings(recipe.recipeYield),
     prep_minutes: minutesFromIso(recipe.prepTime),
     cook_minutes: minutesFromIso(recipe.cookTime),
     total_minutes: minutesFromIso(recipe.totalTime),
-    cuisine: clean(first(recipe.recipeCuisine)) || undefined,
+    cuisine: clean2(first(recipe.recipeCuisine)) || undefined,
     tags: tags(recipe.keywords),
-    ingredients: [recipe.recipeIngredient ?? recipe.ingredients ?? []].flat().map(clean).filter(Boolean),
+    ingredients: [recipe.recipeIngredient ?? recipe.ingredients ?? []].flat().map(clean2).filter(Boolean),
     steps: steps(recipe.recipeInstructions)
   };
   if (!draft.tags.length)

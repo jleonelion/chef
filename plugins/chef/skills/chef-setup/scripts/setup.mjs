@@ -7293,24 +7293,39 @@ var ALLERGEN_WORDS = [
   ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
   ...Object.entries(ALIASES)
 ].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
-function constraintsFor(name) {
-  if (ALIASES[name])
-    return ALIASES[name];
-  if (flagFor(name))
-    return [name];
-  const flags = new Set(dietaryFlags([name]).map(suffix));
-  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
-    if (pattern.test(name))
-      mapped.forEach((f) => flags.add(f));
-  return flags.size ? [...flags] : [name];
+var FILLER = /(?<![a-z])(?:allerg(?:y|ies|ic)|intoleran(?:ce|t)|free|seeds?|no|to|an?)(?![a-z])/g;
+var core = (name) => name.replace(/[-_]/g, " ").replace(FILLER, " ").replace(/\s+/g, " ").trim();
+function exactFlags(text) {
+  for (const word of [text, `${text}s`, text.replace(/s$/, "")]) {
+    if (ALIASES[word])
+      return ALIASES[word];
+    const flag = word.replace(/ /g, "-");
+    if (flagFor(flag))
+      return [flag];
+  }
+  return null;
 }
+function scannedFlags(text) {
+  const spaced = text.replace(/[-_]/g, " ");
+  const flags = new Set(dietaryFlags([text, spaced]).map(suffix));
+  for (const { pattern, flags: mapped } of ALLERGEN_WORDS)
+    if (pattern.test(spaced))
+      mapped.forEach((f) => flags.add(f));
+  return [...flags];
+}
+function constraintsFor(name) {
+  const exact = exactFlags(core(name));
+  if (exact)
+    return exact;
+  const scanned = scannedFlags(name);
+  return scanned.length ? scanned : [name];
+}
+var clean = (raw) => String(raw).trim().toLowerCase().replace(/^contains-/, "");
 function normalizeConstraints(names) {
-  const out = names.flatMap((raw) => {
-    const name = String(raw).trim().toLowerCase().replace(/^contains-/, "");
-    return name ? constraintsFor(name) : [];
-  });
+  const out = names.map(clean).filter(Boolean).flatMap(constraintsFor);
   return [...new Set(out)].sort();
 }
+var constraintReadings = (names) => names.filter((n) => clean(n)).map((entry) => ({ entry, read_as: normalizeConstraints([entry]) }));
 var flagFor = (constraint) => DIETARY_FLAGS.includes(`contains-${constraint}`) ? `contains-${constraint}` : null;
 var textList = (value) => value === undefined || Array.isArray(value) && value.every((v) => typeof v === "string" && v.trim());
 function membersProblem(members) {
@@ -7779,6 +7794,7 @@ function writeRuleset(root, change, { date, rewrite = false }) {
     status: "saved",
     data_root: root,
     ruleset: { status, members },
+    ...change.hard?.length && { read_as: constraintReadings(change.hard) },
     ...caveats && { caveats },
     ...notice && { notice: TRAINING_NOTICE },
     ...removed.length && { removed_hard_constraints: removed }
