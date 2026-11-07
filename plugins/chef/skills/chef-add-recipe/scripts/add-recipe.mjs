@@ -7270,26 +7270,47 @@ function addRecipe(root, { draft, kind, url, source, date, dryRun = false }) {
   return { status: "added", data_root: root, slug, title: recipe.title, path: pagePath, raw: written.raw };
 }
 
+// src/skills/chef-add-recipe/scripts/lib/fetch-page.mjs
+import http from "node:http";
+import https from "node:https";
+
 // src/skills/chef-add-recipe/scripts/lib/public-address.mjs
-import { lookup } from "node:dns/promises";
+import { lookup as dnsLookup } from "node:dns";
 import { BlockList, isIP } from "node:net";
-var blocked = new BlockList;
-for (const [net, bits] of [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["224.0.0.0", 3]]) {
-  blocked.addSubnet(net, bits, "ipv4");
-}
-for (const [net, bits] of [["::", 127], ["fc00::", 7], ["fe80::", 10], ["ff00::", 8]]) {
-  blocked.addSubnet(net, bits, "ipv6");
-}
+var list = (family, ranges) => {
+  const blocks = new BlockList;
+  for (const [net, bits] of ranges)
+    blocks.addSubnet(net, bits, family);
+  return blocks;
+};
+var deny4 = list("ipv4", [["0.0.0.0", 8], ["10.0.0.0", 8], ["100.64.0.0", 10], ["127.0.0.0", 8], ["169.254.0.0", 16], ["172.16.0.0", 12], ["192.0.0.0", 24], ["192.0.2.0", 24], ["192.168.0.0", 16], ["198.18.0.0", 15], ["198.51.100.0", 24], ["203.0.113.0", 24], ["224.0.0.0", 3]]);
+var allow6 = list("ipv6", [["2000::", 3]]);
+var deny6 = list("ipv6", [["2001::", 32], ["2001:db8::", 32], ["2002::", 16]]);
 function isPublicIp(ip) {
   const mapped = ip.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/i)?.[1];
   if (mapped)
     return isPublicIp(mapped);
-  return !blocked.check(ip, isIP(ip) === 6 ? "ipv6" : "ipv4");
+  if (isIP(ip) === 4)
+    return !deny4.check(ip, "ipv4");
+  if (isIP(ip) === 6)
+    return allow6.check(ip, "ipv6") && !deny6.check(ip, "ipv6");
+  return false;
 }
-async function isPublicHost(hostname) {
+var literalIp = (hostname) => {
   const host = hostname.replace(/^\[|\]$/g, "");
-  const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true, verbatim: true });
-  return addresses.length > 0 && addresses.every(({ address }) => isPublicIp(address));
+  return isIP(host) ? host : null;
+};
+function publicLookup(hostname, options, callback) {
+  dnsLookup(hostname, { ...options, all: true }, (error, addresses) => {
+    if (error)
+      return callback(error);
+    if (!addresses.length || !addresses.every(({ address }) => isPublicIp(address))) {
+      return callback(Object.assign(new Error(`${hostname} is not a public internet address`), { code: "ENOTPUBLIC" }));
+    }
+    if (options.all)
+      return callback(null, addresses);
+    return callback(null, addresses[0].address, addresses[0].family);
+  });
 }
 
 // src/skills/chef-add-recipe/scripts/lib/fetch-page.mjs
@@ -7303,49 +7324,64 @@ function httpUrl(value) {
     return null;
   }
 }
+
+class FetchError extends Error {
+}
+function get(url, { publicOnly, signal }) {
+  const ip = literalIp(url.hostname);
+  if (publicOnly && ip && !isPublicIp(ip))
+    return Promise.reject(new FetchError(`${url.hostname} is not a public internet address`));
+  const client = url.protocol === "https:" ? https : http;
+  const options = { signal, headers: { accept: "text/html", "user-agent": "chef-add-recipe" }, ...publicOnly ? { lookup: publicLookup } : {} };
+  return new Promise((resolve, reject) => client.get(url, options, resolve).on("error", reject));
+}
+async function follow(start, options) {
+  let url = start;
+  for (let hop = 0;hop <= MAX_REDIRECTS; hop += 1) {
+    const response = await get(url, options);
+    const location = response.headers.location;
+    if (response.statusCode < 300 || response.statusCode >= 400 || !location)
+      return response;
+    response.resume();
+    url = httpUrl(new URL(location, url).href);
+    if (!url)
+      throw new FetchError("redirected to an address that is not http or https");
+  }
+  throw new FetchError(`more than ${MAX_REDIRECTS} redirects`);
+}
 async function readCapped(response, maxBytes) {
   const chunks = [];
   let size = 0;
-  for await (const chunk of response.body) {
+  for await (const chunk of response) {
     size += chunk.length;
-    if (size > maxBytes)
+    if (size > maxBytes) {
+      response.destroy();
       return null;
+    }
     chunks.push(chunk);
   }
   return Buffer.concat(chunks).toString("utf8");
-}
-async function follow(start, { publicOnly, signal }) {
-  let url = start;
-  for (let hop = 0;hop <= MAX_REDIRECTS; hop += 1) {
-    if (publicOnly && !await isPublicHost(url.hostname))
-      return { reason: `${url.hostname} is not a public internet address` };
-    const response = await fetch(url, { redirect: "manual", signal, headers: { accept: "text/html" } });
-    const location = response.headers.get("location");
-    if (response.status < 300 || response.status >= 400 || !location)
-      return { response };
-    await response.body?.cancel();
-    url = httpUrl(new URL(location, url).href);
-    if (!url)
-      return { reason: "redirected to an address that is not http or https" };
-  }
-  return { reason: `more than ${MAX_REDIRECTS} redirects` };
 }
 async function fetchPage(value, { maxBytes = MAX_PAGE_BYTES, timeoutMs = 20000, publicOnly = true } = {}) {
   const url = httpUrl(value);
   if (!url)
     return { ok: false, reason: "only http and https addresses can be fetched" };
   try {
-    const { response, reason } = await follow(url, { publicOnly, signal: AbortSignal.timeout(timeoutMs) });
-    if (!response)
-      return { ok: false, reason };
-    if (!response.ok)
-      return { ok: false, reason: `HTTP ${response.status}` };
-    if (!/html/i.test(response.headers.get("content-type") ?? ""))
+    const response = await follow(url, { publicOnly, signal: AbortSignal.timeout(timeoutMs) });
+    if (response.statusCode >= 400 || response.statusCode < 200) {
+      response.resume();
+      return { ok: false, reason: `HTTP ${response.statusCode}` };
+    }
+    if (!/html/i.test(response.headers["content-type"] ?? "")) {
+      response.resume();
       return { ok: false, reason: "not an HTML page" };
+    }
     const html = await readCapped(response, maxBytes);
     return html === null ? { ok: false, reason: `page is larger than ${maxBytes} bytes` } : { ok: true, html };
   } catch (error) {
-    return { ok: false, reason: error.name === "TimeoutError" ? "timed out" : error.message };
+    if (error.name === "AbortError" || error.name === "TimeoutError")
+      return { ok: false, reason: "timed out" };
+    return { ok: false, reason: error.message };
   }
 }
 
