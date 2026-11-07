@@ -70,6 +70,16 @@ node scripts/inventory.mjs edit --path fridge.produce.kale --remove --reason "sp
 
 Confirm the change with the user before running it. `--remove` always needs a `--reason`. Cooked meals are deducted through chef-meal-logging, not here.
 
+## Cook-event deduction
+
+`chef-meal-logging` calls this mode after it durably records a cook event:
+
+```sh
+node scripts/inventory.mjs deduct --recipe lemon-garlic-pasta --servings 4 --deduction-id <stable-event-id>
+```
+
+The caller must derive one stable `--deduction-id` for the logged cook event and reuse it on retries. `deducted` reports `deductions`, ingredients `not_found` in inventory and any `shortfall`; `duplicate` means that event was already applied. `invalid-input` with `unit_mismatches` means a recipe quantity cannot be converted to the stored inventory unit. Report those mismatches and do not guess a conversion. The whole deduction is atomic: a mismatch changes nothing.
+
 ## Inventory check
 
 ```sh
@@ -81,4 +91,5 @@ node scripts/inventory.mjs health
 ## Rules
 
 - Every change is one git commit in the data root, plus an audit line in `data/food-inventory/audit.jsonl`.
+- Every cook event needs a stable deduction ID; retrying it must never deduct twice.
 - Never store email addresses or other sender details in the data root.
