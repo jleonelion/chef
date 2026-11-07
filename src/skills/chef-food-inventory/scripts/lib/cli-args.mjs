@@ -14,6 +14,9 @@ export const OPTIONS = {
   expires: { type: 'string' },
   remove: { type: 'boolean' },
   reason: { type: 'string' },
+  recipe: { type: 'string' },
+  servings: { type: 'string' },
+  'deduction-id': { type: 'string' },
   today: { type: 'string' },
   days: { type: 'string' },
 };
