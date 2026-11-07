@@ -60,6 +60,7 @@ function install() {
   fs.mkdirSync(path.join(skillsDir, 'chef_setup'), { recursive: true });
   fs.mkdirSync(path.join(skillsDir, 'chef_dropped'), { recursive: true });
   fs.writeFileSync(path.join(skillsDir, 'chef_setup', 'release.txt'), 'v1.0.0\n');
+  fs.writeFileSync(path.join(skillsDir, 'chef_setup', 'local-only.txt'), 'must be removed\n');
   fs.writeFileSync(path.join(skillsDir, 'chef_dropped', 'release.txt'), 'v1.0.0\n');
   return skillsDir;
 }
@@ -102,6 +103,7 @@ test('installs the latest tagged skills but waits for confirmation before migrat
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'settings.json'))).settings_version, 0);
   assert.deepEqual(fs.readdirSync(skillsDir).sort(), ['chef_added', 'chef_setup']);
   assert.equal(fs.readFileSync(path.join(skillsDir, 'chef_setup', 'release.txt'), 'utf8'), 'v1.1.0\n');
+  assert.equal(fs.existsSync(path.join(skillsDir, 'chef_setup', 'local-only.txt')), false);
 });
 
 test('confirmed update migrates data and settings, then verifies the installed fixture', () => {

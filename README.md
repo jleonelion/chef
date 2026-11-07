@@ -47,6 +47,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
   To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
 - Ask Chef to "verify my Chef install" any time; it never touches your data.
+- Ask Chef to "update Chef" to install the newest tagged release. Chef commits the data root,
+  previews skill and migration changes, waits for confirmation before migrating, and verifies
+  the install afterward. Updates never delete data-root files.
 
 ## Safety
 
