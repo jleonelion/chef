@@ -21,6 +21,22 @@ const accepted = (url) => {
   return root;
 };
 
+function declareDairy(root) {
+  writeWiki(root, {
+    pages: [{
+      slug: 'dietary-ruleset',
+      frontmatter: {
+        type: 'dietary-ruleset',
+        title: 'Dietary ruleset',
+        members: [{ name: 'Alex Example', hard_constraints: ['dairy'] }],
+        updated: date,
+      },
+      body: '\n# Dietary ruleset\n',
+    }],
+    message: 'declare dietary rule',
+  });
+}
+
 test('publishing writes the page, the accepted draft as raw provenance and the link, in one commit', () => {
   const root = accepted('https://example.com/soup');
   const before = commits(root);
@@ -59,6 +75,25 @@ test('only accepted proposals can be published by id', () => {
   assert.equal(publishProposals(root, { ids: [id], date }).status, 'invalid-input');
   assert.equal(publishProposals(root, { ids: ['nope'], date }).status, 'not-found');
   assert.equal(exists(root, page), false);
+});
+
+test('publishing a dietary conflict without confirmation is refused without writes', () => {
+  const root = dataRoot();
+  declareDairy(root);
+  propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
+  decide(root, { id, outcome: 'accept', date });
+  const before = commits(root);
+
+  const result = publishProposals(root, { date });
+
+  assert.equal(result.status, 'refused');
+  assert.match(result.reason, /confirmation/i);
+  assert.equal(result.blocked[0].id, id);
+  assert.equal(result.blocked[0].reasons[0].constraint, 'dairy');
+  assert.equal(result.blocked[0].reasons[0].why, 'ingredient-text');
+  assert.equal(commits(root), before);
+  assert.equal(exists(root, page), false);
+  assert.equal(readJson(root, PROPOSALS_FILE).proposals[id].decisions.at(-1).outcome, 'accept');
 });
 
 test('a refused publication keeps the decision for a later retry', () => {

@@ -2,6 +2,8 @@
 // idempotent and retryable: a published proposal is never written again, and a recipe page that
 // already exists is linked instead of overwritten. Page, raw copy and store update share one
 // commit; enrichment follows as its own commit.
+import { checkRecipe } from '../../../../lib/dietary-gate.mjs';
+import { readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { wikiPath, writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
 import { rawName } from '../../../chef-add-recipe/scripts/lib/add.mjs';
@@ -27,6 +29,15 @@ function plan(root, record, date, slugsInBook) {
   return { record, published: { date, path }, page: { slug: record.slug, ...page }, raw: { path: raw, content: `${JSON.stringify(record.draft, null, 2)}\n` } };
 }
 
+function blockedByDietaryGate(root, records, date) {
+  const ruleset = readRuleset(root);
+  return records.flatMap((record) => {
+    const page = recipePage(record.draft, { sourceKind: 'proposal', sourceRaw: [], date });
+    const verdict = checkRecipe(ruleset, { slug: record.slug, ...page });
+    return verdict.allowed ? [] : [{ id: record.id, slug: record.slug, title: record.title, reasons: verdict.reasons }];
+  });
+}
+
 export function publishProposals(root, { ids, date }) {
   const refusal = writeRefusal(root);
   if (refusal) return refusal;
@@ -34,6 +45,15 @@ export function publishProposals(root, { ids, date }) {
   const { chosen, problem } = pick(store, ids);
   if (problem) return { data_root: root, ...problem };
   if (!chosen.length) return { status: 'unchanged', data_root: root, published: [] };
+  const blocked = blockedByDietaryGate(root, chosen, date);
+  if (blocked.length) {
+    return {
+      status: 'refused',
+      data_root: root,
+      reason: 'The dietary hard-constraint gate did not allow publication. Explicit confirmation is required.',
+      blocked,
+    };
+  }
 
   const slugsInBook = new Set(listRecipes(root).recipes.map((r) => r.slug));
   const plans = chosen.map((record) => plan(root, record, date, slugsInBook));
