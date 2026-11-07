@@ -47,3 +47,8 @@ export function assertCase(evaluation, assertion) {
     assert(Number(actual) >= assertion.min, `${assertion.path}: expected >= ${assertion.min}, got ${actual}`);
   }
 }
+
+export function assertGitState({ beforeHead, afterHead, status }, expected) {
+  if (expected.headUnchanged) assert.equal(afterHead, beforeHead, `git HEAD changed from ${beforeHead} to ${afterHead}`);
+  if (expected.clean) assert.equal(status, '', `git tree is dirty:\n${status}`);
+}

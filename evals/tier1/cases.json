@@ -637,6 +637,10 @@
     ],
     "parse": "json",
     "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
     "assertions": [
       {
         "path": "$.status",
@@ -842,6 +846,10 @@
     ],
     "parse": "json",
     "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
     "assertions": [
       {
         "path": "$.status",
