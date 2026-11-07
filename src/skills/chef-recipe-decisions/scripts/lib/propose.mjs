@@ -63,7 +63,6 @@ export function propose(root, { draft, url, note, date }) {
     status,
     data_root: root,
     ...summary(record),
-    ...(record.gate_reasons && { reasons: record.gate_reasons }),
     ...(match && { rule: { id: match.rule.id, reason: match.rule.reason } }),
   };
 }

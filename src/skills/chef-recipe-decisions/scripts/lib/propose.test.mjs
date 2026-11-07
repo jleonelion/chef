@@ -77,6 +77,9 @@ test('a dietary conflict keeps a matching auto-approve proposal open with reason
   assert.deepEqual(record.decisions, []);
   assert.deepEqual(record.gate_reasons, result.reasons);
   assert.equal(exists(root, 'knowledge/wiki/recipes/mushroom-barley-soup.md'), false);
+  const again = propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
+  assert.equal(again.status, 'already-proposed');
+  assert.deepEqual(again.reasons, result.reasons);
 });
 
 test('an unreadable dietary ruleset keeps a matching auto-approve proposal open', () => {
