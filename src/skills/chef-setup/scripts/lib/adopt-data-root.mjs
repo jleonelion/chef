@@ -1,13 +1,14 @@
 // "Adopt existing data root": clone a data root (a backup, or the import tool's hand-off
 // repo) into the data-root folder, then drop its remotes so the data root stays local-only.
-// The source is untrusted: no shell, no hooks, no submodules, no exotic transports.
+// The source is untrusted: no shell, no hooks, no submodules, no exotic transports, and
+// symlinks check out as plain files so no later write can follow one out of the data root.
 import fs from 'node:fs';
 import path from 'node:path';
 import { git } from '../../../../lib/git.mjs';
 import { readSchemaVersion, schemaWriteBlocker } from '../../../../lib/schema.mjs';
 
 const URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
-const SAFE_CLONE = ['-c', 'core.hooksPath=/dev/null', '-c', 'protocol.ext.allow=never', '-c', 'protocol.fd.allow=never'];
+const SAFE_CLONE = ['-c', 'core.hooksPath=/dev/null', '-c', 'core.symlinks=false', '-c', 'protocol.ext.allow=never', '-c', 'protocol.fd.allow=never'];
 const QUIET = { GIT_TERMINAL_PROMPT: '0' };
 
 export function sourceProblem(source) {

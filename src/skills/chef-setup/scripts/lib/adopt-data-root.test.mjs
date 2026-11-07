@@ -11,14 +11,18 @@ const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chef-adopt-'));
 
 // A bare repo holding a data root, like the import tool's throwaway hand-off repo.
-function bareSource({ schema } = {}) {
+function bareSource({ schema, symlink } = {}) {
   const dir = tmp();
   const work = path.join(dir, 'work');
   initDataRoot(work);
   fs.mkdirSync(path.join(work, 'wiki'));
   fs.writeFileSync(path.join(work, 'wiki', 'note.md'), '# Note\n');
+  if (symlink) {
+    fs.rmSync(path.join(work, 'settings.json'));
+    fs.symlinkSync(symlink, path.join(work, 'settings.json'));
+  }
   if (schema !== undefined) fs.writeFileSync(path.join(work, 'schema-version.json'), JSON.stringify(schema));
-  git(work, 'add', '-A');
+  git(work, 'add', '-f', '-A');
   git(work, '-c', 'user.name=t', '-c', 'user.email=t@example.com', 'commit', '-q', '-m', 'seed');
   git(dir, 'clone', '-q', '--bare', 'work', 'source.git');
   return path.join(dir, 'source.git');
@@ -95,4 +99,13 @@ test('accepts only git URLs and existing folders', () => {
   for (const bad of ['', '-uevil', '--upload-pack=touch /tmp/x', 'ext::sh -c touch% /tmp/x', 'http://example.com/a.git', 'fd::3']) {
     assert.ok(sourceProblem(bad), bad);
   }
+});
+
+test('checks symlinks out as plain files so later writes cannot leave the data root', () => {
+  const outside = path.join(tmp(), 'outside.json');
+  const target = path.join(tmp(), 'chef');
+  assert.equal(adoptDataRoot(target, bareSource({ symlink: outside })).status, 'adopted');
+  const file = path.join(target, 'settings.json');
+  assert.equal(fs.lstatSync(file).isSymbolicLink(), false);
+  assert.equal(fs.readFileSync(file, 'utf8'), outside);
 });
