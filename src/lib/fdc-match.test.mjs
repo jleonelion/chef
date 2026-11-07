@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
 import { fdcClient } from './fdc.mjs';
-import { bestMatch, singular } from './fdc-match.mjs';
+import { bestMatch, reviewedMatch, singular } from './fdc-match.mjs';
 
 const samples = JSON.parse(fs.readFileSync(new URL('../../fixtures/usda/fdc-samples.json', import.meta.url), 'utf8'));
 const key = { ok: true, value: 'k', placement: { in: 'query', name: 'api_key' } };
@@ -19,6 +19,20 @@ test('bestMatch takes the plain food, not brands, products or other foods', asyn
 test('bestMatch returns nothing rather than a different food', async () => {
   assert.equal(bestMatch('spaghetti', await foods('spaghetti')), null);
   assert.equal(bestMatch('onion', []), null);
+});
+
+test('reviewedMatch resolves pantry aliases to verified SR Legacy foods', () => {
+  assert.deepEqual(reviewedMatch('EVOO'), {
+    fdcId: 171413,
+    description: 'Oil, olive, salad or cooking',
+    dataType: 'SR Legacy',
+  });
+  assert.deepEqual(reviewedMatch('  lemon   zest '), {
+    fdcId: 167749,
+    description: 'Lemon peel, raw',
+    dataType: 'SR Legacy',
+  });
+  assert.equal(reviewedMatch('spaghetti'), null);
 });
 
 test('singular folds the plural forms USDA and recipes use', () => {

@@ -3,6 +3,7 @@
 // (e.g. "Cheese, parmesan, grated"), so one extra word is allowed only as the category
 // ahead of the ingredient's own segment. Brands and restaurant dishes never qualify.
 import { DATA_TYPE } from './fdc.mjs';
+import { REVIEWED_FDC_FOODS } from './fdc-synonyms-data.mjs';
 
 const STOP = new Set(['and', 'or', 'with', 'without', 'in', 'of', 'from', 'the', 'a']);
 const NEUTRAL = new Set(['raw', 'fresh', 'dry', 'whole', 'plain', 'regular', 'grated', 'shredded', 'ground', 'enriched', 'unenriched', 'mature', 'seed']);
@@ -10,6 +11,14 @@ const NEUTRAL = new Set(['raw', 'fresh', 'dry', 'whole', 'plain', 'regular', 'gr
 export const singular = (word) => word.replace(/ies$/, 'y').replace(/eaves$/, 'eaf').replace(/(o|sh|ch|x)es$/, '$1').replace(/([^s])s$/, '$1');
 const tokens = (text) => text.toLowerCase().split(/[^a-z]+/).filter((w) => w && !STOP.has(w)).map(singular);
 const isBrand = (segment) => /\b[A-Z]{3,}\b/.test(segment) || /^restaurant\b/i.test(segment);
+const normalizedAlias = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const REVIEWED_BY_ALIAS = new Map(
+  REVIEWED_FDC_FOODS.flatMap(({ aliases, ...food }) => aliases.map((alias) => [normalizedAlias(alias), food])),
+);
+
+export function reviewedMatch(item) {
+  return REVIEWED_BY_ALIAS.get(normalizedAlias(item)) ?? null;
+}
 
 // 0 = names exactly the ingredient, 1 = ingredient under a category word, null = no match.
 function matchRank(itemTokens, description) {
