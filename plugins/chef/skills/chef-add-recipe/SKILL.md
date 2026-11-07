@@ -36,7 +36,7 @@ If you already fetched the page with your own web tool, save the HTML to a `.htm
    }
    ```
 
-   `title`, `ingredients` (one line each) and `steps` are required. Leave out anything the source does not give.
+   `title`, `ingredients` (one line each) and `steps` are required. Times are whole minutes: `prep_minutes`, `cook_minutes` and `total_minutes`; when the source gives only an overall time ("about 30 minutes"), set `total_minutes` alone. Leave out anything the source does not give.
 3. For a photo, first run with `--dry-run`, show the user the title and ingredients, and save only after they confirm or correct them.
 4. Save:
 
