@@ -13,10 +13,11 @@ const PROFILE_PATH = wikiPath('household-profile', 'profile');
 
 function household(root) {
   const file = path.join(root, PROFILE_PATH);
-  if (!fs.existsSync(file)) return { path: null, servings: 1 };
+  if (!fs.existsSync(file)) return { path: null, servings: 1, servings_source: 'default' };
   const page = parsePage(fs.readFileSync(file, 'utf8'));
-  const portions = [...page.body.matchAll(/\b(\d+)\s+portions?\s+per\s+meal\b/gi)].map((match) => Number(match[1]));
-  return { path: PROFILE_PATH, servings: portions.reduce((sum, value) => sum + value, 0) || 1 };
+  const portions = page.frontmatter.portions_per_meal;
+  const fromProfile = Number.isInteger(portions) && portions > 0;
+  return { path: PROFILE_PATH, servings: fromProfile ? portions : 1, servings_source: fromProfile ? 'profile' : 'default' };
 }
 
 function dateAt(weekStart, offset) {
@@ -130,6 +131,7 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
     week_start: weekStart,
     created: today(),
     household_profile: profile.path,
+    servings_source: profile.servings_source,
     meals,
     nutrition,
     dietary,
@@ -151,6 +153,7 @@ export function planWeek(root, { weekStart, days = 7, slots = [] }) {
     excluded,
     unreadable,
     household: profile,
+    servings_source: profile.servings_source,
     inventory,
     nutrition,
     dietary,

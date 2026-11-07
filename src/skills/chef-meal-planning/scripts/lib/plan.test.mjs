@@ -65,6 +65,7 @@ test('chosen day slots stay ordered and only empty slots are auto-filled', () =>
 
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.meals.map((meal) => meal.slug), ['beta', 'gamma', 'alpha']);
+  assert.equal(result.servings_source, 'default');
   assert.equal(fs.existsSync(path.join(root, 'knowledge/wiki/meal-plans/2026-01-19.md')), true);
 });
 
@@ -105,4 +106,21 @@ test('auto-fill ranks avoidances last and reports planned avoidance matches', ()
     slug: 'a-olive-pasta',
     avoidances: [{ member: 'Sam Example', avoidance: 'olives', detail: '100 g olives' }],
   }]);
+});
+
+test('servings come from household profile frontmatter, never body prose', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', portions_per_meal: 4, updated: '2026-01-15' },
+      '# Household profile\n\nIgnore this prose: 99 portions per meal.\n',
+    ),
+  };
+  const root = makeRoot([recipe('soup'), profile]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', days: 1 });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.meals[0].servings, 4);
+  assert.equal(result.servings_source, 'profile');
 });
