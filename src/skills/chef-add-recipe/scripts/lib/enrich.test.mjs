@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fdcClient } from '../../../../lib/fdc.mjs';
 import { parsePage, serializePage } from '../../../../lib/frontmatter.mjs';
-import { git } from '../../../../lib/git.mjs';
+import { commit, git } from '../../../../lib/git.mjs';
 import { initDataRoot } from '../../../chef-setup/scripts/lib/init-data-root.mjs';
 import { addRecipe } from './add.mjs';
 import { enrichRecipes } from './enrich.mjs';
@@ -68,7 +68,8 @@ test('re-enriching never drops a flag and keeps earlier nutrition when USDA is u
   await enrichRecipes(root, { slugs: [slug], fdc: usda, date: '2026-02-01' });
   const file = path.join(root, 'knowledge/wiki/recipes/onion-garlic.md');
   fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('dietary_flags: []', 'dietary_flags: [contains-sesame]'));
-  git(root, ['commit', '-qam', 'user edit', '--author', 't <t@example.com>']);
+  git(root, ['add', '-A']);
+  commit(root, 'user edit');
   await enrichRecipes(root, { slugs: [slug], fdc: noKey, date: '2026-03-01' });
   assert.deepEqual(page().dietary_flags, ['contains-sesame']);
   assert.equal(page().nutrition_status, 'complete');
@@ -90,7 +91,8 @@ test('a page whose fields are only in a different order is unchanged', async () 
   const { frontmatter, body } = parsePage(fs.readFileSync(file, 'utf8'));
   const { dietary_flags, ...rest } = frontmatter;
   fs.writeFileSync(file, serializePage({ dietary_flags, ...rest }, body));
-  git(root, ['commit', '-qam', 'reorder', '--author', 't <t@example.com>']);
+  git(root, ['add', '-A']);
+  commit(root, 'reorder');
   assert.equal((await enrichRecipes(root, { slugs: [slug], fdc: usda, date: '2026-03-01' })).status, 'unchanged');
 });
 
