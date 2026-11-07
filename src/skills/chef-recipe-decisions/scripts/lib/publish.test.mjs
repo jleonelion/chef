@@ -21,14 +21,14 @@ const accepted = (url) => {
   return root;
 };
 
-function declareDairy(root) {
+function declareConstraint(root, constraint) {
   writeWiki(root, {
     pages: [{
       slug: 'dietary-ruleset',
       frontmatter: {
         type: 'dietary-ruleset',
         title: 'Dietary ruleset',
-        members: [{ name: 'Alex Example', hard_constraints: ['dairy'] }],
+        members: [{ name: 'Alex Example', hard_constraints: [constraint] }],
         updated: date,
       },
       body: '\n# Dietary ruleset\n',
@@ -79,7 +79,7 @@ test('only accepted proposals can be published by id', () => {
 
 test('publishing a dietary conflict without confirmation is refused without writes', () => {
   const root = dataRoot();
-  declareDairy(root);
+  declareConstraint(root, 'dairy');
   propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
   decide(root, { id, outcome: 'accept', date });
   const before = commits(root);
@@ -90,7 +90,7 @@ test('publishing a dietary conflict without confirmation is refused without writ
   assert.match(result.reason, /confirmation/i);
   assert.equal(result.blocked[0].id, id);
   assert.equal(result.blocked[0].reasons[0].constraint, 'dairy');
-  assert.equal(result.blocked[0].reasons[0].why, 'ingredient-text');
+  assert.deepEqual(result.blocked[0].reasons.map((reason) => reason.why), ['flagged', 'ingredient-text']);
   assert.equal(commits(root), before);
   assert.equal(exists(root, page), false);
   assert.equal(readJson(root, PROPOSALS_FILE).proposals[id].decisions.at(-1).outcome, 'accept');
@@ -98,7 +98,7 @@ test('publishing a dietary conflict without confirmation is refused without writ
 
 test('explicit confirmation publishes a dietary conflict and records the user decision', () => {
   const root = dataRoot();
-  declareDairy(root);
+  declareConstraint(root, 'dairy');
   propose(root, { draft: { ...draft, ingredients: [...draft.ingredients, '1 cup milk'] }, date });
   decide(root, { id, outcome: 'accept', date });
 
@@ -115,6 +115,19 @@ test('explicit confirmation publishes a dietary conflict and records the user de
   });
   assert.equal(decisions.length, 2);
   assert.equal(exists(root, 'data/recipe-decisions/standing-rules.json'), false);
+});
+
+test('derived dietary flags let an accepted safe proposal publish without confirmation', () => {
+  const root = dataRoot();
+  declareConstraint(root, 'peanut allergy');
+  const safeDraft = { title: 'Plain Rice', ingredients: ['1 cup rice', '2 cups water'], steps: ['Simmer.'] };
+  propose(root, { draft: safeDraft, date });
+  decide(root, { id: 'plain-rice', outcome: 'accept', date });
+
+  const result = publishProposals(root, { ids: ['plain-rice'], date });
+
+  assert.equal(result.status, 'published');
+  assert.equal(exists(root, 'knowledge/wiki/recipes/plain-rice.md'), true);
 });
 
 test('an unreadable dietary ruleset refuses publication without confirmation', () => {

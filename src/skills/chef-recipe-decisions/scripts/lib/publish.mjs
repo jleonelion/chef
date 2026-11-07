@@ -3,6 +3,7 @@
 // already exists is linked instead of overwritten. Page, raw copy and store update share one
 // commit; enrichment follows as its own commit.
 import { checkRecipe } from '../../../../lib/dietary-gate.mjs';
+import { dietaryFlags } from '../../../../lib/dietary-flags.mjs';
 import { readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { wikiPath, writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
@@ -33,6 +34,7 @@ function blockedByDietaryGate(root, records, date) {
   const ruleset = readRuleset(root);
   return records.flatMap((record) => {
     const page = recipePage(record.draft, { sourceKind: 'proposal', sourceRaw: [], date });
+    page.frontmatter.dietary_flags = dietaryFlags(record.draft.ingredients);
     const verdict = checkRecipe(ruleset, { slug: record.slug, ...page });
     return verdict.allowed ? [] : [{ id: record.id, slug: record.slug, title: record.title, reasons: verdict.reasons }];
   });
