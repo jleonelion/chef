@@ -77,6 +77,18 @@ test('unknown providers are a programming error', () => {
   assert.throws(() => muse.credential('nope', { exists: () => false, env: {} }), /unknown credential provider/);
 });
 
+test('PDF delivery is a chat attachment instruction on Muse and absent elsewhere', () => {
+  const file = '/workspace/chef/data/batch-prep-plans/2026-01-19.pdf';
+  assert.deepEqual(muse.attachment(file, { exists: () => true }), {
+    attachment: {
+      action: 'send-chat-attachment',
+      path: file,
+      instruction: 'Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.',
+    },
+  });
+  assert.deepEqual(muse.attachment(file, { exists: () => false }), {});
+});
+
 test('locale falls back to the runtime Intl locale', () => {
   assert.equal(muse.locale({ LANG: 'POSIX' }), Intl.DateTimeFormat().resolvedOptions().locale);
 });

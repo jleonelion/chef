@@ -6,6 +6,8 @@
 // `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
+// File targets parse as `text` (default), `json`, or `pdf` ({valid, pages, title, text[]}; see pdf.mjs).
+// `--skip-pdf-files` skips pdf targets: pdf.mjs needs pdf-lib from node_modules, which bundle smoke has none of.
 // `git` optionally checks that HEAD is unchanged and/or the data-root worktree is clean.
 //   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>]
 //   (defaults: plugins/chef/skills, fixtures/data-root)
@@ -77,9 +79,10 @@ function parseOutput(mode, result) {
   throw new Error(`Unknown parse mode: ${mode}`);
 }
 
-function readTarget(dataRoot, target) {
+async function readTarget(dataRoot, target) {
   const abs = path.join(dataRoot, target.path);
   assert(fs.existsSync(abs), `expected file was not written: ${target.path}`);
+  if (target.parse === 'pdf') return (await import('./pdf.mjs')).readPdf(fs.readFileSync(abs));
   const content = fs.readFileSync(abs, 'utf8');
   return (target.parse ?? 'text') === 'json' ? JSON.parse(content) : { content };
 }
@@ -88,7 +91,7 @@ function gitOutput(dataRoot, ...args) {
   return execFileSync('git', args, { cwd: dataRoot, encoding: 'utf8' }).trimEnd();
 }
 
-function runCase(testCase, skillsDir, fixture) {
+async function runCase(testCase, skillsDir, fixture, { skipPdfFiles = false } = {}) {
   const { tmp, dataRoot, caseSkills } = prepare(testCase, fixture, skillsDir);
   try {
     const beforeHead = testCase.git?.headUnchanged ? gitOutput(dataRoot, 'rev-parse', 'HEAD') : undefined;
@@ -114,8 +117,8 @@ function runCase(testCase, skillsDir, fixture) {
     const result = run(testCase);
     const evaluation = parseOutput(testCase.parse, result);
     for (const assertion of testCase.assertions ?? []) assertCase(evaluation, assertion);
-    for (const target of testCase.files ?? []) {
-      const written = readTarget(dataRoot, target);
+    for (const target of (testCase.files ?? []).filter((file) => !(skipPdfFiles && file.parse === 'pdf'))) {
+      const written = await readTarget(dataRoot, target);
       for (const assertion of target.assertions ?? []) assertCase(written, assertion);
     }
     if (testCase.git) {
@@ -133,12 +136,12 @@ function runCase(testCase, skillsDir, fixture) {
   }
 }
 
-const { values } = parseArgs({ options: { 'skills-dir': { type: 'string' }, fixture: { type: 'string' } } });
+const { values } = parseArgs({ options: { 'skills-dir': { type: 'string' }, fixture: { type: 'string' }, 'skip-pdf-files': { type: 'boolean' } } });
 const skillsDir = path.resolve(values['skills-dir'] ?? path.join(repo, 'plugins', 'chef', 'skills'));
 const fixture = path.resolve(values.fixture ?? path.join(repo, 'fixtures', 'data-root'));
 const cases = JSON.parse(fs.readFileSync(path.join(here, 'cases.json'), 'utf8'));
 for (const testCase of cases) {
-  runCase(testCase, skillsDir, fixture);
+  await runCase(testCase, skillsDir, fixture, { skipPdfFiles: values['skip-pdf-files'] });
   console.log(`ok - ${testCase.id}`);
 }
 console.log(`Tier 1 deterministic evals passed: ${cases.length}/${cases.length}`);

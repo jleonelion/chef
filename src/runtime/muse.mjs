@@ -16,6 +16,7 @@ const AUTHDC = '/opt/hatch/bin/authdc';
 const PROVIDERS = {
   'usda-fdc': { connector: 'custom.usda-fdc', env: 'CHEF_USDA_FDC_KEY', placement: 'query_param:api_key' },
 };
+const ATTACHMENT_INSTRUCTION = 'Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.';
 const runFile = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'ignore'] });
 
 function placementOf(text) {
@@ -105,5 +106,10 @@ export const muse = {
     if (exists(AUTHDC)) return fromConnector(spec, run);
     const value = env[spec.env]?.trim();
     return value ? { ok: true, value, placement: placementOf(spec.placement), source: 'env' } : { ok: false, reason: 'not-connected' };
+  },
+  // Fields to merge into a script result so the agent sends `file` as a chat attachment.
+  // Only on Muse; elsewhere the caller reports the path instead.
+  attachment(file, { exists = fs.existsSync } = {}) {
+    return muse.isMuse({ exists }) ? { attachment: { action: 'send-chat-attachment', path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
   },
 };

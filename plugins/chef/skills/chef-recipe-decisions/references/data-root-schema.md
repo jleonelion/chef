@@ -211,3 +211,7 @@ A cooked recipe entry uses its `id` as the food-inventory deduction ID. Inventor
 `data/shopping-lists/<week-start>.md` belongs to chef-shopping-lists; only its script writes there. It is written only off Muse when `household_recipients` is set, as the household delivery copy, and is rewritten each time the list for that week is built. It holds the list as Markdown, the same text shown in chat. On Muse the list is emailed through the runtime's Gmail connector instead, and with no recipients it is only shown in chat; neither writes to the data root.
 
 A list is built from the saved `meal-plan` page minus `data/food-inventory/current.json`. Amounts combine only within one measurable dimension (mass or volume) or the same count unit; Chef never guesses a conversion, so the same food in units it cannot convert stays on separate rows.
+
+## Batch prep PDFs
+
+`data/batch-prep-plans/<week-start>.pdf` belongs to chef-batch-prep-planning; only its script writes there, through the guarded writer, one commit per render. It is a derived artifact of `knowledge/wiki/meal-plans/<week-start>.md`: one page per unique planned recipe in first-appearance order, with that recipe's planned dates, servings and `## Steps`. Re-rendering overwrites it; never edit it by hand.

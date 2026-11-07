@@ -34,3 +34,8 @@ Muse-only behaviors with no automated test. Check each on Muse before tagging a 
 - [ ] "Chef update notice" fires weekly, reports a newer release when one is tagged, says nothing otherwise, and never installs it. (`src/skills/chef-setup/scripts/lib/check-update.mjs`)
 - [ ] "Chef receipt check" fires on schedule and adds a receipt from a trusted sender; a receipt from any other sender is skipped. (`src/lib/recurring-tasks.mjs`, `src/skills/chef-food-inventory/SKILL.md`)
 - [ ] Every created task fires on schedule for two consecutive weeks (cutover criterion). (`src/lib/recurring-tasks.mjs`)
+
+## chef-batch-prep-planning
+
+- [ ] Asking for a prep plan for a week with a saved meal plan sends the PDF as a downloadable chat attachment (not only a filesystem path, not a Library entry), with one page per recipe. (`muse.attachment` in `src/runtime/muse.mjs`, `src/skills/chef-batch-prep-planning/SKILL.md`)
+- [ ] The attachment downloads and prints from a phone and a desktop browser; titles, steps and checkboxes fit the page. (`src/skills/chef-batch-prep-planning/scripts/lib/render.mjs`)
