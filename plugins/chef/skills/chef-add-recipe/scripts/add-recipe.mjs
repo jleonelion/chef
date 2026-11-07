@@ -7506,12 +7506,57 @@ function dietaryFlags(lines) {
   return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
 }
 
+// src/lib/fdc-synonyms-data.mjs
+var REVIEWED_FDC_FOODS = [
+  {
+    fdcId: 171413,
+    description: "Oil, olive, salad or cooking",
+    dataType: "SR Legacy",
+    aliases: ["evoo", "extra virgin olive oil"]
+  },
+  {
+    fdcId: 171247,
+    description: "Cheese, parmesan, grated",
+    dataType: "SR Legacy",
+    aliases: ["parmesan cheese", "parmigiano reggiano"]
+  },
+  {
+    fdcId: 167749,
+    description: "Lemon peel, raw",
+    dataType: "SR Legacy",
+    aliases: ["lemon rind", "lemon zest"]
+  },
+  {
+    fdcId: 167747,
+    description: "Lemon juice, raw",
+    dataType: "SR Legacy",
+    aliases: ["fresh lemon juice", "lemon juice"]
+  },
+  {
+    fdcId: 169230,
+    description: "Garlic, raw",
+    dataType: "SR Legacy",
+    aliases: ["cloves of garlic", "garlic cloves"]
+  },
+  {
+    fdcId: 170000,
+    description: "Onions, raw",
+    dataType: "SR Legacy",
+    aliases: ["onion bulb", "red onion", "white onion", "yellow onion"]
+  }
+];
+
 // src/lib/fdc-match.mjs
 var STOP = new Set(["and", "or", "with", "without", "in", "of", "from", "the", "a"]);
 var NEUTRAL = new Set(["raw", "fresh", "dry", "whole", "plain", "regular", "grated", "shredded", "ground", "enriched", "unenriched", "mature", "seed"]);
 var singular = (word) => word.replace(/ies$/, "y").replace(/eaves$/, "eaf").replace(/(o|sh|ch|x)es$/, "$1").replace(/([^s])s$/, "$1");
 var tokens = (text) => text.toLowerCase().split(/[^a-z]+/).filter((w) => w && !STOP.has(w)).map(singular);
 var isBrand = (segment) => /\b[A-Z]{3,}\b/.test(segment) || /^restaurant\b/i.test(segment);
+var normalizedAlias = (text) => text.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+var REVIEWED_BY_ALIAS = new Map(REVIEWED_FDC_FOODS.flatMap(({ aliases, ...food }) => aliases.map((alias) => [normalizedAlias(alias), food])));
+function reviewedMatch(item) {
+  return REVIEWED_BY_ALIAS.get(normalizedAlias(item)) ?? null;
+}
 function matchRank(itemTokens, description) {
   const segments = description.replace(/\([^)]*\)/g, "").split(",").map((s) => s.trim());
   if (isBrand(segments[0]))
@@ -7648,17 +7693,20 @@ async function ingredient(line, lookup) {
 function memoLookup(fdc) {
   const matches = new Map;
   const details = new Map;
+  async function detail(fdcId) {
+    if (!details.has(fdcId))
+      details.set(fdcId, usdaAnswer(await fdc.food(fdcId)).food);
+    return details.get(fdcId);
+  }
   return {
     async match(item) {
-      if (!matches.has(item))
-        matches.set(item, bestMatch(item, usdaAnswer(await fdc.search(item)).foods));
+      if (!matches.has(item)) {
+        const reviewed = reviewedMatch(item);
+        matches.set(item, reviewed ? await detail(reviewed.fdcId) : bestMatch(item, usdaAnswer(await fdc.search(item)).foods));
+      }
       return matches.get(item);
     },
-    async detail(fdcId) {
-      if (!details.has(fdcId))
-        details.set(fdcId, usdaAnswer(await fdc.food(fdcId)).food);
-      return details.get(fdcId);
-    }
+    detail
   };
 }
 async function computeNutrition({ lines, servings, fdc }) {

@@ -3,7 +3,7 @@
 // and every tracked nutrient. Anything short of that leaves the recipe "incomplete" with
 // reasons, and no numbers. No USDA access at all means "not-computed".
 import { NUTRIENTS } from './fdc.mjs';
-import { bestMatch, singular } from './fdc-match.mjs';
+import { bestMatch, reviewedMatch, singular } from './fdc-match.mjs';
 import { GRAMS_PER, ML_PER, parseIngredientLine } from './ingredient-line.mjs';
 
 const MG = new Set(['sodium', 'cholesterol']);
@@ -49,15 +49,19 @@ async function ingredient(line, lookup) {
 function memoLookup(fdc) {
   const matches = new Map();
   const details = new Map();
+  async function detail(fdcId) {
+    if (!details.has(fdcId)) details.set(fdcId, usdaAnswer(await fdc.food(fdcId)).food);
+    return details.get(fdcId);
+  }
   return {
     async match(item) {
-      if (!matches.has(item)) matches.set(item, bestMatch(item, usdaAnswer(await fdc.search(item)).foods));
+      if (!matches.has(item)) {
+        const reviewed = reviewedMatch(item);
+        matches.set(item, reviewed ? await detail(reviewed.fdcId) : bestMatch(item, usdaAnswer(await fdc.search(item)).foods));
+      }
       return matches.get(item);
     },
-    async detail(fdcId) {
-      if (!details.has(fdcId)) details.set(fdcId, usdaAnswer(await fdc.food(fdcId)).food);
-      return details.get(fdcId);
-    },
+    detail,
   };
 }
 
