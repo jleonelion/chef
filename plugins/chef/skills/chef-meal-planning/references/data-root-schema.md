@@ -205,3 +205,9 @@ The weekly report reads the meal log (`data/meal-log/log.json`, owned by chef-me
 Each entry has `id` (stable `<date>-<slot>-<recipe-or-food-slug>`), `date` (`YYYY-MM-DD`), `slot` (`breakfast`, `lunch`, `dinner` or `snack`), `recipe` (recipe slug or `null`), `food` (free text when there is no recipe, otherwise `null`), `servings` (positive number), `cooked` (whether the user cooked it at home), `nutrition` (per-entry totals copied from complete recipe `nutrition_per_serving` and scaled by servings, otherwise `null`) and `logged_at` (ISO timestamp).
 
 A cooked recipe entry uses its `id` as the food-inventory deduction ID. Inventory deduction is idempotent and occurs after the entry is saved. Missing inventory ingredients and unit mismatches do not remove the logged entry. Editing or deleting a log entry never reverses a deduction automatically.
+
+## Shopping lists
+
+`data/shopping-lists/<week-start>.md` belongs to chef-shopping-lists; only its script writes there. It is written only off Muse when `household_recipients` is set, as the household delivery copy, and is rewritten each time the list for that week is built. It holds the list as Markdown, the same text shown in chat. On Muse the list is emailed through the runtime's Gmail connector instead, and with no recipients it is only shown in chat; neither writes to the data root.
+
+A list is built from the saved `meal-plan` page minus `data/food-inventory/current.json`. Amounts combine only within one measurable dimension (mass or volume) or the same count unit; Chef never guesses a conversion, so the same food in units it cannot convert stays on separate rows.

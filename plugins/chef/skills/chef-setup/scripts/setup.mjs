@@ -7008,8 +7008,27 @@ function updateInstall({ skillDir, repository }) {
     nameForSkill: customSkills ? "underscores" : "hyphens"
   };
 }
+var DELIVERY_TASKS = [{ name: "Chef shopping list", skill: "chef-shopping-lists" }];
 var muse = {
   name: "muse",
+  isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
+  householdEmail({ to, subject, body }) {
+    return {
+      connector: "gmail",
+      to,
+      subject,
+      body,
+      instruction: "Send this email with the user's Gmail connector; this script does not send email. If Gmail is not connected, show the list in chat and offer to forward it."
+    };
+  },
+  deliveryTasks(recipients) {
+    return {
+      action: "recreate-delivery-tasks",
+      recipients,
+      tasks: DELIVERY_TASKS,
+      instruction: "Re-create each of these recurring Chef tasks that exists, so Muse asks the user to approve the new recipients, then list the tasks you re-created. Do not create a task that did not exist."
+    };
+  },
   defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
   updateInstall,
   locale(env = process.env) {
@@ -8101,7 +8120,8 @@ function writeSettings(root, changes, { locale, rewrite = false } = {}) {
   const saved = readSettings(root, { locale });
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
   const side_effects = changed.map((key) => SIDE_EFFECTS[key]).filter(Boolean);
-  return { status: "saved", data_root: root, settings: saved.settings, changed, side_effects };
+  const recipients = changed.includes("household_recipients") && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
+  return { status: "saved", data_root: root, settings: saved.settings, changed, side_effects, ...recipients };
 }
 
 // src/skills/chef-setup/scripts/setup.mjs
