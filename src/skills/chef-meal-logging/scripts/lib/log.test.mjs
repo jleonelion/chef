@@ -136,6 +136,40 @@ test('meal logging CLI records a confirmed cooked meal', () => {
   assert.equal(output.inventory.status, 'deducted');
 });
 
+test('meal logging CLI edits a deducted entry without changing inventory', () => {
+  const root = dataRoot();
+  const logged = logMeal(root, {
+    date: '2026-01-16',
+    slot: 'dinner',
+    recipe: 'test-pasta',
+    servings: 2,
+    cooked: true,
+    loggedAt: '2026-01-16T19:30:00.000Z',
+  });
+  assert.equal(logged.inventory.status, 'deducted');
+  const inventoryFile = path.join(root, STORE.inventory);
+  const inventoryBefore = fs.readFileSync(inventoryFile, 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'edit',
+    '--data-root', root,
+    '--id', logged.entry.id,
+    '--servings', '1',
+    '--not-cooked',
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, 'edited');
+  assert.equal(output.entry.id, logged.entry.id);
+  assert.equal(output.entry.servings, 1);
+  assert.equal(output.entry.cooked, false);
+  assert.equal(output.inventory_correction.required, true);
+  assert.equal(output.inventory_correction.skill, 'chef-food-inventory');
+  assert.equal(fs.readFileSync(inventoryFile, 'utf8'), inventoryBefore);
+});
+
 test('a unit mismatch is reported while the cooked meal stays logged', () => {
   const root = dataRoot();
   commitInventory(root, {
