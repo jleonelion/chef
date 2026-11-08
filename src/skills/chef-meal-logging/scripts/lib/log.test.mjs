@@ -136,6 +136,167 @@ test('meal logging CLI records a confirmed cooked meal', () => {
   assert.equal(output.inventory.status, 'deducted');
 });
 
+test('meal logging CLI edits a deducted entry without changing inventory', () => {
+  const root = dataRoot();
+  const logged = logMeal(root, {
+    date: '2026-01-16',
+    slot: 'dinner',
+    recipe: 'test-pasta',
+    servings: 2,
+    cooked: true,
+    loggedAt: '2026-01-16T19:30:00.000Z',
+  });
+  assert.equal(logged.inventory.status, 'deducted');
+  const inventoryFile = path.join(root, STORE.inventory);
+  const inventoryBefore = fs.readFileSync(inventoryFile, 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'edit',
+    '--data-root', root,
+    '--id', logged.entry.id,
+    '--servings', '1',
+    '--not-cooked',
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, 'edited');
+  assert.equal(output.entry.id, logged.entry.id);
+  assert.equal(output.entry.servings, 1);
+  assert.equal(output.entry.cooked, false);
+  assert.equal(output.inventory_correction.required, true);
+  assert.equal(output.inventory_correction.skill, 'chef-food-inventory');
+  assert.equal(fs.readFileSync(inventoryFile, 'utf8'), inventoryBefore);
+});
+
+test('meal logging CLI deletes a deducted entry without changing inventory', () => {
+  const root = dataRoot();
+  const logged = logMeal(root, {
+    date: '2026-01-16',
+    slot: 'dinner',
+    recipe: 'test-pasta',
+    servings: 2,
+    cooked: true,
+    loggedAt: '2026-01-16T19:30:00.000Z',
+  });
+  assert.equal(logged.inventory.status, 'deducted');
+  const inventoryFile = path.join(root, STORE.inventory);
+  const inventoryBefore = fs.readFileSync(inventoryFile, 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'delete',
+    '--data-root', root,
+    '--id', logged.entry.id,
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, 'deleted');
+  assert.equal(output.entry.id, logged.entry.id);
+  assert.equal(output.inventory_correction.required, true);
+  assert.equal(output.inventory_correction.skill, 'chef-food-inventory');
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, MEAL_LOG_FILE), 'utf8')), { entries: [] });
+  assert.equal(fs.readFileSync(inventoryFile, 'utf8'), inventoryBefore);
+});
+
+test('meal logging CLI assigns and preserves an ID when editing a legacy entry', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    data: [{
+      path: MEAL_LOG_FILE,
+      content: `${JSON.stringify({
+        entries: [{
+          date: '2026-01-16',
+          slot: 'snack',
+          recipe: null,
+          food: 'Apple and Yogurt',
+          servings: 1,
+          cooked: false,
+          nutrition: null,
+          logged_at: '2026-01-16T15:00:00.000Z',
+        }],
+      }, null, 2)}\n`,
+    }],
+    message: 'test: add legacy meal log',
+  });
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'edit',
+    '--data-root', root,
+    '--id', '2026-01-16-snack-apple-and-yogurt',
+    '--date', '2026-01-17',
+    '--food', 'Pear',
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, 'edited');
+  assert.equal(output.entry.id, '2026-01-16-snack-apple-and-yogurt');
+  assert.equal(output.entry.date, '2026-01-17');
+  assert.equal(output.entry.food, 'Pear');
+  const stored = JSON.parse(fs.readFileSync(path.join(root, MEAL_LOG_FILE), 'utf8'));
+  assert.equal(stored.entries[0].id, '2026-01-16-snack-apple-and-yogurt');
+});
+
+for (const command of ['edit', 'delete']) {
+  test(`${command} rejects an unknown entry ID without writing`, () => {
+    const root = dataRoot();
+    logMeal(root, {
+      date: '2026-01-16',
+      slot: 'snack',
+      food: 'apple',
+      servings: 1,
+      cooked: false,
+      loggedAt: '2026-01-16T15:00:00.000Z',
+    });
+    const logFile = path.join(root, MEAL_LOG_FILE);
+    const inventoryFile = path.join(root, STORE.inventory);
+    const logBefore = fs.readFileSync(logFile, 'utf8');
+    const inventoryBefore = fs.readFileSync(inventoryFile, 'utf8');
+
+    const result = spawnSync(process.execPath, [
+      script,
+      command,
+      '--data-root', root,
+      '--id', 'unknown-entry',
+      ...(command === 'edit' ? ['--servings', '2'] : []),
+    ], { encoding: 'utf8' });
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'not-found');
+    assert.equal(fs.readFileSync(logFile, 'utf8'), logBefore);
+    assert.equal(fs.readFileSync(inventoryFile, 'utf8'), inventoryBefore);
+  });
+}
+
+test('edit requires at least one changed field and writes nothing', () => {
+  const root = dataRoot();
+  const logged = logMeal(root, {
+    date: '2026-01-16',
+    slot: 'snack',
+    food: 'apple',
+    servings: 1,
+    cooked: false,
+    loggedAt: '2026-01-16T15:00:00.000Z',
+  });
+  const logFile = path.join(root, MEAL_LOG_FILE);
+  const before = fs.readFileSync(logFile, 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'edit',
+    '--data-root', root,
+    '--id', logged.entry.id,
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 2, result.stderr);
+  assert.equal(JSON.parse(result.stdout).status, 'invalid-input');
+  assert.equal(fs.readFileSync(logFile, 'utf8'), before);
+});
+
 test('a unit mismatch is reported while the cooked meal stays logged', () => {
   const root = dataRoot();
   commitInventory(root, {
