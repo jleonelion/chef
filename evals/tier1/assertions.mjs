@@ -1,4 +1,4 @@
-// Ported from chef-core evals/tier1/run.mjs: a small JSONPath-ish query plus equals/includes/min/absent asserts.
+// A small JSONPath-ish query plus equals/includes/min/absent asserts.
 // query() returns the single match as-is, or the match list when a fan-out ([*], filter) yields 0 or 2+ matches.
 import assert from 'node:assert/strict';
 

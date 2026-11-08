@@ -27,7 +27,7 @@ export function skillErrors(dirName, skillMd) {
 
 export const hasHomePath = (text) => HOME_PATH.test(text);
 
-// The 10 v1 skills (lionclaw-config wayfinder/chef-muse/SPEC.md, Package shape).
+// The 10 v1 skills.
 export const V1_SKILLS = Object.freeze([
   'chef-setup', 'chef-add-recipe', 'chef-recipe-search', 'chef-recipe-decisions', 'chef-meal-planning',
   'chef-meal-logging', 'chef-food-inventory', 'chef-shopping-lists', 'chef-batch-prep-planning', 'chef-health-goals',

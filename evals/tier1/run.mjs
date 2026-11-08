@@ -3,7 +3,7 @@
 // then assert on its output and on what it wrote. `seed` writes files into the data root
 // first (the fixture is then committed to a fresh git repo); `afterCommitSeed` creates pending
 // user changes. `updateInstall` creates a local tagged release checkout and custom-skills install.
-// `env` overrides environment variables (e.g. a fixed LANG for locale defaults). Ported from chef-core evals/tier1.
+// `env` overrides environment variables (e.g. a fixed LANG for locale defaults).
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 // File targets parse as `text` (default), `json`, or `pdf` ({valid, pages, title, text[]}; see pdf.mjs).
