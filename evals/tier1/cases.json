@@ -2566,6 +2566,83 @@
     }
   },
   {
+    "id": "chef-meal-planning-today-reads-meals-and-dietary-footer-without-writing",
+    "description": "The read-only today view returns meals and the applicable saved dietary footer while leaving the data root unchanged.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "content": "---\ntype: meal-plan\ntitle: 'Meal plan: week of 2026-01-19'\nweek_start: 2026-01-19\ncreated: 2026-01-18\nhousehold_profile: null\nservings_source: default\nmeals:\n  - {date: 2026-01-20, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 2}\n  - {date: 2026-01-21, slug: lemon-garlic-pasta, title: Lemon Garlic Pasta, servings: 2}\ndietary:\n  status: declared\n  footer: Always check labels for allergens.\ninventory: {items_considered: 5}\nnutrition: {status: incomplete, missing: []}\n---\n# Meal plan: week of 2026-01-19\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "today",
+      "--date",
+      "2026-01-21"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "planned"
+      },
+      {
+        "path": "$.date",
+        "equals": "2026-01-21"
+      },
+      {
+        "path": "$.meal_plan",
+        "equals": "knowledge/wiki/meal-plans/2026-01-19.md"
+      },
+      {
+        "path": "$.meals",
+        "equals": [
+          {
+            "date": "2026-01-21",
+            "slug": "lemon-garlic-pasta",
+            "title": "Lemon Garlic Pasta",
+            "servings": 2
+          }
+        ]
+      },
+      {
+        "path": "$.dietary.footer",
+        "equals": "Always check labels for allergens."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-today-reports-no-plan-without-writing",
+    "description": "The read-only today view exits successfully with one clear message when no saved plan covers the date, and writes nothing.",
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "today",
+      "--date",
+      "2026-02-14"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "no-plan"
+      },
+      {
+        "path": "$.message",
+        "equals": "No meal plan covers 2026-02-14."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
     "id": "chef-recipe-decisions-auto-approve-dietary-conflict-stays-open",
     "description": "A standing auto-approve rule cannot accept or publish a proposal containing a declared allergen; the proposal stays open with the gate reasons.",
     "env": {
@@ -3439,6 +3516,10 @@
       {
         "path": "$.runtime.instruction",
         "includes": "explicit yes"
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef morning briefing')].prompt",
+        "includes": "chef-meal-planning's `today`"
       }
     ]
   },

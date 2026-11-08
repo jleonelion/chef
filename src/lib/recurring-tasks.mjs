@@ -9,7 +9,7 @@ export const RECURRING_TASKS = [
     cadence: 'daily at 7:00',
     requires: 'always',
     why: "Tells you each morning what's planned today and what food is about to expire.",
-    prompt: "Chef morning briefing. From the Chef data root, tell me today's planned meals from the saved meal plan covering today (knowledge/wiki/meal-plans/), and what is expiring in the next 3 days using chef-food-inventory's `expiring --days 3`. If nothing is planned today, say so in one line. Do not change any Chef data.",
+    prompt: "Chef morning briefing. Run chef-meal-planning's `today` mode for today's planned meals and dietary footer, and chef-food-inventory's `expiring --days 3` for food expiring in the next 3 days. If nothing is planned today, say so in one line. Do not change any Chef data.",
   },
   {
     name: 'Chef weekly health report',

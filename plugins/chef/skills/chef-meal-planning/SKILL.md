@@ -1,13 +1,21 @@
 ---
 name: chef-meal-planning
-description: Plan and save a week of meals from the user's recipe book, household profile, dietary rules and food inventory, with a nutrition rollup and an optional runtime calendar payload. Use when the user asks for a meal plan, weekly menu or meals added to their configured calendar.
+description: Plan and save a week of meals from the user's recipe book, household profile, dietary rules and food inventory, with a nutrition rollup and an optional runtime calendar payload, or show today's meals read-only. Use when the user asks for a meal plan, weekly menu, today's planned meals or meals added to their configured calendar.
 ---
 
 # Chef meal planning
 
 Plan from Chef's saved recipes, household profile, dietary ruleset and inventory. Every saved plan includes its nutrition rollup. Retired, conflicting and unverified recipes are never planned. Avoidances steer automatic choices but never block a meal.
 
-Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input`, `refused` or `no-plan`.
+Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input`, `refused` or a planning `no-plan`; the read-only `today` mode exits 0 when nothing is planned.
+
+## Show today's meals
+
+```sh
+node scripts/meal-planning.mjs today
+```
+
+This reads the saved plan containing today's meal and writes nothing. `planned` returns `meals`, plus `dietary.footer` when the saved plan has one. `no-plan` prints one clear message and exits successfully. Use `--date YYYY-MM-DD` only for deterministic testing.
 
 ## Plan meals
 
