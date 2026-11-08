@@ -6966,7 +6966,7 @@ var RECURRING_TASKS = [
     cadence: "daily at 7:00",
     requires: "always",
     why: "Tells you each morning what's planned today and what food is about to expire.",
-    prompt: "Chef morning briefing. From the Chef data root, tell me today's planned meals from the saved meal plan covering today (knowledge/wiki/meal-plans/), and what is expiring in the next 3 days using chef-food-inventory's `expiring --days 3`. If nothing is planned today, say so in one line. Do not change any Chef data."
+    prompt: "Chef morning briefing. Run chef-meal-planning's `today` mode for today's planned meals and dietary footer, and chef-food-inventory's `expiring --days 3` for food expiring in the next 3 days. If nothing is planned today, say so in one line. Do not change any Chef data."
   },
   {
     name: "Chef weekly health report",
@@ -8035,6 +8035,37 @@ function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
   }, activeGoal(root));
 }
 
+// src/skills/chef-meal-planning/scripts/lib/today.mjs
+import fs10 from "node:fs";
+import path11 from "node:path";
+var PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS["meal-plan"]}`;
+function plans(root) {
+  const dir = path11.join(root, PLANS_DIR);
+  const files = fs10.existsSync(dir) ? fs10.readdirSync(dir).filter((file) => file.endsWith(".md")).sort().reverse() : [];
+  return files.flatMap((file) => {
+    try {
+      const frontmatter = parsePage(fs10.readFileSync(path11.join(dir, file), "utf8")).frontmatter;
+      return frontmatter.type === "meal-plan" && Array.isArray(frontmatter.meals) ? [{ path: `${PLANS_DIR}/${file}`, frontmatter }] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+function todayPlan(root, date) {
+  const plan = plans(root).find(({ frontmatter }) => frontmatter.meals.some((meal) => meal.date === date));
+  if (!plan)
+    return { status: "no-plan", data_root: root, date, message: `No meal plan covers ${date}.` };
+  const footer = plan.frontmatter.dietary?.footer;
+  return {
+    status: "planned",
+    data_root: root,
+    date,
+    meal_plan: plan.path,
+    meals: plan.frontmatter.meals.filter((meal) => meal.date === date),
+    ...typeof footer === "string" && footer ? { dietary: { footer } } : {}
+  };
+}
+
 // src/skills/chef-meal-planning/scripts/meal-planning.mjs
 var many = { type: "string", multiple: true };
 var { values, positionals } = parseArgs({
@@ -8042,6 +8073,7 @@ var { values, positionals } = parseArgs({
     "data-root": { type: "string" },
     "week-start": { type: "string" },
     days: { type: "string" },
+    date: { type: "string" },
     recipes: { type: "string" },
     override: many
   },
@@ -8052,8 +8084,11 @@ var mode = positionals[0];
 var days = values.days === undefined ? 7 : /^\d+$/.test(values.days) ? Number(values.days) : NaN;
 var slots = values.recipes === undefined ? [] : values.recipes.split(",").map((slug) => slug.trim());
 var result;
-if (mode !== "plan")
-  result = { status: "invalid-input", data_root: root, problems: ["supported command: plan"] };
+if (mode === "today") {
+  const date = values.date ?? today();
+  result = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`)) ? todayPlan(root, date) : { status: "invalid-input", data_root: root, problems: ["--date must be YYYY-MM-DD"] };
+} else if (mode !== "plan")
+  result = { status: "invalid-input", data_root: root, problems: ["supported commands: plan, today"] };
 else if (!/^\d{4}-\d{2}-\d{2}$/.test(values["week-start"] ?? "") || Number.isNaN(Date.parse(`${values["week-start"]}T00:00:00Z`))) {
   result = { status: "invalid-input", data_root: root, problems: ["--week-start must be YYYY-MM-DD"] };
 } else {
@@ -8068,5 +8103,5 @@ else if (!/^\d{4}-\d{2}-\d{2}$/.test(values["week-start"] ?? "") || Number.isNaN
     result = planWeek(root, { weekStart: values["week-start"], days, slots, overrides });
 }
 console.log(JSON.stringify(result));
-if (["invalid-input", "refused", "no-plan"].includes(result.status))
+if (["invalid-input", "refused"].includes(result.status) || mode === "plan" && result.status === "no-plan")
   process.exitCode = 2;

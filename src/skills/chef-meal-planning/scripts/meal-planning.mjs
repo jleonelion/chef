@@ -3,7 +3,9 @@ import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { parseOverrides } from '../../../lib/dietary-gate.mjs';
 import { readRuleset } from '../../../lib/dietary-ruleset.mjs';
+import { today as localToday } from '../../../lib/recipes.mjs';
 import { planWeek } from './lib/plan.mjs';
+import { todayPlan } from './lib/today.mjs';
 
 const many = { type: 'string', multiple: true };
 const { values, positionals } = parseArgs({
@@ -11,6 +13,7 @@ const { values, positionals } = parseArgs({
     'data-root': { type: 'string' },
     'week-start': { type: 'string' },
     days: { type: 'string' },
+    date: { type: 'string' },
     recipes: { type: 'string' },
     override: many,
   },
@@ -22,7 +25,12 @@ const mode = positionals[0];
 const days = values.days === undefined ? 7 : /^\d+$/.test(values.days) ? Number(values.days) : NaN;
 const slots = values.recipes === undefined ? [] : values.recipes.split(',').map((slug) => slug.trim());
 let result;
-if (mode !== 'plan') result = { status: 'invalid-input', data_root: root, problems: ['supported command: plan'] };
+if (mode === 'today') {
+  const date = values.date ?? localToday();
+  result = /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(`${date}T00:00:00Z`))
+    ? todayPlan(root, date)
+    : { status: 'invalid-input', data_root: root, problems: ['--date must be YYYY-MM-DD'] };
+} else if (mode !== 'plan') result = { status: 'invalid-input', data_root: root, problems: ['supported commands: plan, today'] };
 else if (!/^\d{4}-\d{2}-\d{2}$/.test(values['week-start'] ?? '') || Number.isNaN(Date.parse(`${values['week-start']}T00:00:00Z`))) {
   result = { status: 'invalid-input', data_root: root, problems: ['--week-start must be YYYY-MM-DD'] };
 } else {
@@ -34,4 +42,4 @@ else if (!/^\d{4}-\d{2}-\d{2}$/.test(values['week-start'] ?? '') || Number.isNaN
 }
 
 console.log(JSON.stringify(result));
-if (['invalid-input', 'refused', 'no-plan'].includes(result.status)) process.exitCode = 2;
+if (['invalid-input', 'refused'].includes(result.status) || (mode === 'plan' && result.status === 'no-plan')) process.exitCode = 2;
