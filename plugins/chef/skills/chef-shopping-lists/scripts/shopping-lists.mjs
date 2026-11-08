@@ -7834,25 +7834,18 @@ function convertQuantity(amount, fromUnit, toUnit) {
     return amount * VOLUME[from] / VOLUME[to];
   if (dimension === "mass")
     return amount * MASS[from] / MASS[to];
-  if (from === "dozen")
-    return amount * 12 / (to === "dozen" ? 12 : 1);
-  if (to === "dozen")
+  if (from === to)
+    return amount;
+  if (from === "dozen" && to === "each")
+    return amount * 12;
+  if (from === "each" && to === "dozen")
     return amount / 12;
-  return amount;
+  return null;
 }
 
 // src/skills/chef-shopping-lists/scripts/lib/combine.mjs
 var round = (value) => Math.round(value * 100) / 100;
 var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-var COUNTS_THAT_CONVERT = new Set(["each", "dozen"]);
-function strictConvert(amount, from, to) {
-  const [a, b] = [normalizeUnit(from), normalizeUnit(to)];
-  if (a === b)
-    return amount;
-  if (quantityDimension(a) === "count" && !(COUNTS_THAT_CONVERT.has(a) && COUNTS_THAT_CONVERT.has(b)))
-    return null;
-  return convertQuantity(amount, a, b);
-}
 function combineLines(uses) {
   const items = [];
   const unquantified = [];
@@ -7865,12 +7858,12 @@ function combineLines(uses) {
     }
     const unit = normalizeUnit(parsed.unit ?? "each");
     const amount = parsed.amount * multiplier;
-    const row = items.find((r) => r.item === item && strictConvert(amount, unit, r.unit) !== null);
+    const row = items.find((r) => r.item === item && convertQuantity(amount, unit, r.unit) !== null);
     if (!row) {
       items.push({ item, amount: round(amount), unit, recipes: [recipe] });
       continue;
     }
-    row.amount = round(row.amount + strictConvert(amount, unit, row.unit));
+    row.amount = round(row.amount + convertQuantity(amount, unit, row.unit));
     if (!row.recipes.includes(recipe))
       row.recipes.push(recipe);
   }
@@ -7885,7 +7878,7 @@ function subtractInventory(items, stock) {
       remaining.push(row);
       continue;
     }
-    const have = strictConvert(match.amount, match.unit, row.unit);
+    const have = convertQuantity(match.amount, match.unit, row.unit);
     if (have === null)
       remaining.push({ ...row, on_hand: { amount: match.amount, unit: match.unit } });
     else if (have >= row.amount)
