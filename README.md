@@ -4,11 +4,12 @@ A free, MIT-licensed kitchen-assistant skill pack: recipes, meal planning, shopp
 pantry inventory. Chef keeps everything in one folder you own, the **data root**, as plain
 files under local git.
 
-> Status: early. `chef-setup`, `chef-add-recipe`, `chef-recipe-search`, `chef-recipe-decisions`, `chef-food-inventory`, `chef-meal-planning`, `chef-meal-logging`, `chef-health-goals`, `chef-shopping-lists` and `chef-batch-prep-planning` ship so far; more skills land before v1.
+> Status: v1 includes setup, recipes, meal planning and logging, inventory, shopping lists,
+> batch-prep PDFs and advisory health goals.
 
 ## Install
 
-### Claude Code or Muse Code
+### Muse Code / Claude Code
 
 ```sh
 /plugin marketplace add jleonelion/chef
@@ -53,8 +54,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Health features stay off until you tell Chef a goal (`chef-health-goals`). Then your goal and
   daily targets live in `data/health-goals/`, you can ask for a weekly progress report from your
   meal log, and meal plans add advisory suggestions. Drop the goal and they go quiet again.
-- Back up the data root folder. Copying it to another machine or runtime moves Chef with it.
-  To restore from a git copy, ask Chef to adopt it (`chef-setup` clones it in and drops the remote).
+- Back up the entire data root, including its local `.git` history, and test that you can restore
+  the copy. To move or restore one, ask Chef to adopt the backup; `chef-setup` clones it and drops
+  the remote.
 - Ask Chef to "verify my Chef install" any time; it never touches your data.
 - Ask Chef to "update Chef" to install the newest tagged release. Chef commits the data root,
   previews skill and migration changes, waits for confirmation before migrating, and verifies
@@ -66,7 +68,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.
 - Tell Chef about allergies and foods someone must never eat (during setup, or any time). Recipes that conflict, or that Chef hasn't checked, are left out and listed with the reason. You can mark a recipe you checked yourself as safe; that is saved with the date. Setting a constraint aside works for one plan only and is never saved.
 - Allergen flags cover the US major food allergens plus gluten. Anything else is matched on ingredient wording only.
-- What you tell Chef stays in your data root. On Muse, the "Help improve our AI models" setting may cover it; see [Muse's privacy policy](https://muse.ai/privacy).
+- Muse's "Help improve our AI models" setting may cover what you tell Chef; see
+  [Muse's privacy policy](https://muse.ai/privacy).
 
 ## Development
 
