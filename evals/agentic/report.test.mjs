@@ -28,16 +28,17 @@ test('checkSkills requires every expected skill and forbids listed ones', () => 
   assert.throws(() => checkSkills(['chef-meal-planning'], { forbidSkills: ['chef-meal-planning'] }), /chef-meal-planning fired/);
 });
 
-function dataRoot() {
+function dataRoot(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-agentic-test-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   fs.mkdirSync(path.join(root, 'data'));
   fs.writeFileSync(path.join(root, 'data', 'store.json'), '{"items":[{"id":"a"}]}');
   fs.writeFileSync(path.join(root, 'page.md'), '# Page\n');
   return root;
 }
 
-test('checkFiles asserts present, absent and parsed file contents', () => {
-  const root = dataRoot();
+test('checkFiles asserts present, absent and parsed file contents', (t) => {
+  const root = dataRoot(t);
   checkFiles(root, [
     { path: 'page.md', assertions: [{ path: '$.content', includes: '# Page' }] },
     { path: 'data/store.json', parse: 'json', assertions: [{ path: '$.items[0].id', equals: 'a' }] },
@@ -47,8 +48,8 @@ test('checkFiles asserts present, absent and parsed file contents', () => {
   assert.throws(() => checkFiles(root, [{ path: 'page.md', absent: true }]), /file must not be written: page.md/);
 });
 
-test('checkFiles counts the files in a folder', () => {
-  const root = dataRoot();
+test('checkFiles counts the files in a folder', (t) => {
+  const root = dataRoot(t);
   checkFiles(root, [{ path: 'data', count: 1 }, { path: 'nowhere', count: 0 }]);
   assert.throws(() => checkFiles(root, [{ path: 'data', count: 2 }]), /data: expected 2 files, found 1/);
 });
