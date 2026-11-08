@@ -35,6 +35,13 @@ export const V1_SKILLS = Object.freeze([
 
 export const missingSkills = (names) => V1_SKILLS.filter((n) => !names.includes(n));
 
+export function tier1CoverageErrors(cases) {
+  const commands = cases.flatMap((testCase) => [testCase.command, ...(testCase.steps ?? []).map((step) => step.command)]);
+  return V1_SKILLS
+    .filter((name) => !commands.some((command) => command?.some((arg) => arg.includes(`{skills}/${name}/`))))
+    .map((name) => `${name}: no tier1 case in evals/tier1/cases.json`);
+}
+
 // Release mode: plugin version major >= 1, or an explicit --release.
 export const isRelease = (version, flag) => flag || Number.parseInt(version, 10) >= 1;
 
