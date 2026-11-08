@@ -7467,11 +7467,13 @@ function convertQuantity(amount, fromUnit, toUnit) {
     return amount * VOLUME[from] / VOLUME[to];
   if (dimension === "mass")
     return amount * MASS[from] / MASS[to];
-  if (from === "dozen")
-    return amount * 12 / (to === "dozen" ? 12 : 1);
-  if (to === "dozen")
+  if (from === to)
+    return amount;
+  if (from === "dozen" && to === "each")
+    return amount * 12;
+  if (from === "each" && to === "dozen")
     return amount / 12;
-  return amount;
+  return null;
 }
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs

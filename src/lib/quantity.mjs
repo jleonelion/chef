@@ -26,7 +26,8 @@ export function convertQuantity(amount, fromUnit, toUnit) {
   if (!dimension || dimension !== quantityDimension(to)) return null;
   if (dimension === 'volume') return (amount * VOLUME[from]) / VOLUME[to];
   if (dimension === 'mass') return (amount * MASS[from]) / MASS[to];
-  if (from === 'dozen') return amount * 12 / (to === 'dozen' ? 12 : 1);
-  if (to === 'dozen') return amount / 12;
-  return amount;
+  if (from === to) return amount;
+  if (from === 'dozen' && to === 'each') return amount * 12;
+  if (from === 'each' && to === 'dozen') return amount / 12;
+  return null;
 }

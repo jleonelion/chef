@@ -1227,6 +1227,67 @@
     ]
   },
   {
+    "id": "food-inventory-cook-deduction-reports-count-unit-mismatch",
+    "description": "A cook event reports a bunch-vs-each mismatch and leaves inventory unchanged.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/recipes/spinach-salad.md",
+        "content": "---\ntype: recipe\ntitle: Spinach Salad\nservings: 2\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-15\nupdated: 2026-01-15\n---\n# Spinach Salad\n\nSynthetic fixture recipe.\n\n## Ingredients\n\n- 1 spinach\n\n## Steps\n\n1. Toss.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "deduct",
+      "--recipe",
+      "spinach-salad",
+      "--servings",
+      "2",
+      "--deduction-id",
+      "cook-spinach-salad-20260115"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid-input"
+      },
+      {
+        "path": "$.unit_mismatches[0].recipe_unit",
+        "equals": "each"
+      },
+      {
+        "path": "$.unit_mismatches[0].inventory_unit",
+        "equals": "bunch"
+      },
+      {
+        "path": "$.unit_mismatches[0].reason",
+        "equals": "cannot convert each to bunch"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.produce.spinach.amount",
+            "equals": 1
+          },
+          {
+            "path": "$.fridge.produce.spinach.unit",
+            "equals": "bunch"
+          }
+        ]
+      }
+    ]
+  },
+  {
     "id": "chef-setup-update-commits-confirms-and-verifies",
     "description": "Update commits pending user data, previews dropped skills, waits for confirmation, then verifies the tagged install.",
     "updateInstall": true,
