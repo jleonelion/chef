@@ -201,6 +201,46 @@ test('meal logging CLI deletes a deducted entry without changing inventory', () 
   assert.equal(fs.readFileSync(inventoryFile, 'utf8'), inventoryBefore);
 });
 
+test('meal logging CLI assigns and preserves an ID when editing a legacy entry', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    data: [{
+      path: MEAL_LOG_FILE,
+      content: `${JSON.stringify({
+        entries: [{
+          date: '2026-01-16',
+          slot: 'snack',
+          recipe: null,
+          food: 'Apple and Yogurt',
+          servings: 1,
+          cooked: false,
+          nutrition: null,
+          logged_at: '2026-01-16T15:00:00.000Z',
+        }],
+      }, null, 2)}\n`,
+    }],
+    message: 'test: add legacy meal log',
+  });
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'edit',
+    '--data-root', root,
+    '--id', '2026-01-16-snack-apple-and-yogurt',
+    '--date', '2026-01-17',
+    '--food', 'Pear',
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.status, 'edited');
+  assert.equal(output.entry.id, '2026-01-16-snack-apple-and-yogurt');
+  assert.equal(output.entry.date, '2026-01-17');
+  assert.equal(output.entry.food, 'Pear');
+  const stored = JSON.parse(fs.readFileSync(path.join(root, MEAL_LOG_FILE), 'utf8'));
+  assert.equal(stored.entries[0].id, '2026-01-16-snack-apple-and-yogurt');
+});
+
 test('a unit mismatch is reported while the cooked meal stays logged', () => {
   const root = dataRoot();
   commitInventory(root, {

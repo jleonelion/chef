@@ -1,4 +1,4 @@
-import { MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-log.mjs';
+import { mealEntryId, MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-log.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { slugify, writeWiki } from '../../../../lib/wiki.mjs';
 import { deductionApplied, deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
@@ -8,12 +8,11 @@ const SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
 
 function entryFor(root, input, id = null) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
-  const subject = input.recipe ?? slugify(input.food);
   const perServing = recipe?.frontmatter.nutrition_status === 'complete'
     ? recipe.frontmatter.nutrition_per_serving
     : null;
   return {
-    id: id ?? `${input.date}-${input.slot}-${subject}`,
+    id: id ?? mealEntryId(input),
     date: input.date,
     slot: input.slot,
     recipe: input.recipe ?? null,
