@@ -241,6 +241,37 @@ test('meal logging CLI assigns and preserves an ID when editing a legacy entry',
   assert.equal(stored.entries[0].id, '2026-01-16-snack-apple-and-yogurt');
 });
 
+for (const command of ['edit', 'delete']) {
+  test(`${command} rejects an unknown entry ID without writing`, () => {
+    const root = dataRoot();
+    logMeal(root, {
+      date: '2026-01-16',
+      slot: 'snack',
+      food: 'apple',
+      servings: 1,
+      cooked: false,
+      loggedAt: '2026-01-16T15:00:00.000Z',
+    });
+    const logFile = path.join(root, MEAL_LOG_FILE);
+    const inventoryFile = path.join(root, STORE.inventory);
+    const logBefore = fs.readFileSync(logFile, 'utf8');
+    const inventoryBefore = fs.readFileSync(inventoryFile, 'utf8');
+
+    const result = spawnSync(process.execPath, [
+      script,
+      command,
+      '--data-root', root,
+      '--id', 'unknown-entry',
+      ...(command === 'edit' ? ['--servings', '2'] : []),
+    ], { encoding: 'utf8' });
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(JSON.parse(result.stdout).status, 'not-found');
+    assert.equal(fs.readFileSync(logFile, 'utf8'), logBefore);
+    assert.equal(fs.readFileSync(inventoryFile, 'utf8'), inventoryBefore);
+  });
+}
+
 test('a unit mismatch is reported while the cooked meal stays logged', () => {
   const root = dataRoot();
   commitInventory(root, {
