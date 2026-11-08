@@ -7,7 +7,7 @@ import { listItems, loadInventory, readText, STORE } from './store.mjs';
 const round = (value) => Math.round(value * 1e6) / 1e6;
 const itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-function alreadyApplied(root, deductionId) {
+export function deductionApplied(root, deductionId) {
   return (readText(root, STORE.audit) ?? '').trim().split('\n').filter(Boolean).some((line) => {
     try {
       const entry = JSON.parse(line);
@@ -34,7 +34,7 @@ export function deductRecipe(root, { recipe: slug, servings, deductionId, now = 
   if (!Number.isFinite(servings) || servings <= 0) problems.push('servings: must be a positive number');
   if (!deductionId?.trim()) problems.push('deduction_id: required');
   if (problems.length) return { status: 'invalid-input', problems };
-  if (alreadyApplied(root, deductionId)) return { status: 'duplicate', deduction_id: deductionId };
+  if (deductionApplied(root, deductionId)) return { status: 'duplicate', deduction_id: deductionId };
 
   const { recipes, unreadable } = listRecipes(root);
   const recipe = recipes.find((candidate) => candidate.slug === slug);

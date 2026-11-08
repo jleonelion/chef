@@ -1,19 +1,18 @@
-import { MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-log.mjs';
+import { mealEntryId, MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-log.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { slugify, writeWiki } from '../../../../lib/wiki.mjs';
-import { deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
+import { deductionApplied, deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
 
 export const MEAL_LOG_FILE = MEAL_LOG_PATH;
 const SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
 
-function entryFor(root, input) {
+function entryFor(root, input, id = null) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
-  const subject = input.recipe ?? slugify(input.food);
   const perServing = recipe?.frontmatter.nutrition_status === 'complete'
     ? recipe.frontmatter.nutrition_per_serving
     : null;
   return {
-    id: `${input.date}-${input.slot}-${subject}`,
+    id: id ?? mealEntryId(input),
     date: input.date,
     slot: input.slot,
     recipe: input.recipe ?? null,
@@ -40,6 +39,14 @@ function validate(root, input) {
   return problems;
 }
 
+function correctionFor(root, id) {
+  return deductionApplied(root, id) ? {
+    required: true,
+    skill: 'chef-food-inventory',
+    message: 'Inventory was not changed. Correct it separately with chef-food-inventory.',
+  } : undefined;
+}
+
 export function logMeal(root, input) {
   const problems = validate(root, input);
   if (problems.length) return { status: 'invalid-input', problems };
@@ -60,4 +67,54 @@ export function logMeal(root, input) {
     ? deductRecipe(root, { recipe: entry.recipe, servings: entry.servings, deductionId: entry.id, now: entry.logged_at })
     : { status: 'not-requested' };
   return { status, entry: existing ?? entry, inventory };
+}
+
+export function editMeal(root, input) {
+  if (!input.id?.trim()) return { status: 'invalid-input', problems: ['id: required'] };
+  const changed = ['date', 'slot', 'recipe', 'food', 'servings', 'cooked'].some((field) => input[field] !== undefined);
+  if (!changed) return { status: 'invalid-input', problems: ['provide at least one field to edit'] };
+  const store = readMealLog(root);
+  if (store.problem) return { status: 'refused', reason: store.problem };
+  const existing = store.entries.find((entry) => entry.id === input.id);
+  if (!existing) return { status: 'not-found', reason: `meal log entry not found: ${input.id}` };
+  const nextInput = {
+    ...existing,
+    ...(input.date === undefined ? {} : { date: input.date }),
+    ...(input.slot === undefined ? {} : { slot: input.slot }),
+    ...(input.servings === undefined ? {} : { servings: input.servings }),
+    ...(input.cooked === undefined ? {} : { cooked: input.cooked }),
+    ...(input.recipe === undefined ? {} : { recipe: input.recipe, food: undefined }),
+    ...(input.food === undefined ? {} : { recipe: undefined, food: input.food }),
+    loggedAt: existing.logged_at,
+  };
+  const problems = validate(root, nextInput);
+  if (problems.length) return { status: 'invalid-input', problems };
+  const entry = entryFor(root, nextInput, existing.id);
+  const entries = store.entries.map((candidate) => candidate === existing ? entry : candidate);
+  const written = writeWiki(root, {
+    data: [{ path: MEAL_LOG_FILE, content: `${JSON.stringify({ entries }, null, 2)}\n` }],
+    message: `chef-meal-logging: edit ${entry.id}`,
+  });
+  if (written.status !== 'written') return written;
+  const result = { status: 'edited', entry };
+  result.inventory_correction = correctionFor(root, entry.id);
+  if (!result.inventory_correction) delete result.inventory_correction;
+  return result;
+}
+
+export function deleteMeal(root, input) {
+  if (!input.id?.trim()) return { status: 'invalid-input', problems: ['id: required'] };
+  const store = readMealLog(root);
+  if (store.problem) return { status: 'refused', reason: store.problem };
+  const entry = store.entries.find((candidate) => candidate.id === input.id);
+  if (!entry) return { status: 'not-found', reason: `meal log entry not found: ${input.id}` };
+  const entries = store.entries.filter((candidate) => candidate !== entry);
+  const written = writeWiki(root, {
+    data: [{ path: MEAL_LOG_FILE, content: `${JSON.stringify({ entries }, null, 2)}\n` }],
+    message: `chef-meal-logging: delete ${entry.id}`,
+  });
+  if (written.status !== 'written') return written;
+  const result = { status: 'deleted', entry, inventory_correction: correctionFor(root, entry.id) };
+  if (!result.inventory_correction) delete result.inventory_correction;
+  return result;
 }

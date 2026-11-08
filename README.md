@@ -78,6 +78,15 @@ Requires Node 20+ and Bun.
 | `bun run check` | Skill-format lint, unit tests, tier1 evals, migration regression |
 | `bun run smoke` | Run tier1 against a copy of the built skills outside the repo |
 | `bun run hygiene` | Public-hygiene scan; set `CHEF_HYGIENE_DENY` to the deny-list patterns |
+| `bun run agentic` | Agentic suite: headless Claude Code with the built plugin, 3 reps per row (local only) |
+
+The agentic suite runs `claude -p` with `plugins/chef` loaded against a fresh copy of the fixture
+per rep, so it needs a signed-in Claude Code and spends real usage. It never runs in CI. Each row
+in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with deterministic
+asserts only (skills fired, files written or not, script output, git state). A row must pass
+every rep; failing rows get fixed or dropped, never retried. The result file
+(`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version and per-row pass
+counts) is attached to the release. `--rows <id,id>`, `--reps`, `--model` and `--out` narrow a run.
 
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
 synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per

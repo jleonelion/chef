@@ -3334,6 +3334,185 @@
     }
   },
   {
+    "id": "chef-meal-logging-edit-keeps-inventory-unchanged",
+    "description": "Editing a cooked meal changes only its log entry, preserves its stable ID, and directs the user to chef-food-inventory for the earlier deduction.",
+    "seed": [
+      {
+        "path": "data/food-inventory/current.json",
+        "content": "{\n  \"lastUpdated\": \"2026-01-14T18:00:00.000Z\",\n  \"pantry\": {\n    \"grains\": {\n      \"spaghetti\": {\n        \"name\": \"spaghetti\",\n        \"amount\": 1,\n        \"unit\": \"kg\"\n      }\n    }\n  },\n  \"fridge\": {},\n  \"freezer\": {}\n}\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+          "log",
+          "--date",
+          "2026-01-15",
+          "--slot",
+          "dinner",
+          "--recipe",
+          "lemon-garlic-pasta",
+          "--servings",
+          "2",
+          "--cooked",
+          "--logged-at",
+          "2026-01-15T19:30:00.000Z"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+      "edit",
+      "--id",
+      "2026-01-15-dinner-lemon-garlic-pasta",
+      "--servings",
+      "1",
+      "--not-cooked"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "edited"
+      },
+      {
+        "path": "$.entry.id",
+        "equals": "2026-01-15-dinner-lemon-garlic-pasta"
+      },
+      {
+        "path": "$.entry.servings",
+        "equals": 1
+      },
+      {
+        "path": "$.inventory_correction.skill",
+        "equals": "chef-food-inventory"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$",
+            "equals": {
+              "lastUpdated": "2026-01-15T19:30:00.000Z",
+              "pantry": {
+                "grains": {
+                  "spaghetti": {
+                    "name": "spaghetti",
+                    "amount": 0.8,
+                    "unit": "kg",
+                    "updated": "2026-01-15T19:30:00.000Z"
+                  }
+                }
+              },
+              "fridge": {},
+              "freezer": {}
+            }
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-logging-delete-keeps-inventory-unchanged",
+    "description": "Deleting a cooked meal changes only the log, leaves its earlier deduction untouched, and directs the user to chef-food-inventory for correction.",
+    "seed": [
+      {
+        "path": "data/food-inventory/current.json",
+        "content": "{\n  \"lastUpdated\": \"2026-01-14T18:00:00.000Z\",\n  \"pantry\": {\n    \"grains\": {\n      \"spaghetti\": {\n        \"name\": \"spaghetti\",\n        \"amount\": 1,\n        \"unit\": \"kg\"\n      }\n    }\n  },\n  \"fridge\": {},\n  \"freezer\": {}\n}\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+          "log",
+          "--date",
+          "2026-01-15",
+          "--slot",
+          "dinner",
+          "--recipe",
+          "lemon-garlic-pasta",
+          "--servings",
+          "2",
+          "--cooked",
+          "--logged-at",
+          "2026-01-15T19:30:00.000Z"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-logging/scripts/meal-logging.mjs",
+      "delete",
+      "--id",
+      "2026-01-15-dinner-lemon-garlic-pasta"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "deleted"
+      },
+      {
+        "path": "$.entry.id",
+        "equals": "2026-01-15-dinner-lemon-garlic-pasta"
+      },
+      {
+        "path": "$.inventory_correction.skill",
+        "equals": "chef-food-inventory"
+      }
+    ],
+    "files": [
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$",
+            "equals": {
+              "lastUpdated": "2026-01-15T19:30:00.000Z",
+              "pantry": {
+                "grains": {
+                  "spaghetti": {
+                    "name": "spaghetti",
+                    "amount": 0.8,
+                    "unit": "kg",
+                    "updated": "2026-01-15T19:30:00.000Z"
+                  }
+                }
+              },
+              "fridge": {},
+              "freezer": {}
+            }
+          }
+        ]
+      },
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.entries",
+            "equals": []
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
     "id": "chef-shopping-lists-combines-plan-minus-inventory-chat-only",
     "description": "A saved plan becomes one list: quantities scaled to planned servings and combined across meals, inventory subtracted in convertible units only, and with no household recipients the list is shown in chat with nothing written.",
     "seed": [

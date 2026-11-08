@@ -7218,6 +7218,9 @@ var RAW_DIR = "knowledge/raw";
 var DATA_DIR = "data";
 var WIKI_FOLDERS = { recipe: "recipes", "household-profile": "household", "inventory-rollup": "household", "dietary-ruleset": "household", "meal-plan": "meal-plans" };
 var SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+function slugify(text) {
+  return text.normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 80).replace(/^-+|-+$/g, "");
+}
 function wikiPath(type, slug) {
   if (!Object.hasOwn(WIKI_FOLDERS, type))
     throw new Error(`unknown wiki page type: ${type}`);
@@ -7375,6 +7378,22 @@ function clearGoal(root, { date }) {
 import fs6 from "node:fs";
 import path7 from "node:path";
 var MEAL_LOG_PATH = "data/meal-log/log.json";
+function mealEntryId(entry) {
+  return `${entry.date}-${entry.slot}-${entry.recipe ?? slugify(entry.food ?? "")}`;
+}
+function entriesWithIds(entries) {
+  const used = new Set(entries.map((entry) => entry.id).filter(Boolean));
+  return entries.map((entry) => {
+    if (entry.id)
+      return entry;
+    const base = mealEntryId(entry);
+    let id = base;
+    for (let suffix = 2;used.has(id); suffix += 1)
+      id = `${base}-${suffix}`;
+    used.add(id);
+    return { ...entry, id };
+  });
+}
 function readMealLog(root) {
   const file = path7.join(root, MEAL_LOG_PATH);
   if (!fs6.existsSync(file))
@@ -7383,7 +7402,7 @@ function readMealLog(root) {
     const log = JSON.parse(fs6.readFileSync(file, "utf8"));
     if (!Array.isArray(log?.entries))
       throw new Error("no entries list");
-    return { entries: log.entries };
+    return { entries: entriesWithIds(log.entries) };
   } catch {
     return { problem: `${MEAL_LOG_PATH} can't be read` };
   }

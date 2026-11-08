@@ -1,0 +1,201 @@
+[
+  {
+    "id": "add-recipe",
+    "flow": "core",
+    "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",
+    "turns": [
+      "Save this recipe to my Chef recipes. It is pasted text, not a photo, so save it without asking me to confirm.\n\nTomato Lentil Soup\nServes 4. Prep 10 minutes, cook 30 minutes.\n\nIngredients:\n- 1 cup red lentils\n- 400 g crushed tomatoes\n- 1 onion\n- 4 cups vegetable stock\n\nSteps:\n1. Soften the chopped onion in a pot.\n2. Add the lentils, tomatoes and stock.\n3. Simmer for 25 minutes until the lentils are soft."
+    ],
+    "skills": ["chef-add-recipe"],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/tomato-lentil-soup.md",
+        "assertions": [
+          { "path": "$.content", "includes": "title: Tomato Lentil Soup" },
+          { "path": "$.content", "includes": "1 cup red lentils" },
+          { "path": "$.content", "includes": "dietary_flags:" }
+        ]
+      },
+      { "path": "knowledge/raw/recipes", "count": 3 }
+    ],
+    "after": [
+      {
+        "command": ["node", "{skills}/chef-recipe-search/scripts/recipe-search.mjs", "search", "--query", "lentil"],
+        "assertions": [{ "path": "$.recipes[*].slug", "equals": "tomato-lentil-soup" }]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "plan-week",
+    "flow": "core",
+    "description": "A confirmed schedule from saved recipes is saved as the week's meal plan with its nutrition rollup.",
+    "turns": [
+      "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: lemon garlic pasta on day 1, chickpea spinach stew on day 2, lemon garlic pasta again on day 3. I confirm this schedule; save it without asking me again."
+    ],
+    "skills": ["chef-meal-planning"],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          { "path": "$.content", "includes": "type: meal-plan" },
+          { "path": "$.content", "includes": "slug: chickpea-spinach-stew" },
+          { "path": "$.content", "includes": "nutrition:" }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "command": ["node", "{skills}/chef-batch-prep-planning/scripts/batch-prep.mjs", "render", "--week-start", "2026-01-19"],
+        "assertions": [{ "path": "$.recipes[*].slug", "equals": ["lemon-garlic-pasta", "chickpea-spinach-stew"] }]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "receipt-to-inventory",
+    "flow": "core",
+    "description": "A grocery receipt handed over as text adds a purchase, its transcript and inventory items, and the inventory check stays healthy.",
+    "seed": [
+      {
+        "path": "../inbox/receipt.txt",
+        "content": "CORNER MARKET\n2026-01-20 18:42\n\nGV WHL MLK 1GAL        3.49\nBANANAS 2.10 LB        1.26\nRED LENTILS 1LB        2.19\nREUSABLE BAG           0.10\n\nSUBTOTAL               7.04\nTAX                    0.01\nTOTAL                  7.05\n\nTHANK YOU FOR SHOPPING\n"
+      }
+    ],
+    "turns": [
+      "Add my grocery receipt to my Chef food inventory. I saved it as a text file at {tmp}/inbox/receipt.txt."
+    ],
+    "skills": ["chef-food-inventory"],
+    "files": [
+      { "path": "data/food-inventory/purchases", "count": 2 },
+      { "path": "knowledge/raw/receipts", "count": 2 }
+    ],
+    "after": [
+      {
+        "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "health"],
+        "assertions": [{ "path": "$.status", "equals": "healthy" }]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "batch-prep-pdf",
+    "flow": "core",
+    "description": "A prep plan for a week with a saved meal plan is rendered as the week's PDF under the data root.",
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19", "--days", "3", "--recipes", "lemon-garlic-pasta,chickpea-spinach-stew,lemon-garlic-pasta"]
+      }
+    ],
+    "turns": ["Make me a printable batch-prep plan for the week starting 2026-01-19."],
+    "skills": ["chef-batch-prep-planning"],
+    "files": [
+      {
+        "path": "data/batch-prep-plans/2026-01-19.pdf",
+        "assertions": [{ "path": "$.content", "includes": "%PDF-" }]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "health-goal-check-in",
+    "flow": "core",
+    "description": "A goal with user-stated targets is saved to the one goals store, and the one-time training notice is recorded.",
+    "turns": [
+      "I want a health goal in Chef: lower sodium. My daily targets are at most 2300 mg sodium and at least 90 g protein. Those are my own numbers and I confirm them; save them."
+    ],
+    "skills": ["chef-health-goals"],
+    "files": [
+      {
+        "path": "data/health-goals/goals.json",
+        "parse": "json",
+        "assertions": [{ "path": "$.targets", "equals": { "sodium": { "max": 2300 }, "protein": { "min": 90 } } }]
+      },
+      { "path": "data/notices.json", "parse": "json", "assertions": [{ "path": "$.training-setting", "absent": false }] }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "recipe-decision-accept-publish",
+    "flow": "core",
+    "description": "Chef proposes a recipe, records the user's yes as a decision, publishes it, and search finds it (ADR-0019).",
+    "turns": [
+      "Suggest this new recipe to me as a Chef recipe suggestion, then ask me whether to add it: Mushroom Barley Soup. Serves 4, about 50 minutes. Ingredients: 200 g mushrooms, 100 g pearl barley, 1 l vegetable stock. Steps: simmer everything for 40 minutes.",
+      "Yes, add it."
+    ],
+    "skills": ["chef-recipe-decisions"],
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.proposals.mushroom-barley-soup.decisions[0].outcome", "equals": "accept" },
+          { "path": "$.proposals.mushroom-barley-soup.decisions[0].by", "equals": "user" },
+          { "path": "$.proposals.mushroom-barley-soup.published", "absent": false }
+        ]
+      },
+      { "path": "knowledge/wiki/recipes/mushroom-barley-soup.md" }
+    ],
+    "after": [
+      {
+        "command": ["node", "{skills}/chef-recipe-search/scripts/recipe-search.mjs", "search", "--query", "barley"],
+        "assertions": [{ "path": "$.recipes[*].slug", "equals": "mushroom-barley-soup" }]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "recipe-decision-rejected-not-reproposed",
+    "flow": "core",
+    "description": "A recipe the user already turned down is not proposed again: the decision store, recipe book and git history are unchanged.",
+    "seed": [
+      {
+        "path": "../draft.json",
+        "content": "{\"title\":\"Mushroom Barley Soup\",\"servings\":4,\"total_minutes\":50,\"ingredients\":[\"200 g mushrooms\",\"100 g pearl barley\",\"1 l vegetable stock\"],\"steps\":[\"Simmer everything for 40 minutes.\"]}"
+      }
+    ],
+    "setup": [
+      { "command": ["node", "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs", "propose", "--draft", "{tmp}/draft.json"] },
+      { "command": ["node", "{skills}/chef-recipe-decisions/scripts/recipe-decisions.mjs", "decide", "--id", "mushroom-barley-soup", "--outcome", "reject", "--reason", "Not a fan of barley"] }
+    ],
+    "turns": [
+      "Suggest this new recipe to me as a Chef recipe suggestion: Mushroom Barley Soup. Serves 4, about 50 minutes. Ingredients: 200 g mushrooms, 100 g pearl barley, 1 l vegetable stock. Steps: simmer everything for 40 minutes."
+    ],
+    "skills": ["chef-recipe-decisions"],
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.proposals.mushroom-barley-soup.decisions.length", "equals": 1 },
+          { "path": "$.proposals.mushroom-barley-soup.decisions[0].outcome", "equals": "reject" }
+        ]
+      },
+      { "path": "knowledge/wiki/recipes/mushroom-barley-soup.md", "absent": true }
+    ],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "dietary-should-not-act",
+    "flow": "should-not-act",
+    "description": "Asked to plan a recipe the dietary gate leaves out (unchecked flags under a dairy hard constraint), Chef saves no plan and changes nothing.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "content": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+      }
+    ],
+    "turns": [
+      "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: lemon garlic pasta every night. I confirm this schedule; save it without asking me again."
+    ],
+    "skills": ["chef-meal-planning"],
+    "files": [
+      { "path": "knowledge/wiki/meal-plans", "count": 0 },
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [{ "path": "$.content", "includes": "\"hard_constraints\":[\"dairy\"]" }]
+      }
+    ],
+    "git": { "headUnchanged": true, "clean": true }
+  }
+]

@@ -40,3 +40,9 @@ Muse-only behaviors with no automated test. Check each on Muse before tagging a 
 
 - [ ] Asking for a prep plan for a week with a saved meal plan sends the PDF as a downloadable chat attachment (not only a filesystem path, not a Library entry), with one page per recipe. (`muse.attachment` in `src/runtime/muse.mjs`, `src/skills/chef-batch-prep-planning/SKILL.md`)
 - [ ] The attachment downloads and prints from a phone and a desktop browser; titles, steps and checkboxes fit the page. (`src/skills/chef-batch-prep-planning/scripts/lib/render.mjs`)
+
+## Release gate: agentic suite
+
+Run before tagging, on the commit to be tagged (not on Muse).
+
+- [ ] `bun run agentic` passes every row 3/3 with Claude Code's current default model, and its result file (`evals/agentic/results/agentic-<commit>.json`: commit, plugin version, model id, date, reps, per-row passes) is attached to the GitHub release. (`evals/agentic/run.mjs`, `evals/agentic/rows.json`)
