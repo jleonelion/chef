@@ -272,6 +272,31 @@ for (const command of ['edit', 'delete']) {
   });
 }
 
+test('edit requires at least one changed field and writes nothing', () => {
+  const root = dataRoot();
+  const logged = logMeal(root, {
+    date: '2026-01-16',
+    slot: 'snack',
+    food: 'apple',
+    servings: 1,
+    cooked: false,
+    loggedAt: '2026-01-16T15:00:00.000Z',
+  });
+  const logFile = path.join(root, MEAL_LOG_FILE);
+  const before = fs.readFileSync(logFile, 'utf8');
+
+  const result = spawnSync(process.execPath, [
+    script,
+    'edit',
+    '--data-root', root,
+    '--id', logged.entry.id,
+  ], { encoding: 'utf8' });
+
+  assert.equal(result.status, 2, result.stderr);
+  assert.equal(JSON.parse(result.stdout).status, 'invalid-input');
+  assert.equal(fs.readFileSync(logFile, 'utf8'), before);
+});
+
 test('a unit mismatch is reported while the cooked meal stays logged', () => {
   const root = dataRoot();
   commitInventory(root, {

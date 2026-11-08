@@ -71,6 +71,8 @@ export function logMeal(root, input) {
 
 export function editMeal(root, input) {
   if (!input.id?.trim()) return { status: 'invalid-input', problems: ['id: required'] };
+  const changed = ['date', 'slot', 'recipe', 'food', 'servings', 'cooked'].some((field) => input[field] !== undefined);
+  if (!changed) return { status: 'invalid-input', problems: ['provide at least one field to edit'] };
   const store = readMealLog(root);
   if (store.problem) return { status: 'refused', reason: store.problem };
   const existing = store.entries.find((entry) => entry.id === input.id);
