@@ -7672,7 +7672,7 @@ function convertQuantity(amount, fromUnit, toUnit) {
 // src/skills/chef-food-inventory/scripts/lib/deduct.mjs
 var round = (value) => Math.round(value * 1e6) / 1e6;
 var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-function alreadyApplied(root, deductionId) {
+function deductionApplied(root, deductionId) {
   return (readText(root, STORE.audit) ?? "").trim().split(`
 `).filter(Boolean).some((line) => {
     try {
@@ -7701,7 +7701,7 @@ function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Dat
     problems.push("deduction_id: required");
   if (problems.length)
     return { status: "invalid-input", problems };
-  if (alreadyApplied(root, deductionId))
+  if (deductionApplied(root, deductionId))
     return { status: "duplicate", deduction_id: deductionId };
   const { recipes, unreadable } = listRecipes(root);
   const recipe = recipes.find((candidate) => candidate.slug === slug);
