@@ -11,7 +11,8 @@
     "tier1": "node evals/tier1/run.mjs",
     "migrations": "node evals/migration-regression.mjs",
     "smoke": "node scripts/bundle-smoke.mjs",
-    "hygiene": "node scripts/hygiene.mjs"
+    "hygiene": "node scripts/hygiene.mjs",
+    "agentic": "node evals/agentic/run.mjs"
   },
   "engines": {
     "node": ">=20"
