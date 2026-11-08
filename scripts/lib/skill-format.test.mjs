@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hasHomePath, isRelease, missingSkills, rosterErrors, skillErrors, V1_SKILLS } from './skill-format.mjs';
+import { hasHomePath, isRelease, missingSkills, rosterErrors, skillErrors, tier1CoverageErrors, V1_SKILLS } from './skill-format.mjs';
 
 const md = (name, description = 'Does a thing.') => `---\nname: ${name}\ndescription: ${description}\n---\n\n# x\n`;
 
@@ -47,4 +47,21 @@ test('release mode applies at plugin major >= 1 or with --release', () => {
   assert.equal(isRelease('0.9.3', true), true);
   assert.equal(isRelease('1.0.0', false), true);
   assert.equal(isRelease('12.0.0-rc.1', false), true);
+});
+
+test('every v1 skill must be exercised by a tier1 case command or step', () => {
+  const cases = V1_SKILLS.map((name) => ({
+    id: `${name}-case`,
+    command: ['node', `{skills}/${name}/scripts/run.mjs`],
+  }));
+  cases[0] = {
+    id: 'cross-skill-case',
+    command: ['node', '{skills}/chef-recipe-search/scripts/run.mjs'],
+    steps: [{ command: ['node', '{skills}/chef-setup/scripts/run.mjs'] }],
+  };
+
+  assert.deepEqual(tier1CoverageErrors(cases), []);
+  assert.deepEqual(tier1CoverageErrors(cases.filter((entry) => entry.id !== 'chef-health-goals-case')), [
+    'chef-health-goals: no tier1 case in evals/tier1/cases.json',
+  ]);
 });
