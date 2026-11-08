@@ -40,6 +40,14 @@ function validate(root, input) {
   return problems;
 }
 
+function correctionFor(root, id) {
+  return deductionApplied(root, id) ? {
+    required: true,
+    skill: 'chef-food-inventory',
+    message: 'Inventory was not changed. Correct it separately with chef-food-inventory.',
+  } : undefined;
+}
+
 export function logMeal(root, input) {
   const problems = validate(root, input);
   if (problems.length) return { status: 'invalid-input', problems };
@@ -88,12 +96,24 @@ export function editMeal(root, input) {
   });
   if (written.status !== 'written') return written;
   const result = { status: 'edited', entry };
-  if (deductionApplied(root, entry.id)) {
-    result.inventory_correction = {
-      required: true,
-      skill: 'chef-food-inventory',
-      message: 'Inventory was not changed. Correct it separately with chef-food-inventory.',
-    };
-  }
+  result.inventory_correction = correctionFor(root, entry.id);
+  if (!result.inventory_correction) delete result.inventory_correction;
+  return result;
+}
+
+export function deleteMeal(root, input) {
+  if (!input.id?.trim()) return { status: 'invalid-input', problems: ['id: required'] };
+  const store = readMealLog(root);
+  if (store.problem) return { status: 'refused', reason: store.problem };
+  const entry = store.entries.find((candidate) => candidate.id === input.id);
+  if (!entry) return { status: 'not-found', reason: `meal log entry not found: ${input.id}` };
+  const entries = store.entries.filter((candidate) => candidate !== entry);
+  const written = writeWiki(root, {
+    data: [{ path: MEAL_LOG_FILE, content: `${JSON.stringify({ entries }, null, 2)}\n` }],
+    message: `chef-meal-logging: delete ${entry.id}`,
+  });
+  if (written.status !== 'written') return written;
+  const result = { status: 'deleted', entry, inventory_correction: correctionFor(root, entry.id) };
+  if (!result.inventory_correction) delete result.inventory_correction;
   return result;
 }
