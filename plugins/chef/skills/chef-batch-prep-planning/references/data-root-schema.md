@@ -8,6 +8,7 @@ The data root is one folder under local git. `schema-version.json` at its root h
 |---|---|
 | `schema-version.json` | Schema version stamp |
 | `settings.json` | Per-user settings. Git-ignored; only `chef-setup` writes it |
+| `cache/` | Optional, only with `CHEF_FDC_CACHE=1`: USDA food-detail replies by FDC id (`cache/fdc/food/<fdcId>.json`). Git-ignored by its own `.gitignore`; safe to delete |
 | `knowledge/wiki/<type>/<slug>.md` | Curated pages, Markdown with YAML frontmatter |
 | `knowledge/raw/<type>/` | Source material as it arrived. Append-only: files are never changed or replaced |
 | `data/<store>/` | Operational JSON stores |

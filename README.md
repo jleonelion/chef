@@ -45,6 +45,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   as a custom connector, elsewhere as the `CHEF_USDA_FDC_KEY` environment variable. The key
   never enters the data root or the chat. Without it, nutrition is marked "not computed";
   Chef never estimates it.
+  For a bulk re-enrich that hits USDA's rate limit, set `CHEF_FDC_CACHE=1` to keep USDA food
+  details in the data root's git-ignored `cache/` folder and reuse them. Off by default.
 - When Chef suggests a recipe, your yes or no is kept in `data/recipe-decisions/`, so a recipe
   you turned down is not suggested again. "Always" and "never" rules live there too. Retiring a
   recipe hides it from search without deleting it; you can bring it back.
