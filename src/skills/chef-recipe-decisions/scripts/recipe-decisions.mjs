@@ -47,7 +47,7 @@ function readDraft() {
   }
 }
 
-const publish = (ids) => publishAndEnrich(root, { ids, date, fdc: usdaClient(), confirm: values.confirm });
+const publish = (ids) => publishAndEnrich(root, { ids, date, fdc: usdaClient({ root }), confirm: values.confirm });
 const withPublication = async (result, id) => ({ ...result, publication: await publish([id]) });
 
 async function proposeMode() {
