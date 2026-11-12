@@ -78,13 +78,13 @@ function fromDraft() {
 
 function enrich() {
   if (!values.slug?.length && !values.unenriched) return invalid('give --slug <slug> (repeatable) or --unenriched');
-  return enrichRecipes(root, { slugs: values.slug, unenriched: values.unenriched, fdc: usdaClient(), date: today() });
+  return enrichRecipes(root, { slugs: values.slug, unenriched: values.unenriched, fdc: usdaClient({ root }), date: today() });
 }
 
 // A saved recipe is enriched straight away, as its own commit.
 async function enrichAdded(result) {
   if (result.status !== 'added') return result;
-  const enriched = await enrichRecipes(root, { slugs: [result.slug], fdc: usdaClient(), date: today() });
+  const enriched = await enrichRecipes(root, { slugs: [result.slug], fdc: usdaClient({ root }), date: today() });
   const { recipes, hint, reason, status } = enriched;
   return { ...result, enrichment: recipes?.[0] ?? { status, reason }, ...(hint && { hint }) };
 }

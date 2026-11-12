@@ -2,6 +2,7 @@
 // portions. The credential comes from the runtime adapter; its value goes only where the
 // adapter's placement says, redirects are refused, and results never echo the request URL.
 import { muse } from '../runtime/muse.mjs';
+import { cacheFor } from './fdc-cache.mjs';
 
 const BASE = 'https://api.nal.usda.gov/fdc/v1';
 export const DATA_TYPE = 'SR Legacy';
@@ -31,10 +32,12 @@ function failure(status) {
   return 'unreachable';
 }
 
-// The USDA client wired to the runtime adapter's credential seam.
-export const usdaClient = () => fdcClient({ credential: muse.credential('usda-fdc') });
+// The USDA client wired to the runtime adapter's credential seam. With a data root and
+// CHEF_FDC_CACHE=1, food details come from the data root's reply cache when it has them.
+export const usdaClient = ({ root } = {}) => fdcClient({ credential: muse.credential('usda-fdc'), cache: cacheFor(root) });
 
-export function fdcClient({ credential, fetchImpl = fetch }) {
+// cache: optional { read(fdcId), write(fdcId, body) } for raw food-detail replies.
+export function fdcClient({ credential, fetchImpl = fetch, cache = null }) {
   async function get(pathname, params) {
     if (!credential.ok) return { ok: false, reason: credential.reason };
     if (credential.placement.in !== 'query') return { ok: false, reason: 'wrong-placement' };
@@ -56,8 +59,13 @@ export function fdcClient({ credential, fetchImpl = fetch }) {
     },
     async food(fdcId) {
       if (!Number.isInteger(fdcId)) return { ok: false, reason: 'unreachable' };
+      if (!credential.ok) return { ok: false, reason: credential.reason };
+      const cached = cache?.read(fdcId);
+      if (cached) return { ok: true, food: toFood(cached) };
       const result = await get(`/food/${fdcId}`, {});
-      return result.ok ? { ok: true, food: toFood(result.body) } : result;
+      if (!result.ok) return result;
+      cache?.write(fdcId, result.body);
+      return { ok: true, food: toFood(result.body) };
     },
   };
 }
