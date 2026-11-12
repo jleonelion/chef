@@ -7655,6 +7655,42 @@ var REVIEWED_FDC_FOODS = [
     description: "Onions, raw",
     dataType: "SR Legacy",
     aliases: ["onion bulb", "red onion", "white onion", "yellow onion"]
+  },
+  {
+    fdcId: 169736,
+    description: "Pasta, dry, enriched",
+    dataType: "SR Legacy",
+    aliases: ["dry pasta", "elbow macaroni", "farfalle", "fettuccine", "linguine", "macaroni", "penne", "rigatoni", "rotini", "spaghetti"]
+  },
+  {
+    fdcId: 168894,
+    description: "Wheat flour, white, all-purpose, enriched, bleached",
+    dataType: "SR Legacy",
+    aliases: ["all-purpose flour", "ap flour", "flour", "plain flour"]
+  },
+  {
+    fdcId: 169655,
+    description: "Sugars, granulated",
+    dataType: "SR Legacy",
+    aliases: ["granulated sugar", "sugar", "white sugar"]
+  },
+  {
+    fdcId: 173430,
+    description: "Butter, without salt",
+    dataType: "SR Legacy",
+    aliases: ["unsalted butter"]
+  },
+  {
+    fdcId: 171287,
+    description: "Egg, whole, raw, fresh",
+    dataType: "SR Legacy",
+    aliases: ["egg", "eggs", "whole eggs"]
+  },
+  {
+    fdcId: 170931,
+    description: "Spices, pepper, black",
+    dataType: "SR Legacy",
+    aliases: ["black pepper", "ground black pepper"]
   }
 ];
 

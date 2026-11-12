@@ -1,5 +1,5 @@
 {
-  "_source": "USDA FoodData Central API responses captured 2026-11-06 with the public DEMO_KEY, trimmed to the fields Chef reads. Public domain (USDA).",
+  "_source": "USDA FoodData Central API responses captured 2026-11-06 and 2026-11-11 with the public DEMO_KEY, trimmed to the fields Chef reads. Public domain (USDA).",
   "search": {
     "onion": {
       "foods": [
@@ -1926,6 +1926,170 @@
           ]
         }
       ]
+    },
+    "tahini": {
+      "foods": [
+        {
+          "fdcId": 168604,
+          "description": "Seeds, sesame butter, tahini, type of kernels unspecified",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 53
+            },
+            {
+              "nutrientId": 1258,
+              "value": 7.42
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0
+            },
+            {
+              "nutrientId": 1003,
+              "value": 17.4
+            },
+            {
+              "nutrientId": 1079,
+              "value": 4.7
+            },
+            {
+              "nutrientId": 1093,
+              "value": 35
+            },
+            {
+              "nutrientId": 1005,
+              "value": 21.5
+            },
+            {
+              "nutrientId": 1008,
+              "value": 592
+            }
+          ]
+        },
+        {
+          "fdcId": 169410,
+          "description": "Seeds, sesame butter, tahini, from raw and stone ground kernels",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1003,
+              "value": 17.8
+            },
+            {
+              "nutrientId": 1079,
+              "value": 9.3
+            },
+            {
+              "nutrientId": 1093,
+              "value": 74
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 6.72
+            },
+            {
+              "nutrientId": 1004,
+              "value": 48
+            },
+            {
+              "nutrientId": 1005,
+              "value": 26.2
+            },
+            {
+              "nutrientId": 1008,
+              "value": 570
+            }
+          ]
+        },
+        {
+          "fdcId": 170189,
+          "description": "Seeds, sesame butter, tahini, from roasted and toasted kernels (most common type)",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 2000,
+              "value": 0.49
+            },
+            {
+              "nutrientId": 1004,
+              "value": 53.8
+            },
+            {
+              "nutrientId": 1005,
+              "value": 21.2
+            },
+            {
+              "nutrientId": 1008,
+              "value": 595
+            },
+            {
+              "nutrientId": 1003,
+              "value": 17
+            },
+            {
+              "nutrientId": 1079,
+              "value": 9.3
+            },
+            {
+              "nutrientId": 1093,
+              "value": 115
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 7.53
+            }
+          ]
+        },
+        {
+          "fdcId": 169406,
+          "description": "Seeds, sesame butter, tahini, from unroasted kernels (non-chemically removed seed coat)",
+          "dataType": "SR Legacy",
+          "foodNutrients": [
+            {
+              "nutrientId": 1004,
+              "value": 56.4
+            },
+            {
+              "nutrientId": 1005,
+              "value": 17.9
+            },
+            {
+              "nutrientId": 1008,
+              "value": 607
+            },
+            {
+              "nutrientId": 1003,
+              "value": 18
+            },
+            {
+              "nutrientId": 1079,
+              "value": 9.3
+            },
+            {
+              "nutrientId": 1093,
+              "value": 1
+            },
+            {
+              "nutrientId": 1253,
+              "value": 0
+            },
+            {
+              "nutrientId": 1258,
+              "value": 7.9
+            }
+          ]
+        }
+      ]
     }
   },
   "food": {
@@ -2009,6 +2173,519 @@
             "id": 1253
           },
           "amount": 0E-8
+        }
+      ]
+    },
+    "169736": {
+      "fdcId": 169736,
+      "description": "Pasta, dry, enriched",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1,
+          "modifier": "cup shells",
+          "gramWeight": 64
+        },
+        {
+          "amount": 2,
+          "modifier": "oz",
+          "gramWeight": 57
+        },
+        {
+          "amount": 1,
+          "modifier": "cup rotini",
+          "gramWeight": 96
+        },
+        {
+          "amount": 1,
+          "modifier": "cup elbows",
+          "gramWeight": 122
+        },
+        {
+          "amount": 1,
+          "modifier": "cup spaghetti",
+          "gramWeight": 91
+        },
+        {
+          "amount": 1,
+          "modifier": "cup penne",
+          "gramWeight": 95
+        },
+        {
+          "amount": 1,
+          "modifier": "cup farfalle",
+          "gramWeight": 81
+        },
+        {
+          "amount": 1,
+          "modifier": "cup lasagna",
+          "gramWeight": 90
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 371
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 13.04
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 1.51
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 74.67
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 3.2
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 2.67
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 6
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0.277
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0
+        }
+      ]
+    },
+    "168894": {
+      "fdcId": 168894,
+      "description": "Wheat flour, white, all-purpose, enriched, bleached",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1,
+          "modifier": "cup",
+          "gramWeight": 125
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 364
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 10.33
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 0.98
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 76.31
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 2.7
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 0.27
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 2
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0.155
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0
+        }
+      ]
+    },
+    "169655": {
+      "fdcId": 169655,
+      "description": "Sugars, granulated",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1,
+          "modifier": "cup",
+          "gramWeight": 200
+        },
+        {
+          "amount": 1,
+          "modifier": "serving 1 cube",
+          "gramWeight": 2.3
+        },
+        {
+          "amount": 1,
+          "modifier": "tsp",
+          "gramWeight": 4.2
+        },
+        {
+          "amount": 1,
+          "modifier": "serving packet",
+          "gramWeight": 2.8
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 387
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 0
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 0
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 99.98
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 0
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 99.8
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 1
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0
+        }
+      ]
+    },
+    "173430": {
+      "fdcId": 173430,
+      "description": "Butter, without salt",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1,
+          "modifier": "pat (1\" sq, 1/3\" high)",
+          "gramWeight": 5
+        },
+        {
+          "amount": 1,
+          "modifier": "tbsp",
+          "gramWeight": 14.2
+        },
+        {
+          "amount": 1,
+          "modifier": "stick",
+          "gramWeight": 113
+        },
+        {
+          "amount": 1,
+          "modifier": "cup",
+          "gramWeight": 227
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 717
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 0.85
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 81.11
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 0.06
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 0
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 0.06
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 11
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 50.489
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 215
+        }
+      ]
+    },
+    "171287": {
+      "fdcId": 171287,
+      "description": "Egg, whole, raw, fresh",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1,
+          "modifier": "cup (4.86 large eggs)",
+          "gramWeight": 243
+        },
+        {
+          "amount": 1,
+          "modifier": "medium",
+          "gramWeight": 44
+        },
+        {
+          "amount": 1,
+          "modifier": "extra large",
+          "gramWeight": 56
+        },
+        {
+          "amount": 1,
+          "modifier": "small",
+          "gramWeight": 38
+        },
+        {
+          "amount": 1,
+          "modifier": "jumbo",
+          "gramWeight": 63
+        },
+        {
+          "amount": 1,
+          "modifier": "large",
+          "gramWeight": 50
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 143
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 12.56
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 9.51
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 0.72
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 0
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 0.37
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 142
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 3.126
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 372
+        }
+      ]
+    },
+    "170931": {
+      "fdcId": 170931,
+      "description": "Spices, pepper, black",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1,
+          "modifier": "tbsp, ground",
+          "gramWeight": 6.9
+        },
+        {
+          "amount": 1,
+          "modifier": "dash",
+          "gramWeight": 0.1
+        },
+        {
+          "amount": 1,
+          "modifier": "tsp, ground",
+          "gramWeight": 2.3
+        },
+        {
+          "amount": 1,
+          "modifier": "tsp, whole",
+          "gramWeight": 2.9
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 251
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 10.39
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 3.26
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 63.95
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 25.3
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 0.64
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 20
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 1.392
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0
         }
       ]
     }

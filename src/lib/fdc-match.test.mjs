@@ -32,7 +32,28 @@ test('reviewedMatch resolves pantry aliases to verified SR Legacy foods', () => 
     description: 'Lemon peel, raw',
     dataType: 'SR Legacy',
   });
-  assert.equal(reviewedMatch('spaghetti'), null);
+  assert.equal(reviewedMatch('tahini'), null);
+});
+
+test('reviewedMatch maps pasta shapes and pantry staples to verified SR Legacy foods', () => {
+  const described = (alias) => reviewedMatch(alias)?.description;
+  for (const shape of ['spaghetti', 'penne', 'linguine', 'fettuccine', 'rigatoni', 'elbow macaroni', 'dry pasta']) {
+    assert.equal(described(shape), 'Pasta, dry, enriched', shape);
+  }
+  assert.equal(described('all-purpose flour'), 'Wheat flour, white, all-purpose, enriched, bleached');
+  assert.equal(described('granulated sugar'), 'Sugars, granulated');
+  assert.equal(described('unsalted butter'), 'Butter, without salt');
+  assert.equal(described('eggs'), 'Egg, whole, raw, fresh');
+  assert.equal(described('ground black pepper'), 'Spices, pepper, black');
+});
+
+test('every reviewed food matches a recorded USDA reply', async () => {
+  const { REVIEWED_FDC_FOODS } = await import('./fdc-synonyms-data.mjs');
+  const recorded = [...Object.values(samples.food), ...Object.values(samples.search).flatMap((reply) => reply.foods)];
+  for (const { fdcId, description, dataType } of REVIEWED_FDC_FOODS) {
+    const reply = recorded.find((food) => food.fdcId === fdcId);
+    assert.deepEqual(reply && { fdcId: reply.fdcId, description: reply.description, dataType: reply.dataType }, { fdcId, description, dataType });
+  }
 });
 
 test('singular folds the plural forms USDA and recipes use', () => {

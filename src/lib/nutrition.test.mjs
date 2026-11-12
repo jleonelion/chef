@@ -37,14 +37,26 @@ test('volumes use a USDA portion of the same food', async () => {
 
 test('anything it cannot source from USDA leaves nutrition incomplete, with reasons', async () => {
   const { fdc } = usda();
-  const result = await computeNutrition({ lines: ['200 g spaghetti', '1 bunch garlic', 'olive oil for frying', '100 g onion'], servings: 2, fdc });
+  const result = await computeNutrition({ lines: ['200 g tahini', '1 bunch garlic', 'olive oil for frying', '100 g onion'], servings: 2, fdc });
   assert.equal(result.status, 'incomplete');
   assert.equal(result.per_serving, undefined);
   assert.deepEqual(result.missing, [
-    '200 g spaghetti: no matching USDA food',
+    '200 g tahini: no matching USDA food',
     '1 bunch garlic: USDA has no "bunch" portion for Garlic, raw',
     'olive oil for frying: no amount',
   ]);
+});
+
+test('reviewed staples take count and weight units from their USDA food', async () => {
+  const { calls, fdc } = usda();
+  const result = await computeNutrition({ lines: ['2 large eggs', '1 stick unsalted butter', '8 oz spaghetti'], servings: 4, fdc });
+  assert.equal(result.status, 'complete');
+  assert.deepEqual(result.sources, [
+    '2 large eggs: Egg, whole, raw, fresh (FDC 171287), 100 g',
+    '1 stick unsalted butter: Butter, without salt (FDC 173430), 113 g',
+    '8 oz spaghetti: Pasta, dry, enriched (FDC 169736), 226.8 g',
+  ]);
+  assert.deepEqual(calls, ['/fdc/v1/food/171287', '/fdc/v1/food/173430', '/fdc/v1/food/169736']);
 });
 
 test('without servings nothing per serving can be computed, and USDA is not asked', async () => {
