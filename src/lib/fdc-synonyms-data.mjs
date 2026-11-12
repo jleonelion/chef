@@ -1,5 +1,7 @@
 // Reviewed ingredient aliases. Every id, description and data type below appears in
-// fixtures/usda/fdc-samples.json, captured from the USDA FDC API on 2026-11-06.
+// fixtures/usda/fdc-samples.json, captured from the USDA FDC API (2026-11-06, 2026-11-11).
+// Aliases are matched after the ingredient parser strips prep and size words ("large",
+// "freshly"), so "2 large eggs" arrives here as "eggs".
 export const REVIEWED_FDC_FOODS = [
   {
     fdcId: 171413,
@@ -36,5 +38,41 @@ export const REVIEWED_FDC_FOODS = [
     description: 'Onions, raw',
     dataType: 'SR Legacy',
     aliases: ['onion bulb', 'red onion', 'white onion', 'yellow onion'],
+  },
+  {
+    fdcId: 169736,
+    description: 'Pasta, dry, enriched',
+    dataType: 'SR Legacy',
+    aliases: ['dry pasta', 'elbow macaroni', 'farfalle', 'fettuccine', 'linguine', 'macaroni', 'penne', 'rigatoni', 'rotini', 'spaghetti'],
+  },
+  {
+    fdcId: 168894,
+    description: 'Wheat flour, white, all-purpose, enriched, bleached',
+    dataType: 'SR Legacy',
+    aliases: ['all-purpose flour', 'ap flour', 'flour', 'plain flour'],
+  },
+  {
+    fdcId: 169655,
+    description: 'Sugars, granulated',
+    dataType: 'SR Legacy',
+    aliases: ['granulated sugar', 'sugar', 'white sugar'],
+  },
+  {
+    fdcId: 173430,
+    description: 'Butter, without salt',
+    dataType: 'SR Legacy',
+    aliases: ['unsalted butter'],
+  },
+  {
+    fdcId: 171287,
+    description: 'Egg, whole, raw, fresh',
+    dataType: 'SR Legacy',
+    aliases: ['egg', 'eggs', 'whole eggs'],
+  },
+  {
+    fdcId: 170931,
+    description: 'Spices, pepper, black',
+    dataType: 'SR Legacy',
+    aliases: ['black pepper', 'ground black pepper'],
   },
 ];
