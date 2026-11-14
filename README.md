@@ -63,8 +63,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 
 ## How updates work
 
-- Your install is a git clone of the Chef repository: on the Muse app, the one Chef folder next
-  to `custom-skills/`; on Claude Code and Muse Code, the plugin folder.
+- Your install is a git clone of the Chef repository: on the Muse app, the one clone next to
+  `custom-skills/`; on Claude Code and Muse Code, the plugin folder.
 - Releases are semver git tags, such as `v1.1.0`.
 - The "Chef update notice" task (`check-update`) fetches tags from the clone's `origin` remote
   and compares the newest one with the installed `plugin.json` version. It installs nothing.

@@ -28,7 +28,7 @@ function installedAt(version, { newer, origin = true } = {}) {
   execFileSync('git', ['clone', '-q', upstream, repository]);
   if (newer) release(upstream, newer);
   if (!origin) git(repository, 'remote', 'remove', 'origin');
-  return { repository, adapter: { updateInstall: () => ({ repository }) } };
+  return { upstream, repository, adapter: { updateInstall: () => ({ repository }) } };
 }
 
 test('reports a newer release tag without installing it', () => {
@@ -52,8 +52,8 @@ test('a clone without an origin remote is refused, never reported current', () =
 });
 
 test('a clone whose origin has no release tags is refused', () => {
-  const { repository, adapter } = installedAt('0.2.0');
+  const { upstream, repository, adapter } = installedAt('0.2.0');
   git(repository, 'tag', '--delete', 'v0.2.0');
-  git(path.join(repository, '..', 'upstream'), 'tag', '--delete', 'v0.2.0');
+  git(upstream, 'tag', '--delete', 'v0.2.0');
   assert.deepEqual(checkUpdate({ adapter }), { status: 'refused', reason: 'Chef repository has no semver release tags' });
 });
