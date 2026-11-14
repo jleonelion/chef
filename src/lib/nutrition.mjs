@@ -65,7 +65,8 @@ async function ingredient(line, lookup) {
   if (!grams) return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? 'medium'}" portion for ${food.description}` };
   const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
   if (absent.length) return { missing: `${line}: USDA has no ${absent.join(', ')} value for ${food.description}` };
-  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g` };
+  const note = parsed.note ? `; ${parsed.note}` : '';
+  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note}` };
 }
 
 function memoLookup(fdc) {

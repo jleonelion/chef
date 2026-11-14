@@ -1,5 +1,5 @@
 // Reviewed ingredient aliases. Every id, description and data type below appears in
-// fixtures/usda/fdc-samples.json, captured from the USDA FDC API (2026-11-06, 2026-11-11).
+// fixtures/usda/fdc-samples.json, captured from the USDA FDC API (2026-11-06, 2026-11-11, 2026-11-14).
 // Aliases are matched after the ingredient parser strips prep and size words ("large",
 // "freshly"), so "2 large eggs" arrives here as "eggs".
 export const REVIEWED_FDC_FOODS = [
@@ -26,6 +26,12 @@ export const REVIEWED_FDC_FOODS = [
     description: 'Lemon juice, raw',
     dataType: 'SR Legacy',
     aliases: ['fresh lemon juice', 'lemon juice'],
+  },
+  {
+    fdcId: 168156,
+    description: 'Lime juice, raw',
+    dataType: 'SR Legacy',
+    aliases: ['fresh lime juice', 'lime juice'],
   },
   {
     fdcId: 169230,

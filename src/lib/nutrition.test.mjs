@@ -46,6 +46,24 @@ test('seasonings, garnishes and optional lines are excluded, listed with their r
   assert.deepEqual(calls, ['/fdc/v1/foods/search?onion']);
 });
 
+test('citrus juice by the fruit uses USDA\'s per-fruit juice yield; zest by the fruit has none, so it is excluded', async () => {
+  const { fdc } = usda();
+  const lines = ['Juice of 1 lemon', 'Zest and juice of 2 limes', 'Juice of ½ lemon', '1 lime, juiced', 'Zest of 1 lemon', '1 tsp lemon zest'];
+  const result = await computeNutrition({ lines, servings: 1, fdc });
+  assert.equal(result.status, 'complete');
+  // USDA portions: "1 lemon yields" 48 g lemon juice, "1 lime yields" 44 g lime juice, 1 tsp lemon peel 2 g.
+  assert.deepEqual(result.sources, [
+    'Juice of 1 lemon: Lemon juice, raw (FDC 167747), 48 g',
+    'Zest and juice of 2 limes: Lime juice, raw (FDC 168156), 88 g; zest excluded: no USDA per-fruit yield',
+    'Juice of ½ lemon: Lemon juice, raw (FDC 167747), 24 g',
+    '1 lime, juiced: Lime juice, raw (FDC 168156), 44 g',
+    'Zest of 1 lemon: excluded: zest, no USDA per-fruit yield',
+    '1 tsp lemon zest: Lemon peel, raw (FDC 167749), 2 g',
+  ]);
+  assert.equal(result.per_serving.calories, 50);
+  assert.equal(result.per_serving.carbs, 16.4);
+});
+
 test('volumes use a USDA portion of the same food', async () => {
   const { fdc } = usda();
   const result = await computeNutrition({ lines: ['1 tbsp garlic'], servings: 1, fdc });

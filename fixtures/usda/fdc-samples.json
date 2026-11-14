@@ -1,5 +1,5 @@
 {
-  "_source": "USDA FoodData Central API responses captured 2026-11-06 and 2026-11-11 with the public DEMO_KEY, trimmed to the fields Chef reads. Public domain (USDA).",
+  "_source": "USDA FoodData Central API responses captured 2026-11-06, 2026-11-11 and 2026-11-14 with the public DEMO_KEY, trimmed to the fields Chef reads. Public domain (USDA).",
   "search": {
     "onion": {
       "foods": [
@@ -2686,6 +2686,240 @@
             "id": 1253
           },
           "amount": 0
+        }
+      ]
+    },
+    "167747": {
+      "fdcId": 167747,
+      "description": "Lemon juice, raw",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1.0,
+          "modifier": "wedge yields",
+          "gramWeight": 5.9
+        },
+        {
+          "amount": 1.0,
+          "modifier": "lemon yields",
+          "gramWeight": 48.0
+        },
+        {
+          "amount": 1.0,
+          "modifier": "cup",
+          "gramWeight": 244.0
+        },
+        {
+          "amount": 1.0,
+          "modifier": "fl oz",
+          "gramWeight": 30.5
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 22.0
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 0.35
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 0.24
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 6.9
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 0.3
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 2.52
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 1.0
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0.04
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0.0
+        }
+      ]
+    },
+    "167749": {
+      "fdcId": 167749,
+      "description": "Lemon peel, raw",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1.0,
+          "modifier": "tsp",
+          "gramWeight": 2.0
+        },
+        {
+          "amount": 1.0,
+          "modifier": "tbsp",
+          "gramWeight": 6.0
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 47.0
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 1.5
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 0.3
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 16.0
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 10.6
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 4.17
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 6.0
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0.039
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0.0
+        }
+      ]
+    },
+    "168156": {
+      "fdcId": 168156,
+      "description": "Lime juice, raw",
+      "dataType": "SR Legacy",
+      "foodPortions": [
+        {
+          "amount": 1.0,
+          "modifier": "cup",
+          "gramWeight": 242.0
+        },
+        {
+          "amount": 1.0,
+          "modifier": "fl oz",
+          "gramWeight": 30.8
+        },
+        {
+          "amount": 1.0,
+          "modifier": "lime yields",
+          "gramWeight": 44.0
+        }
+      ],
+      "foodNutrients": [
+        {
+          "nutrient": {
+            "id": 1008
+          },
+          "amount": 25.0
+        },
+        {
+          "nutrient": {
+            "id": 1003
+          },
+          "amount": 0.42
+        },
+        {
+          "nutrient": {
+            "id": 1004
+          },
+          "amount": 0.07
+        },
+        {
+          "nutrient": {
+            "id": 1005
+          },
+          "amount": 8.42
+        },
+        {
+          "nutrient": {
+            "id": 1079
+          },
+          "amount": 0.4
+        },
+        {
+          "nutrient": {
+            "id": 2000
+          },
+          "amount": 1.69
+        },
+        {
+          "nutrient": {
+            "id": 1093
+          },
+          "amount": 2.0
+        },
+        {
+          "nutrient": {
+            "id": 1258
+          },
+          "amount": 0.008
+        },
+        {
+          "nutrient": {
+            "id": 1253
+          },
+          "amount": 0.0
         }
       ]
     }
