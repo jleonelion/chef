@@ -29,8 +29,9 @@ const QUALIFIER = /^(?:about|approximately|roughly|scant|heaping|generous|up to)
 const WORD_NUMBER = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
 const WORD_LEAD = /^(a|an|one|two|three|four|five|six)\s+(?=\d|(?:pinch|dash)(?:es)?\b)/i;
 // Citrus by the fruit: "Juice of 1 lemon", "Zest and juice of 2 limes", "1 lime, juiced".
-// The unit is the fruit, read against USDA's "1 lemon yields" juice portion. USDA has no
-// per-fruit zest yield, so zest by the fruit is excluded rather than guessed.
+// The item is the fruit, counted (what to buy), with `citrus: 'juice'` so nutrition can read
+// the juice by USDA's per-fruit yield. USDA has no per-fruit zest yield, so zest by the fruit
+// is excluded from nutrition rather than guessed.
 const CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
 const JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, 'i');
 const JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, 'i');
@@ -72,15 +73,14 @@ function plusAmount(rest, amount, unit) {
 const citrusCount = (text) => (/^half/i.test(text) ? 0.5 : WORD_NUMBER[text.toLowerCase()] ?? toNumber(text));
 
 function parseCitrus(line, text) {
-  const base = { line, size: null, packageGrams: null, trace: false, excluded: null };
+  const fruit = (count, name) => ({ line, amount: citrusCount(count), unit: null, item: name.toLowerCase(), size: null, packageGrams: null, trace: false });
   const zest = text.match(ZEST_OF);
-  if (zest) return { ...base, amount: citrusCount(zest[1]), unit: zest[2].toLowerCase(), item: `${zest[2].toLowerCase()} zest`, excluded: `zest, ${NO_ZEST_YIELD}` };
+  if (zest) return { ...fruit(zest[1], zest[2]), citrus: 'zest', excluded: `zest, ${NO_ZEST_YIELD}` };
   const juice = text.match(JUICE_OF);
   const juiced = !juice && text.match(JUICED);
   if (!juice && !juiced) return null;
-  const [count, fruit] = juice ? [juice[3], juice[4]] : [juiced[1], juiced[2]];
-  const note = juice && (juice[1] || juice[2]) ? `zest excluded: ${NO_ZEST_YIELD}` : null;
-  return { ...base, amount: citrusCount(count), unit: fruit.toLowerCase(), item: `${fruit.toLowerCase()} juice`, ...(note && { note }) };
+  const withZest = Boolean(juice && (juice[1] || juice[2]));
+  return { ...(juice ? fruit(juice[3], juice[4]) : fruit(juiced[1], juiced[2])), citrus: 'juice', excluded: null, ...(withZest && { note: `zest excluded: ${NO_ZEST_YIELD}` }) };
 }
 
 export function parseIngredientLine(line) {

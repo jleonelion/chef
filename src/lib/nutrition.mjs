@@ -1,7 +1,9 @@
-// Per-serving nutrition from USDA FoodData Central, never estimated: every ingredient must
-// resolve to a USDA food, a gram weight (from the line itself or a USDA portion of that food)
-// and every tracked nutrient. Anything short of that leaves the recipe "incomplete" with
-// reasons, and no numbers. No USDA access at all means "not-computed".
+// Per-serving nutrition from USDA FoodData Central, never estimated: every counted ingredient
+// must resolve to a USDA food, a gram weight (from the line itself or a USDA portion of that
+// food) and every tracked nutrient, or to a linked sub-recipe with complete nutrition. Anything
+// short of that leaves the recipe "incomplete" with reasons, and no numbers. Optional, garnish,
+// unmeasured seasoning and trace lines are excluded, and listed as such in the sources. No USDA
+// access at all means "not-computed".
 import { NUTRIENTS } from './fdc.mjs';
 import { bestMatch, reviewedMatch, singular } from './fdc-match.mjs';
 import { GRAMS_PER, ML_PER, parseIngredientLine } from './ingredient-line.mjs';
@@ -75,6 +77,11 @@ async function ingredient(line, lookup, subRecipe) {
   if (excluded) return { source: `${line}: excluded: ${excluded}` };
   const slug = linkedSlug(line);
   if (slug) return subRecipeLine(line, parsed, slug, subRecipe);
+  return usdaLine(line, parsed.citrus === 'juice' ? { ...parsed, item: `${parsed.item} juice`, unit: parsed.item } : parsed, lookup);
+}
+
+// Citrus juice by the fruit arrives as item "lemon juice", unit "lemon": USDA's "1 lemon yields" portion.
+async function usdaLine(line, parsed, lookup) {
   if (parsed.amount === null) return { missing: `${line}: no amount` };
   const food = await lookup.match(parsed.item);
   if (!food) return { missing: `${line}: no matching USDA food` };
