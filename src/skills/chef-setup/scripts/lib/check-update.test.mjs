@@ -17,14 +17,17 @@ function release(repository, version) {
   git(repository, 'tag', `v${version}`);
 }
 
-function installedAt(version, { newer } = {}) {
-  const repository = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-check-update-'));
-  git(repository, 'init', '-q', '-b', 'main');
-  release(repository, version);
-  if (newer) {
-    release(repository, newer);
-    git(repository, 'checkout', '-q', '--detach', `v${version}`);
-  }
+// A clone of a Chef origin that has released `version` (and `newer`, published after the clone).
+function installedAt(version, { newer, origin = true } = {}) {
+  const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-check-update-'));
+  const upstream = path.join(parent, 'upstream');
+  const repository = path.join(parent, 'clone');
+  fs.mkdirSync(upstream);
+  git(upstream, 'init', '-q', '-b', 'main');
+  release(upstream, version);
+  execFileSync('git', ['clone', '-q', upstream, repository]);
+  if (newer) release(upstream, newer);
+  if (!origin) git(repository, 'remote', 'remove', 'origin');
   return { repository, adapter: { updateInstall: () => ({ repository }) } };
 }
 
@@ -40,9 +43,17 @@ test('reports current when the installed version is the newest tag', () => {
   assert.deepEqual(checkUpdate({ adapter }), { status: 'current', installed: '0.2.0', latest: 'v0.2.0' });
 });
 
-test('a repository without release tags is refused', () => {
-  const repository = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-check-update-none-'));
-  git(repository, 'init', '-q', '-b', 'main');
-  const result = checkUpdate({ adapter: { updateInstall: () => ({ repository }) } });
-  assert.equal(result.status, 'refused');
+test('a clone without an origin remote is refused, never reported current', () => {
+  const { adapter } = installedAt('0.2.0', { origin: false });
+  assert.deepEqual(checkUpdate({ adapter }), {
+    status: 'refused',
+    reason: 'no remote to check for releases: add the Chef repository as the origin remote',
+  });
+});
+
+test('a clone whose origin has no release tags is refused', () => {
+  const { repository, adapter } = installedAt('0.2.0');
+  git(repository, 'tag', '--delete', 'v0.2.0');
+  git(path.join(repository, '..', 'upstream'), 'tag', '--delete', 'v0.2.0');
+  assert.deepEqual(checkUpdate({ adapter }), { status: 'refused', reason: 'Chef repository has no semver release tags' });
 });

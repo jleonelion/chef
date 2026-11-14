@@ -42,9 +42,8 @@ export function compareSemver(left, right) {
 
 export function latestTag(repository) {
   const remotes = git(repository, ['remote']).split('\n').filter(Boolean);
-  if (remotes.includes('origin')) {
-    git(repository, ['fetch', '--tags', '--force', 'origin']);
-  }
+  if (!remotes.includes('origin')) throw new Error('no remote to check for releases: add the Chef repository as the origin remote');
+  git(repository, ['fetch', '--tags', '--force', 'origin']);
   const releases = git(repository, ['tag', '--list']).split('\n').filter(Boolean).map(semver).filter(Boolean).sort(compareSemver);
   if (releases.length === 0) throw new Error('Chef repository has no semver release tags');
   return releases.at(-1).tag;
