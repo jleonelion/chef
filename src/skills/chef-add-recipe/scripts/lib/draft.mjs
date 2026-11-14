@@ -1,5 +1,7 @@
 // A recipe draft is the JSON shape add-recipe accepts, from JSON-LD or from the agent's own
 // reading of pasted text or a photo. checkDraft normalizes it; recipePage renders a v1 page.
+import { GRAMS_PER, ML_PER, parseIngredientLine } from '../../../../lib/ingredient-line.mjs';
+
 const oneLine = (value) => String(value).replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim();
 const isText = (value, max) => typeof value === 'string' && oneLine(value).length > 0 && oneLine(value).length <= max;
 const wholeIn = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
@@ -7,11 +9,19 @@ const wholeIn = (value, min, max) => Number.isInteger(value) && value >= min && 
 const LINES = { max: 100, length: 2000 };
 const lineList = (value) => Array.isArray(value) && value.length > 0 && value.length <= LINES.max && value.every((line) => isText(line, LINES.length));
 
+// A total yield other recipes can measure against: "2 cups", "500 g".
+const isMeasure = (value) => {
+  if (!isText(value, 40)) return false;
+  const { amount, unit } = parseIngredientLine(oneLine(value));
+  return amount > 0 && Boolean(ML_PER[unit] || GRAMS_PER[unit]);
+};
+
 const FIELDS = [
   ['title', (v) => isText(v, 200), 'required, at most 200 characters', true],
   ['description', (v) => isText(v, 1000), 'at most 1000 characters'],
   ['servings', (v) => wholeIn(v, 1, 1000), 'must be a whole number from 1 to 1000'],
   ...['prep_minutes', 'cook_minutes', 'total_minutes'].map((key) => [key, (v) => wholeIn(v, 0, 10080), 'must be a whole number from 0 to 10080']),
+  ['yield', isMeasure, 'must be a volume or weight, such as 2 cups or 500 g'],
   ['cuisine', (v) => isText(v, 40), 'at most 40 characters'],
   ['tags', (v) => Array.isArray(v) && v.length <= 20 && v.every((t) => isText(t, 40)), 'must be a list of at most 20 short tags'],
   ['ingredients', lineList, 'must be a list of 1 to 100 non-empty lines', true],
@@ -27,13 +37,14 @@ export function checkDraft(draft) {
   const recipe = { title: oneLine(draft.title), ingredients: draft.ingredients.map(oneLine), steps: draft.steps.map(oneLine) };
   for (const key of ['servings', 'prep_minutes', 'cook_minutes', 'total_minutes']) if (given(key)) recipe[key] = draft[key];
   if (!given('total_minutes') && given('prep_minutes') && given('cook_minutes')) recipe.total_minutes = draft.prep_minutes + draft.cook_minutes;
+  if (given('yield')) recipe.yield = oneLine(draft.yield);
   if (given('description')) recipe.description = oneLine(draft.description);
   if (given('cuisine')) recipe.cuisine = oneLine(draft.cuisine).toLowerCase();
   if (given('tags') && draft.tags.length) recipe.tags = [...new Set(draft.tags.map((t) => oneLine(t).toLowerCase()))];
   return { recipe, problems };
 }
 
-const FACT_KEYS = ['servings', 'prep_minutes', 'cook_minutes', 'total_minutes', 'cuisine', 'tags'];
+const FACT_KEYS = ['servings', 'yield', 'prep_minutes', 'cook_minutes', 'total_minutes', 'cuisine', 'tags'];
 
 export function recipePage(recipe, { sourceKind, sourceUrl, sourceRaw, date }) {
   const frontmatter = { type: 'recipe', title: recipe.title };

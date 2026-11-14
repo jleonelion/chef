@@ -70,3 +70,10 @@ test('omits optional fields the draft did not give', () => {
   const page = recipePage(recipe, { sourceKind: 'text', sourceRaw: ['knowledge/raw/recipes/x.txt'], date: '2026-01-15' });
   assert.deepEqual(Object.keys(page.frontmatter), ['type', 'title', 'source_kind', 'source_raw', 'created', 'updated']);
 });
+
+test('keeps a volume or weight yield so other recipes can use this one by amount', () => {
+  const { recipe } = checkDraft({ title: 'Basil Pesto', servings: 4, yield: ' 1 cup ', ingredients: ['2 cups basil'], steps: ['Blend.'] });
+  assert.equal(recipe.yield, '1 cup');
+  assert.equal(recipePage(recipe, { sourceKind: 'text', sourceRaw: [], date: '2026-01-15' }).frontmatter.yield, '1 cup');
+  assert.deepEqual(checkDraft({ title: 'Basil Pesto', yield: '4 jars', ingredients: ['basil'], steps: ['Blend.'] }).problems, ['yield: must be a volume or weight, such as 2 cups or 500 g']);
+});
