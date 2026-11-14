@@ -17,6 +17,10 @@ export const GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
 export const ML_PER = { tsp: 4.92892, tbsp: 14.7868, cup: 236.588, ml: 1, l: 1000, floz: 29.5735, pt: 473.176, qt: 946.353 };
 const TRACE = new Set(['pinch', 'dash']);
 const SIZES = ['small', 'medium', 'large'];
+const OPTIONAL = /\boptional\b/i;
+const GARNISH = /\b(?:for|to)\s+(?:garnish(?:ing)?|serv(?:e|ing)|topping|dusting)\b/i;
+const SEASONING_WORDS = new Set(['salt', 'pepper', 'and', 'black', 'white', 'kosher', 'sea', 'flaky', 'ground', 'cracked', 'more']);
+const isSeasoning = (item) => item.includes('salt') || item.includes('pepper') ? item.split(/[^a-z]+/).filter(Boolean).every((w) => SEASONING_WORDS.has(w)) : false;
 const PREP = /\b(?:finely|roughly|thinly|freshly|fresh|chopped|diced|minced|sliced|grated|peeled|drained|rinsed|large|medium|small)\b/g;
 
 const NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
@@ -69,5 +73,14 @@ export function parseIngredientLine(line) {
   const lower = rest.toLowerCase();
   const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
   const item = lower.split(',')[0].replace(/\([^)]*\)/g, ' ').replace(/^of\s+/, '').replace(PREP, ' ').replace(/\s+/g, ' ').trim();
-  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), excluded: exclusion(line, amount, item) };
+}
+
+// Lines left out of nutrition because their impact is nominal: optional ingredients,
+// garnishes, and unmeasured salt and pepper. Measured salt still counts (sodium).
+function exclusion(line, amount, item) {
+  if (OPTIONAL.test(line)) return 'optional';
+  if (GARNISH.test(line)) return 'garnish';
+  if (amount === null && isSeasoning(item)) return 'seasoning';
+  return null;
 }

@@ -25,7 +25,25 @@ test('sums USDA per-100 g values over each ingredient\'s grams, per serving, rou
   assert.equal(result.status, 'complete');
   // onion 100 g + garlic 2 x 3 g (USDA "clove" portion), USDA SR Legacy values.
   assert.deepEqual(result.per_serving, { calories: 49, protein: 1.5, fat: 0.1, saturated_fat: 0, carbs: 11.3, fiber: 1.8, sugar: 4.3, sodium: 5, cholesterol: 0 });
-  assert.deepEqual(result.sources, ['100 g onion: Onions, raw (FDC 170000), 100 g', '2 cloves garlic, minced: Garlic, raw (FDC 169230), 6 g']);
+  assert.deepEqual(result.sources, ['100 g onion: Onions, raw (FDC 170000), 100 g', '2 cloves garlic, minced: Garlic, raw (FDC 169230), 6 g', 'salt to taste: excluded: trace amount']);
+});
+
+test('seasonings, garnishes and optional lines are excluded, listed with their reason, and never block complete', async () => {
+  const { calls, fdc } = usda();
+  const lines = ['100 g onion', 'salt and pepper', 'Kosher salt', 'parsley, for garnish', '4 lemon wedges, for serving', '1/4 cup toasted pine nuts (optional)', 'salt to taste'];
+  const result = await computeNutrition({ lines, servings: 1, fdc });
+  assert.equal(result.status, 'complete');
+  assert.equal(result.per_serving.calories, 40);
+  assert.deepEqual(result.sources, [
+    '100 g onion: Onions, raw (FDC 170000), 100 g',
+    'salt and pepper: excluded: seasoning',
+    'Kosher salt: excluded: seasoning',
+    'parsley, for garnish: excluded: garnish',
+    '4 lemon wedges, for serving: excluded: garnish',
+    '1/4 cup toasted pine nuts (optional): excluded: optional',
+    'salt to taste: excluded: trace amount',
+  ]);
+  assert.deepEqual(calls, ['/fdc/v1/foods/search?onion']);
 });
 
 test('volumes use a USDA portion of the same food', async () => {

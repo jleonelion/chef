@@ -55,7 +55,8 @@ function gramsFromPortions(parsed, food) {
 
 async function ingredient(line, lookup) {
   const parsed = parseIngredientLine(line);
-  if (parsed.trace) return { grams: 0 };
+  const excluded = parsed.trace ? 'trace amount' : parsed.excluded;
+  if (excluded) return { source: `${line}: excluded: ${excluded}` };
   if (parsed.amount === null) return { missing: `${line}: no amount` };
   const food = await lookup.match(parsed.item);
   if (!food) return { missing: `${line}: no matching USDA food` };
@@ -97,8 +98,8 @@ export async function computeNutrition({ lines, servings, fdc }) {
     for (const line of lines) {
       const result = await ingredient(line, lookup);
       if (result.missing) missing.push(result.missing);
+      if (result.source) sources.push(result.source);
       if (!result.food) continue;
-      sources.push(result.source);
       for (const field of Object.keys(totals)) totals[field] += (result.food.per100g[field] * result.grams) / 100;
     }
   } catch (error) {
