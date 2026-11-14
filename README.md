@@ -60,9 +60,19 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   the copy. To move or restore one, ask Chef to adopt the backup; `chef-setup` clones it and drops
   the remote.
 - Ask Chef to "verify my Chef install" any time; it never touches your data.
-- Ask Chef to "update Chef" to install the newest tagged release. Chef commits the data root,
-  previews skill and migration changes, waits for confirmation before migrating, and verifies
-  the install afterward. Updates never delete data-root files.
+
+## How updates work
+
+- Your install is a git clone of the Chef repository: on the Muse app, the one Chef folder next
+  to `custom-skills/`; on Claude Code and Muse Code, the plugin folder.
+- Releases are semver git tags, such as `v1.1.0`.
+- The "Chef update notice" task (`check-update`) fetches tags from the clone's `origin` remote
+  and compares the newest one with the installed `plugin.json` version. It installs nothing.
+  A clone with no `origin` remote is refused, never reported as current.
+- Ask Chef to "update Chef" to install the newest release. Chef commits the data root, checks
+  out the release tag, makes the installed `chef-` skills match it and shows what changed. Data
+  and settings migrations wait for your confirmation; Chef then verifies the install. Updates
+  never delete data-root files.
 
 ## Safety
 
