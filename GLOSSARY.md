@@ -27,3 +27,7 @@ _Avoid_: cron job, automation
 **Release**:
 A tagged Chef version that the user can be told about and choose to install.
 _Avoid_: build, version bump
+
+**Unit system**:
+The household's choice of US or metric measures for quantities Chef shows; stored recipes keep the units they were written in.
+_Avoid_: units preference, measurement mode
