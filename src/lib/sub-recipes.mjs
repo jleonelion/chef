@@ -23,3 +23,37 @@ export function servingsUsed(parsed, slug, sub) {
   if (share === null) return { reason: `${parsed.unit} does not convert to the ${slug} yield of ${sub.yield}` };
   return { servings: (share / made.amount) * sub.servings };
 }
+
+export const MAX_DEPTH = 3;
+
+// How recipes link each other, from [{ slug, lines }]. `order` lists every slug with linked
+// recipes before the recipes that use them; `blocked` maps a slug in a link cycle, or nested
+// more than MAX_DEPTH deep, to the reason; `usedBy` maps a slug to the recipes linking it.
+export function subRecipeGraph(recipes) {
+  const links = new Map(recipes.map(({ slug, lines }) => [slug, [...new Set(lines.map(linkedSlug).filter(Boolean))]]));
+  const order = [];
+  const blocked = new Map();
+  const depth = new Map();
+  const visiting = new Set();
+  const usedBy = new Map();
+  for (const [slug, linked] of links) for (const sub of linked) usedBy.set(sub, [...(usedBy.get(sub) ?? []), slug]);
+
+  function visit(slug, trail) {
+    if (depth.has(slug)) return depth.get(slug);
+    if (visiting.has(slug)) {
+      const cycle = [...trail.slice(trail.indexOf(slug)), slug];
+      for (const member of cycle) blocked.set(member, `sub-recipe cycle: ${cycle.join(' -> ')}`);
+      return 0;
+    }
+    visiting.add(slug);
+    let deepest = 0;
+    for (const sub of links.get(slug)) if (links.has(sub)) deepest = Math.max(deepest, 1 + visit(sub, [...trail, slug]));
+    visiting.delete(slug);
+    depth.set(slug, deepest);
+    order.push(slug);
+    if (deepest > MAX_DEPTH && !blocked.has(slug)) blocked.set(slug, `sub-recipes nest more than ${MAX_DEPTH} levels deep`);
+    return deepest;
+  }
+  for (const slug of links.keys()) visit(slug, []);
+  return { order, blocked, usedBy };
+}
