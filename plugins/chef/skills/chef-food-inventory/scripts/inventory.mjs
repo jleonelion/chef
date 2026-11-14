@@ -7562,6 +7562,7 @@ var UNITS = {
   piece: ["piece", "pieces"],
   stalk: ["stalk", "stalks"],
   leaf: ["leaf", "leaves"],
+  serving: ["serving", "servings"],
   pinch: ["pinch", "pinches"],
   dash: ["dash", "dashes"]
 };
@@ -7577,6 +7578,10 @@ var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
 var QUALIFIER = /^(?:about|approximately|roughly|scant|heaping|generous|up to)\s+(?=\d)/i;
 var WORD_NUMBER = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
 var WORD_LEAD = /^(a|an|one|two|three|four|five|six)\s+(?=\d|(?:pinch|dash)(?:es)?\b)/i;
+var CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
+var JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
+var JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, "i");
+var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
 var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
 var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
 var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
@@ -7599,8 +7604,23 @@ function plusAmount(rest, amount, unit) {
   const per = [ML_PER, GRAMS_PER].find((table) => table[unit] && table[extra]);
   return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
 }
+var citrusCount = (text) => /^half/i.test(text) ? 0.5 : WORD_NUMBER[text.toLowerCase()] ?? toNumber(text);
+function parseCitrus(line, text) {
+  const fruit = (count, name) => ({ line, amount: citrusCount(count), unit: null, item: name.toLowerCase(), size: null, packageGrams: null, trace: false });
+  const zest = text.match(ZEST_OF);
+  if (zest)
+    return { ...fruit(zest[1], zest[2]), citrus: "zest" };
+  const juice = text.match(JUICE_OF);
+  if (juice)
+    return { ...fruit(juice[3], juice[4]), citrus: juice[1] || juice[2] ? "zest-and-juice" : "juice" };
+  const juiced = text.match(JUICED);
+  return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
+}
 function parseIngredientLine(line) {
   let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  const citrus = parseCitrus(line, text);
+  if (citrus)
+    return citrus;
   const toTaste = /\bto taste\b/i.test(text);
   text = numericLead(text.replace(/\bto taste\b/i, "").trim());
   const lead = text.match(LEAD);
@@ -7611,7 +7631,7 @@ function parseIngredientLine(line) {
   const lower = rest.toLowerCase();
   const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
   const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
-  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), citrus: null };
 }
 
 // src/lib/quantity.mjs

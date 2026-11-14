@@ -100,3 +100,48 @@ test('unknown slugs are reported and nothing is written', async () => {
   const { root } = withRecipe({ title: 'Onion Garlic', servings: 1, ingredients: ['100 g onion'] });
   assert.deepEqual(await enrichRecipes(root, { slugs: ['nope'], fdc: usda, date: '2026-02-01' }), { status: 'not-found', data_root: root, slugs: ['nope'] });
 });
+
+function addTo(root, draft) {
+  return addRecipe(root, { draft: { steps: ['Cook.'], ...draft }, ...source });
+}
+const frontmatterOf = (root, slug) => parsePage(fs.readFileSync(path.join(root, `knowledge/wiki/recipes/${slug}.md`), 'utf8')).frontmatter;
+
+test('a recipe that links a sub-recipe is enriched after it, with its scaled nutrition and its flags', async () => {
+  // "angel-hair-supper" lists before "egg-topping", so this only passes if the sub-recipe goes first.
+  const { root } = withRecipe({ title: 'Angel Hair Supper', servings: 2, ingredients: ['200 g spaghetti', '2 servings [[egg-topping]]'] });
+  addTo(root, { title: 'Egg Topping', servings: 1, ingredients: ['2 large eggs'] });
+  const result = await enrichRecipes(root, { unenriched: true, fdc: usda, date: '2026-02-01' });
+  assert.deepEqual(result.recipes.map((r) => [r.slug, r.nutrition]), [['egg-topping', 'complete'], ['angel-hair-supper', 'complete']]);
+  const parent = frontmatterOf(root, 'angel-hair-supper');
+  // (742 kcal spaghetti + 2 x 143 kcal topping) / 2 servings.
+  assert.equal(parent.nutrition_per_serving.calories, 514);
+  assert.deepEqual(parent.dietary_flags, ['contains-egg', 'contains-gluten', 'contains-wheat']);
+  assert.ok(parent.nutrition_sources.includes('2 servings [[egg-topping]]: sub-recipe egg-topping, 2 servings'));
+});
+
+test('re-enriching a sub-recipe re-enriches the recipes that use it', async () => {
+  const { root } = withRecipe({ title: 'Angel Hair Supper', servings: 2, ingredients: ['200 g spaghetti', '2 servings [[egg-topping]]'] });
+  addTo(root, { title: 'Egg Topping', servings: 1, ingredients: ['2 large eggs'] });
+  await enrichRecipes(root, { unenriched: true, fdc: usda, date: '2026-02-01' });
+  const file = path.join(root, 'knowledge/wiki/recipes/egg-topping.md');
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('- 2 large eggs', '- 4 large eggs'));
+  git(root, ['add', '-A']);
+  commit(root, 'user edit');
+  const result = await enrichRecipes(root, { slugs: ['egg-topping'], fdc: usda, date: '2026-03-01' });
+  assert.deepEqual(result.recipes.map((r) => r.slug), ['egg-topping', 'angel-hair-supper']);
+  assert.equal(frontmatterOf(root, 'angel-hair-supper').nutrition_per_serving.calories, 657);
+});
+
+test('sub-recipe cycles are refused and deep nesting is capped, each with a reason', async () => {
+  const { root } = withRecipe({ title: 'Cycle A', servings: 1, ingredients: ['1 serving [[cycle-b]]'] });
+  addTo(root, { title: 'Cycle B', servings: 1, ingredients: ['1 serving [[cycle-a]]', '100 g onion'] });
+  for (const [title, next] of [['Nest 1', 'nest-2'], ['Nest 2', 'nest-3'], ['Nest 3', 'nest-4'], ['Nest 4', 'nest-5']]) addTo(root, { title, servings: 1, ingredients: [`1 serving [[${next}]]`] });
+  addTo(root, { title: 'Nest 5', servings: 1, ingredients: ['100 g onion'] });
+  const result = await enrichRecipes(root, { unenriched: true, fdc: usda, date: '2026-02-01' });
+  const bySlug = Object.fromEntries(result.recipes.map((r) => [r.slug, r]));
+  const cycle = 'sub-recipe cycle: cycle-a -> cycle-b -> cycle-a';
+  assert.deepEqual([bySlug['cycle-a'].missing, bySlug['cycle-b'].missing], [[cycle], [cycle]]);
+  assert.deepEqual(bySlug['nest-1'].missing, ['sub-recipes nest more than 3 levels deep']);
+  assert.equal(bySlug['nest-2'].nutrition, 'complete');
+  assert.equal(frontmatterOf(root, 'nest-2').nutrition_per_serving.calories, 40);
+});

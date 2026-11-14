@@ -25,7 +25,83 @@ test('sums USDA per-100 g values over each ingredient\'s grams, per serving, rou
   assert.equal(result.status, 'complete');
   // onion 100 g + garlic 2 x 3 g (USDA "clove" portion), USDA SR Legacy values.
   assert.deepEqual(result.per_serving, { calories: 49, protein: 1.5, fat: 0.1, saturated_fat: 0, carbs: 11.3, fiber: 1.8, sugar: 4.3, sodium: 5, cholesterol: 0 });
-  assert.deepEqual(result.sources, ['100 g onion: Onions, raw (FDC 170000), 100 g', '2 cloves garlic, minced: Garlic, raw (FDC 169230), 6 g']);
+  assert.deepEqual(result.sources, ['100 g onion: Onions, raw (FDC 170000), 100 g', '2 cloves garlic, minced: Garlic, raw (FDC 169230), 6 g', 'salt to taste: excluded: trace amount']);
+});
+
+test('seasonings, garnishes and optional lines are excluded, listed with their reason, and never block complete', async () => {
+  const { calls, fdc } = usda();
+  const lines = ['100 g onion', 'salt and pepper', 'Kosher salt', 'parsley, for garnish', 'lemon wedges, for serving', '1/4 cup toasted pine nuts (optional)', 'salt to taste', '100 g spaghetti, to serve'];
+  const result = await computeNutrition({ lines, servings: 1, fdc });
+  assert.equal(result.status, 'complete');
+  // A measured line served alongside is not nominal: onion 40 kcal + spaghetti 371 kcal.
+  assert.equal(result.per_serving.calories, 411);
+  assert.deepEqual(result.sources, [
+    '100 g onion: Onions, raw (FDC 170000), 100 g',
+    'salt and pepper: excluded: seasoning',
+    'Kosher salt: excluded: seasoning',
+    'parsley, for garnish: excluded: garnish',
+    'lemon wedges, for serving: excluded: garnish',
+    '1/4 cup toasted pine nuts (optional): excluded: optional',
+    'salt to taste: excluded: trace amount',
+    '100 g spaghetti, to serve: Pasta, dry, enriched (FDC 169736), 100 g',
+  ]);
+  assert.deepEqual(calls, ['/fdc/v1/foods/search?onion', '/fdc/v1/food/169736']);
+});
+
+test('citrus juice by the fruit uses USDA\'s per-fruit juice yield; zest by the fruit has none, so it is excluded', async () => {
+  const { fdc } = usda();
+  const lines = ['Juice of 1 lemon', 'Zest and juice of 2 limes', 'Juice of ½ lemon', '1 lime, juiced', 'Zest of 1 lemon', '1 tsp lemon zest'];
+  const result = await computeNutrition({ lines, servings: 1, fdc });
+  assert.equal(result.status, 'complete');
+  // USDA portions: "1 lemon yields" 48 g lemon juice, "1 lime yields" 44 g lime juice, 1 tsp lemon peel 2 g.
+  assert.deepEqual(result.sources, [
+    'Juice of 1 lemon: Lemon juice, raw (FDC 167747), 48 g',
+    'Zest and juice of 2 limes: Lime juice, raw (FDC 168156), 88 g; zest excluded: no USDA per-fruit yield',
+    'Juice of ½ lemon: Lemon juice, raw (FDC 167747), 24 g',
+    '1 lime, juiced: Lime juice, raw (FDC 168156), 44 g',
+    'Zest of 1 lemon: excluded: zest, no USDA per-fruit yield',
+    '1 tsp lemon zest: Lemon peel, raw (FDC 167749), 2 g',
+  ]);
+  assert.equal(result.per_serving.calories, 50);
+  assert.equal(result.per_serving.carbs, 16.4);
+});
+
+const pesto = {
+  servings: 4,
+  yield: '1 cup',
+  nutrition_status: 'complete',
+  nutrition_per_serving: { calories: 200, protein: 4, fat: 20, saturated_fat: 3, carbs: 3, fiber: 1, sugar: 0.5, sodium: 150, cholesterol: 5 },
+};
+
+test('a linked sub-recipe adds its stored per-serving nutrition, scaled by servings or by its yield', async () => {
+  const { fdc } = usda();
+  const subRecipe = (slug) => ({ 'basil-pesto': pesto })[slug];
+  const lines = ['100 g onion', '1/2 cup [[basil-pesto]]', '1 serving [[basil-pesto|pesto]]'];
+  const result = await computeNutrition({ lines, servings: 2, fdc, subRecipe });
+  assert.equal(result.status, 'complete');
+  // 1/2 cup of a 1-cup, 4-serving yield = 2 servings, plus 1 serving: 3 x 200 kcal + 40 kcal onion, over 2 servings.
+  assert.equal(result.per_serving.calories, 320);
+  assert.equal(result.per_serving.sodium, 227);
+  assert.deepEqual(result.sources, [
+    '100 g onion: Onions, raw (FDC 170000), 100 g',
+    '1/2 cup [[basil-pesto]]: sub-recipe basil-pesto, 2 servings',
+    '1 serving [[basil-pesto|pesto]]: sub-recipe basil-pesto, 1 serving',
+  ]);
+});
+
+test('a missing, incomplete or unmeasurable sub-recipe leaves the parent incomplete, with the reason', async () => {
+  const { fdc } = usda();
+  const recipes = { 'basil-pesto': pesto, 'green-sauce': { servings: 2, nutrition_status: 'incomplete' }, salsa: { ...pesto, yield: undefined } };
+  const lines = ['1 cup [[green-sauce]]', '2 tbsp [[nope]]', '50 g [[basil-pesto]]', '[[basil-pesto]]', '1 cup [[salsa]]'];
+  const result = await computeNutrition({ lines, servings: 2, fdc, subRecipe: (slug) => recipes[slug] });
+  assert.equal(result.status, 'incomplete');
+  assert.deepEqual(result.missing, [
+    '1 cup [[green-sauce]]: sub-recipe green-sauce nutrition is incomplete',
+    '2 tbsp [[nope]]: sub-recipe nope not found',
+    '50 g [[basil-pesto]]: g does not convert to the basil-pesto yield of 1 cup',
+    '[[basil-pesto]]: no amount',
+    '1 cup [[salsa]]: sub-recipe salsa has no yield; give servings instead',
+  ]);
 });
 
 test('volumes use a USDA portion of the same food', async () => {

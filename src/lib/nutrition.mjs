@@ -1,10 +1,14 @@
-// Per-serving nutrition from USDA FoodData Central, never estimated: every ingredient must
-// resolve to a USDA food, a gram weight (from the line itself or a USDA portion of that food)
-// and every tracked nutrient. Anything short of that leaves the recipe "incomplete" with
-// reasons, and no numbers. No USDA access at all means "not-computed".
+// Per-serving nutrition from USDA FoodData Central, never estimated: every counted ingredient
+// must resolve to a USDA food, a gram weight (from the line itself or a USDA portion of that
+// food) and every tracked nutrient, or to a linked sub-recipe with complete nutrition. Anything
+// short of that leaves the recipe "incomplete" with reasons, and no numbers. Optional, garnish,
+// unmeasured seasoning and trace lines are excluded, and listed as such in the sources. No USDA
+// access at all means "not-computed".
 import { NUTRIENTS } from './fdc.mjs';
 import { bestMatch, reviewedMatch, singular } from './fdc-match.mjs';
 import { GRAMS_PER, ML_PER, parseIngredientLine } from './ingredient-line.mjs';
+import { exclusion, NO_ZEST_YIELD } from './nutrition-exclusions.mjs';
+import { linkedSlug, servingsUsed } from './sub-recipes.mjs';
 
 const MG = new Set(['sodium', 'cholesterol']);
 const oneDecimal = (value) => Math.round(value * 10) / 10;
@@ -53,18 +57,43 @@ function gramsFromPortions(parsed, food) {
   return count ? (amount * count.gramWeight) / count.amount : null;
 }
 
-async function ingredient(line, lookup) {
+const FIELDS = Object.keys(NUTRIENTS);
+const scaled = (values, factor) => Object.fromEntries(FIELDS.map((field) => [field, values[field] * factor]));
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function subRecipeLine(line, parsed, slug, subRecipe) {
+  const sub = subRecipe(slug);
+  const used = servingsUsed(parsed, slug, sub);
+  if (used.reason) return { missing: `${line}: ${used.reason}` };
+  const absent = FIELDS.filter((field) => typeof sub.nutrition_per_serving[field] !== 'number');
+  if (absent.length) return { missing: `${line}: sub-recipe ${slug} has no ${absent.join(', ')} value` };
+  const servings = Math.round(used.servings * 100) / 100;
+  return { amounts: scaled(sub.nutrition_per_serving, used.servings), source: `${line}: sub-recipe ${slug}, ${plural(servings, 'serving')}` };
+}
+
+// One line's contribution: { amounts, source }, { source } when excluded, or { missing }.
+async function ingredient(line, lookup, subRecipe) {
   const parsed = parseIngredientLine(line);
-  if (parsed.trace) return { grams: 0 };
+  const excluded = exclusion(parsed);
+  if (excluded) return { source: `${line}: excluded: ${excluded}` };
+  const slug = linkedSlug(line);
+  if (slug) return subRecipeLine(line, parsed, slug, subRecipe);
+  if (!parsed.citrus) return usdaLine(line, parsed, lookup);
+  // Juice by the fruit: the fruit is the unit, read against the juice food's "1 lemon yields" portion.
+  const juice = { ...parsed, item: `${parsed.item} juice`, unit: parsed.item };
+  return usdaLine(line, juice, lookup, parsed.citrus === 'zest-and-juice' ? `zest excluded: ${NO_ZEST_YIELD}` : null);
+}
+
+async function usdaLine(line, parsed, lookup, note = null) {
   if (parsed.amount === null) return { missing: `${line}: no amount` };
   const food = await lookup.match(parsed.item);
   if (!food) return { missing: `${line}: no matching USDA food` };
   let grams = parsed.packageGrams ? parsed.amount * parsed.packageGrams : GRAMS_PER[parsed.unit] && parsed.amount * GRAMS_PER[parsed.unit];
   if (!grams) grams = gramsFromPortions(parsed, await lookup.detail(food.fdcId));
   if (!grams) return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? 'medium'}" portion for ${food.description}` };
-  const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
+  const absent = FIELDS.filter((field) => food.per100g[field] === undefined);
   if (absent.length) return { missing: `${line}: USDA has no ${absent.join(', ')} value for ${food.description}` };
-  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g` };
+  return { amounts: scaled(food.per100g, grams / 100), source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note ? `; ${note}` : ''}` };
 }
 
 function memoLookup(fdc) {
@@ -86,20 +115,20 @@ function memoLookup(fdc) {
   };
 }
 
-export async function computeNutrition({ lines, servings, fdc }) {
+// subRecipe(slug): the linked recipe's frontmatter, or undefined when there is no such recipe.
+export async function computeNutrition({ lines, servings, fdc, subRecipe = () => undefined }) {
   if (fdc.unavailable) return { status: 'not-computed', reason: fdc.unavailable };
   if (!Number.isInteger(servings) || servings < 1) return { status: 'incomplete', missing: ['servings: the recipe does not say how many it serves'], sources: [] };
   const lookup = memoLookup(fdc);
-  const totals = Object.fromEntries(Object.keys(NUTRIENTS).map((field) => [field, 0]));
+  const totals = Object.fromEntries(FIELDS.map((field) => [field, 0]));
   const missing = [];
   const sources = [];
   try {
     for (const line of lines) {
-      const result = await ingredient(line, lookup);
+      const result = await ingredient(line, lookup, subRecipe);
       if (result.missing) missing.push(result.missing);
-      if (!result.food) continue;
-      sources.push(result.source);
-      for (const field of Object.keys(totals)) totals[field] += (result.food.per100g[field] * result.grams) / 100;
+      if (result.source) sources.push(result.source);
+      for (const field of FIELDS) totals[field] += result.amounts?.[field] ?? 0;
     }
   } catch (error) {
     if (error instanceof UsdaUnavailable) return { status: 'not-computed', reason: error.message };

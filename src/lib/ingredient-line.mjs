@@ -1,6 +1,8 @@
 // Reads one recipe ingredient line ("1 1/2 cups red lentils, rinsed") into amount, unit and
 // the food it names. Units are canonical: weights g/kg/oz/lb, volumes tsp/tbsp/cup/ml/l/floz/
-// pt/qt, counts such as clove or can, and trace amounts (pinch, dash, "to taste").
+// pt/qt, counts such as clove or can, servings, and trace amounts (pinch, dash, "to taste").
+// Citrus by the fruit ("Juice of 1 lemon") reads as a count of the fruit, with `citrus` set to
+// 'juice', 'zest' or 'zest-and-juice'.
 const FRACTIONS = { '½': ' 1/2', '¼': ' 1/4', '¾': ' 3/4', '⅓': ' 1/3', '⅔': ' 2/3', '⅛': ' 1/8' };
 const UNITS = {
   g: ['g', 'gram', 'grams', 'gr'], kg: ['kg', 'kilogram', 'kilograms'], oz: ['oz', 'ounce', 'ounces'], lb: ['lb', 'lbs', 'pound', 'pounds'],
@@ -9,7 +11,7 @@ const UNITS = {
   floz: ['fl oz', 'fluid ounce', 'fluid ounces'], pt: ['pint', 'pints', 'pt'], qt: ['quart', 'quarts', 'qt'],
   clove: ['clove', 'cloves'], slice: ['slice', 'slices'], can: ['can', 'cans'], stick: ['stick', 'sticks'], bunch: ['bunch', 'bunches'],
   head: ['head', 'heads'], sprig: ['sprig', 'sprigs'], piece: ['piece', 'pieces'], stalk: ['stalk', 'stalks'], leaf: ['leaf', 'leaves'],
-  pinch: ['pinch', 'pinches'], dash: ['dash', 'dashes'],
+  serving: ['serving', 'servings'], pinch: ['pinch', 'pinches'], dash: ['dash', 'dashes'],
 };
 const UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
 const UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(' ', '\\s+'));
@@ -24,6 +26,12 @@ const UNIT_GROUP = `(${UNIT_NAMES.join('|')})\\.?(?![a-z])`;
 const QUALIFIER = /^(?:about|approximately|roughly|scant|heaping|generous|up to)\s+(?=\d)/i;
 const WORD_NUMBER = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
 const WORD_LEAD = /^(a|an|one|two|three|four|five|six)\s+(?=\d|(?:pinch|dash)(?:es)?\b)/i;
+// Citrus by the fruit: "Juice of 1 lemon", "Zest and juice of 2 limes", "1 lime, juiced".
+// The item is the fruit, counted: what to buy, and what nutrition reads the juice yield of.
+const CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
+const JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, 'i');
+const JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, 'i');
+const ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, 'i');
 const HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, 'i');
 const PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, 'i');
 const LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join('|')})\.?\))?\s*(?:(${UNIT_NAMES.join('|')})\.?(?![a-z]))?\s*`, 'i');
@@ -57,8 +65,22 @@ function plusAmount(rest, amount, unit) {
   return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + (toNumber(plus[1]) * per[extra]) / per[unit]) : amount };
 }
 
+const citrusCount = (text) => (/^half/i.test(text) ? 0.5 : WORD_NUMBER[text.toLowerCase()] ?? toNumber(text));
+
+function parseCitrus(line, text) {
+  const fruit = (count, name) => ({ line, amount: citrusCount(count), unit: null, item: name.toLowerCase(), size: null, packageGrams: null, trace: false });
+  const zest = text.match(ZEST_OF);
+  if (zest) return { ...fruit(zest[1], zest[2]), citrus: 'zest' };
+  const juice = text.match(JUICE_OF);
+  if (juice) return { ...fruit(juice[3], juice[4]), citrus: juice[1] || juice[2] ? 'zest-and-juice' : 'juice' };
+  const juiced = text.match(JUICED);
+  return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: 'juice' } : null;
+}
+
 export function parseIngredientLine(line) {
   let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  const citrus = parseCitrus(line, text);
+  if (citrus) return citrus;
   const toTaste = /\bto taste\b/i.test(text);
   text = numericLead(text.replace(/\bto taste\b/i, '').trim());
   const lead = text.match(LEAD);
@@ -69,5 +91,5 @@ export function parseIngredientLine(line) {
   const lower = rest.toLowerCase();
   const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
   const item = lower.split(',')[0].replace(/\([^)]*\)/g, ' ').replace(/^of\s+/, '').replace(PREP, ' ').replace(/\s+/g, ' ').trim();
-  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), citrus: null };
 }

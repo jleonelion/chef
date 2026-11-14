@@ -45,6 +45,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   as a custom connector, elsewhere as the `CHEF_USDA_FDC_KEY` environment variable. The key
   never enters the data root or the chat. Without it, nutrition is marked "not computed";
   Chef never estimates it.
+  Optional ingredients, garnishes and unmeasured salt and pepper are left out (and listed as
+  left out). A recipe can use another saved recipe, such as `1/2 cup [[basil-pesto]]`, and
+  counts its nutrition. The rules are in `src/references/data-root-schema.md` (Nutrition).
   For a bulk re-enrich that hits USDA's rate limit, set `CHEF_FDC_CACHE=1` to keep USDA food
   details in the data root's git-ignored `cache/` folder and reuse them. Off by default.
 - When Chef suggests a recipe, your yes or no is kept in `data/recipe-decisions/`, so a recipe

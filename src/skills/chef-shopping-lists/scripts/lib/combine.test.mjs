@@ -39,3 +39,11 @@ test('inventory in a unit that cannot be converted is noted, not subtracted', ()
   const result = subtractInventory(items, [stock('spinach', 1, 'bunch')]);
   assert.deepEqual(result.items, [{ item: 'spinach', amount: 150, unit: 'g', recipes: ['r'], on_hand: { amount: 1, unit: 'bunch' } }]);
 });
+
+test('citrus juice and zest by the fruit shop as the fruit', () => {
+  const { items } = combineLines([use('Juice of 1 lemon', 1, 'a'), use('Zest and juice of 2 lemons', 1, 'b'), use('Zest of 1 lime', 1, 'b')]);
+  assert.deepEqual(items, [
+    { item: 'lemon', amount: 3, unit: 'each', recipes: ['a', 'b'] },
+    { item: 'lime', amount: 1, unit: 'each', recipes: ['b'] },
+  ]);
+});
