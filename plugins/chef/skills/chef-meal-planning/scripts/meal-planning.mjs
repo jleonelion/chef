@@ -7691,7 +7691,6 @@ var UNITS = {
 var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
 var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
 var TRACE = new Set(["pinch", "dash"]);
-var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
 var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
 var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
 var CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
@@ -7701,6 +7700,9 @@ var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(l
 var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
 var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
 var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+
+// src/lib/nutrition-exclusions.mjs
+var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
 
 // src/lib/quantity.mjs
 var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);

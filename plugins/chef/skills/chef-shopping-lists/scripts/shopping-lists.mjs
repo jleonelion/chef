@@ -7744,10 +7744,6 @@ var GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
 var ML_PER = { tsp: 4.92892, tbsp: 14.7868, cup: 236.588, ml: 1, l: 1000, floz: 29.5735, pt: 473.176, qt: 946.353 };
 var TRACE = new Set(["pinch", "dash"]);
 var SIZES = ["small", "medium", "large"];
-var OPTIONAL = /\boptional\b/i;
-var GARNISH = /\b(?:for|to)\s+(?:garnish(?:ing)?|serv(?:e|ing)|topping|dusting)\b/i;
-var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
-var isSeasoning = (item) => item.includes("salt") || item.includes("pepper") ? item.split(/[^a-z]+/).filter(Boolean).every((w) => SEASONING_WORDS.has(w)) : false;
 var PREP = /\b(?:finely|roughly|thinly|freshly|fresh|chopped|diced|minced|sliced|grated|peeled|drained|rinsed|large|medium|small)\b/g;
 var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
 var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
@@ -7758,7 +7754,6 @@ var CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|s
 var JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
 var JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, "i");
 var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
-var NO_ZEST_YIELD = "no USDA per-fruit yield";
 var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
 var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
 var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
@@ -7786,13 +7781,12 @@ function parseCitrus(line, text) {
   const fruit = (count, name) => ({ line, amount: citrusCount(count), unit: null, item: name.toLowerCase(), size: null, packageGrams: null, trace: false });
   const zest = text.match(ZEST_OF);
   if (zest)
-    return { ...fruit(zest[1], zest[2]), citrus: "zest", excluded: `zest, ${NO_ZEST_YIELD}` };
+    return { ...fruit(zest[1], zest[2]), citrus: "zest" };
   const juice = text.match(JUICE_OF);
-  const juiced = !juice && text.match(JUICED);
-  if (!juice && !juiced)
-    return null;
-  const withZest = Boolean(juice && (juice[1] || juice[2]));
-  return { ...juice ? fruit(juice[3], juice[4]) : fruit(juiced[1], juiced[2]), citrus: "juice", excluded: null, ...withZest && { note: `zest excluded: ${NO_ZEST_YIELD}` } };
+  if (juice)
+    return { ...fruit(juice[3], juice[4]), citrus: juice[1] || juice[2] ? "zest-and-juice" : "juice" };
+  const juiced = text.match(JUICED);
+  return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
 }
 function parseIngredientLine(line) {
   let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
@@ -7809,16 +7803,7 @@ function parseIngredientLine(line) {
   const lower = rest.toLowerCase();
   const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
   const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
-  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), excluded: exclusion(line, amount, item) };
-}
-function exclusion(line, amount, item) {
-  if (OPTIONAL.test(line))
-    return "optional";
-  if (GARNISH.test(line))
-    return "garnish";
-  if (amount === null && isSeasoning(item))
-    return "seasoning";
-  return null;
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), citrus: null };
 }
 
 // src/lib/quantity.mjs
