@@ -128,3 +128,18 @@ test('confirmed update migrates data and settings, then verifies the installed f
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'schema-version.json'))).schema_version, 1);
   assert.equal(fs.readFileSync(path.join(root, 'user-data.txt'), 'utf8'), 'keep all of this\n');
 });
+
+test('a clone without an origin remote is refused before the data root is touched', () => {
+  const repository = releaseRepository();
+  runGit(repository, 'remote', 'remove', 'origin');
+  const root = dataRoot();
+  const skillsDir = install();
+  const head = runGit(root, 'rev-parse', 'HEAD');
+  const adapter = { updateInstall: () => ({ repository, skillsDir, nameForSkill: 'underscores' }) };
+
+  assert.throws(() => updateChef(root, { adapter, skillDir: path.join(skillsDir, 'chef_setup') }), {
+    message: 'no remote to check for releases: add the Chef repository as the origin remote',
+  });
+  assert.equal(runGit(root, 'rev-parse', 'HEAD'), head);
+  assert.equal(fs.readFileSync(path.join(skillsDir, 'chef_setup', 'release.txt'), 'utf8'), 'v1.0.0\n');
+});

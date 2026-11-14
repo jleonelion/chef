@@ -104,9 +104,9 @@ export function updateChef(root, {
   targetSettings = SETTINGS_VERSION,
 } = {}) {
   const install = adapter.updateInstall({ skillDir });
+  const release = latestTag(install.repository);
   commitPending(root, 'Before Chef update');
 
-  const release = latestTag(install.repository);
   const sourceNames = taggedSkills(install.repository, release);
   const expectedNames = sourceNames.map((name) => installedName(name, install.nameForSkill));
   const skills = skillChanges(install.skillsDir, expectedNames);
