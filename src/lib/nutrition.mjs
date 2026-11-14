@@ -5,6 +5,7 @@
 import { NUTRIENTS } from './fdc.mjs';
 import { bestMatch, reviewedMatch, singular } from './fdc-match.mjs';
 import { GRAMS_PER, ML_PER, parseIngredientLine } from './ingredient-line.mjs';
+import { linkedSlug, servingsUsed } from './sub-recipes.mjs';
 
 const MG = new Set(['sodium', 'cholesterol']);
 const oneDecimal = (value) => Math.round(value * 10) / 10;
@@ -53,20 +54,37 @@ function gramsFromPortions(parsed, food) {
   return count ? (amount * count.gramWeight) / count.amount : null;
 }
 
-async function ingredient(line, lookup) {
+const FIELDS = Object.keys(NUTRIENTS);
+const scaled = (values, factor) => Object.fromEntries(FIELDS.map((field) => [field, values[field] * factor]));
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+function subRecipeLine(line, parsed, slug, subRecipe) {
+  const sub = subRecipe(slug);
+  const used = servingsUsed(parsed, slug, sub);
+  if (used.reason) return { missing: `${line}: ${used.reason}` };
+  const absent = FIELDS.filter((field) => typeof sub.nutrition_per_serving[field] !== 'number');
+  if (absent.length) return { missing: `${line}: sub-recipe ${slug} has no ${absent.join(', ')} value` };
+  const servings = Math.round(used.servings * 100) / 100;
+  return { amounts: scaled(sub.nutrition_per_serving, used.servings), source: `${line}: sub-recipe ${slug}, ${plural(servings, 'serving')}` };
+}
+
+// One line's contribution: { amounts, source }, { source } when excluded, or { missing }.
+async function ingredient(line, lookup, subRecipe) {
   const parsed = parseIngredientLine(line);
   const excluded = parsed.trace ? 'trace amount' : parsed.excluded;
   if (excluded) return { source: `${line}: excluded: ${excluded}` };
+  const slug = linkedSlug(line);
+  if (slug) return subRecipeLine(line, parsed, slug, subRecipe);
   if (parsed.amount === null) return { missing: `${line}: no amount` };
   const food = await lookup.match(parsed.item);
   if (!food) return { missing: `${line}: no matching USDA food` };
   let grams = parsed.packageGrams ? parsed.amount * parsed.packageGrams : GRAMS_PER[parsed.unit] && parsed.amount * GRAMS_PER[parsed.unit];
   if (!grams) grams = gramsFromPortions(parsed, await lookup.detail(food.fdcId));
   if (!grams) return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? 'medium'}" portion for ${food.description}` };
-  const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
+  const absent = FIELDS.filter((field) => food.per100g[field] === undefined);
   if (absent.length) return { missing: `${line}: USDA has no ${absent.join(', ')} value for ${food.description}` };
   const note = parsed.note ? `; ${parsed.note}` : '';
-  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note}` };
+  return { amounts: scaled(food.per100g, grams / 100), source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note}` };
 }
 
 function memoLookup(fdc) {
@@ -88,20 +106,20 @@ function memoLookup(fdc) {
   };
 }
 
-export async function computeNutrition({ lines, servings, fdc }) {
+// subRecipe(slug): the linked recipe's frontmatter, or undefined when there is no such recipe.
+export async function computeNutrition({ lines, servings, fdc, subRecipe = () => undefined }) {
   if (fdc.unavailable) return { status: 'not-computed', reason: fdc.unavailable };
   if (!Number.isInteger(servings) || servings < 1) return { status: 'incomplete', missing: ['servings: the recipe does not say how many it serves'], sources: [] };
   const lookup = memoLookup(fdc);
-  const totals = Object.fromEntries(Object.keys(NUTRIENTS).map((field) => [field, 0]));
+  const totals = Object.fromEntries(FIELDS.map((field) => [field, 0]));
   const missing = [];
   const sources = [];
   try {
     for (const line of lines) {
-      const result = await ingredient(line, lookup);
+      const result = await ingredient(line, lookup, subRecipe);
       if (result.missing) missing.push(result.missing);
       if (result.source) sources.push(result.source);
-      if (!result.food) continue;
-      for (const field of Object.keys(totals)) totals[field] += (result.food.per100g[field] * result.grams) / 100;
+      for (const field of FIELDS) totals[field] += result.amounts?.[field] ?? 0;
     }
   } catch (error) {
     if (error instanceof UsdaUnavailable) return { status: 'not-computed', reason: error.message };

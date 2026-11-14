@@ -9,7 +9,7 @@ const UNITS = {
   floz: ['fl oz', 'fluid ounce', 'fluid ounces'], pt: ['pint', 'pints', 'pt'], qt: ['quart', 'quarts', 'qt'],
   clove: ['clove', 'cloves'], slice: ['slice', 'slices'], can: ['can', 'cans'], stick: ['stick', 'sticks'], bunch: ['bunch', 'bunches'],
   head: ['head', 'heads'], sprig: ['sprig', 'sprigs'], piece: ['piece', 'pieces'], stalk: ['stalk', 'stalks'], leaf: ['leaf', 'leaves'],
-  pinch: ['pinch', 'pinches'], dash: ['dash', 'dashes'],
+  serving: ['serving', 'servings'], pinch: ['pinch', 'pinches'], dash: ['dash', 'dashes'],
 };
 const UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
 const UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(' ', '\\s+'));

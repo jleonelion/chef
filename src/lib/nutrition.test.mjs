@@ -64,6 +64,44 @@ test('citrus juice by the fruit uses USDA\'s per-fruit juice yield; zest by the 
   assert.equal(result.per_serving.carbs, 16.4);
 });
 
+const pesto = {
+  servings: 4,
+  yield: '1 cup',
+  nutrition_status: 'complete',
+  nutrition_per_serving: { calories: 200, protein: 4, fat: 20, saturated_fat: 3, carbs: 3, fiber: 1, sugar: 0.5, sodium: 150, cholesterol: 5 },
+};
+
+test('a linked sub-recipe adds its stored per-serving nutrition, scaled by servings or by its yield', async () => {
+  const { fdc } = usda();
+  const subRecipe = (slug) => ({ 'basil-pesto': pesto })[slug];
+  const lines = ['100 g onion', '1/2 cup [[basil-pesto]]', '1 serving [[basil-pesto|pesto]]'];
+  const result = await computeNutrition({ lines, servings: 2, fdc, subRecipe });
+  assert.equal(result.status, 'complete');
+  // 1/2 cup of a 1-cup, 4-serving yield = 2 servings, plus 1 serving: 3 x 200 kcal + 40 kcal onion, over 2 servings.
+  assert.equal(result.per_serving.calories, 320);
+  assert.equal(result.per_serving.sodium, 227);
+  assert.deepEqual(result.sources, [
+    '100 g onion: Onions, raw (FDC 170000), 100 g',
+    '1/2 cup [[basil-pesto]]: sub-recipe basil-pesto, 2 servings',
+    '1 serving [[basil-pesto|pesto]]: sub-recipe basil-pesto, 1 serving',
+  ]);
+});
+
+test('a missing, incomplete or unmeasurable sub-recipe leaves the parent incomplete, with the reason', async () => {
+  const { fdc } = usda();
+  const recipes = { 'basil-pesto': pesto, 'green-sauce': { servings: 2, nutrition_status: 'incomplete' }, salsa: { ...pesto, yield: undefined } };
+  const lines = ['1 cup [[green-sauce]]', '2 tbsp [[nope]]', '50 g [[basil-pesto]]', '[[basil-pesto]]', '1 cup [[salsa]]'];
+  const result = await computeNutrition({ lines, servings: 2, fdc, subRecipe: (slug) => recipes[slug] });
+  assert.equal(result.status, 'incomplete');
+  assert.deepEqual(result.missing, [
+    '1 cup [[green-sauce]]: sub-recipe green-sauce nutrition is incomplete',
+    '2 tbsp [[nope]]: sub-recipe nope not found',
+    '50 g [[basil-pesto]]: g does not convert to the basil-pesto yield of 1 cup',
+    '[[basil-pesto]]: no amount',
+    '1 cup [[salsa]]: sub-recipe salsa has no yield; give servings instead',
+  ]);
+});
+
 test('volumes use a USDA portion of the same food', async () => {
   const { fdc } = usda();
   const result = await computeNutrition({ lines: ['1 tbsp garlic'], servings: 1, fdc });
