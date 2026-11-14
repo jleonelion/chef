@@ -7599,6 +7599,12 @@ var REVIEWED_FDC_FOODS = [
     aliases: ["fresh lemon juice", "lemon juice"]
   },
   {
+    fdcId: 168156,
+    description: "Lime juice, raw",
+    dataType: "SR Legacy",
+    aliases: ["fresh lime juice", "lime juice"]
+  },
+  {
     fdcId: 169230,
     description: "Garlic, raw",
     dataType: "SR Legacy",
@@ -7678,17 +7684,26 @@ var UNITS = {
   piece: ["piece", "pieces"],
   stalk: ["stalk", "stalks"],
   leaf: ["leaf", "leaves"],
+  serving: ["serving", "servings"],
   pinch: ["pinch", "pinches"],
   dash: ["dash", "dashes"]
 };
 var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
 var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
 var TRACE = new Set(["pinch", "dash"]);
+var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
 var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
 var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
+var CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
+var JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
+var JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, "i");
+var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
 var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
 var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
 var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+
+// src/lib/quantity.mjs
+var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
 
 // src/lib/nutrition.mjs
 var MG = new Set(["sodium", "cholesterol"]);
@@ -7716,6 +7731,7 @@ function rollupNutrition(meals) {
     totals: Object.fromEntries(fields.map((field) => [field, round(field, totals[field])]))
   };
 }
+var FIELDS = Object.keys(NUTRIENTS);
 
 // src/lib/settings.mjs
 import fs6 from "node:fs";
@@ -7865,7 +7881,7 @@ function loadInventory(root) {
 import fs8 from "node:fs";
 import path9 from "node:path";
 var GOALS_PATH = "data/health-goals/goals.json";
-var FIELDS = Object.keys(NUTRIENTS);
+var FIELDS2 = Object.keys(NUTRIENTS);
 function readGoal(root) {
   const file = path9.join(root, GOALS_PATH);
   if (!fs8.existsSync(file))

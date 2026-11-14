@@ -66,6 +66,7 @@ One or two lines about the dish.
 | `type` | yes | `recipe` |
 | `title` | yes | Text |
 | `servings` | no | Whole number the recipe makes |
+| `yield` | no | Total amount the recipe makes as a volume or weight, such as `2 cups` or `500 g`. Lets other recipes use it by volume or weight (see Nutrition) |
 | `prep_minutes`, `cook_minutes`, `total_minutes` | no | Whole minutes |
 | `cuisine` | no | Lowercase text, such as `italian` |
 | `tags` | no | List of lowercase text |
@@ -77,12 +78,30 @@ One or two lines about the dish.
 | `verified_by_user` | no | The user's own check that the recipe is safe for a hard constraint Chef could not vouch for: `{ <constraint>: YYYY-MM-DD }`. Permanent; the first date is kept and Chef never removes an entry. Never clears a conflict the ingredients show |
 | `nutrition_status` | no | `complete`, `incomplete` or `not-computed` (no USDA access). Missing means not attempted yet |
 | `nutrition_per_serving` | only when `complete` | `calories` (kcal), `protein`, `fat`, `saturated_fat`, `carbs`, `fiber`, `sugar` (g, 1 decimal), `sodium`, `cholesterol` (mg). Only from USDA FoodData Central, never estimated |
-| `nutrition_missing` | when `incomplete` | One line per ingredient (or `servings`) that blocked the calculation, with the reason |
-| `nutrition_sources` | no | One line per ingredient: the USDA food and grams used |
+| `nutrition_missing` | when `incomplete` | One line per ingredient (or `servings`, or a sub-recipe cycle) that blocked the calculation, with the reason |
+| `nutrition_sources` | no | One line per ingredient: the USDA food and grams used, the sub-recipe and servings used, or `excluded: <reason>` |
 | `lifecycle` | no | `active` or `retired`. Missing means `active`. Retired recipes stay on disk but leave recipe search; restoring sets `active` |
 | `retired`, `retired_reason` | when `lifecycle` is `retired` | Retirement date (`YYYY-MM-DD`) and, optionally, the user's reason |
 
 The body holds the human-readable recipe. `## Ingredients` is a bulleted list, one ingredient per line; `## Steps` is a numbered list. Chef reads ingredients from the body, so the frontmatter never repeats them.
+
+### Nutrition
+
+Every counted ingredient line resolves to a USDA FoodData Central food and gram weight, or to a sub-recipe. Any line that cannot leaves the recipe `incomplete`. Nothing is estimated.
+
+**Excluded lines.** Lines whose nutritional impact is nominal are left out and do not make a recipe `incomplete`. Each is still listed in `nutrition_sources` as `<line>: excluded: <reason>`:
+
+| Reason | Lines |
+|---|---|
+| `optional` | The line says `optional`, such as `1/4 cup pine nuts (optional)` |
+| `garnish` | `for garnish`, `for serving`, `to serve`, `for topping`, `for dusting` |
+| `seasoning` | Salt and pepper with no amount, such as `salt and pepper` or `kosher salt`. Measured salt is counted |
+| `trace amount` | `to taste`, a pinch or a dash |
+| `zest, no USDA per-fruit yield` | Zest by the fruit, such as `zest of 1 lemon`. Measured zest (`1 tsp lemon zest`) is counted |
+
+**Citrus juice.** `Juice of 1 lemon`, `Zest and juice of 2 limes` and `1 lime, juiced` count the fruit's juice by USDA's own per-fruit yield: Lemon juice, raw (FDC 167747, 48 g per lemon) and Lime juice, raw (FDC 168156, 44 g per lime). The zest half of such a line is excluded and noted in its source.
+
+**Sub-recipes.** An ingredient line that links another recipe page by slug uses that recipe: `1 serving [[basil-pesto]]`, `1/2 cup [[basil-pesto|pesto]]`. The parent counts the linked recipe's `nutrition_per_serving`, scaled by the servings used, and never copies its ingredients. Give the amount in servings, or as a volume or weight when the linked recipe has a `yield` (half of a `1 cup` yield that serves 4 is 2 servings). The parent is `incomplete` when the linked recipe is missing, its nutrition is not `complete`, or the amount cannot be read against its yield. The parent also takes the linked recipe's `dietary_flags`. Enrichment computes linked recipes before the recipes that use them, and re-enriching a recipe re-enriches every recipe that uses it. Recipes in a link cycle (A uses B uses A), or nested more than 3 levels deep, are `incomplete` with that reason.
 
 ## Inventory store
 

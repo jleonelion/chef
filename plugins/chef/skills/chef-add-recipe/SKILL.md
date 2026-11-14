@@ -27,6 +27,7 @@ If you already fetched the page with your own web tool, save the HTML to a `.htm
      "title": "Weeknight Dal",
      "description": "One line about the dish.",
      "servings": 4,
+     "yield": "6 cups",
      "prep_minutes": 10,
      "cook_minutes": 25,
      "cuisine": "indian",
@@ -36,7 +37,7 @@ If you already fetched the page with your own web tool, save the HTML to a `.htm
    }
    ```
 
-   `title`, `ingredients` (one line each) and `steps` are required. Times are whole minutes: `prep_minutes`, `cook_minutes` and `total_minutes`; when the source gives only an overall time ("about 30 minutes"), set `total_minutes` alone. Leave out anything the source does not give.
+   `title`, `ingredients` (one line each) and `steps` are required. Times are whole minutes: `prep_minutes`, `cook_minutes` and `total_minutes`; when the source gives only an overall time ("about 30 minutes"), set `total_minutes` alone. `yield` is the total the recipe makes as a volume or weight, only when the source says it. Leave out anything the source does not give.
 3. For a photo, first run with `--dry-run`, show the user the title and ingredients, and save only after they confirm or correct them.
 4. Save:
 
@@ -60,7 +61,8 @@ If you already fetched the page with your own web tool, save the HTML to a `.htm
 Every saved recipe gets, in its own commit:
 
 - **Dietary flags**: `contains-*` flags for the US major food allergens plus gluten (`dairy`, `egg`, `fish`, `shellfish`, `tree-nuts`, `peanuts`, `wheat`, `soy`, `sesame`, `gluten`), read from the ingredient wording. Wording such as "gluten-free" never clears a flag, because Chef cannot check the label. An empty list means none were found in the wording, not that the dish is safe.
-- **Nutrition per serving** from USDA FoodData Central, only when every ingredient matches a USDA food with a known weight. Otherwise nutrition is `incomplete` (with `missing` reasons) or `not-computed`, and no numbers are stored. Never estimate nutrition yourself or fill in numbers.
+- **Nutrition per serving** from USDA FoodData Central, only when every counted ingredient matches a USDA food with a known weight, or links a sub-recipe with complete nutrition. Optional lines, garnishes, unmeasured salt and pepper and trace amounts are excluded and listed as such. Otherwise nutrition is `incomplete` (with `missing` reasons) or `not-computed`, and no numbers are stored. Never estimate nutrition yourself or fill in numbers. The rules are in `references/data-root-schema.md` (Nutrition).
+- **Sub-recipes:** when a recipe uses another saved recipe (carrots with the user's pesto), write that ingredient line as a link to its slug, with servings or a volume or weight: `1/2 cup [[basil-pesto]]`. A volume or weight needs the linked recipe's `yield`. Never copy the linked recipe's ingredients into the parent.
 
 Report `enrichment` briefly: the flags, and the nutrition status. When `nutrition` is `incomplete`, list `missing`. When the output has a `hint`, pass it on in one line: if it mentions `chef-setup`, offer to connect USDA nutrition there.
 
@@ -73,7 +75,7 @@ node scripts/add-recipe.mjs enrich --unenriched
 
 `--slug` repeats; `--unenriched` takes every recipe with no flags or without complete nutrition. Act on `status`: `enriched` (report each entry in `recipes`, and `hint` if present), `unchanged` (nothing new to record), `not-found` (no recipe has those `slugs`; check with `chef-recipe-search`), `refused` (as above).
 
-Re-enriching never removes a dietary flag, and keeps earlier nutrition when USDA cannot be reached.
+Re-enriching never removes a dietary flag, and keeps earlier nutrition when USDA cannot be reached. Re-enriching a recipe also re-enriches the recipes that link it, so they appear in `recipes` too.
 
 ## Verify a recipe is safe for a constraint
 

@@ -7429,17 +7429,136 @@ function today(date = new Date) {
 import fs6 from "node:fs";
 import path7 from "node:path";
 
+// src/lib/ingredient-line.mjs
+var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
+var UNITS = {
+  g: ["g", "gram", "grams", "gr"],
+  kg: ["kg", "kilogram", "kilograms"],
+  oz: ["oz", "ounce", "ounces"],
+  lb: ["lb", "lbs", "pound", "pounds"],
+  tsp: ["tsp", "teaspoon", "teaspoons"],
+  tbsp: ["tbsp", "tbs", "tablespoon", "tablespoons"],
+  cup: ["cup", "cups", "c"],
+  ml: ["ml", "milliliter", "milliliters", "millilitre", "millilitres"],
+  l: ["l", "liter", "liters", "litre", "litres"],
+  floz: ["fl oz", "fluid ounce", "fluid ounces"],
+  pt: ["pint", "pints", "pt"],
+  qt: ["quart", "quarts", "qt"],
+  clove: ["clove", "cloves"],
+  slice: ["slice", "slices"],
+  can: ["can", "cans"],
+  stick: ["stick", "sticks"],
+  bunch: ["bunch", "bunches"],
+  head: ["head", "heads"],
+  sprig: ["sprig", "sprigs"],
+  piece: ["piece", "pieces"],
+  stalk: ["stalk", "stalks"],
+  leaf: ["leaf", "leaves"],
+  serving: ["serving", "servings"],
+  pinch: ["pinch", "pinches"],
+  dash: ["dash", "dashes"]
+};
+var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
+var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
+var GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var ML_PER = { tsp: 4.92892, tbsp: 14.7868, cup: 236.588, ml: 1, l: 1000, floz: 29.5735, pt: 473.176, qt: 946.353 };
+var TRACE = new Set(["pinch", "dash"]);
+var SIZES = ["small", "medium", "large"];
+var OPTIONAL = /\boptional\b/i;
+var GARNISH = /\b(?:for|to)\s+(?:garnish(?:ing)?|serv(?:e|ing)|topping|dusting)\b/i;
+var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
+var isSeasoning = (item) => item.includes("salt") || item.includes("pepper") ? item.split(/[^a-z]+/).filter(Boolean).every((w) => SEASONING_WORDS.has(w)) : false;
+var PREP = /\b(?:finely|roughly|thinly|freshly|fresh|chopped|diced|minced|sliced|grated|peeled|drained|rinsed|large|medium|small)\b/g;
+var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
+var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
+var QUALIFIER = /^(?:about|approximately|roughly|scant|heaping|generous|up to)\s+(?=\d)/i;
+var WORD_NUMBER = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
+var WORD_LEAD = /^(a|an|one|two|three|four|five|six)\s+(?=\d|(?:pinch|dash)(?:es)?\b)/i;
+var CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
+var JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
+var JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, "i");
+var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
+var NO_ZEST_YIELD = "no USDA per-fruit yield";
+var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
+var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
+var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+function toNumber(text) {
+  return text.trim().split(/\s+/).reduce((sum, part) => {
+    const [n, d] = part.split("/").map(Number);
+    return sum + (d ? n / d : n);
+  }, 0);
+}
+var round2 = (n) => Math.round(n * 100) / 100;
+var unitOf = (text) => text ? UNIT_OF.get(text.toLowerCase().replace(/\s+/g, " ")) ?? null : null;
+function numericLead(text) {
+  return text.replace(QUALIFIER, "").replace(WORD_LEAD, (_, word) => `${WORD_NUMBER[word.toLowerCase()]} `).replace(/^(?=(?:pinch|dash)(?:es)?\b)/i, "1 ").replace(HYPHEN_PACKAGE, (_, count, size, unit) => `${count} (${size} ${unit}) `);
+}
+function plusAmount(rest, amount, unit) {
+  const plus = rest.match(PLUS);
+  if (!plus)
+    return { rest, amount };
+  const extra = unitOf(plus[2]);
+  const per = [ML_PER, GRAMS_PER].find((table) => table[unit] && table[extra]);
+  return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
+}
+var citrusCount = (text) => /^half/i.test(text) ? 0.5 : WORD_NUMBER[text.toLowerCase()] ?? toNumber(text);
+function parseCitrus(line, text) {
+  const fruit = (count, name) => ({ line, amount: citrusCount(count), unit: null, item: name.toLowerCase(), size: null, packageGrams: null, trace: false });
+  const zest = text.match(ZEST_OF);
+  if (zest)
+    return { ...fruit(zest[1], zest[2]), citrus: "zest", excluded: `zest, ${NO_ZEST_YIELD}` };
+  const juice = text.match(JUICE_OF);
+  const juiced = !juice && text.match(JUICED);
+  if (!juice && !juiced)
+    return null;
+  const withZest = Boolean(juice && (juice[1] || juice[2]));
+  return { ...juice ? fruit(juice[3], juice[4]) : fruit(juiced[1], juiced[2]), citrus: "juice", excluded: null, ...withZest && { note: `zest excluded: ${NO_ZEST_YIELD}` } };
+}
+function parseIngredientLine(line) {
+  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  const citrus = parseCitrus(line, text);
+  if (citrus)
+    return citrus;
+  const toTaste = /\bto taste\b/i.test(text);
+  text = numericLead(text.replace(/\bto taste\b/i, "").trim());
+  const lead = text.match(LEAD);
+  const packageUnit = lead && unitOf(lead[3]);
+  const packageGrams = packageUnit && GRAMS_PER[packageUnit] ? round2(toNumber(lead[2]) * GRAMS_PER[packageUnit]) : null;
+  const unit = lead ? unitOf(lead[4]) : null;
+  const { rest, amount } = lead ? plusAmount(text.slice(lead[0].length), toNumber(lead[1]), unit) : { rest: text, amount: null };
+  const lower = rest.toLowerCase();
+  const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
+  const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
+  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), excluded: exclusion(line, amount, item) };
+}
+function exclusion(line, amount, item) {
+  if (OPTIONAL.test(line))
+    return "optional";
+  if (GARNISH.test(line))
+    return "garnish";
+  if (amount === null && isSeasoning(item))
+    return "seasoning";
+  return null;
+}
+
 // src/skills/chef-add-recipe/scripts/lib/draft.mjs
 var oneLine = (value) => String(value).replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
 var isText = (value, max) => typeof value === "string" && oneLine(value).length > 0 && oneLine(value).length <= max;
 var wholeIn = (value, min, max) => Number.isInteger(value) && value >= min && value <= max;
 var LINES = { max: 100, length: 2000 };
 var lineList = (value) => Array.isArray(value) && value.length > 0 && value.length <= LINES.max && value.every((line) => isText(line, LINES.length));
+var isMeasure = (value) => {
+  if (!isText(value, 40))
+    return false;
+  const { amount, unit } = parseIngredientLine(oneLine(value));
+  return amount > 0 && Boolean(ML_PER[unit] || GRAMS_PER[unit]);
+};
 var FIELDS = [
   ["title", (v) => isText(v, 200), "required, at most 200 characters", true],
   ["description", (v) => isText(v, 1000), "at most 1000 characters"],
   ["servings", (v) => wholeIn(v, 1, 1000), "must be a whole number from 1 to 1000"],
   ...["prep_minutes", "cook_minutes", "total_minutes"].map((key) => [key, (v) => wholeIn(v, 0, 10080), "must be a whole number from 0 to 10080"]),
+  ["yield", isMeasure, "must be a volume or weight, such as 2 cups or 500 g"],
   ["cuisine", (v) => isText(v, 40), "at most 40 characters"],
   ["tags", (v) => Array.isArray(v) && v.length <= 20 && v.every((t) => isText(t, 40)), "must be a list of at most 20 short tags"],
   ["ingredients", lineList, "must be a list of 1 to 100 non-empty lines", true],
@@ -7458,6 +7577,8 @@ function checkDraft(draft) {
       recipe[key] = draft[key];
   if (!given("total_minutes") && given("prep_minutes") && given("cook_minutes"))
     recipe.total_minutes = draft.prep_minutes + draft.cook_minutes;
+  if (given("yield"))
+    recipe.yield = oneLine(draft.yield);
   if (given("description"))
     recipe.description = oneLine(draft.description);
   if (given("cuisine"))
@@ -7466,7 +7587,7 @@ function checkDraft(draft) {
     recipe.tags = [...new Set(draft.tags.map((t) => oneLine(t).toLowerCase()))];
   return { recipe, problems };
 }
-var FACT_KEYS = ["servings", "prep_minutes", "cook_minutes", "total_minutes", "cuisine", "tags"];
+var FACT_KEYS = ["servings", "yield", "prep_minutes", "cook_minutes", "total_minutes", "cuisine", "tags"];
 function recipePage(recipe, { sourceKind, sourceUrl, sourceRaw, date }) {
   const frontmatter = { type: "recipe", title: recipe.title };
   for (const key of FACT_KEYS)
@@ -7649,6 +7770,12 @@ var REVIEWED_FDC_FOODS = [
     aliases: ["fresh lemon juice", "lemon juice"]
   },
   {
+    fdcId: 168156,
+    description: "Lime juice, raw",
+    dataType: "SR Legacy",
+    aliases: ["fresh lime juice", "lime juice"]
+  },
+  {
     fdcId: 169230,
     description: "Garlic, raw",
     dataType: "SR Legacy",
@@ -7738,81 +7865,141 @@ function bestMatch(item, foods) {
   return best?.food ?? null;
 }
 
-// src/lib/ingredient-line.mjs
-var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
-var UNITS = {
-  g: ["g", "gram", "grams", "gr"],
-  kg: ["kg", "kilogram", "kilograms"],
-  oz: ["oz", "ounce", "ounces"],
-  lb: ["lb", "lbs", "pound", "pounds"],
-  tsp: ["tsp", "teaspoon", "teaspoons"],
-  tbsp: ["tbsp", "tbs", "tablespoon", "tablespoons"],
-  cup: ["cup", "cups", "c"],
-  ml: ["ml", "milliliter", "milliliters", "millilitre", "millilitres"],
-  l: ["l", "liter", "liters", "litre", "litres"],
-  floz: ["fl oz", "fluid ounce", "fluid ounces"],
-  pt: ["pint", "pints", "pt"],
-  qt: ["quart", "quarts", "qt"],
-  clove: ["clove", "cloves"],
-  slice: ["slice", "slices"],
-  can: ["can", "cans"],
-  stick: ["stick", "sticks"],
-  bunch: ["bunch", "bunches"],
-  head: ["head", "heads"],
-  sprig: ["sprig", "sprigs"],
-  piece: ["piece", "pieces"],
-  stalk: ["stalk", "stalks"],
-  leaf: ["leaf", "leaves"],
-  pinch: ["pinch", "pinches"],
-  dash: ["dash", "dashes"]
+// src/lib/quantity.mjs
+var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
+var MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
+var ALIASES = {
+  teaspoons: "tsp",
+  teaspoon: "tsp",
+  tablespoons: "tbsp",
+  tablespoon: "tbsp",
+  cups: "cup",
+  milliliters: "ml",
+  milliliter: "ml",
+  millilitres: "ml",
+  millilitre: "ml",
+  liters: "l",
+  liter: "l",
+  litres: "l",
+  litre: "l",
+  "fl oz": "floz",
+  "fluid ounce": "floz",
+  "fluid ounces": "floz",
+  pints: "pt",
+  pint: "pt",
+  quarts: "qt",
+  quart: "qt",
+  gallons: "gal",
+  gallon: "gal",
+  grams: "g",
+  gram: "g",
+  kilograms: "kg",
+  kilogram: "kg",
+  ounces: "oz",
+  ounce: "oz",
+  lbs: "lb",
+  pounds: "lb",
+  pound: "lb",
+  pieces: "piece",
+  slices: "slice",
+  cloves: "clove",
+  cans: "can",
+  jars: "jar",
+  bunches: "bunch",
+  heads: "head",
+  sprigs: "sprig",
+  sticks: "stick",
+  boxes: "box",
+  dozens: "dozen"
 };
-var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
-var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
-var GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
-var ML_PER = { tsp: 4.92892, tbsp: 14.7868, cup: 236.588, ml: 1, l: 1000, floz: 29.5735, pt: 473.176, qt: 946.353 };
-var TRACE = new Set(["pinch", "dash"]);
-var SIZES = ["small", "medium", "large"];
-var PREP = /\b(?:finely|roughly|thinly|freshly|fresh|chopped|diced|minced|sliced|grated|peeled|drained|rinsed|large|medium|small)\b/g;
-var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
-var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
-var QUALIFIER = /^(?:about|approximately|roughly|scant|heaping|generous|up to)\s+(?=\d)/i;
-var WORD_NUMBER = { a: 1, an: 1, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6 };
-var WORD_LEAD = /^(a|an|one|two|three|four|five|six)\s+(?=\d|(?:pinch|dash)(?:es)?\b)/i;
-var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
-var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
-var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
-function toNumber(text) {
-  return text.trim().split(/\s+/).reduce((sum, part) => {
-    const [n, d] = part.split("/").map(Number);
-    return sum + (d ? n / d : n);
-  }, 0);
+var normalizeUnit = (unit) => ALIASES[String(unit ?? "").trim().toLowerCase()] ?? String(unit ?? "").trim().toLowerCase();
+function quantityDimension(unit) {
+  const normalized = normalizeUnit(unit);
+  if (Object.hasOwn(VOLUME, normalized))
+    return "volume";
+  if (Object.hasOwn(MASS, normalized))
+    return "mass";
+  if (COUNT.has(normalized))
+    return "count";
+  return null;
 }
-var round2 = (n) => Math.round(n * 100) / 100;
-var unitOf = (text) => text ? UNIT_OF.get(text.toLowerCase().replace(/\s+/g, " ")) ?? null : null;
-function numericLead(text) {
-  return text.replace(QUALIFIER, "").replace(WORD_LEAD, (_, word) => `${WORD_NUMBER[word.toLowerCase()]} `).replace(/^(?=(?:pinch|dash)(?:es)?\b)/i, "1 ").replace(HYPHEN_PACKAGE, (_, count, size, unit) => `${count} (${size} ${unit}) `);
+function convertQuantity(amount, fromUnit, toUnit) {
+  const from = normalizeUnit(fromUnit);
+  const to = normalizeUnit(toUnit);
+  const dimension = quantityDimension(from);
+  if (!dimension || dimension !== quantityDimension(to))
+    return null;
+  if (dimension === "volume")
+    return amount * VOLUME[from] / VOLUME[to];
+  if (dimension === "mass")
+    return amount * MASS[from] / MASS[to];
+  if (from === to)
+    return amount;
+  if (from === "dozen" && to === "each")
+    return amount * 12;
+  if (from === "each" && to === "dozen")
+    return amount / 12;
+  return null;
 }
-function plusAmount(rest, amount, unit) {
-  const plus = rest.match(PLUS);
-  if (!plus)
-    return { rest, amount };
-  const extra = unitOf(plus[2]);
-  const per = [ML_PER, GRAMS_PER].find((table) => table[unit] && table[extra]);
-  return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
+
+// src/lib/sub-recipes.mjs
+var LINK = /\[\[([a-z0-9]+(?:-[a-z0-9]+)*)(?:\|[^\]]*)?\]\]/;
+var linkedSlug = (line) => line.match(LINK)?.[1] ?? null;
+function servingsUsed(parsed, slug, sub) {
+  if (!sub)
+    return { reason: `sub-recipe ${slug} not found` };
+  if (sub.nutrition_status !== "complete" || !sub.nutrition_per_serving)
+    return { reason: `sub-recipe ${slug} nutrition is ${sub.nutrition_status ?? "not computed yet"}` };
+  if (parsed.amount === null)
+    return { reason: "no amount" };
+  if (parsed.unit === "serving")
+    return { servings: parsed.amount };
+  if (!parsed.unit)
+    return { reason: `say how much of ${slug}: servings, or a volume or weight` };
+  const made = sub.yield ? parseIngredientLine(String(sub.yield)) : null;
+  if (!made?.amount || !made.unit)
+    return { reason: `sub-recipe ${slug} has no yield; give servings instead` };
+  const share = convertQuantity(parsed.amount, parsed.unit, made.unit);
+  if (share === null)
+    return { reason: `${parsed.unit} does not convert to the ${slug} yield of ${sub.yield}` };
+  return { servings: share / made.amount * sub.servings };
 }
-function parseIngredientLine(line) {
-  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
-  const toTaste = /\bto taste\b/i.test(text);
-  text = numericLead(text.replace(/\bto taste\b/i, "").trim());
-  const lead = text.match(LEAD);
-  const packageUnit = lead && unitOf(lead[3]);
-  const packageGrams = packageUnit && GRAMS_PER[packageUnit] ? round2(toNumber(lead[2]) * GRAMS_PER[packageUnit]) : null;
-  const unit = lead ? unitOf(lead[4]) : null;
-  const { rest, amount } = lead ? plusAmount(text.slice(lead[0].length), toNumber(lead[1]), unit) : { rest: text, amount: null };
-  const lower = rest.toLowerCase();
-  const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
-  const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
-  return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit) };
+var MAX_DEPTH = 3;
+function subRecipeGraph(recipes) {
+  const links = new Map(recipes.map(({ slug, lines }) => [slug, [...new Set(lines.map(linkedSlug).filter(Boolean))]]));
+  const order = [];
+  const blocked = new Map;
+  const depth = new Map;
+  const visiting = new Set;
+  const usedBy = new Map;
+  for (const [slug, linked] of links)
+    for (const sub of linked)
+      usedBy.set(sub, [...usedBy.get(sub) ?? [], slug]);
+  function visit2(slug, trail) {
+    if (depth.has(slug))
+      return depth.get(slug);
+    if (visiting.has(slug)) {
+      const cycle = [...trail.slice(trail.indexOf(slug)), slug];
+      for (const member of cycle)
+        blocked.set(member, `sub-recipe cycle: ${cycle.join(" -> ")}`);
+      return 0;
+    }
+    visiting.add(slug);
+    let deepest = 0;
+    for (const sub of links.get(slug))
+      if (links.has(sub))
+        deepest = Math.max(deepest, 1 + visit2(sub, [...trail, slug]));
+    visiting.delete(slug);
+    depth.set(slug, deepest);
+    order.push(slug);
+    if (deepest > MAX_DEPTH && !blocked.has(slug))
+      blocked.set(slug, `sub-recipes nest more than ${MAX_DEPTH} levels deep`);
+    return deepest;
+  }
+  for (const slug of links.keys())
+    visit2(slug, []);
+  return { order, blocked, usedBy };
 }
 
 // src/lib/nutrition.mjs
@@ -7838,10 +8025,31 @@ function gramsFromPortions(parsed, food) {
   const count = portions.find((p) => wanted.includes(portionWord(p)));
   return count ? amount * count.gramWeight / count.amount : null;
 }
-async function ingredient(line, lookup) {
+var FIELDS2 = Object.keys(NUTRIENTS);
+var scaled = (values, factor) => Object.fromEntries(FIELDS2.map((field) => [field, values[field] * factor]));
+var plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+function subRecipeLine(line, parsed, slug, subRecipe) {
+  const sub = subRecipe(slug);
+  const used = servingsUsed(parsed, slug, sub);
+  if (used.reason)
+    return { missing: `${line}: ${used.reason}` };
+  const absent = FIELDS2.filter((field) => typeof sub.nutrition_per_serving[field] !== "number");
+  if (absent.length)
+    return { missing: `${line}: sub-recipe ${slug} has no ${absent.join(", ")} value` };
+  const servings = Math.round(used.servings * 100) / 100;
+  return { amounts: scaled(sub.nutrition_per_serving, used.servings), source: `${line}: sub-recipe ${slug}, ${plural(servings, "serving")}` };
+}
+async function ingredient(line, lookup, subRecipe) {
   const parsed = parseIngredientLine(line);
-  if (parsed.trace)
-    return { grams: 0 };
+  const excluded = parsed.trace ? "trace amount" : parsed.excluded;
+  if (excluded)
+    return { source: `${line}: excluded: ${excluded}` };
+  const slug = linkedSlug(line);
+  if (slug)
+    return subRecipeLine(line, parsed, slug, subRecipe);
+  return usdaLine(line, parsed.citrus === "juice" ? { ...parsed, item: `${parsed.item} juice`, unit: parsed.item } : parsed, lookup);
+}
+async function usdaLine(line, parsed, lookup) {
   if (parsed.amount === null)
     return { missing: `${line}: no amount` };
   const food = await lookup.match(parsed.item);
@@ -7852,10 +8060,11 @@ async function ingredient(line, lookup) {
     grams = gramsFromPortions(parsed, await lookup.detail(food.fdcId));
   if (!grams)
     return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? "medium"}" portion for ${food.description}` };
-  const absent = Object.keys(NUTRIENTS).filter((field) => food.per100g[field] === undefined);
+  const absent = FIELDS2.filter((field) => food.per100g[field] === undefined);
   if (absent.length)
     return { missing: `${line}: USDA has no ${absent.join(", ")} value for ${food.description}` };
-  return { grams, food, source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g` };
+  const note = parsed.note ? `; ${parsed.note}` : "";
+  return { amounts: scaled(food.per100g, grams / 100), source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note}` };
 }
 function memoLookup(fdc) {
   const matches = new Map;
@@ -7876,25 +8085,26 @@ function memoLookup(fdc) {
     detail
   };
 }
-async function computeNutrition({ lines, servings, fdc }) {
+async function computeNutrition({ lines, servings, fdc, subRecipe = () => {
+  return;
+} }) {
   if (fdc.unavailable)
     return { status: "not-computed", reason: fdc.unavailable };
   if (!Number.isInteger(servings) || servings < 1)
     return { status: "incomplete", missing: ["servings: the recipe does not say how many it serves"], sources: [] };
   const lookup = memoLookup(fdc);
-  const totals = Object.fromEntries(Object.keys(NUTRIENTS).map((field) => [field, 0]));
+  const totals = Object.fromEntries(FIELDS2.map((field) => [field, 0]));
   const missing = [];
   const sources = [];
   try {
     for (const line of lines) {
-      const result = await ingredient(line, lookup);
+      const result = await ingredient(line, lookup, subRecipe);
       if (result.missing)
         missing.push(result.missing);
-      if (!result.food)
-        continue;
-      sources.push(result.source);
-      for (const field of Object.keys(totals))
-        totals[field] += result.food.per100g[field] * result.grams / 100;
+      if (result.source)
+        sources.push(result.source);
+      for (const field of FIELDS2)
+        totals[field] += result.amounts?.[field] ?? 0;
     }
   } catch (error) {
     if (error instanceof UsdaUnavailable)
@@ -7930,12 +8140,12 @@ function nutritionFields(nutrition, previous) {
     fields.nutrition_sources = nutrition.sources;
   return fields;
 }
-async function enrichOne(recipe, fdc) {
+var flagsOf = (fm) => Array.isArray(fm?.dietary_flags) ? fm.dietary_flags : [];
+async function enrichOne(recipe, lines, fdc, { current, blocked }) {
   const fm = recipe.frontmatter;
-  const lines = ingredientLines(recipe.body);
-  const previousFlags = Array.isArray(fm.dietary_flags) ? fm.dietary_flags : [];
-  const flags = [...new Set([...previousFlags, ...dietaryFlags(lines)])].sort();
-  const nutrition = await computeNutrition({ lines, servings: fm.servings, fdc });
+  const subFlags = lines.map(linkedSlug).filter(Boolean).flatMap((slug) => flagsOf(current.get(slug)));
+  const flags = [...new Set([...flagsOf(fm), ...dietaryFlags(lines), ...subFlags])].sort();
+  const nutrition = blocked ? { status: "incomplete", missing: [blocked], sources: [] } : await computeNutrition({ lines, servings: fm.servings, fdc, subRecipe: (slug) => current.get(slug) });
   const rest = Object.fromEntries(Object.entries(fm).filter(([key]) => key !== "dietary_flags" && !NUTRITION_FIELDS.includes(key)));
   const frontmatter = { ...rest, dietary_flags: flags, ...nutritionFields(nutrition, fm) };
   const report = { slug: recipe.slug, dietary_flags: flags, nutrition: nutrition.status };
@@ -7944,7 +8154,7 @@ async function enrichOne(recipe, fdc) {
   if (nutrition.reason)
     report.reason = nutrition.reason;
   const changed = !isDeepStrictEqual(frontmatter, fm);
-  return { report, reason: nutrition.reason, page: changed && { slug: recipe.slug, frontmatter, body: recipe.body } };
+  return { report, reason: nutrition.reason, frontmatter, page: changed && { slug: recipe.slug, frontmatter, body: recipe.body } };
 }
 async function enrichRecipes(root, { slugs = [], unenriched = false, fdc, date }) {
   const { recipes } = listRecipes(root);
@@ -7954,10 +8164,20 @@ async function enrichRecipes(root, { slugs = [], unenriched = false, fdc, date }
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const chosen = recipes.filter((r) => slugs.includes(r.slug) || unenriched && needsEnrichment(r.frontmatter));
+  const lines = new Map(recipes.map((r) => [r.slug, ingredientLines(r.body)]));
+  const graph = subRecipeGraph(recipes.map((r) => ({ slug: r.slug, lines: lines.get(r.slug) })));
+  const chosen = new Set(recipes.filter((r) => slugs.includes(r.slug) || unenriched && needsEnrichment(r.frontmatter)).map((r) => r.slug));
+  for (const slug of chosen)
+    for (const parent of graph.usedBy.get(slug) ?? [])
+      chosen.add(parent);
+  const bySlug = new Map(recipes.map((r) => [r.slug, r]));
+  const current = new Map(recipes.map((r) => [r.slug, r.frontmatter]));
   const results = [];
-  for (const recipe of chosen)
-    results.push(await enrichOne(recipe, fdc));
+  for (const slug of graph.order.filter((s) => chosen.has(s))) {
+    const result = await enrichOne(bySlug.get(slug), lines.get(slug), fdc, { current, blocked: graph.blocked.get(slug) });
+    current.set(slug, result.frontmatter);
+    results.push(result);
+  }
   const pages = results.filter((r) => r.page).map((r) => ({ ...r.page, frontmatter: { ...r.page.frontmatter, updated: date } }));
   const reason = results.find((r) => r.reason)?.reason;
   const summary = { data_root: root, recipes: results.map((r) => r.report), ...reason && { hint: HINTS[reason] } };
@@ -8094,7 +8314,7 @@ var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve o
 var RULESET_TYPE = "dietary-ruleset";
 var RULESET_SLUG = "dietary-ruleset";
 var RULESET_PATH = wikiPath(RULESET_TYPE, RULESET_SLUG);
-var ALIASES = {
+var ALIASES2 = {
   milk: ["dairy"],
   lactose: ["dairy"],
   eggs: ["egg"],
@@ -8114,14 +8334,14 @@ var escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 var ALLERGEN_WORDS = [
   ...DIETARY_FLAGS.map((flag) => [suffix(flag), [suffix(flag)]]),
   ...DIETARY_FLAGS.map((flag) => [suffix(flag).replace("-", " "), [suffix(flag)]]),
-  ...Object.entries(ALIASES)
+  ...Object.entries(ALIASES2)
 ].map(([word, flags]) => ({ pattern: new RegExp(`(?<![a-z])${escape(word)}(?![a-z])`), flags }));
 var FILLER = /(?<![a-z])(?:allerg(?:y|ies|ic)|intoleran(?:ce|t)|free|seeds?|no|to|an?)(?![a-z])/g;
 var core = (name) => name.replace(/[-_]/g, " ").replace(FILLER, " ").replace(/\s+/g, " ").trim();
 function exactFlags(text) {
   for (const word of [text, `${text}s`, text.replace(/s$/, "")]) {
-    if (ALIASES[word])
-      return ALIASES[word];
+    if (ALIASES2[word])
+      return ALIASES2[word];
     const flag = word.replace(/ /g, "-");
     if (flagFor(flag))
       return [flag];
