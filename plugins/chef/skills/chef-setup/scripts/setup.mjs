@@ -7042,10 +7042,14 @@ function findPluginRepository(skillDir) {
 }
 function findWorkspaceRepository(skillsDir) {
   const workspace = path.dirname(skillsDir);
-  const matches = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => path.join(workspace, entry.name));
-  if (matches.length !== 1)
-    throw new Error(`expected one Chef repository in ${workspace}; found ${matches.length}`);
-  return matches[0];
+  const where = `next to ${path.basename(skillsDir)}/ in ${workspace}`;
+  const names = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => entry.name).sort();
+  if (names.length === 0)
+    throw new Error(`no Chef repository found ${where}; clone Chef there or reinstall`);
+  if (names.length > 1) {
+    throw new Error(`found ${names.length} Chef repositories ${where}: ${names.join(", ")}; keep one and remove the others`);
+  }
+  return path.join(workspace, names[0]);
 }
 function updateInstall({ skillDir, repository }) {
   const skillsDir = path.dirname(skillDir);
@@ -7928,9 +7932,9 @@ function compareSemver(left, right) {
 function latestTag(repository) {
   const remotes = git(repository, ["remote"]).split(`
 `).filter(Boolean);
-  if (remotes.includes("origin")) {
-    git(repository, ["fetch", "--tags", "--force", "origin"]);
-  }
+  if (!remotes.includes("origin"))
+    throw new Error("no remote to check for releases: add the Chef repository as the origin remote");
+  git(repository, ["fetch", "--tags", "--force", "origin"]);
   const releases = git(repository, ["tag", "--list"]).split(`
 `).filter(Boolean).map(semver).filter(Boolean).sort(compareSemver);
   if (releases.length === 0)
@@ -7992,8 +7996,8 @@ function updateChef(root, {
   targetSettings = SETTINGS_VERSION
 } = {}) {
   const install = adapter.updateInstall({ skillDir });
-  commitPending(root, "Before Chef update");
   const release = latestTag(install.repository);
+  commitPending(root, "Before Chef update");
   const sourceNames = taggedSkills(install.repository, release);
   const expectedNames = sourceNames.map((name) => installedName(name, install.nameForSkill));
   const skills = skillChanges(install.skillsDir, expectedNames);

@@ -173,6 +173,8 @@ It checks Node, that the data root is writable and on this Chef's schema version
 
 ## Update Chef
 
+How updates work, for explaining to the user: the install is a git clone of the Chef repository. Releases are semver tags. `check-update` fetches tags from the clone's `origin` remote and compares the newest with the installed `plugin.json` version; it installs nothing, and with no `origin` remote it refuses. `update` checks out the newest tag and installs its skills, then waits for `--confirm` before running migrations.
+
 Run the preview first, without `--confirm`:
 
 ```sh

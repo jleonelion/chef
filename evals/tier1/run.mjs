@@ -58,6 +58,9 @@ function prepareUpdateInstall(tmp, sourceSkills) {
   git('add', '-A');
   git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'release');
   git('tag', 'v0.1.0');
+  // A bare origin has no plugins/ folder, so Muse discovery still finds exactly one Chef repository.
+  git('clone', '-q', '--bare', '.', path.join(tmp, 'chef-origin.git'));
+  git('remote', 'add', 'origin', path.join(tmp, 'chef-origin.git'));
   return skillsDir;
 }
 

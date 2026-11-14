@@ -24,6 +24,29 @@ test('update locations come from the adapter for Muse custom skills', () => {
   });
 });
 
+function museWorkspace(...repositories) {
+  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-runtime-workspace-'));
+  for (const name of repositories) {
+    fs.mkdirSync(path.join(workspace, name, 'plugins', 'chef', '.claude-plugin'), { recursive: true });
+    fs.writeFileSync(path.join(workspace, name, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), '{"name":"chef"}');
+  }
+  return { workspace, skillDir: path.join(workspace, 'custom-skills', 'chef_setup') };
+}
+
+test('Muse update with no Chef repository next to custom-skills says to clone Chef there', () => {
+  const { workspace, skillDir } = museWorkspace();
+  assert.throws(() => muse.updateInstall({ skillDir }), {
+    message: `no Chef repository found next to custom-skills/ in ${workspace}; clone Chef there or reinstall`,
+  });
+});
+
+test('Muse update with two Chef repositories names them and asks the user to keep one', () => {
+  const { workspace, skillDir } = museWorkspace('chef', 'chef-old');
+  assert.throws(() => muse.updateInstall({ skillDir }), {
+    message: `found 2 Chef repositories next to custom-skills/ in ${workspace}: chef, chef-old; keep one and remove the others`,
+  });
+});
+
 test('update locations come from the adapter for Claude Code and Muse Code plugins', () => {
   const repository = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-plugin-cache-'));
   const skillDir = path.join(repository, 'plugins', 'chef', 'skills', 'chef-setup');
