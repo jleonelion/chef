@@ -7043,11 +7043,12 @@ function findPluginRepository(skillDir) {
 }
 function findWorkspaceRepository(skillsDir) {
   const workspace = path.dirname(skillsDir);
+  const where = `next to ${path.basename(skillsDir)}/ in ${workspace}`;
   const names = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => entry.name).sort();
   if (names.length === 0)
-    throw new Error(`No Chef repository found next to custom-skills/ in ${workspace}; clone Chef there or reinstall`);
+    throw new Error(`no Chef repository found ${where}; clone Chef there or reinstall`);
   if (names.length > 1) {
-    throw new Error(`Found ${names.length} Chef repositories next to custom-skills/ in ${workspace}: ${names.join(", ")}; keep one and remove the others`);
+    throw new Error(`found ${names.length} Chef repositories ${where}: ${names.join(", ")}; keep one and remove the others`);
   }
   return path.join(workspace, names[0]);
 }
