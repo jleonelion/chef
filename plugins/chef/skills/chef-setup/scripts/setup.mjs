@@ -7042,10 +7042,13 @@ function findPluginRepository(skillDir) {
 }
 function findWorkspaceRepository(skillsDir) {
   const workspace = path.dirname(skillsDir);
-  const matches = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => path.join(workspace, entry.name));
-  if (matches.length !== 1)
-    throw new Error(`expected one Chef repository in ${workspace}; found ${matches.length}`);
-  return matches[0];
+  const names = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => entry.name).sort();
+  if (names.length === 0)
+    throw new Error(`No Chef repository found next to custom-skills/ in ${workspace}; clone Chef there or reinstall`);
+  if (names.length > 1) {
+    throw new Error(`Found ${names.length} Chef repositories next to custom-skills/ in ${workspace}: ${names.join(", ")}; keep one and remove the others`);
+  }
+  return path.join(workspace, names[0]);
 }
 function updateInstall({ skillDir, repository }) {
   const skillsDir = path.dirname(skillDir);
@@ -7928,9 +7931,9 @@ function compareSemver(left, right) {
 function latestTag(repository) {
   const remotes = git(repository, ["remote"]).split(`
 `).filter(Boolean);
-  if (remotes.includes("origin")) {
-    git(repository, ["fetch", "--tags", "--force", "origin"]);
-  }
+  if (!remotes.includes("origin"))
+    throw new Error("no remote to check for releases: add the Chef repository as the origin remote");
+  git(repository, ["fetch", "--tags", "--force", "origin"]);
   const releases = git(repository, ["tag", "--list"]).split(`
 `).filter(Boolean).map(semver).filter(Boolean).sort(compareSemver);
   if (releases.length === 0)
