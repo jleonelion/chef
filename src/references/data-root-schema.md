@@ -94,7 +94,7 @@ Every counted ingredient line resolves to a USDA FoodData Central food and gram 
 | Reason | Lines |
 |---|---|
 | `optional` | The line says `optional`, such as `1/4 cup pine nuts (optional)` |
-| `garnish` | `for garnish`, `for serving`, `to serve`, `for topping`, `for dusting` |
+| `garnish` | A line with no amount that says `for garnish`, `for serving`, `to serve`, `for topping` or `for dusting`. A measured line served alongside (`8 tortillas, for serving`) is counted |
 | `seasoning` | Salt and pepper with no amount, such as `salt and pepper` or `kosher salt`. Measured salt is counted |
 | `trace amount` | `to taste`, a pinch or a dash |
 | `zest, no USDA per-fruit yield` | Zest by the fruit, such as `zest of 1 lemon`. Measured zest (`1 tsp lemon zest`) is counted |

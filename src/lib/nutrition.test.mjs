@@ -30,20 +30,22 @@ test('sums USDA per-100 g values over each ingredient\'s grams, per serving, rou
 
 test('seasonings, garnishes and optional lines are excluded, listed with their reason, and never block complete', async () => {
   const { calls, fdc } = usda();
-  const lines = ['100 g onion', 'salt and pepper', 'Kosher salt', 'parsley, for garnish', '4 lemon wedges, for serving', '1/4 cup toasted pine nuts (optional)', 'salt to taste'];
+  const lines = ['100 g onion', 'salt and pepper', 'Kosher salt', 'parsley, for garnish', 'lemon wedges, for serving', '1/4 cup toasted pine nuts (optional)', 'salt to taste', '100 g spaghetti, to serve'];
   const result = await computeNutrition({ lines, servings: 1, fdc });
   assert.equal(result.status, 'complete');
-  assert.equal(result.per_serving.calories, 40);
+  // A measured line served alongside is not nominal: onion 40 kcal + spaghetti 371 kcal.
+  assert.equal(result.per_serving.calories, 411);
   assert.deepEqual(result.sources, [
     '100 g onion: Onions, raw (FDC 170000), 100 g',
     'salt and pepper: excluded: seasoning',
     'Kosher salt: excluded: seasoning',
     'parsley, for garnish: excluded: garnish',
-    '4 lemon wedges, for serving: excluded: garnish',
+    'lemon wedges, for serving: excluded: garnish',
     '1/4 cup toasted pine nuts (optional): excluded: optional',
     'salt to taste: excluded: trace amount',
+    '100 g spaghetti, to serve: Pasta, dry, enriched (FDC 169736), 100 g',
   ]);
-  assert.deepEqual(calls, ['/fdc/v1/foods/search?onion']);
+  assert.deepEqual(calls, ['/fdc/v1/foods/search?onion', '/fdc/v1/food/169736']);
 });
 
 test('citrus juice by the fruit uses USDA\'s per-fruit juice yield; zest by the fruit has none, so it is excluded', async () => {

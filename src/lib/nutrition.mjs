@@ -7,6 +7,7 @@
 import { NUTRIENTS } from './fdc.mjs';
 import { bestMatch, reviewedMatch, singular } from './fdc-match.mjs';
 import { GRAMS_PER, ML_PER, parseIngredientLine } from './ingredient-line.mjs';
+import { exclusion, NO_ZEST_YIELD } from './nutrition-exclusions.mjs';
 import { linkedSlug, servingsUsed } from './sub-recipes.mjs';
 
 const MG = new Set(['sodium', 'cholesterol']);
@@ -73,15 +74,17 @@ function subRecipeLine(line, parsed, slug, subRecipe) {
 // One line's contribution: { amounts, source }, { source } when excluded, or { missing }.
 async function ingredient(line, lookup, subRecipe) {
   const parsed = parseIngredientLine(line);
-  const excluded = parsed.trace ? 'trace amount' : parsed.excluded;
+  const excluded = exclusion(parsed);
   if (excluded) return { source: `${line}: excluded: ${excluded}` };
   const slug = linkedSlug(line);
   if (slug) return subRecipeLine(line, parsed, slug, subRecipe);
-  return usdaLine(line, parsed.citrus === 'juice' ? { ...parsed, item: `${parsed.item} juice`, unit: parsed.item } : parsed, lookup);
+  if (!parsed.citrus) return usdaLine(line, parsed, lookup);
+  // Juice by the fruit: the fruit is the unit, read against the juice food's "1 lemon yields" portion.
+  const juice = { ...parsed, item: `${parsed.item} juice`, unit: parsed.item };
+  return usdaLine(line, juice, lookup, parsed.citrus === 'zest-and-juice' ? `zest excluded: ${NO_ZEST_YIELD}` : null);
 }
 
-// Citrus juice by the fruit arrives as item "lemon juice", unit "lemon": USDA's "1 lemon yields" portion.
-async function usdaLine(line, parsed, lookup) {
+async function usdaLine(line, parsed, lookup, note = null) {
   if (parsed.amount === null) return { missing: `${line}: no amount` };
   const food = await lookup.match(parsed.item);
   if (!food) return { missing: `${line}: no matching USDA food` };
@@ -90,8 +93,7 @@ async function usdaLine(line, parsed, lookup) {
   if (!grams) return { missing: `${line}: USDA has no "${parsed.unit ?? parsed.size ?? 'medium'}" portion for ${food.description}` };
   const absent = FIELDS.filter((field) => food.per100g[field] === undefined);
   if (absent.length) return { missing: `${line}: USDA has no ${absent.join(', ')} value for ${food.description}` };
-  const note = parsed.note ? `; ${parsed.note}` : '';
-  return { amounts: scaled(food.per100g, grams / 100), source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note}` };
+  return { amounts: scaled(food.per100g, grams / 100), source: `${line}: ${food.description} (FDC ${food.fdcId}), ${oneDecimal(grams)} g${note ? `; ${note}` : ''}` };
 }
 
 function memoLookup(fdc) {
