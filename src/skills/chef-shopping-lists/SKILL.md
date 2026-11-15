@@ -20,6 +20,7 @@ The result has:
 - `items`: what to buy, `{ item, amount, unit, recipes }`, scaled to the planned servings and combined. Chef never guesses a conversion, so the same food in units that can't be converted (`1 bunch` and `150 g`) stays on separate rows. `on_hand` means inventory holds the food in a unit Chef can't compare; ask the user to check it.
 - `unquantified`: ingredients with no amount or a trace amount ("salt to taste"); ask the user to check they have them.
 - `covered`: items inventory already covers. Mention them briefly.
+- `meals`: the planned meals the list covers, `{ date, slot, slug, servings }`. A recipe planned at several meals is bought once for all their servings.
 - `excluded`: planned recipes the dietary gate now leaves out, because the ruleset changed after planning. Name each one and its reasons; their ingredients are not on the list. Offer to re-plan.
 - `missing_recipes`: planned recipes that no longer exist.
 - `dietary`: pass on `nudge`, `footer`, `caveats` or `problem` exactly as provided. `text` already includes them.

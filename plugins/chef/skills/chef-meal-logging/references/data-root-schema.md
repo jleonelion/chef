@@ -187,11 +187,11 @@ A page Chef cannot read leaves every recipe out of suggestions until `chef-setup
 | `week_start`, `created` | yes | `YYYY-MM-DD` |
 | `household_profile` | yes | The profile path used, or `null` when none exists |
 | `servings_source` | yes | `profile` when `portions_per_meal` supplied the servings, otherwise `default` |
-| `meals` | yes | One to seven entries with `date`, recipe `slug`, `title` and household `servings` |
-| `nutrition` | yes | The shared nutrition engine's rollup. `complete` has per-meal and weekly `totals`; `incomplete` lists meals whose recipe nutrition is unavailable and never estimates totals |
+| `meals` | yes | The planned meals, in date and meal-slot order: `date`, `slot` (`breakfast`, `lunch`, `dinner` or `snack`), recipe `slug`, `title`, `servings` and an optional `note`. At most one per date and slot, all inside the week. A slot with no entry is not planned. An entry with no `slot`, as in every v1 one-per-day plan, reads as `dinner` |
+| `nutrition` | yes | The shared nutrition engine's rollup. `complete` has per-planned-meal (date, slot, recipe) and weekly `totals`; `incomplete` lists planned meals whose recipe nutrition is unavailable and never estimates totals |
 | `dietary` | yes | Ruleset status plus the applicable `nudge`, `footer`, `caveats` or unreadable-ruleset `problem` |
-| `inventory` | yes | Inventory context considered while preferring recipes |
-| `avoidance_notes` | when a planned meal matches an avoidance | Meal date and recipe slug plus the affected member, avoidance and matching ingredient text |
+| `inventory` | yes | `items_considered`: how many inventory items were on hand when the plan was saved |
+| `avoidance_notes` | when a planned meal matches an avoidance | Meal date, slot and recipe slug plus the affected member, avoidance and matching ingredient text |
 
 Calendar payloads are runtime instructions returned by the script only when `settings.calendar`
 is set. They are never stored on a meal-plan page, and Chef scripts never call a calendar API.
@@ -234,4 +234,4 @@ A list is built from the saved `meal-plan` page minus `data/food-inventory/curre
 
 ## Batch prep PDFs
 
-`data/batch-prep-plans/<week-start>.pdf` belongs to chef-batch-prep-planning; only its script writes there, through the guarded writer, one commit per render. It is a derived artifact of `knowledge/wiki/meal-plans/<week-start>.md`: one page per unique planned recipe in first-appearance order, with that recipe's planned dates, servings and `## Steps`. Re-rendering overwrites it; never edit it by hand.
+`data/batch-prep-plans/<week-start>.pdf` belongs to chef-batch-prep-planning; only its script writes there, through the guarded writer, one commit per render. It is a derived artifact of `knowledge/wiki/meal-plans/<week-start>.md`: one page per unique planned recipe in first-appearance order, with that recipe's planned dates and meal slots, servings and `## Steps`. Re-rendering overwrites it; never edit it by hand.
