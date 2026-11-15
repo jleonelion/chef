@@ -1,13 +1,22 @@
 // Combines scaled ingredient lines into shopping items and subtracts inventory. Never guesses a
 // conversion: amounts merge only within one measurable dimension (mass, volume) or the same
-// count unit; anything else becomes its own row.
+// count unit; anything else becomes its own row. Mass and volume merge exactly in a base unit
+// (g, tsp) so order never matters; the household's units apply only in displayItems.
 import { parseIngredientLine } from '../../../../lib/ingredient-line.mjs';
-import { convertQuantity, normalizeUnit } from '../../../../lib/quantity.mjs';
+import { convertQuantity, displayQuantity, normalizeUnit, quantityDimension, round2, SPOON_UNITS } from '../../../../lib/quantity.mjs';
 
-const round = (value) => Math.round(value * 100) / 100;
+const BASE = { mass: 'g', volume: 'tsp' };
+// Conversion factors are inexact; stock within this fraction of the need covers it.
+const TOLERANCE = 1e-6;
 export const itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-// uses: [{ line, multiplier, recipe }] -> { items: [{ item, amount, unit, recipes }], unquantified: [{ item, line, recipe }] }
+const exact = (amount, unit) => {
+  const base = BASE[quantityDimension(unit)];
+  return base ? { amount: convertQuantity(amount, unit, base), unit: base } : { amount, unit };
+};
+
+// uses: [{ line, multiplier, recipe }] -> { items: [{ item, amount, unit, spoon, recipes, sources }], unquantified }
+// Item amounts are exact, mass and volume in base units; sources keep each recipe's own unit.
 export function combineLines(uses) {
   const items = [];
   const unquantified = [];
@@ -19,19 +28,22 @@ export function combineLines(uses) {
       continue;
     }
     const unit = normalizeUnit(parsed.unit ?? 'each');
-    const amount = parsed.amount * multiplier;
-    const row = items.find((r) => r.item === item && convertQuantity(amount, unit, r.unit) !== null);
+    const source = { recipe, amount: round2(parsed.amount * multiplier), unit };
+    const { amount, unit: base } = exact(parsed.amount * multiplier, unit);
+    const row = items.find((r) => r.item === item && convertQuantity(amount, base, r.unit) !== null);
     if (!row) {
-      items.push({ item, amount: round(amount), unit, recipes: [recipe] });
+      items.push({ item, amount, unit: base, spoon: SPOON_UNITS.has(unit), recipes: [recipe], sources: [source] });
       continue;
     }
-    row.amount = round(row.amount + convertQuantity(amount, unit, row.unit));
+    row.amount += convertQuantity(amount, base, row.unit);
+    row.spoon ||= SPOON_UNITS.has(unit);
+    row.sources.push(source);
     if (!row.recipes.includes(recipe)) row.recipes.push(recipe);
   }
   return { items, unquantified };
 }
 
-// stock: inventory items from listItems(). -> { items still to buy, covered }
+// stock: inventory items from listItems(). Exact amounts. -> { items still to buy, covered }
 export function subtractInventory(items, stock) {
   const remaining = [];
   const covered = [];
@@ -42,9 +54,21 @@ export function subtractInventory(items, stock) {
       continue;
     }
     const have = convertQuantity(match.amount, match.unit, row.unit);
-    if (have === null) remaining.push({ ...row, on_hand: { amount: match.amount, unit: match.unit } });
-    else if (have >= row.amount) covered.push({ ...row, on_hand: { amount: match.amount, unit: match.unit } });
-    else remaining.push({ ...row, amount: round(row.amount - have) });
+    const onHand = { on_hand: { amount: match.amount, unit: match.unit } };
+    if (have === null) remaining.push({ ...row, ...onHand });
+    else if (have >= row.amount * (1 - TOLERANCE)) covered.push({ ...row, ...onHand });
+    else remaining.push({ ...row, amount: row.amount - have });
   }
   return { items: remaining, covered };
+}
+
+// Rows as the household sees them: amount, unit and text in `system` ('us' | 'metric').
+export function displayItems(items, system) {
+  return items.map(({ item, amount, unit, spoon, recipes, sources, on_hand }) => ({
+    item,
+    ...displayQuantity(amount, unit, system, { spoon }),
+    recipes,
+    sources,
+    ...(on_hand && { on_hand: displayQuantity(on_hand.amount, on_hand.unit, system) }),
+  }));
 }

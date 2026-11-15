@@ -3,10 +3,11 @@
 // Modes: view, check-sender, add-receipt, edit, deduct, expiring, health, rollup. Prints one JSON object.
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { displayQuantity } from '../../../lib/quantity.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
 import { OPTIONS, readTranscript, today } from './lib/cli-args.mjs';
-import { commitInventory } from './lib/commit.mjs';
+import { regenerateRollup } from './lib/commit.mjs';
 import { deductRecipe } from './lib/deduct.mjs';
 import { editItem } from './lib/edit.mjs';
 import { expiringItems } from './lib/expiration.mjs';
@@ -23,14 +24,14 @@ const days = () => {
 };
 const window = () => ({ today: values.today ?? today(), days: days() });
 
-function rollup(root) {
-  const inventory = { ...loadInventory(root), lastUpdated: now };
-  const written = commitInventory(root, { inventory, action: 'rollup', details: {}, message: 'chef-food-inventory: regenerate rollup' });
-  return written.status === 'written' ? { status: 'regenerated', rollup: written.pages[0] } : written;
-}
-
 const MODES = {
-  view: (root) => ({ status: 'ok', items: listItems(loadInventory(root)).map(({ path, name, amount, unit, expires }) => ({ path, name, amount, unit, expires: expires ?? null })) }),
+  // amount/unit as stored (for edits); display in the household's unit system.
+  view: (root, settings) => ({
+    status: 'ok',
+    items: listItems(loadInventory(root)).map(({ path, name, amount, unit, expires }) => ({
+      path, name, amount, unit, display: displayQuantity(amount, unit, settings.units).text, expires: expires ?? null,
+    })),
+  }),
   'check-sender': (root, settings) => {
     const gate = checkSender(values.from, settings.trusted_receipt_senders, { authenticated: values.authenticated });
     return gate.ok ? { status: 'trusted' } : { status: 'refused', reason: gate.reason };
@@ -65,7 +66,7 @@ const MODES = {
   }),
   expiring: (root) => ({ status: 'ok', ...window(), ...expiringItems(loadInventory(root), window()) }),
   health: (root) => checkHealth(root, window()),
-  rollup,
+  rollup: (root) => regenerateRollup(root, now),
 };
 
 const mode = positionals[0];

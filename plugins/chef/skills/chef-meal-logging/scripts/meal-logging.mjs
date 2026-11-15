@@ -7526,11 +7526,117 @@ function convertQuantity(amount, fromUnit, toUnit) {
     return amount / 12;
   return null;
 }
+var TABLES = { volume: VOLUME, mass: MASS };
+var fixed = (step) => () => step;
+var metricSmall = (n) => n < 100 ? 5 : 25;
+var LADDERS = {
+  us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
+};
+var SPOONS = LADDERS.us.volume.slice(0, 2);
+var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = VOLUME.cup / 4;
+var EPSILON = 0.000000001;
+var PLURAL = { cup: "cups" };
+var roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
+var round22 = (n) => Math.round(n * 100) / 100;
+function onLadder(base, ladder, table) {
+  const size = (i2) => table[ladder[i2][0]];
+  let i = Math.max(0, ladder.findLastIndex(([unit]) => base / table[unit] >= 1 - EPSILON));
+  for (;; ) {
+    const [unit, step] = ladder[i];
+    const exact = base / size(i);
+    const amount = roundUp(exact, step(exact));
+    if (i + 1 < ladder.length && amount * size(i) / size(i + 1) >= 1 - EPSILON)
+      i += 1;
+    else
+      return { amount, unit };
+  }
+}
+var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
+function displayQuantity(amount, unit, system, { spoon } = {}) {
+  const from = normalizeUnit(unit);
+  const kind = quantityDimension(from);
+  if (kind !== "volume" && kind !== "mass") {
+    const shown2 = round22(amount);
+    return { amount: shown2, unit: from, text: `${shown2} ${from}` };
+  }
+  const table = TABLES[kind];
+  const base = amount * table[from];
+  const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
+  const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
+  return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
+}
+
+// src/lib/settings.mjs
+import fs6 from "node:fs";
+import path7 from "node:path";
+var SETTINGS_FILE = "settings.json";
+var SETTINGS_VERSION = 1;
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar"];
+var IMPERIAL_REGIONS = new Set(["US", "LR", "MM"]);
+var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function unitsForLocale(locale = "") {
+  const region = locale.split(/[-_.@]/)[1]?.toUpperCase();
+  return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
+}
+function defaultSettings({ locale = muse.locale() } = {}) {
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null };
+}
+function emailListProblem(key, value) {
+  if (!Array.isArray(value))
+    return `${key}: must be a list of email addresses`;
+  const bad = value.find((entry) => typeof entry !== "string" || !EMAIL.test(entry));
+  return bad === undefined ? null : `${key}: ${JSON.stringify(bad)} is not an email address`;
+}
+var CHECKS = {
+  household_recipients: (value) => emailListProblem("household_recipients", value),
+  trusted_receipt_senders: (value) => emailListProblem("trusted_receipt_senders", value),
+  units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
+  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null"
+};
+function validateSettings(values) {
+  return SETTING_KEYS.filter((key) => Object.hasOwn(values, key)).map((key) => CHECKS[key](values[key])).filter(Boolean);
+}
+var warn = (reason) => `settings.json can't be used (${reason}), so Chef is using default settings. Run chef-setup to fix it.`;
+function parse(content) {
+  try {
+    const value = JSON.parse(content);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+function classify(stored) {
+  if (!stored)
+    return { status: "invalid", reason: "not a JSON object" };
+  const version = stored.settings_version;
+  if (Number.isInteger(version) && version > SETTINGS_VERSION) {
+    return { status: "unknown-version", reason: `written by a newer Chef: version ${version}` };
+  }
+  if (version !== SETTINGS_VERSION)
+    return { status: "invalid", reason: "missing or bad settings_version" };
+  const problems = validateSettings(stored);
+  return problems.length ? { status: "invalid", reason: problems.join("; ") } : { status: "ok" };
+}
+function readSettings(root, { locale } = {}) {
+  const defaults = defaultSettings({ locale });
+  const file = path7.join(root, SETTINGS_FILE);
+  if (!fs6.existsSync(file))
+    return { status: "missing", settings: defaults };
+  const content = fs6.readFileSync(file, "utf8");
+  const stored = parse(content);
+  const { status, reason } = classify(stored);
+  if (status !== "ok")
+    return { status, settings: defaults, warning: warn(reason), content };
+  const known = Object.fromEntries(SETTING_KEYS.filter((key) => Object.hasOwn(stored, key)).map((key) => [key, stored[key]]));
+  return { status, settings: { ...defaults, ...known }, stored };
+}
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs6 from "node:fs";
-import path7 from "node:path";
+import fs7 from "node:fs";
+import path8 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
 function isIsoDate(value) {
@@ -7596,8 +7702,8 @@ function listItems(inventory) {
   return LOCATIONS.flatMap((location) => Object.entries(inventory[location] ?? {}).flatMap(([category, items]) => Object.entries(items).map(([key, item]) => ({ ...item, name: item.name ?? key.replaceAll("_", " "), path: `${location}.${category}.${key}`, location, category, key }))));
 }
 var readText = (root, relative) => {
-  const file = path7.join(root, relative);
-  return fs6.existsSync(file) ? fs6.readFileSync(file, "utf8") : null;
+  const file = path8.join(root, relative);
+  return fs7.existsSync(file) ? fs7.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -7613,11 +7719,12 @@ function loadInventory(root) {
 // src/skills/chef-food-inventory/scripts/lib/rollup.mjs
 var title = (text) => text.charAt(0).toUpperCase() + text.slice(1).replaceAll("_", " ");
 var plain = (text) => String(text).replace(/[\\`*_[\]()<>#!|]/g, "\\$&").replace(/\s+/g, " ");
-function itemLine(item) {
+function itemLine(item, units) {
   const expires = item.expires ? ` (expires ${item.expires})` : "";
-  return `- ${plain(item.name)}: ${item.amount} ${plain(item.unit)}${expires}`;
+  const quantity = units ? displayQuantity(item.amount, item.unit, units).text : `${item.amount} ${item.unit}`;
+  return `- ${plain(item.name)}: ${plain(quantity)}${expires}`;
 }
-function sections(items) {
+function sections(items, units) {
   const lines = [];
   for (const location of LOCATIONS) {
     const here = items.filter((item) => item.location === location);
@@ -7625,19 +7732,19 @@ function sections(items) {
       continue;
     lines.push(`## ${title(location)}`, "");
     for (const category of [...new Set(here.map((item) => item.category))].sort()) {
-      lines.push(`### ${title(category)}`, "", ...here.filter((i) => i.category === category).sort((a, b) => a.key.localeCompare(b.key)).map(itemLine), "");
+      lines.push(`### ${title(category)}`, "", ...here.filter((i) => i.category === category).sort((a, b) => a.key.localeCompare(b.key)).map((item) => itemLine(item, units)), "");
     }
   }
   return lines;
 }
-function renderRollup(inventory) {
+function renderRollup(inventory, units) {
   const items = listItems(inventory);
   const body = [
     "# Current inventory",
     "",
     "Generated by chef-food-inventory from the inventory store. Do not edit this page; ask Chef to change inventory.",
     "",
-    ...items.length ? sections(items) : ["No items.", ""]
+    ...items.length ? sections(items, units) : ["No items.", ""]
   ].join(`
 `);
   return {
@@ -7658,7 +7765,7 @@ function commitInventory(root, { inventory, action, details, data = [], raw = []
   const auditText = `${readText(root, STORE.audit) ?? ""}${JSON.stringify(audit)}
 `;
   return writeWiki(root, {
-    pages: [renderRollup(inventory)],
+    pages: [renderRollup(inventory, readSettings(root).settings.units)],
     data: [{ path: STORE.inventory, content }, { path: STORE.audit, content: auditText }, ...data],
     raw,
     message

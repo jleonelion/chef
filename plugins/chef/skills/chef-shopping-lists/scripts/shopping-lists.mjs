@@ -7893,10 +7893,56 @@ function convertQuantity(amount, fromUnit, toUnit) {
     return amount / 12;
   return null;
 }
+var TABLES = { volume: VOLUME, mass: MASS };
+var fixed = (step) => () => step;
+var metricSmall = (n) => n < 100 ? 5 : 25;
+var LADDERS = {
+  us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
+};
+var SPOONS = LADDERS.us.volume.slice(0, 2);
+var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = VOLUME.cup / 4;
+var EPSILON = 0.000000001;
+var PLURAL = { cup: "cups" };
+var roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
+var round22 = (n) => Math.round(n * 100) / 100;
+function onLadder(base, ladder, table) {
+  const size = (i2) => table[ladder[i2][0]];
+  let i = Math.max(0, ladder.findLastIndex(([unit]) => base / table[unit] >= 1 - EPSILON));
+  for (;; ) {
+    const [unit, step] = ladder[i];
+    const exact = base / size(i);
+    const amount = roundUp(exact, step(exact));
+    if (i + 1 < ladder.length && amount * size(i) / size(i + 1) >= 1 - EPSILON)
+      i += 1;
+    else
+      return { amount, unit };
+  }
+}
+var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
+function displayQuantity(amount, unit, system, { spoon } = {}) {
+  const from = normalizeUnit(unit);
+  const kind = quantityDimension(from);
+  if (kind !== "volume" && kind !== "mass") {
+    const shown2 = round22(amount);
+    return { amount: shown2, unit: from, text: `${shown2} ${from}` };
+  }
+  const table = TABLES[kind];
+  const base = amount * table[from];
+  const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
+  const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
+  return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
+}
 
 // src/skills/chef-shopping-lists/scripts/lib/combine.mjs
-var round = (value) => Math.round(value * 100) / 100;
+var BASE = { mass: "g", volume: "tsp" };
+var TOLERANCE = 0.000001;
 var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+var exact = (amount, unit) => {
+  const base = BASE[quantityDimension(unit)];
+  return base ? { amount: convertQuantity(amount, unit, base), unit: base } : { amount, unit };
+};
 function combineLines(uses) {
   const items = [];
   const unquantified = [];
@@ -7908,13 +7954,16 @@ function combineLines(uses) {
       continue;
     }
     const unit = normalizeUnit(parsed.unit ?? "each");
-    const amount = parsed.amount * multiplier;
-    const row = items.find((r) => r.item === item && convertQuantity(amount, unit, r.unit) !== null);
+    const source = { recipe, amount: round22(parsed.amount * multiplier), unit };
+    const { amount, unit: base } = exact(parsed.amount * multiplier, unit);
+    const row = items.find((r) => r.item === item && convertQuantity(amount, base, r.unit) !== null);
     if (!row) {
-      items.push({ item, amount: round(amount), unit, recipes: [recipe] });
+      items.push({ item, amount, unit: base, spoon: SPOON_UNITS.has(unit), recipes: [recipe], sources: [source] });
       continue;
     }
-    row.amount = round(row.amount + convertQuantity(amount, unit, row.unit));
+    row.amount += convertQuantity(amount, base, row.unit);
+    row.spoon ||= SPOON_UNITS.has(unit);
+    row.sources.push(source);
     if (!row.recipes.includes(recipe))
       row.recipes.push(recipe);
   }
@@ -7930,14 +7979,24 @@ function subtractInventory(items, stock) {
       continue;
     }
     const have = convertQuantity(match.amount, match.unit, row.unit);
+    const onHand = { on_hand: { amount: match.amount, unit: match.unit } };
     if (have === null)
-      remaining.push({ ...row, on_hand: { amount: match.amount, unit: match.unit } });
-    else if (have >= row.amount)
-      covered.push({ ...row, on_hand: { amount: match.amount, unit: match.unit } });
+      remaining.push({ ...row, ...onHand });
+    else if (have >= row.amount * (1 - TOLERANCE))
+      covered.push({ ...row, ...onHand });
     else
-      remaining.push({ ...row, amount: round(row.amount - have) });
+      remaining.push({ ...row, amount: row.amount - have });
   }
   return { items: remaining, covered };
+}
+function displayItems(items, system) {
+  return items.map(({ item, amount, unit, spoon, recipes, sources, on_hand }) => ({
+    item,
+    ...displayQuantity(amount, unit, system, { spoon }),
+    recipes,
+    sources,
+    ...on_hand && { on_hand: displayQuantity(on_hand.amount, on_hand.unit, system) }
+  }));
 }
 
 // src/skills/chef-shopping-lists/scripts/lib/build.mjs
@@ -7959,9 +8018,8 @@ var multiplier = (meal, recipe) => {
   const base = Number(recipe.frontmatter.servings);
   return Number.isFinite(base) && base > 0 && Number(meal.servings) > 0 ? meal.servings / base : 1;
 };
-var quantity = ({ amount, unit }) => `${amount} ${unit}`;
 function listText(weekStart, { items, unquantified }, dietary) {
-  const rows = items.map((row) => `- ${quantity(row)} ${row.item}${row.on_hand ? ` (on hand: ${quantity(row.on_hand)})` : ""}`);
+  const rows = items.map((row) => `- ${row.text} ${row.item}${row.on_hand ? ` (on hand: ${row.on_hand.text})` : ""}`);
   const check = [...new Set(unquantified.map((u) => u.item))].map((item) => `- ${item}`);
   const notes = [dietary.problem, dietary.nudge, ...dietary.caveats ?? [], dietary.footer].filter(Boolean);
   return [
@@ -7977,7 +8035,7 @@ ${check.join(`
 `) + `
 `;
 }
-function buildList(root, { weekStart, overrides = [] }) {
+function buildList(root, { weekStart, overrides = [], units }) {
   const week = weekStart ?? latestWeek(root);
   const plan = week && readPlan(root, week);
   if (!plan)
@@ -7995,14 +8053,14 @@ function buildList(root, { weekStart, overrides = [] }) {
   });
   const combined = combineLines(uses);
   const { items, covered } = subtractInventory(combined.items, listItems(loadInventory(root)));
-  const list = { items, unquantified: combined.unquantified };
+  const list = { items: displayItems(items, units), unquantified: combined.unquantified };
   return {
     status: "built",
     data_root: root,
     week_start: week,
     plan: plan.path,
     ...list,
-    covered,
+    covered: displayItems(covered, units),
     excluded,
     missing_recipes: missing,
     dietary,
@@ -8037,10 +8095,10 @@ function run(root) {
     problems.push("--week-start must be YYYY-MM-DD");
   if (problems.length)
     return { status: "invalid-input", data_root: root, problems };
-  const list = buildList(root, { weekStart, overrides });
+  const settings = readSettings(root);
+  const list = buildList(root, { weekStart, overrides, units: settings.settings.units });
   if (list.status !== "built")
     return list;
-  const settings = readSettings(root);
   const delivery = deliverList(root, list, { recipients: settings.settings.household_recipients });
   if (delivery.status === "refused")
     return delivery;

@@ -54,13 +54,14 @@ test('combines the plan\'s recipes scaled to planned servings, minus inventory',
     plan('2026-01-19', [['stew', 3], ['stew', 1], ['pasta', 2]]),
     inventory,
   ]);
-  const list = buildList(root, {});
+  const list = buildList(root, { units: 'us' });
   assert.equal(list.status, 'built');
   assert.equal(list.week_start, '2026-01-19');
-  assert.deepEqual(list.items.map(({ item, amount, unit }) => [item, amount, unit]), [['chickpeas', 4, 'can'], ['cumin', 3, 'tsp']]);
+  assert.deepEqual(list.items.map(({ item, amount, unit }) => [item, amount, unit]), [['chickpeas', 4, 'can'], ['cumin', 1, 'tbsp']]);
   assert.deepEqual(list.covered.map((c) => c.item), ['spaghetti']);
   assert.deepEqual(list.unquantified.map((u) => u.item), ['salt']);
   assert.match(list.text, /- 4 can chickpeas/);
+  assert.match(list.text, /- 1 tbsp cumin/);
   assert.match(list.text, /salt/);
   assert.equal(list.dietary.nudge.startsWith('No dietary constraints recorded'), true);
 });
@@ -72,7 +73,7 @@ test('the gate re-runs: a plan recipe now excluded is reported and left off the 
     plan('2026-01-19', [['stew', 2], ['pasta', 2]]),
     ruleset(['dairy']),
   ]);
-  const list = buildList(root, { weekStart: '2026-01-19' });
+  const list = buildList(root, { weekStart: '2026-01-19', units: 'metric' });
   assert.deepEqual(list.excluded.map((e) => [e.slug, e.reasons[0].why]), [['pasta', 'flagged']]);
   assert.deepEqual(list.items.map((i) => i.item), ['chickpeas']);
   assert.match(list.dietary.footer, /always check labels/);
@@ -91,4 +92,19 @@ test('a planned recipe that no longer exists is reported, not guessed', () => {
   const list = buildList(root, {});
   assert.deepEqual(list.missing_recipes, ['gone']);
   assert.deepEqual(list.items, []);
+});
+
+test('quantities show in the household unit system; sources keep each recipe\'s units', () => {
+  const root = makeRoot([
+    recipe('soup', ['1 cup milk', '400 g tomatoes']),
+    recipe('bake', ['250 ml milk', '1 lb tomatoes']),
+    plan('2026-01-19', [['soup', 2], ['bake', 2]]),
+    { ...inventory, content: JSON.stringify({ lastUpdated: '2026-01-14T00:00:00Z', fridge: { produce: { tomatoes: { amount: 2, unit: 'kg' } } } }) },
+  ]);
+  const us = buildList(root, { units: 'us' });
+  const metric = buildList(root, { units: 'metric' });
+  assert.match(us.text, /- 2\.25 cups milk/);
+  assert.match(metric.text, /- 500 ml milk/);
+  assert.deepEqual(metric.items[0].sources.map((s) => [s.recipe, s.amount, s.unit]), [['soup', 1, 'cup'], ['bake', 250, 'ml']]);
+  assert.deepEqual(us.covered.map((c) => [c.item, c.text, c.on_hand.text]), [['tomatoes', '2 lb', '4.5 lb']]);
 });
