@@ -61,3 +61,10 @@ After prompt 4, finish in the app: Settings > Connectors > Chef Feedback Spike >
 - Muse's own generated helper (GET, read-only) reported `header_present`, `header_nonempty`, `credential_swapped` all true. Its first attempt timed out while waiting for approval.
 - Spike: step 1 PASS. `authdc` returns `placement` as an **object** for a custom header, not the `query_param:api_key` string USDA returns; the spike crashed at step 2. Fixed in the next commit; steps 3 to 6 not yet run.
 - Cleanup: the folders were moved to trash; the stored key needs to be disconnected in Settings.
+
+### Run 2 (2026-11-14, prompt 2b)
+
+- The stored key outlived the deleted connector folder: `authdc` still issued a surrogate.
+- Placement shape is `{"custom_header":"X-Chef-Intake-Key"}` (type as key). Spike step 2 failed on it again; fixed in the next commit.
+- No approval prompt and nothing in approval history. Inconclusive for POST: the run exited before any request.
+- Fix verified off-Muse with a fake `authdc` (`CHEF_SPIKE_AUTHDC`): steps 1-3 and 5 pass against httpbin; step 4 fails as expected without Muse's proxy.

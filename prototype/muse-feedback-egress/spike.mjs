@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
-const AUTHDC = '/opt/hatch/bin/authdc';
+const AUTHDC = process.env.CHEF_SPIKE_AUTHDC ?? '/opt/hatch/bin/authdc'; // override only for local testing
 const CONNECTOR = process.argv[2] ?? 'custom.chef-feedback-spike';
 const URL_ = process.argv[3] ?? 'https://httpbin.org/anything/chef-feedback-spike';
 const sha256 = (text) => createHash('sha256').update(text).digest('hex');
@@ -39,15 +39,15 @@ try {
   step('1 authdc issues surrogate', false, error.message);
   process.exit(1);
 }
-// USDA returns 'query_param:api_key'; a custom header connector returns an object.
+// USDA returns 'query_param:api_key'; a custom header connector returns
+// { custom_header: 'X-Chef-Intake-Key' } (seen on Muse, 2026-11-14).
 function headerOf(placement) {
   if (typeof placement === 'string') {
     const [kind, name] = placement.split(':');
     return kind.endsWith('header') ? name : null;
   }
-  const kind = String(placement?.type ?? placement?.kind ?? placement?.in ?? '');
-  const name = placement?.name ?? placement?.header ?? placement?.key;
-  return kind.includes('header') && typeof name === 'string' ? name : null;
+  const entry = Object.entries(placement ?? {}).find(([kind]) => kind.endsWith('header'));
+  return typeof entry?.[1] === 'string' ? entry[1] : null;
 }
 const header = headerOf(cred.placement);
 step('2 placement is a header', Boolean(header), JSON.stringify(cred.placement));
