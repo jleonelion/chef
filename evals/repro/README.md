@@ -34,7 +34,7 @@ more than 60 days after the case's `created_on`. The agentic suite never runs in
 ## Privacy
 
 The lint runs the PII pattern scan (`src/lib/pii-scan.mjs`: email, URL, phone, street address,
-home-directory path, long digit runs) over every case, every tier1 and agentic seed, and
+absolute or `~/` file path, long digit runs) over every case, every tier1 and agentic seed, and
 `fixtures/`. Only reserved example domains (`example.com`, `.org`, `.net`) and schema vocabularies pass.
 Findings name the file, line and rule, never the matched text.
 

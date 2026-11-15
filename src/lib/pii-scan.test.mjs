@@ -13,12 +13,24 @@ test('flags each planted kind of personal detail', () => {
   assert.deepEqual(rules('card 4111111111111111'), ['long digit run']);
 });
 
+test('flags home-relative and multi-segment absolute paths, once each', () => {
+  assert.deepEqual(rules('saved to ~/Documents/chef-notes.txt'), ['file path']);
+  assert.deepEqual(rules('copied /tmp/sam-recipes/soup.json there'), ['file path']);
+  assert.deepEqual(rules('"/var/folders/qs/x"'), ['file path']);
+  assert.deepEqual(rules('in /Users/sam/Desktop'), ['file path']);
+});
+
+test('a path inside a URL is the URL, not a file path', () => {
+  assert.deepEqual(rules('see https://myblog.net/recipes/1/soup'), ['url']);
+});
+
 test('lets synthetic fixture data through', () => {
   const synthetic = [
     'Send to shopper@example.com, from https://recipes.example.com/soup or http://example.org',
     '1 cup red lentils, 400 g crushed tomatoes, 2 Large Eggs',
     'Saved 2026-01-15 as 20260115-lemon-garlic-pasta.txt in knowledge/raw/receipts, id a86049add033951e',
     '{data_root}/settings.json and ../receipt.txt',
+    'Use 1/2 cup, and/or a 2026/01/15 date; mode /api is one segment; ~ alone',
     '{"@context": "https://schema.org", "$schema": "https://json-schema.org/draft/2020-12/schema"}',
   ].join('\n');
   assert.deepEqual(scanPii(synthetic), []);
