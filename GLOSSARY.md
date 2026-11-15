@@ -60,6 +60,18 @@ _Avoid_: missing data, null
 A part of a feedback report the user deleted during preview; recorded by name so maintainers know it was withheld rather than never captured.
 _Avoid_: redaction, censored field
 
+**Runtime**:
+The agent host Chef's skills run inside, such as Muse, Muse Code or Claude Code. A host Chef cannot identify is an unknown runtime, never assumed to be Muse.
+_Avoid_: platform, environment, host app
+
+**Runtime adapter**:
+The part of Chef that speaks for one runtime: it says which runtime this is, what that runtime can do, and carries a user-approved feedback report out. It never reads or changes a report's content.
+_Avoid_: driver, integration, plugin
+
+**Runtime capability**:
+One narrowly named thing a runtime adapter can do right now, such as submitting through a connector or offering a reply channel. A missing capability is stated to the user or recorded as an evidence gap, never silently skipped.
+_Avoid_: feature flag, tracing support
+
 **Unit system**:
 The household's choice of US or metric measures for quantities Chef shows; stored recipes keep the units they were written in.
 _Avoid_: units preference, measurement mode
