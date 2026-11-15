@@ -5,8 +5,10 @@ import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { gateRecipe, parseOverrides } from '../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
+import { convertRecipeBody } from '../../../lib/recipe-units.mjs';
 import { listRecipes } from '../../../lib/recipes.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
+import { readSettings } from '../../../lib/settings.mjs';
 import { searchRecipes } from './lib/search.mjs';
 
 const many = { type: 'string', multiple: true };
@@ -59,7 +61,9 @@ function show(recipes) {
   if (!recipe) return { status: 'not-found', data_root: root, slug: values.slug ?? null };
   const verdict = gateRecipe(recipe, readRuleset(root));
   const conflicts = verdict.excluded ? { dietary_conflicts: verdict.reasons } : {};
-  return { status: 'ok', data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body, ...conflicts };
+  const { units, convert_recipe_units: convert } = readSettings(root).settings;
+  const body = convert ? convertRecipeBody(recipe.body, units) : recipe.body;
+  return { status: 'ok', data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body, ...conflicts };
 }
 
 const MODES = { search, show };

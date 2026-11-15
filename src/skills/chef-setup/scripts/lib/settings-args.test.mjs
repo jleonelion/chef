@@ -25,6 +25,13 @@ test('empty lists, "none" and "default" reset to the default', () => {
   });
 });
 
+test('--convert-recipe-units takes true, false or default; anything else is left for validation', () => {
+  assert.deepEqual(changesFromFlags({ 'convert-recipe-units': 'true' }), { convert_recipe_units: true });
+  assert.deepEqual(changesFromFlags({ 'convert-recipe-units': 'false' }), { convert_recipe_units: false });
+  assert.deepEqual(changesFromFlags({ 'convert-recipe-units': 'default' }), { convert_recipe_units: null });
+  assert.deepEqual(changesFromFlags({ 'convert-recipe-units': 'yes' }), { convert_recipe_units: 'yes' });
+});
+
 test('omitted flags are left unchanged', () => {
   assert.deepEqual(changesFromFlags({ 'data-root': '/x' }), {});
 });

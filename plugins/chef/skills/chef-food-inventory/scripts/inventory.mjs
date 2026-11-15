@@ -7201,39 +7201,52 @@ var LADDERS = {
   us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
   metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
 };
+var metricKitchen = (n) => n < 20 ? 1 : n < 250 ? 5 : 10;
+var KITCHEN_LADDERS = {
+  us: { volume: [["tsp", fixed(0.125)], ["tbsp", fixed(0.125)], ["cup", fixed(0.25), 0.25]], mass: [["oz", (n) => n < 4 ? 0.5 : 1], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricKitchen], ["l", fixed(0.05)]], mass: [["g", metricKitchen], ["kg", fixed(0.05)]] }
+};
 var SPOONS = LADDERS.us.volume.slice(0, 2);
+var KITCHEN_SPOONS = KITCHEN_LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
 var QUARTER_CUP = VOLUME.cup / 4;
 var EPSILON = 0.000000001;
 var PLURAL = { cup: "cups" };
 var roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
 var round2 = (n) => Math.round(n * 100) / 100;
-function onLadder(base, ladder, table) {
+function onLadder(base, ladder, table, round) {
   const size = (i2) => table[ladder[i2][0]];
-  let i = Math.max(0, ladder.findLastIndex(([unit]) => base / table[unit] >= 1 - EPSILON));
+  const fits = (amount, i2) => amount / size(i2) >= (ladder[i2][2] ?? 1) - EPSILON;
+  let i = Math.max(0, ladder.findLastIndex((_, j) => fits(base, j)));
   for (;; ) {
     const [unit, step] = ladder[i];
     const exact = base / size(i);
-    const amount = roundUp(exact, step(exact));
-    if (i + 1 < ladder.length && amount * size(i) / size(i + 1) >= 1 - EPSILON)
+    const amount = round(exact, step(exact));
+    if (i + 1 < ladder.length && fits(amount * size(i), i + 1))
       i += 1;
     else
       return { amount, unit };
   }
 }
 var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
-function displayQuantity(amount, unit, system, { spoon } = {}) {
+var SHOPPING = { ladders: LADDERS, spoons: SPOONS, round: roundUp };
+function measuredOnLadder(amount, unit, system, { ladders, spoons, round }, spoon) {
   const from = normalizeUnit(unit);
   const kind = quantityDimension(from);
-  if (kind !== "volume" && kind !== "mass") {
-    const shown2 = round2(amount);
-    return { amount: shown2, unit: from, text: `${shown2} ${from}` };
-  }
+  if (kind !== "volume" && kind !== "mass")
+    return null;
   const table = TABLES[kind];
   const base = amount * table[from];
-  const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
-  const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
+  const keepSpoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
+  const shown = onLadder(base, keepSpoons ? spoons : ladders[system][kind], table, round);
   return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
+}
+function displayQuantity(amount, unit, system, { spoon } = {}) {
+  const shown = measuredOnLadder(amount, unit, system, SHOPPING, spoon);
+  if (shown)
+    return shown;
+  const rounded = round2(amount);
+  return { amount: rounded, unit: normalizeUnit(unit), text: `${rounded} ${normalizeUnit(unit)}` };
 }
 
 // src/lib/schema.mjs
@@ -7277,7 +7290,7 @@ import fs3 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 1;
-var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar"];
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units"];
 var IMPERIAL_REGIONS = new Set(["US", "LR", "MM"]);
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function unitsForLocale(locale = "") {
@@ -7285,7 +7298,7 @@ function unitsForLocale(locale = "") {
   return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
 }
 function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false };
 }
 function emailListProblem(key, value) {
   if (!Array.isArray(value))
@@ -7297,7 +7310,8 @@ var CHECKS = {
   household_recipients: (value) => emailListProblem("household_recipients", value),
   trusted_receipt_senders: (value) => emailListProblem("trusted_receipt_senders", value),
   units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
-  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null"
+  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null",
+  convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false"
 };
 function validateSettings(values) {
   return SETTING_KEYS.filter((key) => Object.hasOwn(values, key)).map((key) => CHECKS[key](values[key])).filter(Boolean);
@@ -7751,8 +7765,11 @@ function parseCitrus(line, text) {
   const juiced = text.match(JUICED);
   return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
 }
+var VULGAR = "[½¼¾⅓⅔⅛]";
+var asciiFractions = (text) => text.replace(new RegExp(VULGAR, "g"), (c) => FRACTIONS[c]);
+var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
 function parseIngredientLine(line) {
-  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  let text = asciiFractions(line).trim();
   const citrus = parseCitrus(line, text);
   if (citrus)
     return citrus;
