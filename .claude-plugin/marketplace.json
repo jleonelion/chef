@@ -5,7 +5,7 @@
   "plugins": [
     {
       "name": "chef",
-      "version": "1.2.0",
+      "version": "1.2.1",
       "source": "./plugins/chef",
       "description": "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root."
     }
