@@ -32,7 +32,8 @@
         { "path": "$.content", "includes": "email shopping lists to by default" },
         { "path": "$.content", "includes": "automatically" },
         { "path": "$.content", "includes": "approve the Chef shopping list recurring task" },
-        { "path": "$.content", "includes": "email a shopping list to anyone" }
+        { "path": "$.content", "includes": "still ask Chef to email" },
+        { "path": "$.content", "includes": "to anyone" }
       ]
     ],
     "skills": ["chef-setup"],
