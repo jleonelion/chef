@@ -42,10 +42,16 @@ test('oven temperatures in steps get the household scale, rounded to the nearest
   assert.deepEqual(metric, ['1. Heat the oven to 350°F (175°C).', '2. Or 400 degrees F (205°C) for crisp.', '3. Rest at 350 degrees.', '4. Gas mark 4 works.', '5. Already 180 °C.']);
   const us = lines(convertRecipeBody(recipe(['1 onion'], ['Bake at 180 °C, then 220°C.', 'Keep 350°F.']), 'us'), 'Steps');
   assert.deepEqual(us, ['1. Bake at 180 °C (355°F), then 220°C (430°F).', '2. Keep 350°F.']);
+  assert.deepEqual(lines(convertRecipeBody(recipe(['1 onion'], ['Bake at 350°f.']), 'metric'), 'Steps'), ['1. Bake at 350°f (175°C).']);
 });
 
-test('a temperature that already carries its conversion is left alone', () => {
-  const source = recipe(['1 onion'], ['Heat to 350°F (175°C).']);
+test('a temperature or amount that already carries its conversion is left alone', () => {
+  for (const step of ['Heat to 350°F (175°C).', 'Heat to 425°F/220°C.', 'Heat to 220°C / 425°F.']) {
+    const source = recipe(['1 onion'], [step]);
+    assert.equal(convertRecipeBody(source, 'metric'), source, step);
+    assert.equal(convertRecipeBody(source, 'us'), source, step);
+  }
+  const source = recipe(['1 cup (240 ml) milk', '200 g / 7 oz feta']);
   assert.equal(convertRecipeBody(source, 'metric'), source);
   assert.equal(convertRecipeBody(source, 'us'), source);
 });
