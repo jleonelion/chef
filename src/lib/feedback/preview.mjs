@@ -57,7 +57,18 @@ function scanNotes(numbers, report) {
   });
 }
 
-export function renderPreview({ report, numbers }) {
+// Notes about how the draft was put together, shown while the part they explain is still there.
+function draftNotes(report, notes = {}, contact) {
+  const lines = [];
+  if (report.diagnostic_bundle && Object.hasOwn(notes, 'diagnostics_fallback')) {
+    const runs = notes.diagnostics_fallback ? `runs of ${notes.diagnostics_fallback}` : 'Chef runs';
+    lines.push(`Diagnostics: no ${runs} in the last hour, so these are the last 10 runs of any skill. Ask to widen or drop them.`);
+  }
+  if (contact !== undefined) lines.push(`Contact, sent apart from the report and stored separately: ${JSON.stringify(contact)}`);
+  return lines;
+}
+
+export function renderPreview({ report, numbers, notes, contact }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -67,6 +78,7 @@ export function renderPreview({ report, numbers }) {
     '',
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
+    ...draftNotes(report, notes, contact),
     ...scanNotes(numbers, report),
   ].join('\n');
 }

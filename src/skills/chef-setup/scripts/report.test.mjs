@@ -83,3 +83,60 @@ test('a draft missing a class field is refused with the problem', () => {
   assert.equal(status, 2);
   assert.match(out.problems.join(' '), /expected: required/);
 });
+
+const rawReport = (root) => JSON.parse(run(root, setup, 'report-preview', '--raw').out.raw);
+const plan = path.join(import.meta.dirname, '..', '..', 'chef-meal-planning', 'scripts', 'meal-planning.mjs');
+
+test('a report needs a class; Chef never picks one', () => {
+  const root = fixtureRoot();
+  const { status, out } = run(root, setup, 'report-draft', '--summary', 'Something is off');
+  assert.equal(status, 2);
+  assert.match(out.problems.join(' '), /class: must be one of defect, enhancement, behavior_change/);
+});
+
+test('enhancement and behavior-change reports carry their class fields and attach no diagnostics by default', () => {
+  const root = fixtureRoot();
+  run(root, search, 'search', '--query', 'pasta');
+  const enhancement = run(root, setup, 'report-draft', '--class', 'enhancement', '--summary', 'Search by cooking time', '--desired-outcome', 'Filter recipes by total time');
+  assert.equal(enhancement.out.status, 'draft');
+  let report = rawReport(root);
+  assert.deepEqual(feedbackReportProblems(report), []);
+  assert.equal(report.desired_outcome, 'Filter recipes by total time');
+  assert.equal(report.diagnostic_bundle, undefined);
+
+  const unnamed = run(root, setup, 'report-draft', '--class', 'behavior_change', '--summary', 'Ask before planning', '--current-behavior', 'Plans at once', '--desired-behavior', 'Asks first');
+  assert.match(unnamed.out.problems.join(' '), /skill_ids: name at least one skill/);
+  run(root, setup, 'report-draft', '--class', 'behavior_change', '--summary', 'Ask before planning', '--current-behavior', 'Plans at once', '--desired-behavior', 'Asks first', '--skill-ids', 'chef-meal-planning');
+  report = rawReport(root);
+  assert.deepEqual(feedbackReportProblems(report), []);
+  assert.deepEqual([report.current_behavior, report.desired_behavior, report.skill_ids], ['Plans at once', 'Asks first', ['chef-meal-planning']]);
+  assert.equal(report.diagnostic_bundle, undefined);
+});
+
+test('with no recent runs of the skill, a defect attaches the last runs of any skill and the preview says so', () => {
+  const root = fixtureRoot();
+  run(root, plan, 'today', '--date', '2026-01-05');
+  const { out } = run(root, setup, 'report-draft', ...DEFECT);
+  assert.deepEqual(rawReport(root).diagnostic_bundle.events.map((e) => e.skill_id), ['chef-meal-planning']);
+  assert.match(out.preview, /^Diagnostics: no runs of chef-recipe-search in the last hour, so these are the last 10 runs of any skill\./m);
+  assert.equal(bytesFromPreview(out.preview), JSON.stringify(rawReport(root)), 'the note is not part of the payload');
+});
+
+test('widened diagnostics take every skill in the window', () => {
+  const root = fixtureRoot();
+  run(root, search, 'search', '--query', 'pasta');
+  run(root, plan, 'today', '--date', '2026-01-05');
+  const { out } = run(root, setup, 'report-draft', ...DEFECT, '--diagnostics', 'wide');
+  assert.deepEqual(rawReport(root).diagnostic_bundle.events.map((e) => e.skill_id), ['chef-recipe-search', 'chef-meal-planning']);
+  assert.doesNotMatch(out.preview, /^Diagnostics:/m);
+  assert.equal(run(root, setup, 'report-draft', ...DEFECT, '--diagnostics', 'some').out.status, 'invalid-input');
+});
+
+test('volunteered contact is dropped before preview with a notice when the runtime cannot take it', () => {
+  const root = fixtureRoot();
+  const { out } = run(root, setup, 'report-draft', ...DEFECT, '--contact', 'reach me at someone@example.com');
+  assert.equal(out.status, 'draft');
+  assert.match(out.contact_notice, /dropped/);
+  assert.equal(out.can_ask_contact, false);
+  assert.doesNotMatch(out.preview + run(root, setup, 'report-preview', '--raw').out.raw, /someone@example\.com/);
+});
