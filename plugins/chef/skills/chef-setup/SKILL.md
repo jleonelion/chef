@@ -183,7 +183,7 @@ node scripts/setup.mjs update
 
 This commits all pending tracked and untracked files in the data root before changing the install, checks out the newest semver release tag, and makes the installed `chef-` skills match that release exactly. On Muse, the runtime adapter updates the flattened `custom-skills` folders; on Claude Code and Muse Code it updates the plugin path. It never removes anything from the data root, and `settings.json` remains git-ignored.
 
-For `confirmation-required`, show the user `release` and every entry under `changes`: added, replaced and removed skills, plus pending data-root and settings migrations. Ask whether to apply those migrations. Do not imply that the migrations have already run.
+For `confirmation-required`, show the user `release` and every entry under `changes`: added, replaced and removed skills, pending data-root and settings migrations, and recurring task prompt changes. Ask whether to apply those migrations. Do not imply that the migrations have already run.
 
 Only after the user explicitly agrees, run:
 
@@ -191,7 +191,7 @@ Only after the user explicitly agrees, run:
 node scripts/setup.mjs update --confirm
 ```
 
-- `updated`: report the release and that verify-install passed.
+- `updated`: report the release and that verify-install passed. If the result has `recurring_tasks`, follow its `instruction`: for each listed task that already exists, ask for explicit approval to re-create it with the new prompt while preserving its name and the user's chosen time. Never create a task the user did not already have. Then list the tasks you re-created.
 - `fail`: the update ran but verify-install found problems. Show each failed check from `verify.checks`.
 - `refused`: show `reason` and change nothing manually. Never delete user data to repair an update.
 
