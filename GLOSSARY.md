@@ -48,6 +48,10 @@ _Avoid_: ticket, issue, telemetry
 The private maintainer-side service that receives feedback reports, issues their IDs and holds them until they expire. Unrelated to receipt intake.
 _Avoid_: intake (unqualified), inbox
 
+**Feedback receipt**:
+The report ID and one-time secret a reporter gets on submission; whoever holds it can check status, add comments or delete the report, without being identified. Unrelated to grocery receipts.
+_Avoid_: receipt (unqualified), ticket number, token
+
 **Reproduction case**:
 A maintainer-written scenario with synthetic data that reproduces what a feedback report describes; refers back to the report but holds none of its content.
 _Avoid_: fixture copy, test from report
