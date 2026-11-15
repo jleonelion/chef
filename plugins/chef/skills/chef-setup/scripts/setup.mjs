@@ -8714,7 +8714,7 @@ var RULES2 = [
   { rule: "url", pattern: /\bhttps?:\/\/([^\s/:"'<>)]+)/gi, allowed: (m) => RESERVED_HOST.test(m[1]) || PUBLIC_HOST.test(m[1]) },
   { rule: "phone", pattern: /(?:\+\d{1,3}[\s.-]?)?\(?\b\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g },
   { rule: "street address", pattern: /\b\d{1,5}\s+(?:[A-Z][a-z]+\s+){1,3}(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Way|Place|Pl)\b/g },
-  { rule: "file path", pattern: /(?:\/Users\/|\/home\/|[A-Za-z]:\\Users\\)[^\s/\\"']+/g },
+  { rule: "file path", pattern: /(?:\/Users\/|\/home\/|[A-Za-z]:\\Users\\)[^\s/\\"']+|(?<![^\s"'(=`])(?:~|\/[\w.-]+)\/[^\s"'<>)]+/g },
   { rule: "long digit run", pattern: /\d{9,}/g }
 ];
 function scanPii(text) {
