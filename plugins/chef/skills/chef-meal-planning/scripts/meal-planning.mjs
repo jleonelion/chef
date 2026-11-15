@@ -7715,6 +7715,7 @@ var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))
 var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
 
 // src/lib/quantity.mjs
+var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
 var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
 var fixed = (step) => () => step;
 var metricSmall = (n) => n < 100 ? 5 : 25;
@@ -7724,6 +7725,7 @@ var LADDERS = {
 };
 var SPOONS = LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = VOLUME.cup / 4;
 
 // src/lib/nutrition.mjs
 var MG = new Set(["sodium", "cholesterol"]);

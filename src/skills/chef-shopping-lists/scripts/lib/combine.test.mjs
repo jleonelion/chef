@@ -70,6 +70,11 @@ test('inventory subtraction uses exact amounts, not the rounded display', () => 
   assert.deepEqual(shown(list([use('990 g flour')], 'metric', [stock('flour', 980, 'g')]).items), [['flour', '10 g']]);
 });
 
+test('stock equal to the need in another unit counts as covered despite float error', () => {
+  assert.deepEqual(list([use('1.1 lb flour')], 'metric', [stock('flour', 0.4989512, 'kg')]).items, []);
+  assert.deepEqual(list([use('2 cup milk')], 'metric', [stock('milk', 473.176, 'ml')]).items, []);
+});
+
 test('inventory in a unit that cannot be converted is noted, not subtracted', () => {
   const [row] = list([use('150 g spinach')], 'metric', [stock('spinach', 1, 'bunch')]).items;
   assert.equal(row.text, '150 g');

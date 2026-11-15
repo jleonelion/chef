@@ -34,6 +34,7 @@ export function convertQuantity(amount, fromUnit, toUnit) {
 
 // Display only: the household's unit system, a fixed ladder per kind (largest unit keeping the
 // amount >= 1), rounded up. Stored and merged amounts stay exact; only output passes through here.
+const TABLES = { volume: VOLUME, mass: MASS };
 const fixed = (step) => () => step;
 const metricSmall = (n) => (n < 100 ? 5 : 25);
 const LADDERS = {
@@ -42,14 +43,14 @@ const LADDERS = {
 };
 // tsp/tbsp stay spoons in both systems below 1/4 cup (12 tsp); never converted to ml.
 const SPOONS = LADDERS.us.volume.slice(0, 2);
-const SPOON_UNITS = new Set(['tsp', 'tbsp']);
-const QUARTER_CUP = 12;
+export const SPOON_UNITS = new Set(['tsp', 'tbsp']);
+const QUARTER_CUP = VOLUME.cup / 4;
 const EPSILON = 1e-9;
 const FRACTIONS = { 0.25: '1/4', 0.5: '1/2', 0.75: '3/4' };
 const PLURAL = { cup: 'cups' };
 
 const roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
-const round2 = (n) => Math.round(n * 100) / 100;
+export const round2 = (n) => Math.round(n * 100) / 100;
 
 function onLadder(base, ladder, table) {
   const size = (i) => table[ladder[i][0]];
@@ -79,7 +80,7 @@ export function displayQuantity(amount, unit, system, { spoon } = {}) {
     const shown = round2(amount);
     return { amount: shown, unit: from, text: `${shown} ${from}` };
   }
-  const table = kind === 'volume' ? VOLUME : MASS;
+  const table = TABLES[kind];
   const base = amount * table[from];
   const spoons = kind === 'volume' && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
   const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);

@@ -7893,6 +7893,7 @@ function convertQuantity(amount, fromUnit, toUnit) {
     return amount / 12;
   return null;
 }
+var TABLES = { volume: VOLUME, mass: MASS };
 var fixed = (step) => () => step;
 var metricSmall = (n) => n < 100 ? 5 : 25;
 var LADDERS = {
@@ -7901,7 +7902,7 @@ var LADDERS = {
 };
 var SPOONS = LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
-var QUARTER_CUP = 12;
+var QUARTER_CUP = VOLUME.cup / 4;
 var EPSILON = 0.000000001;
 var FRACTIONS2 = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4" };
 var PLURAL = { cup: "cups" };
@@ -7933,7 +7934,7 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
     const shown2 = round22(amount);
     return { amount: shown2, unit: from, text: `${shown2} ${from}` };
   }
-  const table = kind === "volume" ? VOLUME : MASS;
+  const table = TABLES[kind];
   const base = amount * table[from];
   const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
   const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
@@ -7943,8 +7944,7 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
 
 // src/skills/chef-shopping-lists/scripts/lib/combine.mjs
 var BASE = { mass: "g", volume: "tsp" };
-var SPOONS2 = new Set(["tsp", "tbsp"]);
-var round = (value) => Math.round(value * 100) / 100;
+var TOLERANCE = 0.000001;
 var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 var exact = (amount, unit) => {
   const base = BASE[quantityDimension(unit)];
@@ -7961,15 +7961,15 @@ function combineLines(uses) {
       continue;
     }
     const unit = normalizeUnit(parsed.unit ?? "each");
-    const source = { recipe, amount: round(parsed.amount * multiplier), unit };
+    const source = { recipe, amount: round22(parsed.amount * multiplier), unit };
     const { amount, unit: base } = exact(parsed.amount * multiplier, unit);
     const row = items.find((r) => r.item === item && convertQuantity(amount, base, r.unit) !== null);
     if (!row) {
-      items.push({ item, amount, unit: base, spoon: SPOONS2.has(unit), recipes: [recipe], sources: [source] });
+      items.push({ item, amount, unit: base, spoon: SPOON_UNITS.has(unit), recipes: [recipe], sources: [source] });
       continue;
     }
     row.amount += convertQuantity(amount, base, row.unit);
-    row.spoon ||= SPOONS2.has(unit);
+    row.spoon ||= SPOON_UNITS.has(unit);
     row.sources.push(source);
     if (!row.recipes.includes(recipe))
       row.recipes.push(recipe);
@@ -7989,7 +7989,7 @@ function subtractInventory(items, stock) {
     const onHand = { on_hand: { amount: match.amount, unit: match.unit } };
     if (have === null)
       remaining.push({ ...row, ...onHand });
-    else if (have >= row.amount)
+    else if (have >= row.amount * (1 - TOLERANCE))
       covered.push({ ...row, ...onHand });
     else
       remaining.push({ ...row, amount: row.amount - have });

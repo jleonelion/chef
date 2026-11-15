@@ -7534,6 +7534,7 @@ var LADDERS = {
 };
 var SPOONS = LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = VOLUME.cup / 4;
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";

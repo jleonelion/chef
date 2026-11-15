@@ -8294,6 +8294,7 @@ var LADDERS = {
 };
 var SPOONS = LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = VOLUME.cup / 4;
 
 // src/lib/sub-recipes.mjs
 var LINK = /\[\[([a-z0-9]+(?:-[a-z0-9]+)*)(?:\|[^\]]*)?\]\]/;

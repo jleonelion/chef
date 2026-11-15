@@ -7194,6 +7194,7 @@ function convertQuantity(amount, fromUnit, toUnit) {
     return amount / 12;
   return null;
 }
+var TABLES = { volume: VOLUME, mass: MASS };
 var fixed = (step) => () => step;
 var metricSmall = (n) => n < 100 ? 5 : 25;
 var LADDERS = {
@@ -7202,7 +7203,7 @@ var LADDERS = {
 };
 var SPOONS = LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
-var QUARTER_CUP = 12;
+var QUARTER_CUP = VOLUME.cup / 4;
 var EPSILON = 0.000000001;
 var FRACTIONS = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4" };
 var PLURAL = { cup: "cups" };
@@ -7234,7 +7235,7 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
     const shown2 = round2(amount);
     return { amount: shown2, unit: from, text: `${shown2} ${from}` };
   }
-  const table = kind === "volume" ? VOLUME : MASS;
+  const table = TABLES[kind];
   const base = amount * table[from];
   const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
   const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
