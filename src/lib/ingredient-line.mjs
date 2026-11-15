@@ -77,6 +77,25 @@ function parseCitrus(line, text) {
   return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: 'juice' } : null;
 }
 
+const VULGAR = '[½¼¾⅓⅔⅛]';
+const MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, 'i');
+const measurable = (unit) => [ML_PER, GRAMS_PER].find((table) => table[unit]);
+
+// The line's leading weight or volume exactly as written ("1 cup plus 2 tbsp" in "1 cup plus
+// 2 tbsp flour") -> { text, amount, unit }, or null when the line does not start with one.
+export function measuredLead(line) {
+  const lead = line.match(MEASURED);
+  const unit = lead && unitOf(lead[2]);
+  if (!measurable(unit)) return null;
+  const after = line.slice(lead[0].length);
+  const plus = after.trimStart().match(PLUS);
+  if (plus && measurable(unitOf(plus[2])) !== measurable(unit)) return null;
+  const amount = toNumber(lead[1].replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]));
+  if (!plus) return { text: lead[0], amount, unit };
+  const rest = after.trimStart().slice(plus[0].length);
+  return { text: line.slice(0, line.length - rest.length).trimEnd(), amount: plusAmount(plus[0], amount, unit).amount, unit };
+}
+
 export function parseIngredientLine(line) {
   let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
   const citrus = parseCitrus(line, text);
