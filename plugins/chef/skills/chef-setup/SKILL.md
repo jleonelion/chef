@@ -211,24 +211,32 @@ Chef keeps an **invocation trace** of its script runs (in plain words, a short l
 
 ## Report a problem
 
-When the user wants to report something Chef got wrong, build a **feedback report** with them. Nothing leaves the machine without their explicit "send", and in this release no runtime can send: an approved report is saved on this machine.
+When the user wants to report a problem, ask for something new or ask Chef to behave differently, build a **feedback report** with them. Nothing leaves the machine without their explicit "send", and in this release no runtime can send: an approved report is saved on this machine.
 
-1. **Draft.** Ask what they expected, what happened instead and how often (`once`, `sometimes`, `always` or `unknown`). Write a one-line summary (at most 500 characters) and the other answers (at most 2,000 each) in general terms: "a dairy item", not the food; never copy recipes, household, health, dietary or conversation content into them. Say what you generalized. Then run:
+1. **Classify.** From the user's words, propose one class and ask once: "That sounds like a **defect** (Chef got something wrong). Is that right, or is it an **enhancement** (something new) or a **behavior change** (Chef works, but should work differently)?" Never pick a class without asking. Then ask that class's questions:
+   - `defect`: what they expected, what happened instead, how often (`once`, `sometimes`, `always` or `unknown`).
+   - `enhancement`: what they want to be able to do.
+   - `behavior_change`: what Chef does now, what it should do, and which skill (at least one).
+2. **Draft.** Write a one-line summary (at most 500 characters) and the class answers (at most 2,000 each) in general terms: "a dairy item", not "milk"; "a household member", not a name. Never copy recipes, household, health, dietary or conversation content into them. Then say in one line what you generalized ("I wrote 'a dairy item' instead of the food you named") and that they can restore any detail in one reply. A restored detail goes in as they say it; never refuse or re-generalize it. Run:
 
    ```sh
    node scripts/setup.mjs report-draft --class defect --summary "..." --expected "..." --actual "..." --frequency always --skill-ids chef-recipe-search
+   node scripts/setup.mjs report-draft --class enhancement --summary "..." --desired-outcome "..."
+   node scripts/setup.mjs report-draft --class behavior_change --summary "..." --current-behavior "..." --desired-behavior "..." --skill-ids chef-meal-planning
    ```
 
-   `--skill-ids` names the skill the problem is about. Recent runs of it from the invocation trace attach as diagnostics; `--diagnostics off` leaves them out.
-2. **Preview.** Show `preview` exactly as returned, in a code block, every line. Each numbered line is exactly what the report holds; a `= {}` or `= []` line starts a section whose items follow. Lines starting `Not sent`, `Not observed` and `Check item` are notes, not content. If `send_notice` is present, tell the user in plain words that sending isn't supported in this runtime and "send" saves the report on this machine. If the user asks for the raw report, run `report-preview --raw` and show `raw` exactly.
-3. **Change.** The user removes or changes items by number:
+   `--skill-ids` names the skill the report is about (infer it from the conversation when you can). **Diagnostics** attach to defects only, by default: runs of that skill from the last hour. When there are none, Chef attaches the last 10 runs of any skill and the preview says so. `--diagnostics wide` takes every skill's runs from the last hour, `--diagnostics off` leaves them out, and `--diagnostics on` adds them to an enhancement or behavior change. To widen or drop diagnostics after the preview, run `report-draft` again with the same answers and the new `--diagnostics`.
+
+   **Contact.** Ask for a way to reply only when the result has `can_ask_contact: true`; then pass it as `--contact "..."`, never inside the report text. If the user offers contact anyway, pass it with `--contact`: when the runtime can't take it, the result has `contact_notice`; tell the user in plain words that it was dropped and is not in the report.
+3. **Preview.** Show `preview` exactly as returned, in a code block, every line. Each numbered line is exactly what the report holds; a `= {}` or `= []` line starts a section whose items follow. Lines starting `Not sent`, `Not observed`, `Check item`, `Diagnostics` and `Contact` are notes, not content. If `send_notice` is present, tell the user in plain words that sending isn't supported in this runtime and "send" saves the report on this machine. If the user asks for the raw report, run `report-preview --raw` and show `raw` exactly.
+4. **Change.** The user removes or changes items by number:
    - Remove: `node scripts/setup.mjs report-remove --item 19`. Only optional parts can be removed; required fields can only be edited.
    - Edit: `node scripts/setup.mjs report-edit --item 4 --value "..."` (summary, the class fields, frequency and `skill_ids`, comma-separated).
    Every change returns a new `preview` and `submission_nonce`; show the whole new preview again. On `invalid-input`, show `problems`. For a `Check item` note, point out the item, suggest removing or rewording it, and change it only if the user asks.
-4. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`.
+5. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`.
    - `saved`: say `notice` in plain words and give `path` (inside the data root). Offer no other way to send it: no email, no GitHub issue, no upload.
    - `refused`: the report changed since that preview; show the current one (`report-preview`) and ask again.
-5. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days.
+6. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days.
 
 ## Schema mismatch
 

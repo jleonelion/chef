@@ -8836,8 +8836,12 @@ var HOUR_MS = 60 * 60 * 1000;
 var WINDOW_MS = HOUR_MS;
 var OS_FAMILIES = { darwin: "macos", linux: "linux", win32: "windows" };
 var ALWAYS_UNOBSERVED = ["pre_launch_unobserved", "host_action_unconfirmed", "post_return_unobserved"];
-function selectEvents(events, { now, skill } = {}) {
-  return events.filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (!skill || event.skill_id === skill)).slice(-MAX_EVENTS);
+var FALLBACK_EVENTS = 10;
+function selectEvents(events, { now, skill, wide = false }) {
+  const inWindow = events.filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (wide || !skill || event.skill_id === skill)).slice(-MAX_EVENTS);
+  if (inWindow.length || !events.length)
+    return { events: inWindow, fallback: false };
+  return { events: events.slice(-FALLBACK_EVENTS), fallback: true };
 }
 function installedSkills(skillsDir, version = plugin_default.version) {
   let entries;
@@ -8968,7 +8972,17 @@ function scanNotes(numbers, report) {
     return [`Check item ${numbers[field]} (${field}): may contain ${what}. Chef changed nothing; ask to edit or remove it if it is personal.`];
   });
 }
-function renderPreview({ report, numbers }) {
+function draftNotes(report, notes = {}, contact) {
+  const lines = [];
+  if (report.diagnostic_bundle && Object.hasOwn(notes, "diagnostics_fallback")) {
+    const runs = notes.diagnostics_fallback ? `runs of ${notes.diagnostics_fallback}` : "Chef runs";
+    lines.push(`Diagnostics: no ${runs} in the last hour, so these are the last 10 runs of any skill. Ask to widen or drop them.`);
+  }
+  if (contact !== undefined)
+    lines.push(`Contact, sent apart from the report and stored separately: ${JSON.stringify(contact)}`);
+  return lines;
+}
+function renderPreview({ report, numbers, notes, contact }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -8978,6 +8992,7 @@ function renderPreview({ report, numbers }) {
     "",
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
+    ...draftNotes(report, notes, contact),
     ...scanNotes(numbers, report)
   ].join(`
 `);
@@ -9280,7 +9295,7 @@ function itemId({ report, numbers }, number) {
     throw new Error(`no item ${number} in this draft`);
   return id;
 }
-var changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID2() }) });
+var changed = (draft, report) => ({ ...draft, report: checked({ ...report, submission_nonce: randomUUID2() }) });
 function withoutItem(report, id) {
   const { parent, key, element } = locate(report, id);
   if (element)
@@ -9383,13 +9398,16 @@ function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new 
 }
 
 // src/skills/chef-setup/scripts/lib/report-modes.mjs
-var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior"];
+var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "contact"];
 var REPORT_FLAGS = {
   ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce"].map((flag) => [flag, { type: "string" }])),
   raw: { type: "boolean" }
 };
 var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
 var invalid = (root, error) => ({ status: "invalid-input", data_root: root, problems: error.problems ?? [error.message] });
+var DIAGNOSTICS = ["on", "off", "wide"];
+var CONTACT_DROPPED = "This runtime can't take contact details, so Chef dropped the contact you gave; it is not in the report.";
+var canTakeContact = (adapter) => hasCapability(adapter, "contact");
 function shown(root, draft, adapter) {
   const sendable = canSend(adapter);
   return {
@@ -9398,6 +9416,7 @@ function shown(root, draft, adapter) {
     preview: renderPreview(draft),
     submission_nonce: draft.report.submission_nonce,
     can_send: sendable,
+    can_ask_contact: canTakeContact(adapter),
     ...sendable ? {} : { send_notice: SAVE_ONLY }
   };
 }
@@ -9405,17 +9424,25 @@ var withDraft = (mode) => (root, values, context) => {
   const draft = readDraft(root);
   return draft ? mode(root, draft, values, context) : { ...NO_DRAFT, data_root: root };
 };
-function bundleFor(root, values, skillIds, { adapter, skillsDir }) {
-  if ((values.diagnostics ?? (values.class === "defect" ? "on" : "off")) !== "on")
-    return;
+function diagnosticsFor(root, values, skillIds, { adapter, skillsDir }) {
+  const choice = values.diagnostics ?? (values.class === "defect" ? "on" : "off");
+  if (!DIAGNOSTICS.includes(choice))
+    throw new Error(`diagnostics: must be one of ${DIAGNOSTICS.join(", ")}`);
+  if (choice === "off")
+    return {};
   const now = new Date;
   const traceOn = traceEnabled(root);
-  const events = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill: skillIds[0] }) : [];
-  return buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
+  const wide = choice === "wide";
+  const skill = wide ? undefined : skillIds[0];
+  const { events, fallback } = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill, wide }) : { events: [], fallback: false };
+  const bundle = buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
+  return { bundle, ...fallback && { notes: { diagnostics_fallback: skill ?? null } } };
 }
 function draftMode(root, values, context) {
   const skillIds = splitSkillIds(values["skill-ids"]);
   try {
+    const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
+    const keepContact = values.contact !== undefined && canTakeContact(context.adapter);
     const draft = newDraft({
       class: values.class,
       summary: values.summary,
@@ -9426,10 +9453,12 @@ function draftMode(root, values, context) {
       current_behavior: values["current-behavior"],
       desired_behavior: values["desired-behavior"],
       skill_ids: skillIds,
-      bundle: bundleFor(root, values, skillIds, context)
+      bundle
     });
+    Object.assign(draft, notes && { notes }, keepContact && { contact: values.contact });
     saveDraft(root, draft);
-    return shown(root, draft, context.adapter);
+    const dropped = values.contact !== undefined && !keepContact;
+    return { ...shown(root, draft, context.adapter), ...dropped && { contact_notice: CONTACT_DROPPED } };
   } catch (error) {
     return invalid(root, error);
   }
