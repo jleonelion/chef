@@ -3,6 +3,7 @@
 // Modes: view, check-sender, add-receipt, edit, deduct, expiring, health, rollup. Prints one JSON object.
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { displayQuantity } from '../../../lib/quantity.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
 import { OPTIONS, readTranscript, today } from './lib/cli-args.mjs';
@@ -30,7 +31,13 @@ function rollup(root) {
 }
 
 const MODES = {
-  view: (root) => ({ status: 'ok', items: listItems(loadInventory(root)).map(({ path, name, amount, unit, expires }) => ({ path, name, amount, unit, expires: expires ?? null })) }),
+  // amount/unit as stored (for edits); display in the household's unit system.
+  view: (root, settings) => ({
+    status: 'ok',
+    items: listItems(loadInventory(root)).map(({ path, name, amount, unit, expires }) => ({
+      path, name, amount, unit, display: displayQuantity(amount, unit, settings.units).text, expires: expires ?? null,
+    })),
+  }),
   'check-sender': (root, settings) => {
     const gate = checkSender(values.from, settings.trusted_receipt_senders, { authenticated: values.authenticated });
     return gate.ok ? { status: 'trusted' } : { status: 'refused', reason: gate.reason };

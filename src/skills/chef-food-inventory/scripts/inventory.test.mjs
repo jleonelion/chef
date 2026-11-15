@@ -100,3 +100,16 @@ test('deduct reports an unconvertible unit mismatch without writing', () => {
   assert.equal(loadInventory(root).pantry.grains.pasta.amount, 1);
   assert.equal(git(root, ['rev-parse', 'HEAD']), head);
 });
+
+function view(root) {
+  return JSON.parse(execFileSync(process.execPath, [script, 'view', '--data-root', root], { encoding: 'utf8' }));
+}
+
+test('view shows on-hand amounts in the household unit system; stored amount and unit stay as stored', () => {
+  const root = dataRoot();
+  fs.writeFileSync(path.join(root, 'settings.json'), JSON.stringify({ settings_version: 1, units: 'us' }));
+  assert.deepEqual(view(root).items.map(({ amount, unit, display }) => [amount, unit, display]), [[1, 'kg', '2 1/4 lb']]);
+  fs.writeFileSync(path.join(root, 'settings.json'), JSON.stringify({ settings_version: 1, units: 'metric' }));
+  assert.equal(view(root).items[0].display, '1 kg');
+  assert.deepEqual(loadInventory(root).pantry.grains.pasta, { name: 'pasta', amount: 1, unit: 'kg' });
+});
