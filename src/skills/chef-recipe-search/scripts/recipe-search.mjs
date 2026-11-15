@@ -3,10 +3,13 @@
 // Search runs every match through the dietary gate; --override lifts one constraint for this call only.
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { gateRecipe, parseOverrides } from '../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
+import { convertRecipeBody } from '../../../lib/recipe-units.mjs';
 import { listRecipes } from '../../../lib/recipes.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
+import { readSettings } from '../../../lib/settings.mjs';
 import { searchRecipes } from './lib/search.mjs';
 
 const many = { type: 'string', multiple: true };
@@ -59,7 +62,9 @@ function show(recipes) {
   if (!recipe) return { status: 'not-found', data_root: root, slug: values.slug ?? null };
   const verdict = gateRecipe(recipe, readRuleset(root));
   const conflicts = verdict.excluded ? { dietary_conflicts: verdict.reasons } : {};
-  return { status: 'ok', data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body, ...conflicts };
+  const { units, convert_recipe_units: convert } = readSettings(root).settings;
+  const body = convert ? convertRecipeBody(recipe.body, units) : recipe.body;
+  return { status: 'ok', data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body, ...conflicts };
 }
 
 const MODES = { search, show };
@@ -69,12 +74,23 @@ if (!Object.hasOwn(MODES, mode)) {
   process.exit(64);
 }
 
-let result;
-if (readSchemaVersion(root) === null) result = { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' };
-else {
+function runMode() {
+  if (readSchemaVersion(root) === null) return { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' };
   const { recipes, unreadable } = listRecipes(root);
-  result = MODES[mode](recipes);
+  const result = MODES[mode](recipes);
   if (unreadable.length) result.unreadable = unreadable;
+  return result;
 }
+
+// Invocation event: registry codes and counts only (schemas/feedback/).
+const FAILURES = { refused: 'not-a-data-root', 'invalid-input': 'invalid-input', 'not-found': 'recipe-not-found' };
+function classify(result) {
+  if (result.status === 'ok') return { outcome: 'ok', facts: mode === 'search' ? { results: result.recipes.length } : {} };
+  return Object.hasOwn(FAILURES, result.status)
+    ? { outcome: 'validation-error', error_code: FAILURES[result.status] }
+    : { outcome: 'internal-error', error_code: 'unclassified' };
+}
+
+const result = await chefCapture({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: mode, classify }, runMode);
 console.log(JSON.stringify(result));
 if (['refused', 'invalid-input'].includes(result.status)) process.exitCode = 2;

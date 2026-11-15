@@ -7066,6 +7066,7 @@ function updateInstall({ skillDir, repository }) {
 var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes to that task. Ask Muse to create it as a recurring task with exactly the given name, cadence (in the user's timezone) and prompt, then list the tasks you created. If a task with that name already exists, leave it as it is. Approve any Gmail send grant Muse asks for only with the user.";
 var muse = {
   name: "muse",
+  adapterVersion: 1,
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
@@ -7744,8 +7745,11 @@ function parseCitrus(line, text) {
   const juiced = text.match(JUICED);
   return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
 }
+var VULGAR = "[½¼¾⅓⅔⅛]";
+var asciiFractions = (text) => text.replace(new RegExp(VULGAR, "g"), (c) => FRACTIONS[c]);
+var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
 function parseIngredientLine(line) {
-  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  let text = asciiFractions(line).trim();
   const citrus = parseCitrus(line, text);
   if (citrus)
     return citrus;
@@ -8292,7 +8296,13 @@ var LADDERS = {
   us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
   metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
 };
+var metricKitchen = (n) => n < 20 ? 1 : n < 250 ? 5 : 10;
+var KITCHEN_LADDERS = {
+  us: { volume: [["tsp", fixed(0.125)], ["tbsp", fixed(0.125)], ["cup", fixed(0.25), 0.25]], mass: [["oz", (n) => n < 4 ? 0.5 : 1], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricKitchen], ["l", fixed(0.05)]], mass: [["g", metricKitchen], ["kg", fixed(0.05)]] }
+};
 var SPOONS = LADDERS.us.volume.slice(0, 2);
+var KITCHEN_SPOONS = KITCHEN_LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
 var QUARTER_CUP = VOLUME.cup / 4;
 

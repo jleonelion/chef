@@ -69,6 +69,8 @@ export function checkFiles(dataRoot, checks) {
 }
 
 // runs: [{row, rep, pass, model, cost_usd, error?}] → the result file attached to a release.
+// A known_failure row passes while it still fails at least one rep (reproduced) and fails once
+// every rep passes, so a fix can't land without dropping its marker.
 export function aggregate({ meta, reps, rows, runs }) {
   const summaries = rows.map((row) => {
     const mine = runs.filter((run) => run.row === row.id);
@@ -77,7 +79,8 @@ export function aggregate({ meta, reps, rows, runs }) {
       id: row.id,
       flow: row.flow,
       passes: `${passes}/${reps}`,
-      pass: passes === reps,
+      pass: row.known_failure ? passes < reps : passes === reps,
+      ...(row.known_failure && { known_failure: row.known_failure }),
       failures: mine.filter((run) => !run.pass).map(({ rep, error }) => ({ rep, error })),
     };
   });

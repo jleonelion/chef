@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseIngredientLine } from './ingredient-line.mjs';
+import { measuredLead, parseIngredientLine } from './ingredient-line.mjs';
 
 const parsed = (line) => {
   const { amount, unit, item, size, packageGrams, trace } = parseIngredientLine(line);
@@ -55,4 +55,19 @@ test('"plus" adds a second amount of the same kind and never reaches the item', 
   assert.deepEqual(parsed('1 cup plus 2 tbsp flour'), { ...base, amount: 1.13, unit: 'cup', item: 'flour' });
   assert.deepEqual(parsed('1 lb plus 4 oz potatoes'), { ...base, amount: 1.25, unit: 'lb', item: 'potatoes' });
   assert.deepEqual(parsed('2 cups plus 1 pinch salt'), { ...base, amount: 2, unit: 'cup', item: 'salt' });
+});
+
+test('measuredLead returns the leading weight or volume as written, with its amount and unit', () => {
+  assert.deepEqual(measuredLead('1 cup milk'), { text: '1 cup', amount: 1, unit: 'cup' });
+  assert.deepEqual(measuredLead('1 1/2 cups of red lentils'), { text: '1 1/2 cups', amount: 1.5, unit: 'cup' });
+  assert.deepEqual(measuredLead('½ tsp thyme'), { text: '½ tsp', amount: 0.5, unit: 'tsp' });
+  assert.deepEqual(measuredLead('1½ lb. potatoes'), { text: '1½ lb.', amount: 1.5, unit: 'lb' });
+  assert.deepEqual(measuredLead('400g crushed tomatoes'), { text: '400g', amount: 400, unit: 'g' });
+  assert.deepEqual(measuredLead('1 cup plus 2 tbsp flour'), { text: '1 cup plus 2 tbsp', amount: 1.13, unit: 'cup' });
+});
+
+test('measuredLead is null for counts, ranges, packages, mixed sums and unmeasured lines', () => {
+  for (const line of ['2 cloves garlic', '1 onion', '2-3 cups stock', '2 to 3 cups stock', '1 (15 oz) can chickpeas', '2 cups plus 1 pinch salt', 'salt to taste', 'About 2 cups flour', 'Juice of 1 lemon']) {
+    assert.equal(measuredLead(line), null, line);
+  }
 });

@@ -5,8 +5,14 @@ import path from 'node:path';
 import { muse } from '../runtime/muse.mjs';
 
 export const SETTINGS_FILE = 'settings.json';
-export const SETTINGS_VERSION = 1;
-export const SETTING_KEYS = ['household_recipients', 'trusted_receipt_senders', 'units', 'calendar'];
+export const SETTINGS_VERSION = 2;
+export const SETTING_KEYS = ['household_recipients', 'trusted_receipt_senders', 'units', 'calendar', 'convert_recipe_units', 'diagnostics'];
+
+// Step N turns version N into N + 1. readSettings runs pending steps in memory, so a file
+// not yet migrated by "update Chef" reads the same as a migrated one.
+export const SETTINGS_MIGRATIONS = {
+  1: (stored) => ({ ...stored, settings_version: 2, diagnostics: { trace: 'on' } }),
+};
 
 const IMPERIAL_REGIONS = new Set(['US', 'LR', 'MM']);
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,7 +23,7 @@ export function unitsForLocale(locale = '') {
 }
 
 export function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: 'on' } };
 }
 
 function emailListProblem(key, value) {
@@ -26,14 +32,19 @@ function emailListProblem(key, value) {
   return bad === undefined ? null : `${key}: ${JSON.stringify(bad)} is not an email address`;
 }
 
+const isTraceSetting = (value) =>
+  value !== null && typeof value === 'object' && Object.keys(value).join() === 'trace' && ['on', 'off'].includes(value.trace);
+
 const CHECKS = {
   household_recipients: (value) => emailListProblem('household_recipients', value),
   trusted_receipt_senders: (value) => emailListProblem('trusted_receipt_senders', value),
   units: (value) => (value === 'us' || value === 'metric' ? null : 'units: must be "us" or "metric"'),
+  diagnostics: (value) => (isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}'),
   calendar: (value) => (value === null || (typeof value === 'string' && value.trim()) ? null : 'calendar: must be a calendar name or null'),
+  convert_recipe_units: (value) => (typeof value === 'boolean' ? null : 'convert_recipe_units: must be true or false'),
 };
 
-// Problems with the v1 keys present in `values`; other keys are not checked.
+// Problems with the known keys present in `values`; other keys are not checked.
 export function validateSettings(values) {
   return SETTING_KEYS.filter((key) => Object.hasOwn(values, key))
     .map((key) => CHECKS[key](values[key]))
@@ -49,6 +60,14 @@ function parse(content) {
   } catch {
     return null;
   }
+}
+
+function upgraded(stored) {
+  let next = stored;
+  while (Number.isInteger(next?.settings_version) && next.settings_version >= 1 && next.settings_version < SETTINGS_VERSION) {
+    next = SETTINGS_MIGRATIONS[next.settings_version](next);
+  }
+  return next;
 }
 
 function classify(stored) {
@@ -69,7 +88,7 @@ export function readSettings(root, { locale } = {}) {
   const file = path.join(root, SETTINGS_FILE);
   if (!fs.existsSync(file)) return { status: 'missing', settings: defaults };
   const content = fs.readFileSync(file, 'utf8');
-  const stored = parse(content);
+  const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== 'ok') return { status, settings: defaults, warning: warn(reason), content };
   const known = Object.fromEntries(SETTING_KEYS.filter((key) => Object.hasOwn(stored, key)).map((key) => [key, stored[key]]));

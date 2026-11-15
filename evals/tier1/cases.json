@@ -36,7 +36,7 @@
         "assertions": [
           {
             "path": "$.settings_version",
-            "equals": 1
+            "equals": 2
           }
         ]
       },
@@ -96,8 +96,62 @@
         "equals": null
       },
       {
+        "path": "$.settings.convert_recipe_units",
+        "equals": false
+      },
+      {
         "path": "$.warning",
         "absent": true
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-set-convert-recipe-units",
+    "description": "set --convert-recipe-units true turns on recipe conversion and stores a boolean; other settings are untouched.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--convert-recipe-units",
+      "true"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.changed",
+        "equals": [
+          "convert_recipe_units"
+        ]
+      },
+      {
+        "path": "$.inventory_page",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.convert_recipe_units",
+            "equals": true
+          },
+          {
+            "path": "$.units",
+            "equals": "metric"
+          }
+        ]
       }
     ]
   },
@@ -273,7 +327,13 @@
           },
           {
             "path": "$.settings_version",
-            "equals": 1
+            "equals": 2
+          },
+          {
+            "path": "$.diagnostics",
+            "equals": {
+              "trace": "on"
+            }
           },
           {
             "path": "$.units",
@@ -1026,6 +1086,126 @@
       {
         "path": "$.missing_data.total_minutes",
         "equals": 1
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-search-show-converts-recipe-units",
+    "description": "With convert_recipe_units on, show converts ingredient weights and volumes with the original in parens, keeps spoons, adds the note and the oven scale; the stored page is unchanged.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\",\"convert_recipe_units\":true}\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/cheddar-bake.md",
+        "content": "---\ntype: recipe\ntitle: Cheddar Bake\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-17\nupdated: 2026-01-17\n---\n\n# Cheddar Bake\n\n## Ingredients\n\n- 1 cup milk\n- 8 oz cheddar, grated\n- 1 tsp mustard\n- 2 eggs\n\n## Steps\n\n1. Heat the oven to 350°F.\n2. Bake for 30 minutes at 350 degrees.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "cheddar-bake"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.body",
+        "equals": "\n# Cheddar Bake\n\n## Ingredients\n\nAmounts converted to metric units; steps keep the recipe's original amounts.\n\n- 235 ml (1 cup) milk\n- 225 g (8 oz) cheddar, grated\n- 1 tsp mustard\n- 2 eggs\n\n## Steps\n\n1. Heat the oven to 350°F (175°C).\n2. Bake for 30 minutes at 350 degrees.\n"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/cheddar-bake.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "---\ntype: recipe\ntitle: Cheddar Bake\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-17\nupdated: 2026-01-17\n---\n\n# Cheddar Bake\n\n## Ingredients\n\n- 1 cup milk\n- 8 oz cheddar, grated\n- 1 tsp mustard\n- 2 eggs\n\n## Steps\n\n1. Heat the oven to 350°F.\n2. Bake for 30 minutes at 350 degrees.\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-show-keeps-amounts-by-default",
+    "description": "With convert_recipe_units unset, show returns the stored body byte for byte, even in metric.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\"}\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/cheddar-bake.md",
+        "content": "---\ntype: recipe\ntitle: Cheddar Bake\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-17\nupdated: 2026-01-17\n---\n\n# Cheddar Bake\n\n## Ingredients\n\n- 1 cup milk\n- 8 oz cheddar, grated\n\n## Steps\n\n1. Heat the oven to 350°F.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "cheddar-bake"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.body",
+        "equals": "\n# Cheddar Bake\n\n## Ingredients\n\n- 1 cup milk\n- 8 oz cheddar, grated\n\n## Steps\n\n1. Heat the oven to 350°F.\n"
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-dry-run-keeps-amounts-with-conversion-on",
+    "description": "add-recipe always shows amounts as written, even with convert_recipe_units on.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\",\"convert_recipe_units\":true}\n"
+      },
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Milk Toast\", \"ingredients\": [\"1 cup milk\", \"2 slices bread\"], \"steps\": [\"Bake at 350°F.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Milk toast. Synthetic test source.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json",
+      "--dry-run"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "would-add"
+      },
+      {
+        "path": "$.body",
+        "includes": "- 1 cup milk\n"
+      },
+      {
+        "path": "$.body",
+        "includes": "Bake at 350°F.\n"
       }
     ]
   },
@@ -4549,6 +4729,189 @@
       {
         "path": "$.reason",
         "includes": "not authenticated"
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-search-writes-one-invocation-event",
+    "description": "A recipe search appends one allowlisted invocation event to the local trace; chef-setup trace shows it, holding no query or recipe content, and the data root stays clean in git.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.tracing",
+        "equals": "on"
+      },
+      {
+        "path": "$.bounds",
+        "equals": {
+          "events": 200,
+          "kib": 256,
+          "days": 14
+        }
+      },
+      {
+        "path": "$.trace.schema_version",
+        "equals": 1
+      },
+      {
+        "path": "$.trace.events.length",
+        "equals": 1
+      },
+      {
+        "path": "$.trace.events[0].skill_id",
+        "equals": "chef-recipe-search"
+      },
+      {
+        "path": "$.trace.events[0].operation",
+        "equals": "search"
+      },
+      {
+        "path": "$.trace.events[0].outcome",
+        "equals": "ok"
+      },
+      {
+        "path": "$.trace.events[0].error_code",
+        "equals": null
+      },
+      {
+        "path": "$.trace.events[0].facts.query",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "diagnostics/.gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "*\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true,
+      "headUnchanged": true
+    }
+  },
+  {
+    "id": "chef-setup-clear-trace-deletes-it",
+    "description": "chef-setup clear-trace deletes the local invocation trace; trace then shows no events.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "clear-trace"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.trace.events",
+        "equals": []
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-trace-off-stops-capture",
+    "description": "Setting the trace off deletes the existing trace and stops capture: a later search writes no event.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set",
+          "--trace",
+          "off"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.tracing",
+        "equals": "off"
+      },
+      {
+        "path": "$.trace.events",
+        "equals": []
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.diagnostics",
+            "equals": {
+              "trace": "off"
+            }
+          }
+        ]
       }
     ]
   }

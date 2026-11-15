@@ -3,8 +3,8 @@ import path from 'node:path';
 import { commit, git } from '../../../../lib/git.mjs';
 import { migrate, MIGRATIONS, migrationPlan } from '../../../../lib/migrations.mjs';
 import { SCHEMA_VERSION } from '../../../../lib/schema.mjs';
-import { migrateSettings, SETTINGS_MIGRATIONS, settingsMigrationPlan } from '../../../../lib/settings-migrations.mjs';
-import { SETTINGS_VERSION } from '../../../../lib/settings.mjs';
+import { migrateSettings, settingsMigrationPlan } from '../../../../lib/settings-migrations.mjs';
+import { SETTINGS_MIGRATIONS, SETTINGS_VERSION } from '../../../../lib/settings.mjs';
 import { muse } from '../../../../runtime/muse.mjs';
 import { verifyInstall } from './verify-install.mjs';
 

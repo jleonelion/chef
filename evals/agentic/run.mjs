@@ -8,7 +8,9 @@
 //   later turns resume the session), responses (assertions against each turn's final reply), skills, files
 //   (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
-//   bun run agentic [--reps 3] [--rows id,id] [--model <id>] [--concurrency 4] [--out <file>]
+//   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
+//   a rep, and fails once every rep passes. --known-failures runs only rows with that marker.
+//   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--model <id>] [--concurrency 4] [--out <file>]
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -126,6 +128,7 @@ const { values } = parseArgs({
   options: {
     reps: { type: 'string', default: '3' },
     rows: { type: 'string' },
+    'known-failures': { type: 'boolean' },
     model: { type: 'string' },
     concurrency: { type: 'string', default: '4' },
     out: { type: 'string' },
@@ -133,7 +136,9 @@ const { values } = parseArgs({
 });
 const reps = Number(values.reps);
 const allRows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
-const rows = values.rows ? allRows.filter((row) => values.rows.split(',').includes(row.id)) : allRows;
+const rows = allRows
+  .filter((row) => !values.rows || values.rows.split(',').includes(row.id))
+  .filter((row) => !values['known-failures'] || row.known_failure);
 const info = meta();
 const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'results', `agentic-${info.commit.slice(0, 12)}.json`));
 const logDir = path.join(path.dirname(out), 'logs', path.basename(out, '.json'));
@@ -142,6 +147,6 @@ const jobs = rows.flatMap((row) => Array.from({ length: reps }, (_, index) => ()
 const runs = await pool(jobs, Number(values.concurrency));
 const result = aggregate({ meta: info, reps, rows, runs });
 fs.writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
-for (const row of result.rows) console.log(`${row.pass ? 'pass' : 'FAIL'} ${row.passes} ${row.id}`);
+for (const row of result.rows) console.log(`${row.pass ? 'pass' : 'FAIL'} ${row.passes} ${row.id}${row.known_failure ? ` (known_failure ${row.known_failure})` : ''}`);
 console.log(`Agentic suite ${result.passed ? 'passed' : 'FAILED'} (model ${result.models.join(', ') || 'unknown'}, $${result.cost_usd}). Result: ${path.relative(repo, out)}`);
 process.exitCode = result.passed ? 0 : 1;

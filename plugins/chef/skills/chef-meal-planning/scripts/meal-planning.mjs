@@ -7066,6 +7066,7 @@ function updateInstall({ skillDir, repository }) {
 var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes to that task. Ask Muse to create it as a recurring task with exactly the given name, cadence (in the user's timezone) and prompt, then list the tasks you created. If a task with that name already exists, leave it as it is. Approve any Gmail send grant Muse asks for only with the user.";
 var muse = {
   name: "muse",
+  adapterVersion: 1,
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
@@ -7711,6 +7712,8 @@ var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(l
 var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
 var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
 var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+var VULGAR = "[½¼¾⅓⅔⅛]";
+var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
 
 // src/lib/nutrition-exclusions.mjs
 var SEASONING_WORDS = new Set(["salt", "pepper", "and", "black", "white", "kosher", "sea", "flaky", "ground", "cracked", "more"]);
@@ -7724,7 +7727,13 @@ var LADDERS = {
   us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
   metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
 };
+var metricKitchen = (n) => n < 20 ? 1 : n < 250 ? 5 : 10;
+var KITCHEN_LADDERS = {
+  us: { volume: [["tsp", fixed(0.125)], ["tbsp", fixed(0.125)], ["cup", fixed(0.25), 0.25]], mass: [["oz", (n) => n < 4 ? 0.5 : 1], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricKitchen], ["l", fixed(0.05)]], mass: [["g", metricKitchen], ["kg", fixed(0.05)]] }
+};
 var SPOONS = LADDERS.us.volume.slice(0, 2);
+var KITCHEN_SPOONS = KITCHEN_LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
 var QUARTER_CUP = VOLUME.cup / 4;
 
@@ -7767,8 +7776,11 @@ var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf
 import fs6 from "node:fs";
 import path7 from "node:path";
 var SETTINGS_FILE = "settings.json";
-var SETTINGS_VERSION = 1;
-var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar"];
+var SETTINGS_VERSION = 2;
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics"];
+var SETTINGS_MIGRATIONS = {
+  1: (stored) => ({ ...stored, settings_version: 2, diagnostics: { trace: "on" } })
+};
 var IMPERIAL_REGIONS = new Set(["US", "LR", "MM"]);
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function unitsForLocale(locale = "") {
@@ -7776,7 +7788,7 @@ function unitsForLocale(locale = "") {
   return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
 }
 function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: "on" } };
 }
 function emailListProblem(key, value) {
   if (!Array.isArray(value))
@@ -7784,11 +7796,14 @@ function emailListProblem(key, value) {
   const bad = value.find((entry) => typeof entry !== "string" || !EMAIL.test(entry));
   return bad === undefined ? null : `${key}: ${JSON.stringify(bad)} is not an email address`;
 }
+var isTraceSetting = (value) => value !== null && typeof value === "object" && Object.keys(value).join() === "trace" && ["on", "off"].includes(value.trace);
 var CHECKS = {
   household_recipients: (value) => emailListProblem("household_recipients", value),
   trusted_receipt_senders: (value) => emailListProblem("trusted_receipt_senders", value),
   units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
-  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null"
+  diagnostics: (value) => isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}',
+  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null",
+  convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false"
 };
 function validateSettings(values) {
   return SETTING_KEYS.filter((key) => Object.hasOwn(values, key)).map((key) => CHECKS[key](values[key])).filter(Boolean);
@@ -7801,6 +7816,13 @@ function parse(content) {
   } catch {
     return null;
   }
+}
+function upgraded(stored) {
+  let next = stored;
+  while (Number.isInteger(next?.settings_version) && next.settings_version >= 1 && next.settings_version < SETTINGS_VERSION) {
+    next = SETTINGS_MIGRATIONS[next.settings_version](next);
+  }
+  return next;
 }
 function classify(stored) {
   if (!stored)
@@ -7820,7 +7842,7 @@ function readSettings(root, { locale } = {}) {
   if (!fs6.existsSync(file))
     return { status: "missing", settings: defaults };
   const content = fs6.readFileSync(file, "utf8");
-  const stored = parse(content);
+  const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== "ok")
     return { status, settings: defaults, warning: warn(reason), content };

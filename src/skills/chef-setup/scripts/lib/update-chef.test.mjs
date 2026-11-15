@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { SETTINGS_MIGRATIONS } from '../../../../lib/settings.mjs';
 import { muse } from '../../../../runtime/muse.mjs';
 import { updateChef } from './update-chef.mjs';
 
@@ -95,6 +96,7 @@ const migrations = {
 };
 const settingsMigrations = {
   0: (stored) => ({ settings_version: 1, units: stored.old_units }),
+  1: SETTINGS_MIGRATIONS[1],
 };
 
 test('installs the latest tagged skills but waits for confirmation before migrating', () => {
@@ -114,7 +116,7 @@ test('installs the latest tagged skills but waits for confirmation before migrat
   assert.equal(result.status, 'confirmation-required');
   assert.equal(result.release, 'v1.1.0');
   assert.deepEqual(result.changes.skills, { added: ['chef_added'], replaced: ['chef_setup'], removed: ['chef_dropped'] });
-  assert.deepEqual(result.changes.migrations, { data_root: [0], settings: [0] });
+  assert.deepEqual(result.changes.migrations, { data_root: [0], settings: [0, 1] });
   assert.deepEqual(result.changes.recurring_tasks, [
     { name: 'Chef shopping list', prompt: 'build --upcoming' },
   ]);
@@ -154,7 +156,7 @@ test('confirmed update migrates data and settings, then verifies the installed f
   assert.match(result.recurring_tasks.instruction, /Do not create/);
   assert.match(result.recurring_tasks.instruction, /list the tasks/);
   assert.equal(fs.readFileSync(path.join(root, 'migration-ran.txt'), 'utf8'), 'yes\n');
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'settings.json'))), { settings_version: 1, units: 'metric' });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'settings.json'))), { settings_version: 2, units: 'metric', diagnostics: { trace: 'on' } });
   assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'schema-version.json'))).schema_version, 1);
   assert.equal(fs.readFileSync(path.join(root, 'user-data.txt'), 'utf8'), 'keep all of this\n');
 });
