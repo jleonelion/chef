@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chef:feedback:feedback-report:v1",
+  "title": "Feedback report",
+  "description": "A defect, enhancement or behavior-change request the user reviewed and approved; the only thing that leaves the user's machine. The submitted bytes are exactly the final rendered preview. Holds no identity; feedback intake assigns report_id. The serialized report is at most x-max-bytes UTF-8 bytes; client and feedback intake reject the same payloads.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "class",
+    "trigger",
+    "summary",
+    "removed_fields",
+    "submission_nonce"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "class": {
+      "enum": [
+        "defect",
+        "enhancement",
+        "behavior_change"
+      ]
+    },
+    "trigger": {
+      "enum": [
+        "user-initiated",
+        "post-error"
+      ]
+    },
+    "summary": {
+      "$ref": "#/$defs/short_text"
+    },
+    "expected": {
+      "$ref": "#/$defs/text"
+    },
+    "actual": {
+      "$ref": "#/$defs/text"
+    },
+    "frequency": {
+      "enum": [
+        "once",
+        "sometimes",
+        "always",
+        "unknown"
+      ]
+    },
+    "desired_outcome": {
+      "$ref": "#/$defs/text"
+    },
+    "current_behavior": {
+      "$ref": "#/$defs/text"
+    },
+    "desired_behavior": {
+      "$ref": "#/$defs/text"
+    },
+    "skill_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 16,
+      "items": {
+        "$ref": "urn:chef:feedback:invocation-event:v1#/properties/skill_id"
+      }
+    },
+    "focus_invocation": {
+      "$ref": "urn:chef:feedback:diagnostic-bundle:v1#/$defs/key"
+    },
+    "diagnostic_bundle": {
+      "$ref": "urn:chef:feedback:diagnostic-bundle:v1"
+    },
+    "removed_fields": {
+      "description": "Paths of the parts the user deleted in preview: withheld, not never captured.",
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 64,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z_]+(\\.[a-z_]+|\\[inv-[1-9][0-9]{0,2}\\])*$",
+        "maxLength": 128
+      }
+    },
+    "submission_nonce": {
+      "description": "Random per approved preview; feedback intake rejects a replay. Any edit mints a new one.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "class"
+        ],
+        "properties": {
+          "class": {
+            "const": "defect"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "expected",
+          "actual",
+          "frequency"
+        ],
+        "properties": {
+          "expected": true,
+          "actual": true,
+          "frequency": true,
+          "desired_outcome": false,
+          "current_behavior": false,
+          "desired_behavior": false
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "class"
+        ],
+        "properties": {
+          "class": {
+            "const": "enhancement"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "desired_outcome"
+        ],
+        "properties": {
+          "desired_outcome": true,
+          "expected": false,
+          "actual": false,
+          "frequency": false,
+          "current_behavior": false,
+          "desired_behavior": false
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "class"
+        ],
+        "properties": {
+          "class": {
+            "const": "behavior_change"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "current_behavior",
+          "desired_behavior",
+          "skill_ids"
+        ],
+        "properties": {
+          "current_behavior": true,
+          "desired_behavior": true,
+          "skill_ids": {
+            "type": "array",
+            "minItems": 1
+          },
+          "expected": false,
+          "actual": false,
+          "frequency": false,
+          "desired_outcome": false
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "trigger"
+        ],
+        "properties": {
+          "trigger": {
+            "const": "post-error"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "focus_invocation",
+          "diagnostic_bundle"
+        ],
+        "properties": {
+          "focus_invocation": true,
+          "diagnostic_bundle": true
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "short_text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    }
+  },
+  "x-max-bytes": 65536
+}

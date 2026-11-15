@@ -1,0 +1,10 @@
+{
+  "registry_version": 1,
+  "description": "Capability registry: every runtime capability a runtime adapter may declare from feedback.capabilities(), evaluated at call time. A name covers one narrow thing the adapter can do right now. Evidence kinds are registered when the first adapter that emits them lands. Adding an entry is a reviewed change.",
+  "capabilities": {
+    "submit.connector": { "description": "Send an approved feedback report to feedback intake through an installed, authorized runtime connector." },
+    "submit.direct": { "description": "Send an approved feedback report to feedback intake directly, without a connector." },
+    "contact.opaque": { "description": "Offer one optional reply channel that feedback intake stores apart from the report." }
+  },
+  "evidence_kinds": {}
+}
