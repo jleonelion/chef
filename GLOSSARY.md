@@ -85,7 +85,7 @@ One narrowly named thing a runtime adapter can do right now, such as submitting 
 _Avoid_: feature flag, tracing support
 
 **Unit system**:
-The household's choice of US or metric measures for shopping-list and inventory quantities Chef shows; stored recipes and inventory keep the units they were written in.
+The household's choice of US or metric measures for shopping-list and inventory quantities Chef shows, and for recipe ingredients when the household opts in; stored recipes and inventory keep the units they were written in.
 _Avoid_: units preference, measurement mode
 
 **Meal plan**:
