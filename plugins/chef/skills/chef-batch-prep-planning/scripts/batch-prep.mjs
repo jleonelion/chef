@@ -29287,7 +29287,7 @@ function loadPlan(root, weekStart) {
       throw new Error("meal plan has no meals");
     return { plan: { ...plan, meals: plan.meals.map(withSlot).sort(byDateAndSlot) }, relative };
   } catch (error) {
-    return { problem: { status: "refused", reason: `saved meal plan cannot be read: ${error.message}` } };
+    return { problem: { status: "unreadable", reason: `saved meal plan cannot be read: ${error.message}` } };
   }
 }
 async function renderBatchPrep(root, weekStart) {
@@ -29356,8 +29356,8 @@ function render() {
   }
   return renderBatchPrep(root, weekStart);
 }
-var capture = { root, skill: "chef-batch-prep-planning", script: "batch-prep", operation: positionals[0], failures: { "not-found": "no-plan" } };
+var capture = { root, skill: "chef-batch-prep-planning", script: "batch-prep", operation: positionals[0], failures: { "not-found": "no-plan", unreadable: "store-unreadable" } };
 var result = await chefCapture(capture, render);
 console.log(JSON.stringify(result));
-if (["invalid-input", "refused", "not-found"].includes(result.status))
+if (["invalid-input", "refused", "not-found", "unreadable"].includes(result.status))
   process.exitCode = 2;
