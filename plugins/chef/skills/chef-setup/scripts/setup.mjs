@@ -75,17 +75,17 @@ var require_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  function visit_(key, node, visitor, path6) {
-    const ctrl = callVisitor(key, node, visitor, path6);
+  function visit_(key, node, visitor, path7) {
+    const ctrl = callVisitor(key, node, visitor, path7);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path6, ctrl);
-      return visit_(key, ctrl, visitor, path6);
+      replaceNode(key, path7, ctrl);
+      return visit_(key, ctrl, visitor, path7);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path6 = Object.freeze(path6.concat(node));
+        path7 = Object.freeze(path7.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = visit_(i, node.items[i], visitor, path6);
+          const ci = visit_(i, node.items[i], visitor, path7);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -96,13 +96,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path6 = Object.freeze(path6.concat(node));
-        const ck = visit_("key", node.key, visitor, path6);
+        path7 = Object.freeze(path7.concat(node));
+        const ck = visit_("key", node.key, visitor, path7);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = visit_("value", node.value, visitor, path6);
+        const cv = visit_("value", node.value, visitor, path7);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -123,17 +123,17 @@ var require_visit = __commonJS((exports) => {
   visitAsync.BREAK = BREAK;
   visitAsync.SKIP = SKIP;
   visitAsync.REMOVE = REMOVE;
-  async function visitAsync_(key, node, visitor, path6) {
-    const ctrl = await callVisitor(key, node, visitor, path6);
+  async function visitAsync_(key, node, visitor, path7) {
+    const ctrl = await callVisitor(key, node, visitor, path7);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path6, ctrl);
-      return visitAsync_(key, ctrl, visitor, path6);
+      replaceNode(key, path7, ctrl);
+      return visitAsync_(key, ctrl, visitor, path7);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path6 = Object.freeze(path6.concat(node));
+        path7 = Object.freeze(path7.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = await visitAsync_(i, node.items[i], visitor, path6);
+          const ci = await visitAsync_(i, node.items[i], visitor, path7);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -144,13 +144,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path6 = Object.freeze(path6.concat(node));
-        const ck = await visitAsync_("key", node.key, visitor, path6);
+        path7 = Object.freeze(path7.concat(node));
+        const ck = await visitAsync_("key", node.key, visitor, path7);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = await visitAsync_("value", node.value, visitor, path6);
+        const cv = await visitAsync_("value", node.value, visitor, path7);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -177,23 +177,23 @@ var require_visit = __commonJS((exports) => {
     }
     return visitor;
   }
-  function callVisitor(key, node, visitor, path6) {
+  function callVisitor(key, node, visitor, path7) {
     if (typeof visitor === "function")
-      return visitor(key, node, path6);
+      return visitor(key, node, path7);
     if (identity.isMap(node))
-      return visitor.Map?.(key, node, path6);
+      return visitor.Map?.(key, node, path7);
     if (identity.isSeq(node))
-      return visitor.Seq?.(key, node, path6);
+      return visitor.Seq?.(key, node, path7);
     if (identity.isPair(node))
-      return visitor.Pair?.(key, node, path6);
+      return visitor.Pair?.(key, node, path7);
     if (identity.isScalar(node))
-      return visitor.Scalar?.(key, node, path6);
+      return visitor.Scalar?.(key, node, path7);
     if (identity.isAlias(node))
-      return visitor.Alias?.(key, node, path6);
+      return visitor.Alias?.(key, node, path7);
     return;
   }
-  function replaceNode(key, path6, node) {
-    const parent = path6[path6.length - 1];
+  function replaceNode(key, path7, node) {
+    const parent = path7[path7.length - 1];
     if (identity.isCollection(parent)) {
       parent.items[key] = node;
     } else if (identity.isPair(parent)) {
@@ -754,10 +754,10 @@ var require_Collection = __commonJS((exports) => {
   var createNode = require_createNode();
   var identity = require_identity();
   var Node = require_Node();
-  function collectionFromPath(schema, path6, value) {
+  function collectionFromPath(schema, path7, value) {
     let v = value;
-    for (let i = path6.length - 1;i >= 0; --i) {
-      const k = path6[i];
+    for (let i = path7.length - 1;i >= 0; --i) {
+      const k = path7[i];
       if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
         const a = [];
         a[k] = v;
@@ -776,7 +776,7 @@ var require_Collection = __commonJS((exports) => {
       sourceObjects: new Map
     });
   }
-  var isEmptyPath = (path6) => path6 == null || typeof path6 === "object" && !!path6[Symbol.iterator]().next().done;
+  var isEmptyPath = (path7) => path7 == null || typeof path7 === "object" && !!path7[Symbol.iterator]().next().done;
 
   class Collection extends Node.NodeBase {
     constructor(type, schema) {
@@ -797,11 +797,11 @@ var require_Collection = __commonJS((exports) => {
         copy.range = this.range.slice();
       return copy;
     }
-    addIn(path6, value) {
-      if (isEmptyPath(path6))
+    addIn(path7, value) {
+      if (isEmptyPath(path7))
         this.add(value);
       else {
-        const [key, ...rest] = path6;
+        const [key, ...rest] = path7;
         const node = this.get(key, true);
         if (identity.isCollection(node))
           node.addIn(rest, value);
@@ -811,8 +811,8 @@ var require_Collection = __commonJS((exports) => {
           throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
       }
     }
-    deleteIn(path6) {
-      const [key, ...rest] = path6;
+    deleteIn(path7) {
+      const [key, ...rest] = path7;
       if (rest.length === 0)
         return this.delete(key);
       const node = this.get(key, true);
@@ -821,8 +821,8 @@ var require_Collection = __commonJS((exports) => {
       else
         throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
     }
-    getIn(path6, keepScalar) {
-      const [key, ...rest] = path6;
+    getIn(path7, keepScalar) {
+      const [key, ...rest] = path7;
       const node = this.get(key, true);
       if (rest.length === 0)
         return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -837,15 +837,15 @@ var require_Collection = __commonJS((exports) => {
         return n == null || allowScalar && identity.isScalar(n) && n.value == null && !n.commentBefore && !n.comment && !n.tag;
       });
     }
-    hasIn(path6) {
-      const [key, ...rest] = path6;
+    hasIn(path7) {
+      const [key, ...rest] = path7;
       if (rest.length === 0)
         return this.has(key);
       const node = this.get(key, true);
       return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
-    setIn(path6, value) {
-      const [key, ...rest] = path6;
+    setIn(path7, value) {
+      const [key, ...rest] = path7;
       if (rest.length === 0) {
         this.set(key, value);
       } else {
@@ -3238,9 +3238,9 @@ var require_Document = __commonJS((exports) => {
       if (assertCollection(this.contents))
         this.contents.add(value);
     }
-    addIn(path6, value) {
+    addIn(path7, value) {
       if (assertCollection(this.contents))
-        this.contents.addIn(path6, value);
+        this.contents.addIn(path7, value);
     }
     createAlias(node, name) {
       if (!node.anchor) {
@@ -3289,30 +3289,30 @@ var require_Document = __commonJS((exports) => {
     delete(key) {
       return assertCollection(this.contents) ? this.contents.delete(key) : false;
     }
-    deleteIn(path6) {
-      if (Collection.isEmptyPath(path6)) {
+    deleteIn(path7) {
+      if (Collection.isEmptyPath(path7)) {
         if (this.contents == null)
           return false;
         this.contents = null;
         return true;
       }
-      return assertCollection(this.contents) ? this.contents.deleteIn(path6) : false;
+      return assertCollection(this.contents) ? this.contents.deleteIn(path7) : false;
     }
     get(key, keepScalar) {
       return identity.isCollection(this.contents) ? this.contents.get(key, keepScalar) : undefined;
     }
-    getIn(path6, keepScalar) {
-      if (Collection.isEmptyPath(path6))
+    getIn(path7, keepScalar) {
+      if (Collection.isEmptyPath(path7))
         return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-      return identity.isCollection(this.contents) ? this.contents.getIn(path6, keepScalar) : undefined;
+      return identity.isCollection(this.contents) ? this.contents.getIn(path7, keepScalar) : undefined;
     }
     has(key) {
       return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
-    hasIn(path6) {
-      if (Collection.isEmptyPath(path6))
+    hasIn(path7) {
+      if (Collection.isEmptyPath(path7))
         return this.contents !== undefined;
-      return identity.isCollection(this.contents) ? this.contents.hasIn(path6) : false;
+      return identity.isCollection(this.contents) ? this.contents.hasIn(path7) : false;
     }
     set(key, value) {
       if (this.contents == null) {
@@ -3321,13 +3321,13 @@ var require_Document = __commonJS((exports) => {
         this.contents.set(key, value);
       }
     }
-    setIn(path6, value) {
-      if (Collection.isEmptyPath(path6)) {
+    setIn(path7, value) {
+      if (Collection.isEmptyPath(path7)) {
         this.contents = value;
       } else if (this.contents == null) {
-        this.contents = Collection.collectionFromPath(this.schema, Array.from(path6), value);
+        this.contents = Collection.collectionFromPath(this.schema, Array.from(path7), value);
       } else if (assertCollection(this.contents)) {
-        this.contents.setIn(path6, value);
+        this.contents.setIn(path7, value);
       }
     }
     setSchema(version, options = {}) {
@@ -5223,9 +5223,9 @@ var require_cst_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  visit.itemAtPath = (cst, path6) => {
+  visit.itemAtPath = (cst, path7) => {
     let item = cst;
-    for (const [field, index] of path6) {
+    for (const [field, index] of path7) {
       const tok = item?.[field];
       if (tok && "items" in tok) {
         item = tok.items[index];
@@ -5234,23 +5234,23 @@ var require_cst_visit = __commonJS((exports) => {
     }
     return item;
   };
-  visit.parentCollection = (cst, path6) => {
-    const parent = visit.itemAtPath(cst, path6.slice(0, -1));
-    const field = path6[path6.length - 1][0];
+  visit.parentCollection = (cst, path7) => {
+    const parent = visit.itemAtPath(cst, path7.slice(0, -1));
+    const field = path7[path7.length - 1][0];
     const coll = parent?.[field];
     if (coll && "items" in coll)
       return coll;
     throw new Error("Parent collection not found");
   };
-  function _visit(path6, item, visitor) {
-    let ctrl = visitor(item, path6);
+  function _visit(path7, item, visitor) {
+    let ctrl = visitor(item, path7);
     if (typeof ctrl === "symbol")
       return ctrl;
     for (const field of ["key", "value"]) {
       const token = item[field];
       if (token && "items" in token) {
         for (let i = 0;i < token.items.length; ++i) {
-          const ci = _visit(Object.freeze(path6.concat([[field, i]])), token.items[i], visitor);
+          const ci = _visit(Object.freeze(path7.concat([[field, i]])), token.items[i], visitor);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -5261,10 +5261,10 @@ var require_cst_visit = __commonJS((exports) => {
           }
         }
         if (typeof ctrl === "function" && field === "key")
-          ctrl = ctrl(item, path6);
+          ctrl = ctrl(item, path7);
       }
     }
-    return typeof ctrl === "function" ? ctrl(item, path6) : ctrl;
+    return typeof ctrl === "function" ? ctrl(item, path7) : ctrl;
   }
   exports.visit = visit;
 });
@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs6 = this.flowScalar(this.type);
+            const fs7 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs6, sep: [] });
+              map.items.push({ start, key: fs7, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs6);
+              this.stack.push(fs7);
             } else {
-              Object.assign(it, { key: fs6, sep: [] });
+              Object.assign(it, { key: fs7, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs6 = this.flowScalar(this.type);
+            const fs7 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs6, sep: [] });
+              fc.items.push({ start: [], key: fs7, sep: [] });
             else if (it.sep)
-              this.stack.push(fs6);
+              this.stack.push(fs7);
             else
-              Object.assign(it, { key: fs6, sep: [] });
+              Object.assign(it, { key: fs7, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6946,7 +6946,7 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-setup/scripts/setup.mjs
-import path23 from "node:path";
+import path24 from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -7211,9 +7211,9 @@ var facts_v1_default = {
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard", "report-offer-decline"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -7304,7 +7304,7 @@ import fs4 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 2;
-var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics"];
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics", "post_error_offers"];
 var SETTINGS_MIGRATIONS = {
   1: (stored) => ({ ...stored, settings_version: 2, diagnostics: { trace: "on" } })
 };
@@ -7315,7 +7315,7 @@ function unitsForLocale(locale = "") {
   return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
 }
 function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: "on" } };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: "on" }, post_error_offers: "on" };
 }
 function emailListProblem(key, value) {
   if (!Array.isArray(value))
@@ -7330,7 +7330,8 @@ var CHECKS = {
   units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
   diagnostics: (value) => isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}',
   calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null",
-  convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false"
+  convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false",
+  post_error_offers: (value) => value === "on" || value === "off" ? null : 'post_error_offers: must be "on" or "off"'
 };
 function validateSettings(values) {
   return SETTING_KEYS.filter((key) => Object.hasOwn(values, key)).map((key) => CHECKS[key](values[key])).filter(Boolean);
@@ -7376,6 +7377,10 @@ function readSettings(root, { locale } = {}) {
   const known = Object.fromEntries(SETTING_KEYS.filter((key) => Object.hasOwn(stored, key)).map((key) => [key, stored[key]]));
   return { status, settings: { ...defaults, ...known }, stored };
 }
+
+// src/lib/diagnostics/offers.mjs
+import fs6 from "node:fs";
+import path6 from "node:path";
 
 // src/lib/diagnostics/trace.mjs
 import fs5 from "node:fs";
@@ -7490,6 +7495,39 @@ function clearTrace(root) {
   return true;
 }
 
+// src/lib/diagnostics/offers.mjs
+var OFFERS_FILE = `${DIAGNOSTICS_DIR}/offers.json`;
+var OFFER_INTERVAL_MS = 60 * 60 * 1000;
+function readCodes(root) {
+  try {
+    const { codes } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
+    return codes !== null && typeof codes === "object" ? codes : {};
+  } catch {
+    return {};
+  }
+}
+function writeCodes(root, codes) {
+  ensureDiagnosticsDir(root);
+  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ codes })}
+`);
+}
+function takeOffer(root, code, { now = new Date } = {}) {
+  const codes = readCodes(root);
+  const { offered_at, declined_at } = codes[code] ?? {};
+  if (declined_at || offered_at && now - Date.parse(offered_at) < OFFER_INTERVAL_MS)
+    return false;
+  writeCodes(root, { ...codes, [code]: { offered_at: now.toISOString() } });
+  return true;
+}
+function declineOffer(root, code, { now = new Date } = {}) {
+  const codes = readCodes(root);
+  writeCodes(root, { ...codes, [code]: { ...codes[code], declined_at: now.toISOString() } });
+}
+function clearDeclines(root) {
+  const codes = readCodes(root);
+  writeCodes(root, Object.fromEntries(Object.entries(codes).map(([code, { declined_at, ...rest }]) => [code, rest])));
+}
+
 // src/lib/diagnostics/capture.mjs
 var EVENT_SCHEMA_VERSION = 1;
 function declaredScript(skill, script, operation) {
@@ -7558,11 +7596,33 @@ function traceEnabled(root) {
 }
 function record(context, describe) {
   if (!traceEnabled(context.root))
-    return;
+    return null;
   try {
-    appendEvent(context.root, buildEvent({ ...context, ...describe() }), { now: new Date });
-  } catch {}
+    const event = buildEvent({ ...context, ...describe() });
+    appendEvent(context.root, event, { now: new Date });
+    return event;
+  } catch {
+    return null;
+  }
 }
+function reportOffer(root, event) {
+  if (event?.outcome !== "internal-error")
+    return null;
+  try {
+    if (readSettings(root).settings.post_error_offers !== "on" || !takeOffer(root, event.error_code))
+      return null;
+  } catch {
+    return null;
+  }
+  const focus = event.invocation_id;
+  return {
+    error_code: event.error_code,
+    focus,
+    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --code ${event.error_code}\`. Don't offer again either way.`
+  };
+}
+var withOffer = (result, offer) => offer ? { ...result, report_offer: offer } : result;
+var INTERNAL_ERROR = { status: "internal-error", reason: "Chef hit an unexpected error; details are on stderr." };
 var COMMON_FAILURES = { "invalid-input": "invalid-input", refused: "action-refused" };
 function classifyStatus({ skill, script, failures = {} }) {
   const okStatuses = facts_v1_default.scripts[`${skill}/${script}`]?.facts.status?.values ?? [];
@@ -7581,17 +7641,19 @@ async function chefCapture({ root, skill, script, operation, classify: classify2
   const elapsed = () => ({ durationMs: performance.now() - started });
   try {
     const result = await run();
-    record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
-    return result;
+    const event = record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
+    return withOffer(result, reportOffer(root, event));
   } catch (error) {
-    record(context, () => ({ ...elapsed(), outcome: "internal-error", error_code: "unclassified" }));
-    throw error;
+    const event = record(context, () => ({ ...elapsed(), outcome: "internal-error", error_code: "unclassified" }));
+    console.error(error);
+    process.exitCode = 1;
+    return withOffer(INTERNAL_ERROR, reportOffer(root, event));
   }
 }
 
 // src/lib/dietary-ruleset.mjs
-import fs7 from "node:fs";
-import path7 from "node:path";
+import fs8 from "node:fs";
+import path8 from "node:path";
 
 // src/lib/dietary-flags.mjs
 var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
@@ -7747,8 +7809,8 @@ var textOnlyCaveat = (constraint) => `"${constraint}" is not one of Chef's aller
 var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
 
 // src/lib/wiki.mjs
-import fs6 from "node:fs";
-import path6 from "node:path";
+import fs7 from "node:fs";
+import path7 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -7779,7 +7841,7 @@ function wikiPath(type, slug) {
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
 function pathUnder(dir, relative, kind) {
-  const normalized = path6.posix.normalize(relative);
+  const normalized = path7.posix.normalize(relative);
   if (!normalized.startsWith(`${dir}/`))
     throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
@@ -7788,7 +7850,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs6.existsSync(path6.join(root, ".git")))
+  if (!fs7.existsSync(path7.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -7799,14 +7861,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs6.existsSync(path6.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs7.existsSync(path7.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
-    const abs = path6.join(root, file.path);
-    fs6.mkdirSync(path6.dirname(abs), { recursive: true });
-    fs6.writeFileSync(abs, file.content);
+    const abs = path7.join(root, file.path);
+    fs7.mkdirSync(path7.dirname(abs), { recursive: true });
+    fs7.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -7892,11 +7954,11 @@ function rulesetFromPage(frontmatter) {
   return { status: hard.length || avoid.length ? "declared" : "none-declared", members, hard, avoid };
 }
 function readRuleset(root) {
-  const file = path7.join(root, RULESET_PATH);
-  if (!fs7.existsSync(file))
+  const file = path8.join(root, RULESET_PATH);
+  if (!fs8.existsSync(file))
     return { status: "never-asked", members: [], hard: [], avoid: [] };
   try {
-    return rulesetFromPage(parsePage(fs7.readFileSync(file, "utf8")).frontmatter);
+    return rulesetFromPage(parsePage(fs8.readFileSync(file, "utf8")).frontmatter);
   } catch (error) {
     return { status: "unreadable", reason: error.message, members: [], hard: [], avoid: [] };
   }
@@ -7916,16 +7978,16 @@ function dietaryNotes(ruleset) {
 }
 
 // src/lib/fdc-cache.mjs
-import fs8 from "node:fs";
-import path8 from "node:path";
+import fs9 from "node:fs";
+import path9 from "node:path";
 var CACHE_DIR = "cache";
 function fdcReplyCache(root) {
-  const cacheRoot = path8.join(root, CACHE_DIR);
-  const file = (fdcId) => path8.join(cacheRoot, "fdc", "food", `${fdcId}.json`);
+  const cacheRoot = path9.join(root, CACHE_DIR);
+  const file = (fdcId) => path9.join(cacheRoot, "fdc", "food", `${fdcId}.json`);
   return {
     read(fdcId) {
       try {
-        const body = JSON.parse(fs8.readFileSync(file(fdcId), "utf8"));
+        const body = JSON.parse(fs9.readFileSync(file(fdcId), "utf8"));
         return body?.fdcId === fdcId ? body : null;
       } catch {
         return null;
@@ -7933,14 +7995,14 @@ function fdcReplyCache(root) {
     },
     write(fdcId, body) {
       try {
-        fs8.mkdirSync(path8.dirname(file(fdcId)), { recursive: true });
-        const ignore = path8.join(cacheRoot, ".gitignore");
-        if (!fs8.existsSync(ignore))
-          fs8.writeFileSync(ignore, `*
+        fs9.mkdirSync(path9.dirname(file(fdcId)), { recursive: true });
+        const ignore = path9.join(cacheRoot, ".gitignore");
+        if (!fs9.existsSync(ignore))
+          fs9.writeFileSync(ignore, `*
 `);
         const temp = `${file(fdcId)}.${process.pid}.tmp`;
-        fs8.writeFileSync(temp, JSON.stringify(body));
-        fs8.renameSync(temp, file(fdcId));
+        fs9.writeFileSync(temp, JSON.stringify(body));
+        fs9.renameSync(temp, file(fdcId));
       } catch {}
     }
   };
@@ -8139,8 +8201,8 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs9 from "node:fs";
-import path9 from "node:path";
+import fs10 from "node:fs";
+import path10 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
 function isIsoDate(value) {
@@ -8206,8 +8268,8 @@ function listItems(inventory) {
   return LOCATIONS.flatMap((location) => Object.entries(inventory[location] ?? {}).flatMap(([category, items]) => Object.entries(items).map(([key, item]) => ({ ...item, name: item.name ?? key.replaceAll("_", " "), path: `${location}.${category}.${key}`, location, category, key }))));
 }
 var readText = (root, relative) => {
-  const file = path9.join(root, relative);
-  return fs9.existsSync(file) ? fs9.readFileSync(file, "utf8") : null;
+  const file = path10.join(root, relative);
+  return fs10.existsSync(file) ? fs10.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -8282,8 +8344,8 @@ function regenerateRollup(root, now) {
 }
 
 // src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
-import fs10 from "node:fs";
-import path10 from "node:path";
+import fs11 from "node:fs";
+import path11 from "node:path";
 var URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
 var SAFE_CLONE = ["-c", "core.hooksPath=/dev/null", "-c", "core.symlinks=false", "-c", "protocol.ext.allow=never", "-c", "protocol.fd.allow=never"];
 var QUIET = { GIT_TERMINAL_PROMPT: "0" };
@@ -8294,21 +8356,21 @@ function sourceProblem(source) {
     return 'source must not start with "-"';
   if (URL_FORMS.some((form) => form.test(source)))
     return null;
-  if (/^[a-z][\w+.-]*::?/i.test(source) && !path10.isAbsolute(source))
+  if (/^[a-z][\w+.-]*::?/i.test(source) && !path11.isAbsolute(source))
     return `unsupported source "${source}": use an https or ssh git URL, or a local folder`;
-  return fs10.existsSync(source) && fs10.statSync(source).isDirectory() ? null : `no folder at ${source}`;
+  return fs11.existsSync(source) && fs11.statSync(source).isDirectory() ? null : `no folder at ${source}`;
 }
-var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path10.resolve(source);
+var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path11.resolve(source);
 function targetProblem(root) {
   if (readSchemaVersion(root) !== null)
     return "there is already a Chef data root here; nothing was changed";
-  if (fs10.existsSync(root) && fs10.readdirSync(root).length > 0)
+  if (fs11.existsSync(root) && fs11.readdirSync(root).length > 0)
     return "directory is not empty and is not a Chef data root";
   return null;
 }
 function cloneInto(dest, source) {
   try {
-    git(path10.dirname(dest), [...SAFE_CLONE, "clone", "-q", "--template=", "--no-recurse-submodules", "--", cloneSource(source), dest], { env: QUIET });
+    git(path11.dirname(dest), [...SAFE_CLONE, "clone", "-q", "--template=", "--no-recurse-submodules", "--", cloneSource(source), dest], { env: QUIET });
     return null;
   } catch (error) {
     return `clone failed: ${String(error.stderr || error.message).trim().split(`
@@ -8340,9 +8402,9 @@ function adoptDataRoot(root, source) {
   const badTarget = targetProblem(root);
   if (badTarget)
     return { status: "refused", data_root: root, reason: badTarget };
-  fs10.mkdirSync(path10.dirname(root), { recursive: true });
-  const staging = fs10.mkdtempSync(path10.join(path10.dirname(root), `.${path10.basename(root)}.adopt-`));
-  const clone = path10.join(staging, "data-root");
+  fs11.mkdirSync(path11.dirname(root), { recursive: true });
+  const staging = fs11.mkdtempSync(path11.join(path11.dirname(root), `.${path11.basename(root)}.adopt-`));
+  const clone = path11.join(staging, "data-root");
   try {
     const cloneFailed = cloneInto(clone, source);
     if (cloneFailed)
@@ -8351,28 +8413,28 @@ function adoptDataRoot(root, source) {
     if (blocked)
       return { status: "refused", data_root: root, ...blocked };
     const removed_remotes = removeRemotes(clone);
-    if (fs10.existsSync(root))
-      fs10.rmdirSync(root);
-    fs10.renameSync(clone, root);
+    if (fs11.existsSync(root))
+      fs11.rmdirSync(root);
+    fs11.renameSync(clone, root);
     return { status: "adopted", data_root: root, schema_version: readSchemaVersion(root), removed_remotes };
   } finally {
-    fs10.rmSync(staging, { recursive: true, force: true });
+    fs11.rmSync(staging, { recursive: true, force: true });
   }
 }
 
 // src/skills/chef-setup/scripts/lib/check-update.mjs
+import fs17 from "node:fs";
+import path16 from "node:path";
+
+// src/skills/chef-setup/scripts/lib/update-chef.mjs
 import fs16 from "node:fs";
 import path15 from "node:path";
 
-// src/skills/chef-setup/scripts/lib/update-chef.mjs
-import fs15 from "node:fs";
-import path14 from "node:path";
-
 // src/lib/migrations.mjs
-import fs11 from "node:fs";
-import path11 from "node:path";
+import fs12 from "node:fs";
+import path12 from "node:path";
 var MIGRATIONS = {};
-var stamp = (root, version) => fs11.writeFileSync(path11.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
+var stamp = (root, version) => fs12.writeFileSync(path12.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
 `);
 function migrationPlan(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION } = {}) {
   const from = readSchemaVersion(root);
@@ -8400,15 +8462,15 @@ function migrate(root, options = {}) {
 }
 
 // src/lib/settings-migrations.mjs
-import fs12 from "node:fs";
-import path12 from "node:path";
+import fs13 from "node:fs";
+import path13 from "node:path";
 function storedSettings(root) {
-  const file = path12.join(root, SETTINGS_FILE);
-  if (!fs12.existsSync(file))
+  const file = path13.join(root, SETTINGS_FILE);
+  if (!fs13.existsSync(file))
     return null;
   let stored;
   try {
-    stored = JSON.parse(fs12.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs13.readFileSync(file, "utf8"));
   } catch {
     throw new Error(`${SETTINGS_FILE} is not valid JSON; fix it with chef-setup before updating`);
   }
@@ -8441,19 +8503,19 @@ function migrateSettings(root, options = {}) {
     if (stored?.settings_version !== version + 1)
       throw new Error(`settings migration ${version} did not stamp version ${version + 1}`);
   }
-  fs12.writeFileSync(path12.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
+  fs13.writeFileSync(path13.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
 `);
   return plan;
 }
 
 // src/skills/chef-setup/scripts/lib/verify-install.mjs
-import fs14 from "node:fs";
+import fs15 from "node:fs";
 
 // src/lib/smoke.mjs
 import { spawnSync } from "node:child_process";
-import fs13 from "node:fs";
+import fs14 from "node:fs";
 import os3 from "node:os";
-import path13 from "node:path";
+import path14 from "node:path";
 var SMOKE_FILE = "smoke.json";
 var isEntry = (name) => name.endsWith(".mjs") && !name.endsWith(".test.mjs");
 function parseStatus(stdout) {
@@ -8464,13 +8526,13 @@ function parseStatus(stdout) {
   }
 }
 function runCase(skillDir, testCase, fixture) {
-  const tmp = fs13.mkdtempSync(path13.join(os3.tmpdir(), "chef-smoke-"));
-  const dataRoot = path13.join(tmp, "data-root");
+  const tmp = fs14.mkdtempSync(path14.join(os3.tmpdir(), "chef-smoke-"));
+  const dataRoot = path14.join(tmp, "data-root");
   try {
-    fs13.cpSync(fixture, dataRoot, { recursive: true });
+    fs14.cpSync(fixture, dataRoot, { recursive: true });
     const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
     const input = testCase.stdin === undefined ? undefined : JSON.stringify(testCase.stdin);
-    const run = spawnSync(process.execPath, [path13.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000, input });
+    const run = spawnSync(process.execPath, [path14.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000, input });
     const status = parseStatus(run.stdout);
     if (run.status !== testCase.expect.exit)
       return `exit ${run.status}, expected ${testCase.expect.exit}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`;
@@ -8478,20 +8540,20 @@ function runCase(skillDir, testCase, fixture) {
       return `status "${status}", expected "${testCase.expect.status}"`;
     return null;
   } finally {
-    fs13.rmSync(tmp, { recursive: true, force: true });
+    fs14.rmSync(tmp, { recursive: true, force: true });
   }
 }
 function uncovered(skillDir, cases) {
-  const scripts = path13.join(skillDir, "scripts");
-  if (!fs13.existsSync(scripts))
+  const scripts = path14.join(skillDir, "scripts");
+  if (!fs14.existsSync(scripts))
     return [];
-  const covered = new Set(cases.map((c) => path13.normalize(c.script)));
-  return fs13.readdirSync(scripts).filter(isEntry).sort().map((f) => path13.join("scripts", f)).filter((f) => !covered.has(f));
+  const covered = new Set(cases.map((c) => path14.normalize(c.script)));
+  return fs14.readdirSync(scripts).filter(isEntry).sort().map((f) => path14.join("scripts", f)).filter((f) => !covered.has(f));
 }
 function smokeSkill(skillsDir, skill, fixture) {
-  const skillDir = path13.join(skillsDir, skill);
-  const file = path13.join(skillDir, SMOKE_FILE);
-  const cases = fs13.existsSync(file) ? JSON.parse(fs13.readFileSync(file, "utf8")) : [];
+  const skillDir = path14.join(skillsDir, skill);
+  const file = path14.join(skillDir, SMOKE_FILE);
+  const cases = fs14.existsSync(file) ? JSON.parse(fs14.readFileSync(file, "utf8")) : [];
   const gaps = uncovered(skillDir, cases).map((script) => ({ skill, id: "coverage", ok: false, detail: `no smoke case for ${script}` }));
   const results = cases.map((testCase) => {
     const problem = runCase(skillDir, testCase, fixture);
@@ -8500,7 +8562,7 @@ function smokeSkill(skillsDir, skill, fixture) {
   return [...gaps, ...results];
 }
 function runSmoke({ skillsDir, fixture }) {
-  const skills = fs13.readdirSync(skillsDir).filter((name) => fs13.statSync(path13.join(skillsDir, name)).isDirectory()).sort();
+  const skills = fs14.readdirSync(skillsDir).filter((name) => fs14.statSync(path14.join(skillsDir, name)).isDirectory()).sort();
   return skills.flatMap((skill) => smokeSkill(skillsDir, skill, fixture));
 }
 
@@ -8512,10 +8574,10 @@ function nodeCheck(version) {
   return result("node", major >= MIN_NODE ? null : `Node ${version} is too old; Chef needs Node ${MIN_NODE} or later`, version);
 }
 function dataRootCheck(root) {
-  if (!fs14.existsSync(root))
+  if (!fs15.existsSync(root))
     return result("data-root", `no data root at ${root}; run chef-setup init`);
   try {
-    fs14.accessSync(root, fs14.constants.W_OK);
+    fs15.accessSync(root, fs15.constants.W_OK);
     return result("data-root", null, `${root} is writable`);
   } catch {
     return result("data-root", `${root} is not writable`);
@@ -8593,7 +8655,7 @@ function taggedSkills(repository, tag) {
 `).filter(chefFolder).sort();
 }
 function skillChanges(skillsDir, expected) {
-  const current = fs15.existsSync(skillsDir) ? fs15.readdirSync(skillsDir).filter(chefFolder).sort() : [];
+  const current = fs16.existsSync(skillsDir) ? fs16.readdirSync(skillsDir).filter(chefFolder).sort() : [];
   return {
     added: expected.filter((name) => !current.includes(name)),
     replaced: expected.filter((name) => current.includes(name)),
@@ -8623,26 +8685,26 @@ function recurringTaskChanges(repository, target) {
   return targetTasks.filter((task) => installed.has(task.name) && installed.get(task.name) !== task.prompt).map(({ name, prompt }) => ({ name, prompt }));
 }
 function syncSkills(repository, skillsDir, sourceNames, expectedNames) {
-  const source = path14.join(repository, "plugins", "chef", "skills");
-  if (path14.resolve(source) === path14.resolve(skillsDir)) {
-    for (const name of fs15.readdirSync(skillsDir).filter(chefFolder)) {
+  const source = path15.join(repository, "plugins", "chef", "skills");
+  if (path15.resolve(source) === path15.resolve(skillsDir)) {
+    for (const name of fs16.readdirSync(skillsDir).filter(chefFolder)) {
       if (!expectedNames.includes(name))
-        fs15.rmSync(path14.join(skillsDir, name), { recursive: true, force: true });
+        fs16.rmSync(path15.join(skillsDir, name), { recursive: true, force: true });
     }
     return;
   }
-  fs15.mkdirSync(skillsDir, { recursive: true });
-  const staging = fs15.mkdtempSync(path14.join(path14.dirname(skillsDir), ".chef-update-"));
+  fs16.mkdirSync(skillsDir, { recursive: true });
+  const staging = fs16.mkdtempSync(path15.join(path15.dirname(skillsDir), ".chef-update-"));
   try {
     for (let index = 0;index < sourceNames.length; index += 1) {
-      fs15.cpSync(path14.join(source, sourceNames[index]), path14.join(staging, expectedNames[index]), { recursive: true });
+      fs16.cpSync(path15.join(source, sourceNames[index]), path15.join(staging, expectedNames[index]), { recursive: true });
     }
-    for (const name of fs15.readdirSync(skillsDir).filter(chefFolder))
-      fs15.rmSync(path14.join(skillsDir, name), { recursive: true, force: true });
+    for (const name of fs16.readdirSync(skillsDir).filter(chefFolder))
+      fs16.rmSync(path15.join(skillsDir, name), { recursive: true, force: true });
     for (const name of expectedNames)
-      fs15.renameSync(path14.join(staging, name), path14.join(skillsDir, name));
+      fs16.renameSync(path15.join(staging, name), path15.join(skillsDir, name));
   } finally {
-    fs15.rmSync(staging, { recursive: true, force: true });
+    fs16.rmSync(staging, { recursive: true, force: true });
   }
 }
 function updateChef(root, {
@@ -8688,7 +8750,7 @@ function updateChef(root, {
 }
 
 // src/skills/chef-setup/scripts/lib/check-update.mjs
-var installedVersion = (repository) => JSON.parse(fs16.readFileSync(path15.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json"), "utf8")).version;
+var installedVersion = (repository) => JSON.parse(fs17.readFileSync(path16.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json"), "utf8")).version;
 function checkUpdate({ adapter = muse, skillDir } = {}) {
   try {
     const { repository } = adapter.updateInstall({ skillDir });
@@ -8710,8 +8772,8 @@ async function checkUsda(fdc) {
 }
 
 // src/lib/feedback/bundle.mjs
-import fs17 from "node:fs";
-import path16 from "node:path";
+import fs18 from "node:fs";
+import path17 from "node:path";
 // schemas/feedback/diagnostic-bundle.v1.json
 var diagnostic_bundle_v1_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -8843,14 +8905,24 @@ function selectEvents(events, { now, skill }) {
     return { events: inWindow, fallback: false };
   return { events: events.slice(-FALLBACK_EVENTS), fallback: true };
 }
+function selectAround(events, focusId) {
+  const focus = events.find((event) => event.invocation_id === focusId);
+  if (!focus)
+    return null;
+  const at = Date.parse(focus.started_at);
+  const distance = (event) => Math.abs(Date.parse(event.started_at) - at);
+  const near = events.filter((event) => event.skill_id === focus.skill_id && distance(event) <= WINDOW_MS / 2);
+  const kept = new Set([...near].sort((a, b) => distance(a) - distance(b)).slice(0, MAX_EVENTS));
+  return { events: near.filter((event) => kept.has(event)), focus };
+}
 function installedSkills(skillsDir, version = plugin_default.version) {
   let entries;
   try {
-    entries = fs17.readdirSync(skillsDir, { withFileTypes: true });
+    entries = fs18.readdirSync(skillsDir, { withFileTypes: true });
   } catch {
     return [];
   }
-  return entries.filter((entry) => entry.isDirectory() && /^chef[-_]/.test(entry.name) && fs17.existsSync(path16.join(skillsDir, entry.name, "SKILL.md"))).map((entry) => ({ id: entry.name.replaceAll("_", "-"), version })).sort((a, b) => a.id.localeCompare(b.id));
+  return entries.filter((entry) => entry.isDirectory() && /^chef[-_]/.test(entry.name) && fs18.existsSync(path17.join(skillsDir, entry.name, "SKILL.md"))).map((entry) => ({ id: entry.name.replaceAll("_", "-"), version })).sort((a, b) => a.id.localeCompare(b.id));
 }
 function rekey(events) {
   const keys = new Map(events.map((event, i) => [event.invocation_id, `inv-${i + 1}`]));
@@ -9241,7 +9313,7 @@ var CLASS_FIELDS = { defect: ["expected", "actual", "frequency"], enhancement: [
 var FREQUENCIES = feedback_report_v1_default.properties.frequency.enum;
 var maxLength = (field) => feedback_report_v1_default.$defs[field === "summary" ? "short_text" : "text"].maxLength;
 var SKILL_ID = /^chef-[a-z0-9-]+$/;
-var REMOVABLE = [/^skill_ids$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
+var REMOVABLE = [/^skill_ids$/, /^focus_invocation$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
 var EDITABLE = new Set([...TEXT_FIELDS, "frequency", "skill_ids"]);
 var serialize = (report) => JSON.stringify(report);
 var splitSkillIds = (raw = "") => raw.split(",").map((id) => id.trim()).filter(Boolean);
@@ -9273,7 +9345,7 @@ function checked(report) {
     throw Object.assign(new Error(problems.join("; ")), { problems });
   return report;
 }
-function newDraft({ class: kind, trigger = "user-initiated", summary, skill_ids, bundle, ...fields }) {
+function newDraft({ class: kind, trigger = "user-initiated", summary, skill_ids, focus_invocation, bundle, ...fields }) {
   const report = checked({
     schema_version: REPORT_SCHEMA_VERSION,
     class: kind,
@@ -9281,6 +9353,7 @@ function newDraft({ class: kind, trigger = "user-initiated", summary, skill_ids,
     summary,
     ...Object.fromEntries((CLASS_FIELDS[kind] ?? []).map((field) => [field, fields[field]])),
     ...skill_ids?.length ? { skill_ids } : {},
+    ...focus_invocation ? { focus_invocation } : {},
     ...bundle ? { diagnostic_bundle: bundle } : {},
     removed_fields: [],
     submission_nonce: randomUUID2()
@@ -9301,8 +9374,20 @@ function withoutItem(report, id) {
   else
     delete parent[key];
 }
+function dropsFocus({ report, numbers }, number) {
+  const id = itemId({ report, numbers }, number);
+  const focus = report.focus_invocation;
+  return Boolean(focus) && ["focus_invocation", "diagnostic_bundle", `diagnostic_bundle.events[${focus}]`].includes(id);
+}
+function withoutFocus(report) {
+  delete report.focus_invocation;
+  report.trigger = "user-initiated";
+  if (!report.removed_fields.includes("focus_invocation"))
+    report.removed_fields.push("focus_invocation");
+}
 function removeItem(draft, number) {
   const id = itemId(draft, number);
+  const losesFocus = dropsFocus(draft, number);
   if (!REMOVABLE.some((pattern) => pattern.test(id))) {
     throw new Error(`item ${number} (${id}) cannot be removed${EDITABLE.has(id) ? "; it can be edited" : ""}`);
   }
@@ -9310,6 +9395,8 @@ function removeItem(draft, number) {
   withoutItem(report, id);
   const inside = (field) => field.startsWith(`${id}.`) || field.startsWith(`${id}[`);
   report.removed_fields = [...report.removed_fields.filter((field) => !inside(field)), id];
+  if (losesFocus)
+    withoutFocus(report);
   return changed(draft, report);
 }
 function editItem(draft, number, value) {
@@ -9321,55 +9408,55 @@ function editItem(draft, number, value) {
 }
 
 // src/lib/feedback/store.mjs
-import fs18 from "node:fs";
-import path17 from "node:path";
+import fs19 from "node:fs";
+import path18 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
-var expired = (file, now) => now - fs18.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
+var expired = (file, now) => now - fs19.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
 function pruneOutbox(root, now) {
-  const dir = path17.join(root, OUTBOX_DIR);
-  if (!fs18.existsSync(dir))
+  const dir = path18.join(root, OUTBOX_DIR);
+  if (!fs19.existsSync(dir))
     return;
-  for (const name of fs18.readdirSync(dir)) {
-    const file = path17.join(dir, name);
+  for (const name of fs19.readdirSync(dir)) {
+    const file = path18.join(dir, name);
     if (expired(file, now))
-      fs18.rmSync(file);
+      fs19.rmSync(file);
   }
 }
 function saveDraft(root, draft) {
   ensureDiagnosticsDir(root);
-  writePrivate(path17.join(root, DRAFT_FILE), `${JSON.stringify(draft)}
+  writePrivate(path18.join(root, DRAFT_FILE), `${JSON.stringify(draft)}
 `);
 }
 function readDraft(root, { now = new Date } = {}) {
   pruneOutbox(root, now);
-  const file = path17.join(root, DRAFT_FILE);
-  if (!fs18.existsSync(file))
+  const file = path18.join(root, DRAFT_FILE);
+  if (!fs19.existsSync(file))
     return null;
   if (expired(file, now)) {
-    fs18.rmSync(file);
+    fs19.rmSync(file);
     return null;
   }
   try {
-    return JSON.parse(fs18.readFileSync(file, "utf8"));
+    return JSON.parse(fs19.readFileSync(file, "utf8"));
   } catch {
     return null;
   }
 }
 function deleteDraft(root) {
-  const file = path17.join(root, DRAFT_FILE);
-  if (!fs18.existsSync(file))
+  const file = path18.join(root, DRAFT_FILE);
+  if (!fs19.existsSync(file))
     return false;
-  fs18.rmSync(file);
+  fs19.rmSync(file);
   return true;
 }
 function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
-  fs18.mkdirSync(path17.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
+  fs19.mkdirSync(path18.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
   const stamp2 = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
   const relative = `${OUTBOX_DIR}/${stamp2}-${nonce.slice(0, 8)}.json`;
-  writePrivate(path17.join(root, relative), bytes);
+  writePrivate(path18.join(root, relative), bytes);
   return relative;
 }
 
@@ -9398,7 +9485,7 @@ function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new 
 // src/skills/chef-setup/scripts/lib/report-modes.mjs
 var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "contact"];
 var REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce"].map((flag) => [flag, { type: "string" }])),
+  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "code"].map((flag) => [flag, { type: "string" }])),
   raw: { type: "boolean" }
 };
 var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
@@ -9435,24 +9522,49 @@ function diagnosticsFor(root, values, skillIds, { adapter, skillsDir }) {
   const bundle = buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
   return { bundle, ...fallback && { notes: { diagnostics_fallback: { skill: skill ?? null } } } };
 }
-function draftMode(root, values, context) {
+function postErrorFields(root, values, { adapter, skillsDir }) {
+  const now = new Date;
+  const around = traceEnabled(root) ? selectAround(readTrace(root, { now }).events, values.focus) : null;
+  if (!around)
+    throw new Error("focus: that run is not in the invocation trace");
+  const { events, focus } = around;
+  const bundle = buildBundle({ events, adapter, traceOn: true, skills: installedSkills(skillsDir), now });
+  const run = `${focus.skill_id} ${focus.operation}`;
+  return {
+    class: "defect",
+    trigger: "post-error",
+    summary: values.summary ?? `${run} stopped with an internal error`,
+    expected: values.expected ?? `${run} finishes`,
+    actual: values.actual ?? `It stopped with an internal error (${focus.error_code}).`,
+    frequency: values.frequency ?? "unknown",
+    skill_ids: [focus.skill_id],
+    focus_invocation: bundle.events[events.indexOf(focus)].invocation_id,
+    bundle
+  };
+}
+function userFields(root, values, context) {
   const skillIds = splitSkillIds(values["skill-ids"]);
+  const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
+  return {
+    notes,
+    class: values.class,
+    summary: values.summary,
+    expected: values.expected,
+    actual: values.actual,
+    frequency: values.frequency,
+    desired_outcome: values["desired-outcome"],
+    current_behavior: values["current-behavior"],
+    desired_behavior: values["desired-behavior"],
+    skill_ids: skillIds,
+    bundle
+  };
+}
+function draftMode(root, values, context) {
   try {
-    const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
+    const { notes, ...fields } = values.focus === undefined ? userFields(root, values, context) : postErrorFields(root, values, context);
     if (values.contact !== undefined && canTakeContact(context.adapter))
       throw new Error("contact transport not implemented");
-    const draft = newDraft({
-      class: values.class,
-      summary: values.summary,
-      expected: values.expected,
-      actual: values.actual,
-      frequency: values.frequency,
-      desired_outcome: values["desired-outcome"],
-      current_behavior: values["current-behavior"],
-      desired_behavior: values["desired-behavior"],
-      skill_ids: skillIds,
-      bundle
-    });
+    const draft = newDraft(fields);
     if (notes)
       draft.notes = notes;
     saveDraft(root, draft);
@@ -9473,13 +9585,26 @@ var changeMode = (change) => (root, draft, values, { adapter }) => {
     return invalid(root, error);
   }
 };
+var FOCUS_WARNING = "Removing this takes away the failing run, so the report becomes user-initiated: it will no longer say which run failed. Ask the user to confirm first.";
+var removeMode = (root, draft, values, context) => {
+  if (!values.confirm && dropsFocus(draft, Number(values.item)))
+    return { status: "confirmation-required", data_root: root, item: Number(values.item), warning: FOCUS_WARNING };
+  return changeMode(removeItem)(root, draft, values, context);
+};
+function declineMode(root, values) {
+  if (!Object.hasOwn(error_codes_v1_default.codes, values.code ?? ""))
+    return invalid(root, new Error("code: must be the error_code of the offer"));
+  declineOffer(root, values.code);
+  return { status: "declined", data_root: root, error_code: values.code };
+}
 var sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
 var MODES = {
   "report-draft": draftMode,
   "report-preview": withDraft(previewMode),
   "report-edit": withDraft(changeMode(editItem)),
-  "report-remove": withDraft(changeMode(removeItem)),
+  "report-remove": withDraft(removeMode),
   "report-send": withDraft(sendMode),
+  "report-offer-decline": declineMode,
   "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root })
 };
 function reportModes({ skillsDir }) {
@@ -9488,39 +9613,39 @@ function reportModes({ skillsDir }) {
 }
 
 // src/skills/chef-setup/scripts/lib/init-data-root.mjs
-import fs19 from "node:fs";
-import path18 from "node:path";
-var writeJson = (file, value) => fs19.writeFileSync(file, `${JSON.stringify(value)}
+import fs20 from "node:fs";
+import path19 from "node:path";
+var writeJson = (file, value) => fs20.writeFileSync(file, `${JSON.stringify(value)}
 `);
 function initDataRoot(root) {
   const existing = readSchemaVersion(root);
   if (existing !== null)
     return { status: "exists", data_root: root, schema_version: existing };
-  if (fs19.existsSync(root) && fs19.readdirSync(root).length > 0) {
+  if (fs20.existsSync(root) && fs20.readdirSync(root).length > 0) {
     return { status: "refused", data_root: root, reason: "directory is not empty and is not a Chef data root" };
   }
-  fs19.mkdirSync(root, { recursive: true });
+  fs20.mkdirSync(root, { recursive: true });
   git(root, ["init", "-q", "-b", "main"]);
-  fs19.writeFileSync(path18.join(root, ".gitignore"), `${SETTINGS_FILE}
+  fs20.writeFileSync(path19.join(root, ".gitignore"), `${SETTINGS_FILE}
 `);
-  writeJson(path18.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
-  writeJson(path18.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
+  writeJson(path19.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
+  writeJson(path19.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
   git(root, ["add", ".gitignore", SCHEMA_FILE]);
   commit(root, "chef-setup: create data root");
   return { status: "created", data_root: root, schema_version: SCHEMA_VERSION };
 }
 
 // src/skills/chef-health-goals/scripts/lib/goals.mjs
-import fs21 from "node:fs";
-import path20 from "node:path";
+import fs22 from "node:fs";
+import path21 from "node:path";
 
 // src/lib/notices.mjs
-import fs20 from "node:fs";
-import path19 from "node:path";
+import fs21 from "node:fs";
+import path20 from "node:path";
 var NOTICES_PATH = "data/notices.json";
 function readNotices(root) {
   try {
-    return JSON.parse(fs20.readFileSync(path19.join(root, NOTICES_PATH), "utf8"));
+    return JSON.parse(fs21.readFileSync(path20.join(root, NOTICES_PATH), "utf8"));
   } catch {
     return {};
   }
@@ -9537,12 +9662,12 @@ function noticeToRecord(root, key, date) {
 var GOALS_PATH = "data/health-goals/goals.json";
 var FIELDS = Object.keys(NUTRIENTS);
 function readGoal(root) {
-  const file = path20.join(root, GOALS_PATH);
-  if (!fs21.existsSync(file))
+  const file = path21.join(root, GOALS_PATH);
+  if (!fs22.existsSync(file))
     return { status: "dormant" };
   let stored;
   try {
-    stored = JSON.parse(fs21.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs22.readFileSync(file, "utf8"));
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
@@ -9589,7 +9714,8 @@ var FLAGS = {
   "trusted-receipt-senders": ["trusted_receipt_senders", (raw) => orReset(splitList(raw), splitList(raw).length === 0)],
   calendar: ["calendar", (raw) => orReset(raw.trim(), raw.trim() === "" || raw.trim() === "none")],
   "convert-recipe-units": ["convert_recipe_units", (raw) => orReset(Object.hasOwn(BOOLEAN, raw) ? BOOLEAN[raw] : raw, raw === "default")],
-  trace: ["diagnostics", (raw) => orReset({ trace: raw.trim() }, raw.trim() === "default")]
+  trace: ["diagnostics", (raw) => orReset({ trace: raw.trim() }, raw.trim() === "default")],
+  "post-error-offers": ["post_error_offers", (raw) => orReset(raw.trim(), raw.trim() === "default")]
 };
 var SETTING_FLAGS = Object.fromEntries(Object.keys(FLAGS).map((flag) => [flag, { type: "string" }]));
 function changesFromFlags(values) {
@@ -9598,8 +9724,8 @@ function changesFromFlags(values) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-ruleset.mjs
-import fs22 from "node:fs";
-import path21 from "node:path";
+import fs23 from "node:fs";
+import path22 from "node:path";
 var line = (m) => {
   const parts = [m.hard_constraints?.length && `must never eat ${m.hard_constraints.join(", ")}`, m.avoidances?.length && `avoids ${m.avoidances.join(", ")}`];
   return `- ${m.name}: ${parts.filter(Boolean).join("; ")}.`;
@@ -9640,7 +9766,7 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
     return refusal;
   const current = readRuleset(root);
   if (current.status === "unreadable" && !rewrite2) {
-    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs22.readFileSync(path21.join(root, RULESET_PATH), "utf8") };
+    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs23.readFileSync(path22.join(root, RULESET_PATH), "utf8") };
   }
   if (change.none && current.status === "declared") {
     return { status: "refused", data_root: root, reason: "dietary constraints are declared; remove them one member at a time instead" };
@@ -9670,12 +9796,12 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-settings.mjs
-import fs23 from "node:fs";
-import path22 from "node:path";
+import fs24 from "node:fs";
+import path23 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs23.existsSync(path22.join(root, ".git")))
+  if (!fs24.existsSync(path23.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -9685,14 +9811,14 @@ function isTracked(root) {
   }
 }
 function ensureIgnored(root) {
-  const file = path22.join(root, ".gitignore");
-  const content = fs23.existsSync(file) ? fs23.readFileSync(file, "utf8") : "";
+  const file = path23.join(root, ".gitignore");
+  const content = fs24.existsSync(file) ? fs24.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line2) => IGNORE_LINES.has(line2.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs23.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs24.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -9728,18 +9854,20 @@ function writeSettings(root, changes, { locale, rewrite: rewrite2 = false } = {}
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs23.writeFileSync(path22.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs24.writeFileSync(path23.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
   const changed2 = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
   const side_effects = changed2.map((key) => SIDE_EFFECTS[key]).filter(Boolean);
   const recipients = changed2.includes("household_recipients") && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
   const traceOff = changed2.includes("diagnostics") && saved.settings.diagnostics.trace === "off" && { trace_cleared: clearTrace(root) };
+  if (changed2.includes("post_error_offers") && saved.settings.post_error_offers === "on")
+    clearDeclines(root);
   return { status: "saved", data_root: root, settings: saved.settings, changed: changed2, side_effects, ...recipients, ...traceOff };
 }
 
 // src/skills/chef-setup/scripts/setup.mjs
-var skillDir = path23.resolve(path23.dirname(fileURLToPath(import.meta.url)), "..");
+var skillDir = path24.resolve(path24.dirname(fileURLToPath(import.meta.url)), "..");
 var { values, positionals } = parseArgs({
   options: {
     "data-root": { type: "string" },
@@ -9772,7 +9900,7 @@ function update(root) {
   try {
     return updateChef(root, {
       skillDir,
-      fixture: path23.join(skillDir, "fixture", "data-root"),
+      fixture: path24.join(skillDir, "fixture", "data-root"),
       confirm: values.confirm ?? false
     });
   } catch (error) {
@@ -9804,14 +9932,14 @@ function clearTraceMode(root) {
   return { status: clearTrace(root) ? "cleared" : "empty", data_root: root };
 }
 var inDataRoot = (mode) => (root) => readSchemaVersion(root) === null ? { ...NOT_A_ROOT, data_root: root } : mode(root, values);
-var REPORT_MODES = Object.fromEntries(Object.entries(reportModes({ skillsDir: path23.dirname(skillDir) })).map(([name, mode]) => [name, inDataRoot(mode)]));
+var REPORT_MODES = Object.fromEntries(Object.entries(reportModes({ skillsDir: path24.dirname(skillDir) })).map(([name, mode]) => [name, inDataRoot(mode)]));
 var MODES2 = {
   init: (root) => initDataRoot(root),
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
   update,
-  verify: (root) => verifyInstall(root, { skillsDir: path23.dirname(skillDir), fixture: path23.join(skillDir, "fixture", "data-root") }),
+  verify: (root) => verifyInstall(root, { skillsDir: path24.dirname(skillDir), fixture: path24.join(skillDir, "fixture", "data-root") }),
   usda: () => checkUsda(usdaClient()),
   safety: () => ({ status: "ok", screen: SAFETY_SCREEN }),
   dietary,
