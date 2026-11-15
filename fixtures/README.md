@@ -2,7 +2,8 @@
 
 `data-root/` is one synthetic Chef data root at schema version 1. Tests copy it to a temp
 directory and never write to it here. Rules: fixed dates, `example.com` addresses only,
-no real people, recipe text written for this repo.
+no real people, recipe text written for this repo. `bun run repro` runs the PII pattern scan
+over this folder, every eval seed and every reproduction case.
 
 `schema-v<n>/` are frozen copies of the fixture as it stood when schema version `<n>`
 shipped. Never edit them. `bun run migrations` migrates each to the current schema and runs

@@ -10,8 +10,11 @@
 // File targets parse as `text` (default), `json`, or `pdf` ({valid, pages, title, text[]}; see pdf.mjs).
 // `--skip-pdf-files` skips pdf targets: pdf.mjs needs pdf-lib from node_modules, which bundle smoke has none of.
 // `git` optionally checks that HEAD is unchanged and/or the data-root worktree is clean.
-//   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>]
-//   (defaults: plugins/chef/skills, fixtures/data-root)
+// `repro: <case_id>` links a row to its reproduction case in evals/repro/ (see its README).
+// `known_failure: <case_id>` marks a row expected to fail until its fix lands: a failure is reported
+// and does not fail the run; an unexpected pass does.
+//   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>] [--cases <cases.json>]
+//   (defaults: plugins/chef/skills, fixtures/data-root, evals/tier1/cases.json)
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -142,12 +145,31 @@ async function runCase(testCase, skillsDir, fixture, { skipPdfFiles = false } = 
   }
 }
 
-const { values } = parseArgs({ options: { 'skills-dir': { type: 'string' }, fixture: { type: 'string' }, 'skip-pdf-files': { type: 'boolean' } } });
+const { values } = parseArgs({
+  options: { 'skills-dir': { type: 'string' }, fixture: { type: 'string' }, cases: { type: 'string' }, 'skip-pdf-files': { type: 'boolean' } },
+});
 const skillsDir = path.resolve(values['skills-dir'] ?? path.join(repo, 'plugins', 'chef', 'skills'));
 const fixture = path.resolve(values.fixture ?? path.join(repo, 'fixtures', 'data-root'));
-const cases = JSON.parse(fs.readFileSync(path.join(here, 'cases.json'), 'utf8'));
+const cases = JSON.parse(fs.readFileSync(path.resolve(values.cases ?? path.join(here, 'cases.json')), 'utf8'));
+const knownFailures = [];
 for (const testCase of cases) {
-  await runCase(testCase, skillsDir, fixture, { skipPdfFiles: values['skip-pdf-files'] });
-  console.log(`ok - ${testCase.id}`);
+  const options = { skipPdfFiles: values['skip-pdf-files'] };
+  if (!testCase.known_failure) {
+    await runCase(testCase, skillsDir, fixture, options);
+    console.log(`ok - ${testCase.id}`);
+    continue;
+  }
+  try {
+    await runCase(testCase, skillsDir, fixture, options);
+  } catch (error) {
+    // Only a failed check reproduces the case; a broken row (bad JSON, unknown parse mode) still fails.
+    if (!(error instanceof assert.AssertionError)) throw error;
+    knownFailures.push(testCase.id);
+    console.log(`known failure - ${testCase.id} (repro ${testCase.known_failure}): ${error.message.split('\n')[0]}`);
+    continue;
+  }
+  console.error(`error: ${testCase.id} passed but is marked known_failure: ${testCase.known_failure}; remove the marker`);
+  process.exit(1);
 }
-console.log(`Tier 1 deterministic evals passed: ${cases.length}/${cases.length}`);
+const passed = cases.length - knownFailures.length;
+console.log(`Tier 1 deterministic evals passed: ${passed}/${passed}${knownFailures.length ? `; known failures: ${knownFailures.length}` : ''}`);
