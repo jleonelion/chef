@@ -92,10 +92,10 @@ test('with no runs of the skill in the window, selection falls back to the last 
   assert.deepEqual(selectEvents([], { now, skill: 'chef-recipe-search' }), { events: [], fallback: false });
 });
 
-test('widened selection keeps runs of every skill in the window', () => {
+test('with no skill named, selection keeps runs of every skill in the window', () => {
   const now = new Date('2026-11-15T12:00:00.000Z');
   const runs = [at('2026-11-15T10:30:00.000Z'), at('2026-11-15T11:10:00.000Z', 'chef-meal-planning'), at('2026-11-15T11:20:00.000Z')];
-  assert.deepEqual(selectEvents(runs, { now, skill: 'chef-recipe-search', wide: true }), { events: runs.slice(1), fallback: false });
+  assert.deepEqual(selectEvents(runs, { now }), { events: runs.slice(1), fallback: false });
 });
 
 test('installed skills are the chef skills next to this one, with hyphenated IDs', () => {

@@ -17,12 +17,12 @@ const ALWAYS_UNOBSERVED = ['pre_launch_unobserved', 'host_action_unconfirmed', '
 
 const FALLBACK_EVENTS = 10;
 
-// Runs of the named skill (of every skill when `wide` or none is named) in the last hour, newest
+// Runs of the named skill (of every skill when none is named) in the last hour, newest
 // MAX_EVENTS, oldest first. With none there, the last FALLBACK_EVENTS runs of any skill, and
 // `fallback` says so for the preview.
-export function selectEvents(events, { now, skill, wide = false }) {
+export function selectEvents(events, { now, skill }) {
   const inWindow = events
-    .filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (wide || !skill || event.skill_id === skill))
+    .filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (!skill || event.skill_id === skill))
     .slice(-MAX_EVENTS);
   if (inWindow.length || !events.length) return { events: inWindow, fallback: false };
   return { events: events.slice(-FALLBACK_EVENTS), fallback: true };

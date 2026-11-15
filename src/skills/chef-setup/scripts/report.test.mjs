@@ -118,7 +118,7 @@ test('with no recent runs of the skill, a defect attaches the last runs of any s
   run(root, plan, 'today', '--date', '2026-01-05');
   const { out } = run(root, setup, 'report-draft', ...DEFECT);
   assert.deepEqual(rawReport(root).diagnostic_bundle.events.map((e) => e.skill_id), ['chef-meal-planning']);
-  assert.match(out.preview, /^Diagnostics: no runs of chef-recipe-search in the last hour, so these are the last 10 runs of any skill\./m);
+  assert.match(out.preview, /^Diagnostics: no runs of chef-recipe-search in the last hour, so this is the last run of any skill\./m);
   assert.equal(bytesFromPreview(out.preview), JSON.stringify(rawReport(root)), 'the note is not part of the payload');
 });
 
@@ -139,4 +139,14 @@ test('volunteered contact is dropped before preview with a notice when the runti
   assert.match(out.contact_notice, /dropped/);
   assert.equal(out.can_ask_contact, false);
   assert.doesNotMatch(out.preview + run(root, setup, 'report-preview', '--raw').out.raw, /someone@example\.com/);
+});
+
+test('a restored detail goes in as written and the pattern scan still flags it', () => {
+  const root = fixtureRoot();
+  const { out } = run(root, setup, 'report-draft', ...DEFECT);
+  const summary = numberOf(out.preview, 'summary');
+  const edited = run(root, setup, 'report-edit', '--item', String(summary), '--value', 'Search misses oat milk; call 415-555-0134').out;
+  assert.equal(edited.status, 'draft');
+  assert.equal(JSON.parse(bytesFromPreview(edited.preview)).summary, 'Search misses oat milk; call 415-555-0134');
+  assert.match(edited.preview, new RegExp(`^Check item ${summary} \\(summary\\): may contain a phone number`, 'm'));
 });

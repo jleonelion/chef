@@ -57,18 +57,16 @@ function scanNotes(numbers, report) {
   });
 }
 
-// Notes about how the draft was put together, shown while the part they explain is still there.
-function draftNotes(report, notes = {}, contact) {
-  const lines = [];
-  if (report.diagnostic_bundle && Object.hasOwn(notes, 'diagnostics_fallback')) {
-    const runs = notes.diagnostics_fallback ? `runs of ${notes.diagnostics_fallback}` : 'Chef runs';
-    lines.push(`Diagnostics: no ${runs} in the last hour, so these are the last 10 runs of any skill. Ask to widen or drop them.`);
-  }
-  if (contact !== undefined) lines.push(`Contact, sent apart from the report and stored separately: ${JSON.stringify(contact)}`);
-  return lines;
+// Shown while the diagnostics it explains are still in the report.
+function fallbackNote(report, fallback) {
+  if (!fallback || !report.diagnostic_bundle) return [];
+  const missing = fallback.skill ? `runs of ${fallback.skill}` : 'Chef runs';
+  const runs = report.diagnostic_bundle.events.length;
+  const taken = runs === 1 ? 'this is the last run' : `these are the last ${runs} runs`;
+  return [`Diagnostics: no ${missing} in the last hour, so ${taken} of any skill. Ask to drop them if they don't help.`];
 }
 
-export function renderPreview({ report, numbers, notes, contact }) {
+export function renderPreview({ report, numbers, notes = {} }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -78,7 +76,7 @@ export function renderPreview({ report, numbers, notes, contact }) {
     '',
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
-    ...draftNotes(report, notes, contact),
+    ...fallbackNote(report, notes.diagnostics_fallback),
     ...scanNotes(numbers, report),
   ].join('\n');
 }

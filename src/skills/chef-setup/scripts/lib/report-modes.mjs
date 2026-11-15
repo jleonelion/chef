@@ -8,7 +8,7 @@ import { renderPreview } from '../../../../lib/feedback/preview.mjs';
 import { editItem, newDraft, removeItem, serialize, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
 import { deleteDraft, readDraft, saveDraft } from '../../../../lib/feedback/store.mjs';
-import { checkAdapter, currentRuntime, hasCapability } from '../../../../runtime/contract.mjs';
+import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
 
 const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'contact'];
 export const REPORT_FLAGS = {
@@ -21,7 +21,7 @@ const invalid = (root, error) => ({ status: 'invalid-input', data_root: root, pr
 
 const DIAGNOSTICS = ['on', 'off', 'wide'];
 const CONTACT_DROPPED = "This runtime can't take contact details, so Chef dropped the contact you gave; it is not in the report.";
-const canTakeContact = (adapter) => hasCapability(adapter, 'contact');
+const canTakeContact = (adapter) => adapter.feedback.capabilities().includes('contact.opaque');
 
 function shown(root, draft, adapter) {
   const sendable = canSend(adapter);
@@ -50,18 +50,18 @@ function diagnosticsFor(root, values, skillIds, { adapter, skillsDir }) {
   if (choice === 'off') return {};
   const now = new Date();
   const traceOn = traceEnabled(root);
-  const wide = choice === 'wide';
-  const skill = wide ? undefined : skillIds[0];
-  const { events, fallback } = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill, wide }) : { events: [], fallback: false };
+  const skill = choice === 'wide' ? undefined : skillIds[0];
+  const { events, fallback } = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill }) : { events: [], fallback: false };
   const bundle = buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
-  return { bundle, ...(fallback && { notes: { diagnostics_fallback: skill ?? null } }) };
+  return { bundle, ...(fallback && { notes: { diagnostics_fallback: { skill: skill ?? null } } }) };
 }
 
 function draftMode(root, values, context) {
   const skillIds = splitSkillIds(values['skill-ids']);
   try {
     const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
-    const keepContact = values.contact !== undefined && canTakeContact(context.adapter);
+    // No v1 adapter declares contact.opaque; its transport lands with the Muse submit path (#80).
+    if (values.contact !== undefined && canTakeContact(context.adapter)) throw new Error('contact transport not implemented');
     const draft = newDraft({
       class: values.class,
       summary: values.summary,
@@ -74,10 +74,9 @@ function draftMode(root, values, context) {
       skill_ids: skillIds,
       bundle,
     });
-    Object.assign(draft, notes && { notes }, keepContact && { contact: values.contact });
+    if (notes) draft.notes = notes;
     saveDraft(root, draft);
-    const dropped = values.contact !== undefined && !keepContact;
-    return { ...shown(root, draft, context.adapter), ...(dropped && { contact_notice: CONTACT_DROPPED }) };
+    return { ...shown(root, draft, context.adapter), ...(values.contact !== undefined && { contact_notice: CONTACT_DROPPED }) };
   } catch (error) {
     return invalid(root, error);
   }
