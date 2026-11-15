@@ -7066,6 +7066,11 @@ var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes
 var muse = {
   name: "muse",
   adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: async () => ({ ok: false, reason: "unsupported" })
+  },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {

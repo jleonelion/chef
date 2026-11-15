@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs5 = this.flowScalar(this.type);
+            const fs6 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs5, sep: [] });
+              map.items.push({ start, key: fs6, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs5);
+              this.stack.push(fs6);
             } else {
-              Object.assign(it, { key: fs5, sep: [] });
+              Object.assign(it, { key: fs6, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs5 = this.flowScalar(this.type);
+            const fs6 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs5, sep: [] });
+              fc.items.push({ start: [], key: fs6, sep: [] });
             else if (it.sep)
-              this.stack.push(fs5);
+              this.stack.push(fs6);
             else
-              Object.assign(it, { key: fs5, sep: [] });
+              Object.assign(it, { key: fs6, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -7066,6 +7066,11 @@ var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes
 var muse = {
   name: "muse",
   adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: async () => ({ ok: false, reason: "unsupported" })
+  },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
@@ -7154,19 +7159,36 @@ var plugin_default = {
   license: "MIT"
 };
 
-// src/lib/schema.mjs
+// src/runtime/contract.mjs
 import fs2 from "node:fs";
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
+};
+
+// src/runtime/contract.mjs
+var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
+
+// src/lib/schema.mjs
+import fs3 from "node:fs";
 import path3 from "node:path";
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
   const file = path3.join(root, SCHEMA_FILE);
-  if (!fs2.existsSync(file))
+  if (!fs3.existsSync(file))
     return null;
-  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs3.readFileSync(file, "utf8")).schema_version;
 }
 
 // src/lib/settings.mjs
-import fs3 from "node:fs";
+import fs4 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 2;
@@ -7232,9 +7254,9 @@ function classify(stored) {
 function readSettings(root, { locale } = {}) {
   const defaults = defaultSettings({ locale });
   const file = path4.join(root, SETTINGS_FILE);
-  if (!fs3.existsSync(file))
+  if (!fs4.existsSync(file))
     return { status: "missing", settings: defaults };
-  const content = fs3.readFileSync(file, "utf8");
+  const content = fs4.readFileSync(file, "utf8");
   const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== "ok")
@@ -7244,7 +7266,7 @@ function readSettings(root, { locale } = {}) {
 }
 
 // src/lib/diagnostics/trace.mjs
-import fs4 from "node:fs";
+import fs5 from "node:fs";
 import path5 from "node:path";
 // schemas/feedback/invocation-trace.v1.json
 var invocation_trace_v1_default = {
@@ -7284,18 +7306,18 @@ var lineOf = (event) => `${JSON.stringify(event)}
 `;
 function ensureDiagnosticsDir(root) {
   const dir = path5.join(root, DIAGNOSTICS_DIR);
-  fs4.mkdirSync(dir, { recursive: true, mode: 448 });
-  fs4.chmodSync(dir, 448);
+  fs5.mkdirSync(dir, { recursive: true, mode: 448 });
+  fs5.chmodSync(dir, 448);
   const ignore = path5.join(dir, ".gitignore");
-  if (!fs4.existsSync(ignore))
-    fs4.writeFileSync(ignore, `*
+  if (!fs5.existsSync(ignore))
+    fs5.writeFileSync(ignore, `*
 `, PRIVATE_FILE);
-  fs4.chmodSync(ignore, 384);
+  fs5.chmodSync(ignore, 384);
 }
 function storedEvents(file) {
   let text;
   try {
-    text = fs4.readFileSync(file, "utf8");
+    text = fs5.readFileSync(file, "utf8");
   } catch {
     return [];
   }
@@ -7323,18 +7345,18 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
 }
 function rewrite(file, events) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs4.writeFileSync(temp, events.map(lineOf).join(""), PRIVATE_FILE);
-  fs4.chmodSync(temp, 384);
-  fs4.renameSync(temp, file);
+  fs5.writeFileSync(temp, events.map(lineOf).join(""), PRIVATE_FILE);
+  fs5.chmodSync(temp, 384);
+  fs5.renameSync(temp, file);
 }
 function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   ensureDiagnosticsDir(root);
   const file = path5.join(root, TRACE_FILE);
   const stored = storedEvents(file);
   const kept = withinBounds([...stored, event], now, bounds);
-  const onlyAppended = kept.length === stored.length + 1 && fs4.existsSync(file);
+  const onlyAppended = kept.length === stored.length + 1 && fs5.existsSync(file);
   if (onlyAppended)
-    fs4.appendFileSync(file, lineOf(event), PRIVATE_FILE);
+    fs5.appendFileSync(file, lineOf(event), PRIVATE_FILE);
   else
     rewrite(file, kept);
 }
@@ -7376,7 +7398,7 @@ function checkErrorCode(outcome, code) {
   if (entry.outcome !== outcome)
     throw new Error(`error code "${code}" belongs to ${entry.outcome}, not ${outcome}`);
 }
-function buildEvent({ skill, script, operation, outcome, error_code = null, facts = {}, startedAt, durationMs, adapter = muse }) {
+function buildEvent({ skill, script, operation, outcome, error_code = null, facts = {}, startedAt, durationMs, adapter = currentRuntime() }) {
   const declared = declaredScript(skill, script, operation);
   checkErrorCode(outcome, error_code);
   return {
@@ -7390,7 +7412,7 @@ function buildEvent({ skill, script, operation, outcome, error_code = null, fact
     operation,
     outcome,
     error_code,
-    runtime: adapter.isMuse() ? adapter.name : "unknown",
+    runtime: adapter.name,
     adapter_version: adapter.adapterVersion,
     facts: checkedFacts(declared.facts, facts)
   };
@@ -7412,7 +7434,7 @@ function record(context, describe) {
     appendEvent(context.root, buildEvent({ ...context, ...describe() }), { now: new Date });
   } catch {}
 }
-async function chefCapture({ root, skill, script, operation, classify: classify2, adapter = muse }, run) {
+async function chefCapture({ root, skill, script, operation, classify: classify2, adapter = currentRuntime() }, run) {
   const context = { root, skill, script, operation, adapter, startedAt: new Date };
   const started = performance.now();
   const elapsed = () => ({ durationMs: performance.now() - started });
@@ -7507,7 +7529,7 @@ function dietaryFlags(lines) {
 }
 
 // src/lib/dietary-ruleset.mjs
-import fs5 from "node:fs";
+import fs6 from "node:fs";
 import path6 from "node:path";
 
 // node_modules/yaml/dist/index.js
@@ -7668,10 +7690,10 @@ function rulesetFromPage(frontmatter) {
 }
 function readRuleset(root) {
   const file = path6.join(root, RULESET_PATH);
-  if (!fs5.existsSync(file))
+  if (!fs6.existsSync(file))
     return { status: "never-asked", members: [], hard: [], avoid: [] };
   try {
-    return rulesetFromPage(parsePage(fs5.readFileSync(file, "utf8")).frontmatter);
+    return rulesetFromPage(parsePage(fs6.readFileSync(file, "utf8")).frontmatter);
   } catch (error) {
     return { status: "unreadable", reason: error.message, members: [], hard: [], avoid: [] };
   }
@@ -7691,18 +7713,18 @@ function dietaryNotes(ruleset) {
 }
 
 // src/lib/recipes.mjs
-import fs6 from "node:fs";
+import fs7 from "node:fs";
 import path7 from "node:path";
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
   const dir = path7.join(root, RECIPES_DIR);
-  const files = fs6.existsSync(dir) ? fs6.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const files = fs7.existsSync(dir) ? fs7.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs6.readFileSync(path7.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs7.readFileSync(path7.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });

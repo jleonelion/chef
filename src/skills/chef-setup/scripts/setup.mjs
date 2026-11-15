@@ -4,7 +4,7 @@
 // usda (check the USDA connection), safety (the one safety screen), dietary (show the dietary
 // ruleset), set-dietary (change it), schedule (propose recurring tasks; writes nothing),
 // check-update (is a newer release out; installs nothing), trace (show the local invocation
-// trace), clear-trace (delete it).
+// trace), clear-trace (delete it), report-* (draft, preview, change and save a feedback report).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -22,6 +22,7 @@ import { readText, STORE } from '../../chef-food-inventory/scripts/lib/store.mjs
 import { adoptDataRoot } from './lib/adopt-data-root.mjs';
 import { checkUpdate } from './lib/check-update.mjs';
 import { checkUsda } from './lib/check-usda.mjs';
+import { REPORT_FLAGS, reportModes } from './lib/report-modes.mjs';
 import { initDataRoot } from './lib/init-data-root.mjs';
 import { scheduleProposal } from './lib/schedule.mjs';
 import { changesFromFlags, SETTING_FLAGS } from './lib/settings-args.mjs';
@@ -44,6 +45,7 @@ const { values, positionals } = parseArgs({
     hard: { type: 'string' },
     avoid: { type: 'string' },
     none: { type: 'boolean' },
+    ...REPORT_FLAGS,
   },
   allowPositionals: true,
 });
@@ -100,6 +102,9 @@ function clearTraceMode(root) {
   return { status: clearTrace(root) ? 'cleared' : 'empty', data_root: root };
 }
 
+const inDataRoot = (mode) => (root) => (readSchemaVersion(root) === null ? { ...NOT_A_ROOT, data_root: root } : mode(root, values));
+const REPORT_MODES = Object.fromEntries(Object.entries(reportModes({ skillsDir: path.dirname(skillDir) })).map(([name, mode]) => [name, inDataRoot(mode)]));
+
 const MODES = {
   init: (root) => initDataRoot(root),
   adopt: (root) => adoptDataRoot(root, values.source),
@@ -115,6 +120,7 @@ const MODES = {
   'check-update': () => checkUpdate({ skillDir }),
   trace: showTraceMode,
   'clear-trace': clearTraceMode,
+  ...REPORT_MODES,
 };
 
 const mode = positionals[0] ?? 'init';

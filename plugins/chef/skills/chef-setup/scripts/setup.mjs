@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs5 = this.flowScalar(this.type);
+            const fs6 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs5, sep: [] });
+              map.items.push({ start, key: fs6, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs5);
+              this.stack.push(fs6);
             } else {
-              Object.assign(it, { key: fs5, sep: [] });
+              Object.assign(it, { key: fs6, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs5 = this.flowScalar(this.type);
+            const fs6 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs5, sep: [] });
+              fc.items.push({ start: [], key: fs6, sep: [] });
             else if (it.sep)
-              this.stack.push(fs5);
+              this.stack.push(fs6);
             else
-              Object.assign(it, { key: fs5, sep: [] });
+              Object.assign(it, { key: fs6, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6946,7 +6946,7 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-setup/scripts/setup.mjs
-import path21 from "node:path";
+import path23 from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
@@ -7068,6 +7068,11 @@ var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes
 var muse = {
   name: "muse",
   adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: async () => ({ ok: false, reason: "unsupported" })
+  },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
@@ -7119,16 +7124,66 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   const raw = flag ?? env.CHEF_DATA_ROOT ?? adapter.defaultDataRoot();
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
-// src/lib/schema.mjs
+// plugins/chef/.claude-plugin/plugin.json
+var plugin_default = {
+  name: "chef",
+  version: "1.1.0",
+  description: "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
+  author: { name: "jleonelion" },
+  repository: "https://github.com/jleonelion/chef",
+  license: "MIT"
+};
+
+// src/runtime/contract.mjs
 import fs2 from "node:fs";
+// schemas/feedback/capabilities.v1.json
+var capabilities_v1_default = {
+  registry_version: 1,
+  description: "Capability registry: every runtime capability a runtime adapter may declare from feedback.capabilities(), evaluated at call time. A name covers one narrow thing the adapter can do right now. Evidence kinds are registered when the first adapter that emits them lands. Adding an entry is a reviewed change.",
+  capabilities: {
+    "submit.connector": { description: "Send an approved feedback report to feedback intake through an installed, authorized runtime connector." },
+    "submit.direct": { description: "Send an approved feedback report to feedback intake directly, without a connector." },
+    "contact.opaque": { description: "Offer one optional reply channel that feedback intake stores apart from the report." }
+  },
+  evidence_kinds: {}
+};
+
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
+};
+
+// src/runtime/contract.mjs
+var ADAPTER_CONTRACT_VERSION = 1;
+var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
+function checkAdapter(adapter) {
+  const major = adapter.adapterContractVersion;
+  if (major !== ADAPTER_CONTRACT_VERSION)
+    throw new Error(`unsupported adapter contract version ${major}`);
+  for (const name of adapter.feedback.capabilities()) {
+    if (!Object.hasOwn(capabilities_v1_default.capabilities, name))
+      throw new Error(`unregistered capability "${name}"`);
+  }
+  return adapter;
+}
+
+// src/lib/schema.mjs
+import fs3 from "node:fs";
 import path3 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
   const file = path3.join(root, SCHEMA_FILE);
-  if (!fs2.existsSync(file))
+  if (!fs3.existsSync(file))
     return null;
-  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs3.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -7156,7 +7211,7 @@ function schemaWriteBlocker(root) {
 }
 
 // src/lib/settings.mjs
-import fs3 from "node:fs";
+import fs4 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 2;
@@ -7222,9 +7277,9 @@ function classify(stored) {
 function readSettings(root, { locale } = {}) {
   const defaults = defaultSettings({ locale });
   const file = path4.join(root, SETTINGS_FILE);
-  if (!fs3.existsSync(file))
+  if (!fs4.existsSync(file))
     return { status: "missing", settings: defaults };
-  const content = fs3.readFileSync(file, "utf8");
+  const content = fs4.readFileSync(file, "utf8");
   const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== "ok")
@@ -7234,7 +7289,7 @@ function readSettings(root, { locale } = {}) {
 }
 
 // src/lib/diagnostics/trace.mjs
-import fs4 from "node:fs";
+import fs5 from "node:fs";
 import path5 from "node:path";
 // schemas/feedback/invocation-trace.v1.json
 var invocation_trace_v1_default = {
@@ -7273,10 +7328,20 @@ var TRACE_BOUNDS = { maxEvents: invocation_trace_v1_default.properties.events.ma
 var PRIVATE_FILE = { mode: 384 };
 var lineOf = (event) => `${JSON.stringify(event)}
 `;
+function ensureDiagnosticsDir(root) {
+  const dir = path5.join(root, DIAGNOSTICS_DIR);
+  fs5.mkdirSync(dir, { recursive: true, mode: 448 });
+  fs5.chmodSync(dir, 448);
+  const ignore = path5.join(dir, ".gitignore");
+  if (!fs5.existsSync(ignore))
+    fs5.writeFileSync(ignore, `*
+`, PRIVATE_FILE);
+  fs5.chmodSync(ignore, 384);
+}
 function storedEvents(file) {
   let text;
   try {
-    text = fs4.readFileSync(file, "utf8");
+    text = fs5.readFileSync(file, "utf8");
   } catch {
     return [];
   }
@@ -7304,9 +7369,9 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
 }
 function rewrite(file, events) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs4.writeFileSync(temp, events.map(lineOf).join(""), PRIVATE_FILE);
-  fs4.chmodSync(temp, 384);
-  fs4.renameSync(temp, file);
+  fs5.writeFileSync(temp, events.map(lineOf).join(""), PRIVATE_FILE);
+  fs5.chmodSync(temp, 384);
+  fs5.renameSync(temp, file);
 }
 function readTrace(root, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   const file = path5.join(root, TRACE_FILE);
@@ -7318,9 +7383,9 @@ function readTrace(root, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
 }
 function clearTrace(root) {
   const file = path5.join(root, TRACE_FILE);
-  if (!fs4.existsSync(file))
+  if (!fs5.existsSync(file))
     return false;
-  fs4.rmSync(file);
+  fs5.rmSync(file);
   return true;
 }
 
@@ -7337,7 +7402,7 @@ function traceEnabled(root) {
 }
 
 // src/lib/dietary-ruleset.mjs
-import fs6 from "node:fs";
+import fs7 from "node:fs";
 import path7 from "node:path";
 
 // src/lib/dietary-flags.mjs
@@ -7494,7 +7559,7 @@ var textOnlyCaveat = (constraint) => `"${constraint}" is not one of Chef's aller
 var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
 
 // src/lib/wiki.mjs
-import fs5 from "node:fs";
+import fs6 from "node:fs";
 import path6 from "node:path";
 
 // src/lib/git.mjs
@@ -7535,7 +7600,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs5.existsSync(path6.join(root, ".git")))
+  if (!fs6.existsSync(path6.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -7546,14 +7611,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs5.existsSync(path6.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs6.existsSync(path6.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
     const abs = path6.join(root, file.path);
-    fs5.mkdirSync(path6.dirname(abs), { recursive: true });
-    fs5.writeFileSync(abs, file.content);
+    fs6.mkdirSync(path6.dirname(abs), { recursive: true });
+    fs6.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -7640,10 +7705,10 @@ function rulesetFromPage(frontmatter) {
 }
 function readRuleset(root) {
   const file = path7.join(root, RULESET_PATH);
-  if (!fs6.existsSync(file))
+  if (!fs7.existsSync(file))
     return { status: "never-asked", members: [], hard: [], avoid: [] };
   try {
-    return rulesetFromPage(parsePage(fs6.readFileSync(file, "utf8")).frontmatter);
+    return rulesetFromPage(parsePage(fs7.readFileSync(file, "utf8")).frontmatter);
   } catch (error) {
     return { status: "unreadable", reason: error.message, members: [], hard: [], avoid: [] };
   }
@@ -7663,7 +7728,7 @@ function dietaryNotes(ruleset) {
 }
 
 // src/lib/fdc-cache.mjs
-import fs7 from "node:fs";
+import fs8 from "node:fs";
 import path8 from "node:path";
 var CACHE_DIR = "cache";
 function fdcReplyCache(root) {
@@ -7672,7 +7737,7 @@ function fdcReplyCache(root) {
   return {
     read(fdcId) {
       try {
-        const body = JSON.parse(fs7.readFileSync(file(fdcId), "utf8"));
+        const body = JSON.parse(fs8.readFileSync(file(fdcId), "utf8"));
         return body?.fdcId === fdcId ? body : null;
       } catch {
         return null;
@@ -7680,14 +7745,14 @@ function fdcReplyCache(root) {
     },
     write(fdcId, body) {
       try {
-        fs7.mkdirSync(path8.dirname(file(fdcId)), { recursive: true });
+        fs8.mkdirSync(path8.dirname(file(fdcId)), { recursive: true });
         const ignore = path8.join(cacheRoot, ".gitignore");
-        if (!fs7.existsSync(ignore))
-          fs7.writeFileSync(ignore, `*
+        if (!fs8.existsSync(ignore))
+          fs8.writeFileSync(ignore, `*
 `);
         const temp = `${file(fdcId)}.${process.pid}.tmp`;
-        fs7.writeFileSync(temp, JSON.stringify(body));
-        fs7.renameSync(temp, file(fdcId));
+        fs8.writeFileSync(temp, JSON.stringify(body));
+        fs8.renameSync(temp, file(fdcId));
       } catch {}
     }
   };
@@ -7886,7 +7951,7 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs8 from "node:fs";
+import fs9 from "node:fs";
 import path9 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
@@ -7954,7 +8019,7 @@ function listItems(inventory) {
 }
 var readText = (root, relative) => {
   const file = path9.join(root, relative);
-  return fs8.existsSync(file) ? fs8.readFileSync(file, "utf8") : null;
+  return fs9.existsSync(file) ? fs9.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -8029,7 +8094,7 @@ function regenerateRollup(root, now) {
 }
 
 // src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
-import fs9 from "node:fs";
+import fs10 from "node:fs";
 import path10 from "node:path";
 var URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
 var SAFE_CLONE = ["-c", "core.hooksPath=/dev/null", "-c", "core.symlinks=false", "-c", "protocol.ext.allow=never", "-c", "protocol.fd.allow=never"];
@@ -8043,13 +8108,13 @@ function sourceProblem(source) {
     return null;
   if (/^[a-z][\w+.-]*::?/i.test(source) && !path10.isAbsolute(source))
     return `unsupported source "${source}": use an https or ssh git URL, or a local folder`;
-  return fs9.existsSync(source) && fs9.statSync(source).isDirectory() ? null : `no folder at ${source}`;
+  return fs10.existsSync(source) && fs10.statSync(source).isDirectory() ? null : `no folder at ${source}`;
 }
 var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path10.resolve(source);
 function targetProblem(root) {
   if (readSchemaVersion(root) !== null)
     return "there is already a Chef data root here; nothing was changed";
-  if (fs9.existsSync(root) && fs9.readdirSync(root).length > 0)
+  if (fs10.existsSync(root) && fs10.readdirSync(root).length > 0)
     return "directory is not empty and is not a Chef data root";
   return null;
 }
@@ -8087,8 +8152,8 @@ function adoptDataRoot(root, source) {
   const badTarget = targetProblem(root);
   if (badTarget)
     return { status: "refused", data_root: root, reason: badTarget };
-  fs9.mkdirSync(path10.dirname(root), { recursive: true });
-  const staging = fs9.mkdtempSync(path10.join(path10.dirname(root), `.${path10.basename(root)}.adopt-`));
+  fs10.mkdirSync(path10.dirname(root), { recursive: true });
+  const staging = fs10.mkdtempSync(path10.join(path10.dirname(root), `.${path10.basename(root)}.adopt-`));
   const clone = path10.join(staging, "data-root");
   try {
     const cloneFailed = cloneInto(clone, source);
@@ -8098,28 +8163,28 @@ function adoptDataRoot(root, source) {
     if (blocked)
       return { status: "refused", data_root: root, ...blocked };
     const removed_remotes = removeRemotes(clone);
-    if (fs9.existsSync(root))
-      fs9.rmdirSync(root);
-    fs9.renameSync(clone, root);
+    if (fs10.existsSync(root))
+      fs10.rmdirSync(root);
+    fs10.renameSync(clone, root);
     return { status: "adopted", data_root: root, schema_version: readSchemaVersion(root), removed_remotes };
   } finally {
-    fs9.rmSync(staging, { recursive: true, force: true });
+    fs10.rmSync(staging, { recursive: true, force: true });
   }
 }
 
 // src/skills/chef-setup/scripts/lib/check-update.mjs
-import fs15 from "node:fs";
+import fs16 from "node:fs";
 import path15 from "node:path";
 
 // src/skills/chef-setup/scripts/lib/update-chef.mjs
-import fs14 from "node:fs";
+import fs15 from "node:fs";
 import path14 from "node:path";
 
 // src/lib/migrations.mjs
-import fs10 from "node:fs";
+import fs11 from "node:fs";
 import path11 from "node:path";
 var MIGRATIONS = {};
-var stamp = (root, version) => fs10.writeFileSync(path11.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
+var stamp = (root, version) => fs11.writeFileSync(path11.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
 `);
 function migrationPlan(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION } = {}) {
   const from = readSchemaVersion(root);
@@ -8147,15 +8212,15 @@ function migrate(root, options = {}) {
 }
 
 // src/lib/settings-migrations.mjs
-import fs11 from "node:fs";
+import fs12 from "node:fs";
 import path12 from "node:path";
 function storedSettings(root) {
   const file = path12.join(root, SETTINGS_FILE);
-  if (!fs11.existsSync(file))
+  if (!fs12.existsSync(file))
     return null;
   let stored;
   try {
-    stored = JSON.parse(fs11.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs12.readFileSync(file, "utf8"));
   } catch {
     throw new Error(`${SETTINGS_FILE} is not valid JSON; fix it with chef-setup before updating`);
   }
@@ -8188,17 +8253,17 @@ function migrateSettings(root, options = {}) {
     if (stored?.settings_version !== version + 1)
       throw new Error(`settings migration ${version} did not stamp version ${version + 1}`);
   }
-  fs11.writeFileSync(path12.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
+  fs12.writeFileSync(path12.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
 `);
   return plan;
 }
 
 // src/skills/chef-setup/scripts/lib/verify-install.mjs
-import fs13 from "node:fs";
+import fs14 from "node:fs";
 
 // src/lib/smoke.mjs
 import { spawnSync } from "node:child_process";
-import fs12 from "node:fs";
+import fs13 from "node:fs";
 import os3 from "node:os";
 import path13 from "node:path";
 var SMOKE_FILE = "smoke.json";
@@ -8211,10 +8276,10 @@ function parseStatus(stdout) {
   }
 }
 function runCase(skillDir, testCase, fixture) {
-  const tmp = fs12.mkdtempSync(path13.join(os3.tmpdir(), "chef-smoke-"));
+  const tmp = fs13.mkdtempSync(path13.join(os3.tmpdir(), "chef-smoke-"));
   const dataRoot = path13.join(tmp, "data-root");
   try {
-    fs12.cpSync(fixture, dataRoot, { recursive: true });
+    fs13.cpSync(fixture, dataRoot, { recursive: true });
     const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
     const input = testCase.stdin === undefined ? undefined : JSON.stringify(testCase.stdin);
     const run = spawnSync(process.execPath, [path13.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000, input });
@@ -8225,20 +8290,20 @@ function runCase(skillDir, testCase, fixture) {
       return `status "${status}", expected "${testCase.expect.status}"`;
     return null;
   } finally {
-    fs12.rmSync(tmp, { recursive: true, force: true });
+    fs13.rmSync(tmp, { recursive: true, force: true });
   }
 }
 function uncovered(skillDir, cases) {
   const scripts = path13.join(skillDir, "scripts");
-  if (!fs12.existsSync(scripts))
+  if (!fs13.existsSync(scripts))
     return [];
   const covered = new Set(cases.map((c) => path13.normalize(c.script)));
-  return fs12.readdirSync(scripts).filter(isEntry).sort().map((f) => path13.join("scripts", f)).filter((f) => !covered.has(f));
+  return fs13.readdirSync(scripts).filter(isEntry).sort().map((f) => path13.join("scripts", f)).filter((f) => !covered.has(f));
 }
 function smokeSkill(skillsDir, skill, fixture) {
   const skillDir = path13.join(skillsDir, skill);
   const file = path13.join(skillDir, SMOKE_FILE);
-  const cases = fs12.existsSync(file) ? JSON.parse(fs12.readFileSync(file, "utf8")) : [];
+  const cases = fs13.existsSync(file) ? JSON.parse(fs13.readFileSync(file, "utf8")) : [];
   const gaps = uncovered(skillDir, cases).map((script) => ({ skill, id: "coverage", ok: false, detail: `no smoke case for ${script}` }));
   const results = cases.map((testCase) => {
     const problem = runCase(skillDir, testCase, fixture);
@@ -8247,7 +8312,7 @@ function smokeSkill(skillsDir, skill, fixture) {
   return [...gaps, ...results];
 }
 function runSmoke({ skillsDir, fixture }) {
-  const skills = fs12.readdirSync(skillsDir).filter((name) => fs12.statSync(path13.join(skillsDir, name)).isDirectory()).sort();
+  const skills = fs13.readdirSync(skillsDir).filter((name) => fs13.statSync(path13.join(skillsDir, name)).isDirectory()).sort();
   return skills.flatMap((skill) => smokeSkill(skillsDir, skill, fixture));
 }
 
@@ -8259,10 +8324,10 @@ function nodeCheck(version) {
   return result("node", major >= MIN_NODE ? null : `Node ${version} is too old; Chef needs Node ${MIN_NODE} or later`, version);
 }
 function dataRootCheck(root) {
-  if (!fs13.existsSync(root))
+  if (!fs14.existsSync(root))
     return result("data-root", `no data root at ${root}; run chef-setup init`);
   try {
-    fs13.accessSync(root, fs13.constants.W_OK);
+    fs14.accessSync(root, fs14.constants.W_OK);
     return result("data-root", null, `${root} is writable`);
   } catch {
     return result("data-root", `${root} is not writable`);
@@ -8340,7 +8405,7 @@ function taggedSkills(repository, tag) {
 `).filter(chefFolder).sort();
 }
 function skillChanges(skillsDir, expected) {
-  const current = fs14.existsSync(skillsDir) ? fs14.readdirSync(skillsDir).filter(chefFolder).sort() : [];
+  const current = fs15.existsSync(skillsDir) ? fs15.readdirSync(skillsDir).filter(chefFolder).sort() : [];
   return {
     added: expected.filter((name) => !current.includes(name)),
     replaced: expected.filter((name) => current.includes(name)),
@@ -8372,24 +8437,24 @@ function recurringTaskChanges(repository, target) {
 function syncSkills(repository, skillsDir, sourceNames, expectedNames) {
   const source = path14.join(repository, "plugins", "chef", "skills");
   if (path14.resolve(source) === path14.resolve(skillsDir)) {
-    for (const name of fs14.readdirSync(skillsDir).filter(chefFolder)) {
+    for (const name of fs15.readdirSync(skillsDir).filter(chefFolder)) {
       if (!expectedNames.includes(name))
-        fs14.rmSync(path14.join(skillsDir, name), { recursive: true, force: true });
+        fs15.rmSync(path14.join(skillsDir, name), { recursive: true, force: true });
     }
     return;
   }
-  fs14.mkdirSync(skillsDir, { recursive: true });
-  const staging = fs14.mkdtempSync(path14.join(path14.dirname(skillsDir), ".chef-update-"));
+  fs15.mkdirSync(skillsDir, { recursive: true });
+  const staging = fs15.mkdtempSync(path14.join(path14.dirname(skillsDir), ".chef-update-"));
   try {
     for (let index = 0;index < sourceNames.length; index += 1) {
-      fs14.cpSync(path14.join(source, sourceNames[index]), path14.join(staging, expectedNames[index]), { recursive: true });
+      fs15.cpSync(path14.join(source, sourceNames[index]), path14.join(staging, expectedNames[index]), { recursive: true });
     }
-    for (const name of fs14.readdirSync(skillsDir).filter(chefFolder))
-      fs14.rmSync(path14.join(skillsDir, name), { recursive: true, force: true });
+    for (const name of fs15.readdirSync(skillsDir).filter(chefFolder))
+      fs15.rmSync(path14.join(skillsDir, name), { recursive: true, force: true });
     for (const name of expectedNames)
-      fs14.renameSync(path14.join(staging, name), path14.join(skillsDir, name));
+      fs15.renameSync(path14.join(staging, name), path14.join(skillsDir, name));
   } finally {
-    fs14.rmSync(staging, { recursive: true, force: true });
+    fs15.rmSync(staging, { recursive: true, force: true });
   }
 }
 function updateChef(root, {
@@ -8435,7 +8500,7 @@ function updateChef(root, {
 }
 
 // src/skills/chef-setup/scripts/lib/check-update.mjs
-var installedVersion = (repository) => JSON.parse(fs15.readFileSync(path15.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json"), "utf8")).version;
+var installedVersion = (repository) => JSON.parse(fs16.readFileSync(path15.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json"), "utf8")).version;
 function checkUpdate({ adapter = muse, skillDir } = {}) {
   try {
     const { repository } = adapter.updateInstall({ skillDir });
@@ -8456,40 +8521,793 @@ async function checkUsda(fdc) {
   return { status: "connected", food: result2.foods[0]?.description ?? null };
 }
 
-// src/skills/chef-setup/scripts/lib/init-data-root.mjs
-import fs16 from "node:fs";
+// src/lib/feedback/bundle.mjs
+import fs17 from "node:fs";
 import path16 from "node:path";
-var writeJson = (file, value) => fs16.writeFileSync(file, `${JSON.stringify(value)}
+// schemas/feedback/diagnostic-bundle.v1.json
+var diagnostic_bundle_v1_default = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "urn:chef:feedback:diagnostic-bundle:v1",
+  title: "Diagnostic bundle",
+  description: "A snapshot of selected invocation events and coarse environment facts, built for one feedback report and existing only inside it. Invocation IDs are re-keyed per bundle (parent links kept) and times are millisecond offsets from one UTC hour, so a bundle cannot be joined to the local trace or to another report.",
+  type: "object",
+  additionalProperties: false,
+  required: ["schema_version", "anchor_hour", "environment", "events", "evidence_gaps", "runtime_evidence"],
+  properties: {
+    schema_version: { const: 1 },
+    anchor_hour: {
+      description: "UTC hour at or before the earliest event; event times are offsets from it.",
+      type: "string",
+      pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:00:00Z$"
+    },
+    environment: {
+      type: "object",
+      additionalProperties: false,
+      required: ["chef_version", "runtime"],
+      properties: {
+        chef_version: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/chef_version" },
+        runtime: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "adapter_version", "adapter_contract_version", "capabilities"],
+          properties: {
+            name: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/runtime" },
+            adapter_version: { type: "integer", minimum: 1 },
+            adapter_contract_version: { type: "integer", minimum: 1 },
+            capabilities: {
+              description: "What the adapter's feedback.capabilities() returned when the bundle was built; names from capabilities.v1.json.",
+              type: "array",
+              uniqueItems: true,
+              maxItems: 16,
+              items: { type: "string", pattern: "^[a-z]+(\\.[a-z0-9-]+)+$", maxLength: 64 }
+            }
+          }
+        },
+        skills: {
+          description: "Installed Chef skills and their versions.",
+          type: "array",
+          maxItems: 32,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["id", "version"],
+            properties: {
+              id: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/skill_id" },
+              version: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/chef_version" }
+            }
+          }
+        },
+        js_engine: {
+          type: "object",
+          additionalProperties: false,
+          required: ["name", "version"],
+          properties: {
+            name: { enum: ["node", "bun", "other"] },
+            version: { type: "string", pattern: "^[0-9A-Za-z.+-]+$", maxLength: 32 }
+          }
+        },
+        os_family: { enum: ["macos", "linux", "windows", "other"] }
+      }
+    },
+    events: {
+      type: "array",
+      maxItems: 50,
+      items: { $ref: "#/$defs/event" }
+    },
+    evidence_gaps: {
+      description: "Kinds of fact Chef could not observe for this report: not observed, never 'did not happen'.",
+      type: "array",
+      uniqueItems: true,
+      items: {
+        enum: [
+          "pre_launch_unobserved",
+          "host_action_unconfirmed",
+          "post_return_unobserved",
+          "runtime_extension_unavailable",
+          "correlation_unavailable",
+          "trace_unavailable"
+        ]
+      }
+    },
+    runtime_evidence: {
+      description: "Evidence from the runtime adapter, each entry in a fixed provenance envelope. No evidence kind is registered in v1, so it is always empty.",
+      type: "array",
+      maxItems: 0
+    }
+  },
+  $defs: {
+    event: {
+      description: "An invocation event re-keyed for this bundle.",
+      type: "object",
+      additionalProperties: false,
+      required: ["invocation_id", "offset_ms", "duration_ms", "chef_version", "skill_id", "script_id", "operation", "outcome", "error_code", "runtime", "adapter_version", "facts"],
+      properties: {
+        invocation_id: { $ref: "#/$defs/key" },
+        parent_id: { $ref: "#/$defs/key" },
+        offset_ms: { type: "integer", minimum: 0, maximum: 1209600000 },
+        duration_ms: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/duration_ms" },
+        chef_version: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/chef_version" },
+        skill_id: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/skill_id" },
+        script_id: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/script_id" },
+        operation: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/operation" },
+        outcome: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/outcome" },
+        error_code: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/error_code" },
+        runtime: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/runtime" },
+        adapter_version: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/adapter_version" },
+        facts: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/facts" }
+      }
+    },
+    key: { description: "Per-bundle invocation key.", type: "string", pattern: "^inv-[1-9][0-9]{0,2}$" }
+  }
+};
+
+// src/lib/feedback/bundle.mjs
+var BUNDLE_SCHEMA_VERSION = 1;
+var MAX_EVENTS = diagnostic_bundle_v1_default.properties.events.maxItems;
+var WINDOW_MS = 60 * 60 * 1000;
+var HOUR_MS = 60 * 60 * 1000;
+var OS_FAMILIES = { darwin: "macos", linux: "linux", win32: "windows" };
+var ALWAYS_UNOBSERVED = ["pre_launch_unobserved", "host_action_unconfirmed", "post_return_unobserved"];
+function selectEvents(events, { now, skill } = {}) {
+  return events.filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (!skill || event.skill_id === skill)).slice(-MAX_EVENTS);
+}
+function installedSkills(skillsDir, version = plugin_default.version) {
+  let entries;
+  try {
+    entries = fs17.readdirSync(skillsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.filter((entry) => entry.isDirectory() && /^chef[-_]/.test(entry.name) && fs17.existsSync(path16.join(skillsDir, entry.name, "SKILL.md"))).map((entry) => ({ id: entry.name.replaceAll("_", "-"), version })).sort((a, b) => a.id.localeCompare(b.id));
+}
+function rekey(events) {
+  const keys = new Map(events.map((event, i) => [event.invocation_id, `inv-${i + 1}`]));
+  const anchor = Math.floor(Math.min(...events.map((event) => Date.parse(event.started_at))) / HOUR_MS) * HOUR_MS;
+  const rekeyed = events.map(({ schema_version, invocation_id, parent_id, started_at, ...rest }) => ({
+    invocation_id: keys.get(invocation_id),
+    ...keys.has(parent_id) ? { parent_id: keys.get(parent_id) } : {},
+    offset_ms: Date.parse(started_at) - anchor,
+    ...rest
+  }));
+  return { anchor, events: rekeyed };
+}
+function evidenceGaps(capabilities, traceOn) {
+  const gaps = [...ALWAYS_UNOBSERVED];
+  if (!capabilities.some((name) => name.startsWith("evidence.")))
+    gaps.push("runtime_extension_unavailable");
+  gaps.push("correlation_unavailable");
+  if (!traceOn)
+    gaps.push("trace_unavailable");
+  return gaps;
+}
+function buildBundle({ events, adapter, traceOn, skills, now = new Date, engine = jsEngine(), platform = process.platform }) {
+  const capabilities = adapter.feedback.capabilities();
+  const { anchor, events: rekeyed } = events.length ? rekey(events) : { anchor: Math.floor(now / HOUR_MS) * HOUR_MS, events: [] };
+  return {
+    schema_version: BUNDLE_SCHEMA_VERSION,
+    anchor_hour: new Date(anchor).toISOString().replace(".000Z", "Z"),
+    environment: {
+      chef_version: plugin_default.version,
+      runtime: { name: adapter.name, adapter_version: adapter.adapterVersion, adapter_contract_version: adapter.adapterContractVersion, capabilities },
+      skills,
+      js_engine: engine,
+      os_family: OS_FAMILIES[platform] ?? "other"
+    },
+    events: rekeyed,
+    evidence_gaps: evidenceGaps(capabilities, traceOn),
+    runtime_evidence: []
+  };
+}
+function jsEngine() {
+  if (process.versions.bun)
+    return { name: "bun", version: process.versions.bun };
+  return { name: "node", version: process.versions.node };
+}
+
+// src/lib/pii-scan.mjs
+var RESERVED_HOST = /(^|\.)example(\.(com|org|net))?$/i;
+var PUBLIC_HOST = /^(json-)?schema\.org$/i;
+var RULES2 = [
+  { rule: "email", pattern: /[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})/g, allowed: (m) => RESERVED_HOST.test(m[1]) },
+  { rule: "url", pattern: /\bhttps?:\/\/([^\s/:"'<>)]+)/gi, allowed: (m) => RESERVED_HOST.test(m[1]) || PUBLIC_HOST.test(m[1]) },
+  { rule: "phone", pattern: /(?:\+\d{1,3}[\s.-]?)?\(?\b\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g },
+  { rule: "street address", pattern: /\b\d{1,5}\s+(?:[A-Z][a-z]+\s+){1,3}(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Way|Place|Pl)\b/g },
+  { rule: "file path", pattern: /(?:\/Users\/|\/home\/|[A-Za-z]:\\Users\\)[^\s/\\"']+/g },
+  { rule: "long digit run", pattern: /\d{9,}/g }
+];
+function scanPii(text) {
+  const findings = [];
+  text.split(`
+`).forEach((line, i) => {
+    for (const { rule, pattern, allowed } of RULES2) {
+      for (const match of line.matchAll(pattern)) {
+        if (!allowed?.(match))
+          findings.push({ line: i + 1, rule });
+      }
+    }
+  });
+  return findings;
+}
+
+// src/lib/feedback/preview.mjs
+var CONTAINERS = new Set(["diagnostic_bundle", "diagnostic_bundle.environment", "diagnostic_bundle.events"]);
+var TEXT_FIELDS = ["summary", "expected", "actual", "desired_outcome", "current_behavior", "desired_behavior"];
+var ITEM_LINE = /^\[\s*\d+\] (\S+) = (.*)$/;
+var GAPS = {
+  pre_launch_unobserved: "what happened before a Chef script started",
+  host_action_unconfirmed: "whether the runtime carried out what a script asked",
+  post_return_unobserved: "what happened after a script returned",
+  runtime_extension_unavailable: "evidence from the runtime itself",
+  correlation_unavailable: "which conversation turn each run belonged to",
+  trace_unavailable: "Chef script runs (the invocation trace is off or unreadable)"
+};
+var RULE_NAMES = {
+  email: "an email address",
+  phone: "a phone number",
+  "street address": "a street address",
+  url: "a URL",
+  "file path": "a file path",
+  "long digit run": "a long number"
+};
+function walk(node, prefix, items) {
+  for (const [key, value] of Object.entries(node)) {
+    const id = prefix ? `${prefix}.${key}` : key;
+    if (!CONTAINERS.has(id))
+      items.push({ id, value });
+    else if (Array.isArray(value)) {
+      items.push({ id, value: [] });
+      for (const element of value)
+        items.push({ id: `${id}[${element.invocation_id}]`, value: element });
+    } else {
+      items.push({ id, value: {} });
+      walk(value, id, items);
+    }
+  }
+  return items;
+}
+var itemsOf = (report) => walk(report, "", []);
+function itemLine2(numbers, { id, value }) {
+  if (!Object.hasOwn(numbers, id))
+    throw new Error(`item ${id} has no number in this draft`);
+  return `[${String(numbers[id]).padStart(2)}] ${id} = ${JSON.stringify(value)}`;
+}
+function scanNotes(numbers, report) {
+  return TEXT_FIELDS.filter((field) => typeof report[field] === "string").flatMap((field) => {
+    const rules = [...new Set(scanPii(report[field]).map((finding) => finding.rule))];
+    if (!rules.length)
+      return [];
+    const what = rules.map((rule) => RULE_NAMES[rule] ?? rule).join(", ");
+    return [`Check item ${numbers[field]} (${field}): may contain ${what}. Chef changed nothing; ask to edit or remove it if it is personal.`];
+  });
+}
+function renderPreview({ report, numbers }) {
+  const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
+  return [
+    `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
+    "Each numbered line is exactly what the report holds. Ask to remove or change an item by its number.",
+    "",
+    ...itemsOf(report).map((item) => itemLine2(numbers, item)),
+    "",
+    ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
+    ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
+    ...scanNotes(numbers, report)
+  ].join(`
+`);
+}
+function place(root, id, value) {
+  const segments = id.split(".");
+  const last = segments.pop();
+  const parent = segments.reduce((node, key) => node[key], root);
+  const element = /^([a-z_]+)\[[^\]]+\]$/.exec(last);
+  if (element)
+    parent[element[1]].push(value);
+  else
+    parent[last] = value;
+}
+function bytesFromPreview(text) {
+  const root = {};
+  for (const line of text.split(`
+`)) {
+    const match = ITEM_LINE.exec(line);
+    if (match)
+      place(root, match[1], JSON.parse(match[2]));
+  }
+  return JSON.stringify(root);
+}
+
+// src/lib/feedback/report.mjs
+import { randomUUID } from "node:crypto";
+// schemas/feedback/feedback-report.v1.json
+var feedback_report_v1_default = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "urn:chef:feedback:feedback-report:v1",
+  title: "Feedback report",
+  description: "A defect, enhancement or behavior-change request the user reviewed and approved; the only thing that leaves the user's machine. The submitted bytes are exactly the final rendered preview. Holds no identity; feedback intake assigns report_id. The serialized report is at most x-max-bytes UTF-8 bytes; client and feedback intake reject the same payloads.",
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schema_version",
+    "class",
+    "trigger",
+    "summary",
+    "removed_fields",
+    "submission_nonce"
+  ],
+  properties: {
+    schema_version: {
+      const: 1
+    },
+    class: {
+      enum: [
+        "defect",
+        "enhancement",
+        "behavior_change"
+      ]
+    },
+    trigger: {
+      enum: [
+        "user-initiated",
+        "post-error"
+      ]
+    },
+    summary: {
+      $ref: "#/$defs/short_text"
+    },
+    expected: {
+      $ref: "#/$defs/text"
+    },
+    actual: {
+      $ref: "#/$defs/text"
+    },
+    frequency: {
+      enum: [
+        "once",
+        "sometimes",
+        "always",
+        "unknown"
+      ]
+    },
+    desired_outcome: {
+      $ref: "#/$defs/text"
+    },
+    current_behavior: {
+      $ref: "#/$defs/text"
+    },
+    desired_behavior: {
+      $ref: "#/$defs/text"
+    },
+    skill_ids: {
+      type: "array",
+      uniqueItems: true,
+      maxItems: 16,
+      items: {
+        $ref: "urn:chef:feedback:invocation-event:v1#/properties/skill_id"
+      }
+    },
+    focus_invocation: {
+      $ref: "urn:chef:feedback:diagnostic-bundle:v1#/$defs/key"
+    },
+    diagnostic_bundle: {
+      $ref: "urn:chef:feedback:diagnostic-bundle:v1"
+    },
+    removed_fields: {
+      description: "Paths of the parts the user deleted in preview: withheld, not never captured.",
+      type: "array",
+      uniqueItems: true,
+      maxItems: 64,
+      items: {
+        type: "string",
+        pattern: "^[a-z_]+(\\.[a-z_]+|\\[inv-[1-9][0-9]{0,2}\\])*$",
+        maxLength: 128
+      }
+    },
+    submission_nonce: {
+      description: "Random per approved preview; feedback intake rejects a replay. Any edit mints a new one.",
+      type: "string",
+      pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    }
+  },
+  allOf: [
+    {
+      if: {
+        required: [
+          "class"
+        ],
+        properties: {
+          class: {
+            const: "defect"
+          }
+        }
+      },
+      then: {
+        required: [
+          "expected",
+          "actual",
+          "frequency"
+        ],
+        properties: {
+          expected: true,
+          actual: true,
+          frequency: true,
+          desired_outcome: false,
+          current_behavior: false,
+          desired_behavior: false
+        }
+      }
+    },
+    {
+      if: {
+        required: [
+          "class"
+        ],
+        properties: {
+          class: {
+            const: "enhancement"
+          }
+        }
+      },
+      then: {
+        required: [
+          "desired_outcome"
+        ],
+        properties: {
+          desired_outcome: true,
+          expected: false,
+          actual: false,
+          frequency: false,
+          current_behavior: false,
+          desired_behavior: false
+        }
+      }
+    },
+    {
+      if: {
+        required: [
+          "class"
+        ],
+        properties: {
+          class: {
+            const: "behavior_change"
+          }
+        }
+      },
+      then: {
+        required: [
+          "current_behavior",
+          "desired_behavior",
+          "skill_ids"
+        ],
+        properties: {
+          current_behavior: true,
+          desired_behavior: true,
+          skill_ids: {
+            type: "array",
+            minItems: 1
+          },
+          expected: false,
+          actual: false,
+          frequency: false,
+          desired_outcome: false
+        }
+      }
+    },
+    {
+      if: {
+        required: [
+          "trigger"
+        ],
+        properties: {
+          trigger: {
+            const: "post-error"
+          }
+        }
+      },
+      then: {
+        required: [
+          "focus_invocation",
+          "diagnostic_bundle"
+        ],
+        properties: {
+          focus_invocation: true,
+          diagnostic_bundle: true
+        }
+      }
+    }
+  ],
+  $defs: {
+    short_text: {
+      type: "string",
+      minLength: 1,
+      maxLength: 500
+    },
+    text: {
+      type: "string",
+      minLength: 1,
+      maxLength: 2000
+    }
+  },
+  "x-max-bytes": 65536
+};
+
+// src/lib/feedback/report.mjs
+var REPORT_SCHEMA_VERSION = 1;
+var MAX_BYTES = feedback_report_v1_default["x-max-bytes"];
+var CLASS_FIELDS = { defect: ["expected", "actual", "frequency"], enhancement: ["desired_outcome"], behavior_change: ["current_behavior", "desired_behavior"] };
+var FREQUENCIES = feedback_report_v1_default.properties.frequency.enum;
+var maxLength = (field) => feedback_report_v1_default.$defs[field === "summary" ? "short_text" : "text"].maxLength;
+var SKILL_ID = /^chef-[a-z0-9-]+$/;
+var REMOVABLE = [/^skill_ids$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
+var EDITABLE = new Set([...TEXT_FIELDS, "frequency", "skill_ids"]);
+var serialize = (report) => JSON.stringify(report);
+function textProblem(field, value) {
+  if (typeof value !== "string" || value.trim() === "")
+    return `${field}: required`;
+  return value.length > maxLength(field) ? `${field}: at most ${maxLength(field)} characters` : null;
+}
+function reportProblems(report) {
+  const fields = CLASS_FIELDS[report.class];
+  if (!fields)
+    return [`class: must be one of ${Object.keys(CLASS_FIELDS).join(", ")}`];
+  const problems = ["summary", ...fields.filter((f) => f !== "frequency")].map((f) => textProblem(f, report[f])).filter(Boolean);
+  if (fields.includes("frequency") && !FREQUENCIES.includes(report.frequency))
+    problems.push(`frequency: must be one of ${FREQUENCIES.join(", ")}`);
+  const skills = report.skill_ids ?? [];
+  if (skills.some((id) => !SKILL_ID.test(id)))
+    problems.push("skill_ids: must be Chef skill IDs like chef-recipe-search");
+  if (report.class === "behavior_change" && !skills.length)
+    problems.push("skill_ids: name at least one skill");
+  const bytes = Buffer.byteLength(serialize(report));
+  if (bytes > MAX_BYTES)
+    problems.push(`report is ${bytes} bytes, over ${MAX_BYTES} bytes`);
+  return problems;
+}
+function checked(report) {
+  const problems = reportProblems(report);
+  if (problems.length)
+    throw Object.assign(new Error(problems.join("; ")), { problems });
+  return report;
+}
+function newDraft({ class: kind, trigger = "user-initiated", summary, skill_ids, bundle, ...fields }) {
+  const report = checked({
+    schema_version: REPORT_SCHEMA_VERSION,
+    class: kind,
+    trigger,
+    summary,
+    ...Object.fromEntries((CLASS_FIELDS[kind] ?? []).map((field) => [field, fields[field]])),
+    ...skill_ids?.length ? { skill_ids } : {},
+    ...bundle ? { diagnostic_bundle: bundle } : {},
+    removed_fields: [],
+    submission_nonce: randomUUID()
+  });
+  return { report, numbers: Object.fromEntries(itemsOf(report).map((item, i) => [item.id, i + 1])) };
+}
+function itemId({ report, numbers }, number) {
+  const id = Object.keys(numbers).find((key) => numbers[key] === number);
+  if (!id || !itemsOf(report).some((item) => item.id === id))
+    throw new Error(`no item ${number} in this draft`);
+  return id;
+}
+var changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID() }) });
+function withoutItem(report, id) {
+  const segments = id.split(".");
+  const last = segments.pop();
+  const parent = segments.reduce((node, key) => node[key], report);
+  const element = /^([a-z_]+)\[([^\]]+)\]$/.exec(last);
+  if (element)
+    parent[element[1]] = parent[element[1]].filter((entry) => entry.invocation_id !== element[2]);
+  else
+    delete parent[last];
+}
+function removeItem(draft, number) {
+  const id = itemId(draft, number);
+  if (!REMOVABLE.some((pattern) => pattern.test(id))) {
+    throw new Error(`item ${number} (${id}) cannot be removed${EDITABLE.has(id) ? "; it can be edited" : ""}`);
+  }
+  const report = structuredClone(draft.report);
+  withoutItem(report, id);
+  const inside = (field) => field.startsWith(`${id}.`) || field.startsWith(`${id}[`);
+  report.removed_fields = [...report.removed_fields.filter((field) => !inside(field)), id];
+  return changed(draft, report);
+}
+function editItem(draft, number, value) {
+  const id = itemId(draft, number);
+  if (!EDITABLE.has(id))
+    throw new Error(`item ${number} (${id}) cannot be edited`);
+  const parsed = id === "skill_ids" ? value.split(",").map((skill) => skill.trim()).filter(Boolean) : value;
+  return changed(draft, { ...draft.report, [id]: parsed });
+}
+
+// src/lib/feedback/store.mjs
+import fs18 from "node:fs";
+import path17 from "node:path";
+var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
+var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
+var PRIVATE_FILE2 = { mode: 384 };
+var expired = (file, now) => now - fs18.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
+function writePrivate(file, text) {
+  const temp = `${file}.${process.pid}.tmp`;
+  fs18.writeFileSync(temp, text, PRIVATE_FILE2);
+  fs18.chmodSync(temp, 384);
+  fs18.renameSync(temp, file);
+}
+function pruneOutbox(root, now) {
+  const dir = path17.join(root, OUTBOX_DIR);
+  if (!fs18.existsSync(dir))
+    return;
+  for (const name of fs18.readdirSync(dir)) {
+    const file = path17.join(dir, name);
+    if (expired(file, now))
+      fs18.rmSync(file);
+  }
+}
+function saveDraft(root, draft) {
+  ensureDiagnosticsDir(root);
+  writePrivate(path17.join(root, DRAFT_FILE), `${JSON.stringify(draft)}
+`);
+}
+function readDraft(root, { now = new Date } = {}) {
+  pruneOutbox(root, now);
+  const file = path17.join(root, DRAFT_FILE);
+  if (!fs18.existsSync(file))
+    return null;
+  if (expired(file, now)) {
+    fs18.rmSync(file);
+    return null;
+  }
+  try {
+    return JSON.parse(fs18.readFileSync(file, "utf8"));
+  } catch {
+    return null;
+  }
+}
+function deleteDraft(root) {
+  const file = path17.join(root, DRAFT_FILE);
+  if (!fs18.existsSync(file))
+    return false;
+  fs18.rmSync(file);
+  return true;
+}
+function saveToOutbox(root, bytes, { nonce, now = new Date }) {
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  fs18.mkdirSync(path17.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
+  const stamp2 = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
+  const relative = `${OUTBOX_DIR}/${stamp2}-${nonce.slice(0, 8)}.json`;
+  writePrivate(path17.join(root, relative), bytes);
+  return relative;
+}
+
+// src/lib/feedback/send.mjs
+var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
+var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
+var canSend = (adapter) => adapter.feedback.capabilities().some((name) => name.startsWith("submit."));
+async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
+  checkAdapter(adapter);
+  if (nonce !== draft.report.submission_nonce) {
+    return { status: "refused", reason: "the report changed since that preview; show the current preview and ask again" };
+  }
+  const bytes = bytesFromPreview(renderPreview(draft));
+  if (bytes !== serialize(draft.report))
+    throw new Error("the preview does not reproduce the report; nothing was sent");
+  const problems = reportProblems(draft.report);
+  if (problems.length)
+    return { status: "invalid-input", problems };
+  if (canSend(adapter))
+    throw new Error("submit transport not implemented");
+  const saved = saveToOutbox(root, bytes, { nonce, now });
+  deleteDraft(root);
+  return { status: "saved", path: saved, bytes: Buffer.byteLength(bytes), notice: NOT_SENT };
+}
+
+// src/skills/chef-setup/scripts/lib/report-modes.mjs
+var REPORT_FLAGS = Object.fromEntries(["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "skill-ids", "diagnostics", "item", "value", "nonce"].map((flag) => [flag, { type: "string" }]));
+REPORT_FLAGS.raw = { type: "boolean" };
+var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
+var invalid = (root, error) => ({ status: "invalid-input", data_root: root, problems: error.problems ?? [error.message] });
+function shown(root, draft, adapter) {
+  return { status: "draft", data_root: root, preview: renderPreview(draft), submission_nonce: draft.report.submission_nonce, can_send: canSend(adapter), ...canSend(adapter) ? {} : { send_notice: SAVE_ONLY } };
+}
+function bundleFor(root, values, skillIds, { adapter, skillsDir }) {
+  if ((values.diagnostics ?? (values.class === "defect" ? "on" : "off")) !== "on")
+    return;
+  const now = new Date;
+  const traceOn = traceEnabled(root);
+  const events = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill: skillIds[0] }) : [];
+  return buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
+}
+function draftMode(root, values, context) {
+  const skillIds = values["skill-ids"]?.split(",").map((id) => id.trim()).filter(Boolean) ?? [];
+  try {
+    const draft = newDraft({
+      class: values.class,
+      summary: values.summary,
+      expected: values.expected,
+      actual: values.actual,
+      frequency: values.frequency,
+      desired_outcome: values["desired-outcome"],
+      current_behavior: values["current-behavior"],
+      desired_behavior: values["desired-behavior"],
+      skill_ids: skillIds,
+      bundle: bundleFor(root, values, skillIds, context)
+    });
+    saveDraft(root, draft);
+    return shown(root, draft, context.adapter);
+  } catch (error) {
+    return invalid(root, error);
+  }
+}
+function previewMode(root, values, { adapter }) {
+  const draft = readDraft(root);
+  if (!draft)
+    return { ...NO_DRAFT, data_root: root };
+  return values.raw ? { status: "draft", data_root: root, raw: serialize(draft.report) } : shown(root, draft, adapter);
+}
+function changeMode(change) {
+  return (root, values, { adapter }) => {
+    const draft = readDraft(root);
+    if (!draft)
+      return { ...NO_DRAFT, data_root: root };
+    try {
+      const next = change(draft, Number(values.item), values.value ?? "");
+      saveDraft(root, next);
+      return shown(root, next, adapter);
+    } catch (error) {
+      return invalid(root, error);
+    }
+  };
+}
+async function sendMode(root, values, { adapter }) {
+  const draft = readDraft(root);
+  if (!draft)
+    return { ...NO_DRAFT, data_root: root };
+  return { data_root: root, ...await sendReport(root, draft, { nonce: values.nonce, adapter }) };
+}
+var MODES = {
+  "report-draft": draftMode,
+  "report-preview": previewMode,
+  "report-edit": changeMode(editItem),
+  "report-remove": changeMode((draft, item) => removeItem(draft, item)),
+  "report-send": sendMode,
+  "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root })
+};
+function reportModes({ skillsDir }) {
+  return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir })]));
+}
+
+// src/skills/chef-setup/scripts/lib/init-data-root.mjs
+import fs19 from "node:fs";
+import path18 from "node:path";
+var writeJson = (file, value) => fs19.writeFileSync(file, `${JSON.stringify(value)}
 `);
 function initDataRoot(root) {
   const existing = readSchemaVersion(root);
   if (existing !== null)
     return { status: "exists", data_root: root, schema_version: existing };
-  if (fs16.existsSync(root) && fs16.readdirSync(root).length > 0) {
+  if (fs19.existsSync(root) && fs19.readdirSync(root).length > 0) {
     return { status: "refused", data_root: root, reason: "directory is not empty and is not a Chef data root" };
   }
-  fs16.mkdirSync(root, { recursive: true });
+  fs19.mkdirSync(root, { recursive: true });
   git(root, ["init", "-q", "-b", "main"]);
-  fs16.writeFileSync(path16.join(root, ".gitignore"), `${SETTINGS_FILE}
+  fs19.writeFileSync(path18.join(root, ".gitignore"), `${SETTINGS_FILE}
 `);
-  writeJson(path16.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
-  writeJson(path16.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
+  writeJson(path18.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
+  writeJson(path18.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
   git(root, ["add", ".gitignore", SCHEMA_FILE]);
   commit(root, "chef-setup: create data root");
   return { status: "created", data_root: root, schema_version: SCHEMA_VERSION };
 }
 
 // src/skills/chef-health-goals/scripts/lib/goals.mjs
-import fs18 from "node:fs";
-import path18 from "node:path";
+import fs21 from "node:fs";
+import path20 from "node:path";
 
 // src/lib/notices.mjs
-import fs17 from "node:fs";
-import path17 from "node:path";
+import fs20 from "node:fs";
+import path19 from "node:path";
 var NOTICES_PATH = "data/notices.json";
 function readNotices(root) {
   try {
-    return JSON.parse(fs17.readFileSync(path17.join(root, NOTICES_PATH), "utf8"));
+    return JSON.parse(fs20.readFileSync(path19.join(root, NOTICES_PATH), "utf8"));
   } catch {
     return {};
   }
@@ -8506,12 +9324,12 @@ function noticeToRecord(root, key, date) {
 var GOALS_PATH = "data/health-goals/goals.json";
 var FIELDS = Object.keys(NUTRIENTS);
 function readGoal(root) {
-  const file = path18.join(root, GOALS_PATH);
-  if (!fs18.existsSync(file))
+  const file = path20.join(root, GOALS_PATH);
+  if (!fs21.existsSync(file))
     return { status: "dormant" };
   let stored;
   try {
-    stored = JSON.parse(fs18.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs21.readFileSync(file, "utf8"));
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
@@ -8567,8 +9385,8 @@ function changesFromFlags(values) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-ruleset.mjs
-import fs19 from "node:fs";
-import path19 from "node:path";
+import fs22 from "node:fs";
+import path21 from "node:path";
 var line = (m) => {
   const parts = [m.hard_constraints?.length && `must never eat ${m.hard_constraints.join(", ")}`, m.avoidances?.length && `avoids ${m.avoidances.join(", ")}`];
   return `- ${m.name}: ${parts.filter(Boolean).join("; ")}.`;
@@ -8609,7 +9427,7 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
     return refusal;
   const current = readRuleset(root);
   if (current.status === "unreadable" && !rewrite2) {
-    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs19.readFileSync(path19.join(root, RULESET_PATH), "utf8") };
+    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs22.readFileSync(path21.join(root, RULESET_PATH), "utf8") };
   }
   if (change.none && current.status === "declared") {
     return { status: "refused", data_root: root, reason: "dietary constraints are declared; remove them one member at a time instead" };
@@ -8639,12 +9457,12 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-settings.mjs
-import fs20 from "node:fs";
-import path20 from "node:path";
+import fs23 from "node:fs";
+import path22 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs20.existsSync(path20.join(root, ".git")))
+  if (!fs23.existsSync(path22.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -8654,14 +9472,14 @@ function isTracked(root) {
   }
 }
 function ensureIgnored(root) {
-  const file = path20.join(root, ".gitignore");
-  const content = fs20.existsSync(file) ? fs20.readFileSync(file, "utf8") : "";
+  const file = path22.join(root, ".gitignore");
+  const content = fs23.existsSync(file) ? fs23.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line2) => IGNORE_LINES.has(line2.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs20.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs23.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -8697,18 +9515,18 @@ function writeSettings(root, changes, { locale, rewrite: rewrite2 = false } = {}
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs20.writeFileSync(path20.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs23.writeFileSync(path22.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
-  const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
-  const side_effects = changed.map((key) => SIDE_EFFECTS[key]).filter(Boolean);
-  const recipients = changed.includes("household_recipients") && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
-  const traceOff = changed.includes("diagnostics") && saved.settings.diagnostics.trace === "off" && { trace_cleared: clearTrace(root) };
-  return { status: "saved", data_root: root, settings: saved.settings, changed, side_effects, ...recipients, ...traceOff };
+  const changed2 = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
+  const side_effects = changed2.map((key) => SIDE_EFFECTS[key]).filter(Boolean);
+  const recipients = changed2.includes("household_recipients") && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
+  const traceOff = changed2.includes("diagnostics") && saved.settings.diagnostics.trace === "off" && { trace_cleared: clearTrace(root) };
+  return { status: "saved", data_root: root, settings: saved.settings, changed: changed2, side_effects, ...recipients, ...traceOff };
 }
 
 // src/skills/chef-setup/scripts/setup.mjs
-var skillDir = path21.resolve(path21.dirname(fileURLToPath(import.meta.url)), "..");
+var skillDir = path23.resolve(path23.dirname(fileURLToPath(import.meta.url)), "..");
 var { values, positionals } = parseArgs({
   options: {
     "data-root": { type: "string" },
@@ -8719,7 +9537,8 @@ var { values, positionals } = parseArgs({
     member: { type: "string" },
     hard: { type: "string" },
     avoid: { type: "string" },
-    none: { type: "boolean" }
+    none: { type: "boolean" },
+    ...REPORT_FLAGS
   },
   allowPositionals: true
 });
@@ -8740,7 +9559,7 @@ function update(root) {
   try {
     return updateChef(root, {
       skillDir,
-      fixture: path21.join(skillDir, "fixture", "data-root"),
+      fixture: path23.join(skillDir, "fixture", "data-root"),
       confirm: values.confirm ?? false
     });
   } catch (error) {
@@ -8771,13 +9590,15 @@ function clearTraceMode(root) {
     return { ...NOT_A_ROOT, data_root: root };
   return { status: clearTrace(root) ? "cleared" : "empty", data_root: root };
 }
-var MODES = {
+var inDataRoot = (mode) => (root) => readSchemaVersion(root) === null ? { ...NOT_A_ROOT, data_root: root } : mode(root, values);
+var REPORT_MODES = Object.fromEntries(Object.entries(reportModes({ skillsDir: path23.dirname(skillDir) })).map(([name, mode]) => [name, inDataRoot(mode)]));
+var MODES2 = {
   init: (root) => initDataRoot(root),
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
   update,
-  verify: (root) => verifyInstall(root, { skillsDir: path21.dirname(skillDir), fixture: path21.join(skillDir, "fixture", "data-root") }),
+  verify: (root) => verifyInstall(root, { skillsDir: path23.dirname(skillDir), fixture: path23.join(skillDir, "fixture", "data-root") }),
   usda: () => checkUsda(usdaClient()),
   safety: () => ({ status: "ok", screen: SAFETY_SCREEN }),
   dietary,
@@ -8785,14 +9606,15 @@ var MODES = {
   schedule: scheduleProposal,
   "check-update": () => checkUpdate({ skillDir }),
   trace: showTraceMode,
-  "clear-trace": clearTraceMode
+  "clear-trace": clearTraceMode,
+  ...REPORT_MODES
 };
 var mode = positionals[0] ?? "init";
-if (!Object.hasOwn(MODES, mode)) {
-  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);
+if (!Object.hasOwn(MODES2, mode)) {
+  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES2).join(", ")}`);
   process.exit(64);
 }
-var result2 = await MODES[mode](resolveDataRoot({ flag: values["data-root"] }));
+var result2 = await MODES2[mode](resolveDataRoot({ flag: values["data-root"] }));
 console.log(JSON.stringify(result2));
 if (result2.status === "refused" || result2.status === "invalid-input")
   process.exitCode = 2;
