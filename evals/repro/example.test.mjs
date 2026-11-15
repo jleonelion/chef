@@ -48,3 +48,9 @@ test('a known_failure row that passes fails the run', () => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /example-seeded-units passed but is marked known_failure: example-seeded-units; remove the marker/);
 });
+
+test('a known_failure row that is broken, not failing a check, still fails the run', () => {
+  const result = tier1({ known_failure: row.repro, parse: 'yaml' });
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Unknown parse mode: yaml/);
+});

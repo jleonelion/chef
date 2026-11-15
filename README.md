@@ -106,7 +106,7 @@ in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with d
 asserts only (skills fired, files written or not, script output, git state). A row must pass
 every rep; failing rows get fixed or dropped, never retried. The result file
 (`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version and per-row pass
-counts) is attached to the release. `--rows <id,id>`, `--repro`, `--reps`, `--model` and `--out` narrow a run.
+counts) is attached to the release. `--rows <id,id>`, `--known-failures`, `--reps`, `--model` and `--out` narrow a run.
 
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
 synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per

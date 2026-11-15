@@ -8,8 +8,8 @@
 //   (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
 //   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
-//   a rep, and fails once every rep passes. --repro runs only rows carrying either field.
-//   bun run agentic [--reps 3] [--rows id,id] [--repro] [--model <id>] [--concurrency 4] [--out <file>]
+//   a rep, and fails once every rep passes. --known-failures runs only rows with that marker.
+//   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--model <id>] [--concurrency 4] [--out <file>]
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -126,7 +126,7 @@ const { values } = parseArgs({
   options: {
     reps: { type: 'string', default: '3' },
     rows: { type: 'string' },
-    repro: { type: 'boolean' },
+    'known-failures': { type: 'boolean' },
     model: { type: 'string' },
     concurrency: { type: 'string', default: '4' },
     out: { type: 'string' },
@@ -136,7 +136,7 @@ const reps = Number(values.reps);
 const allRows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
 const rows = allRows
   .filter((row) => !values.rows || values.rows.split(',').includes(row.id))
-  .filter((row) => !values.repro || row.repro || row.known_failure);
+  .filter((row) => !values['known-failures'] || row.known_failure);
 const info = meta();
 const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'results', `agentic-${info.commit.slice(0, 12)}.json`));
 const logDir = path.join(path.dirname(out), 'logs', path.basename(out, '.json'));

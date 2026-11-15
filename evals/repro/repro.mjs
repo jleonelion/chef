@@ -13,13 +13,16 @@ const validate = new Ajv2020({ allErrors: true }).compile(schema);
 const schemaErrors = (label, data) =>
   validate(data) ? [] : validate.errors.map((e) => `${label}: ${e.instancePath || '/'} ${e.message}${e.params?.missingProperty ? ` (${e.params.missingProperty})` : ''}`);
 
+// "tier1:<row id>" → {suite: 'tier1', ref: '<row id>'}; "docs:<path>" → {suite: 'docs', ref: '<path>'}.
+const parseTestRef = (test) => ({ suite: test.slice(0, test.indexOf(':')), ref: test.slice(test.indexOf(':') + 1) });
+
 // Case → test: the pointer resolves and the row carries repro: <case_id>.
 function caseLinkErrors(label, data, suites, exists) {
   const errors = [];
   const { fixture, test } = data.scenario;
   if (!exists(`fixtures/${fixture}`)) errors.push(`${label}: fixture fixtures/${fixture} not found`);
   if (!test) return errors;
-  const [suite, ref] = [test.slice(0, test.indexOf(':')), test.slice(test.indexOf(':') + 1)];
+  const { suite, ref } = parseTestRef(test);
   if (suite === 'docs') return exists(ref) ? errors : [...errors, `${label}: doc ${ref} not found`];
   if (!suites[suite]) return [...errors, `${label}: ${suite} suite not found`];
   const row = suites[suite].find((r) => r.id === ref);

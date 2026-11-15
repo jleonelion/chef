@@ -151,21 +151,25 @@ const { values } = parseArgs({
 const skillsDir = path.resolve(values['skills-dir'] ?? path.join(repo, 'plugins', 'chef', 'skills'));
 const fixture = path.resolve(values.fixture ?? path.join(repo, 'fixtures', 'data-root'));
 const cases = JSON.parse(fs.readFileSync(path.resolve(values.cases ?? path.join(here, 'cases.json')), 'utf8'));
-const known = [];
+const knownFailures = [];
 for (const testCase of cases) {
-  const run = runCase(testCase, skillsDir, fixture, { skipPdfFiles: values['skip-pdf-files'] });
+  const options = { skipPdfFiles: values['skip-pdf-files'] };
   if (!testCase.known_failure) {
-    await run;
+    await runCase(testCase, skillsDir, fixture, options);
     console.log(`ok - ${testCase.id}`);
     continue;
   }
-  const error = await run.then(() => undefined, (failure) => failure);
-  if (!error) {
-    console.error(`error: ${testCase.id} passed but is marked known_failure: ${testCase.known_failure}; remove the marker`);
-    process.exit(1);
+  try {
+    await runCase(testCase, skillsDir, fixture, options);
+  } catch (error) {
+    // Only a failed check reproduces the case; a broken row (bad JSON, unknown parse mode) still fails.
+    if (!(error instanceof assert.AssertionError)) throw error;
+    knownFailures.push(testCase.id);
+    console.log(`known failure - ${testCase.id} (repro ${testCase.known_failure}): ${error.message.split('\n')[0]}`);
+    continue;
   }
-  known.push(testCase.id);
-  console.log(`known failure - ${testCase.id} (repro ${testCase.known_failure}): ${error.message.split('\n')[0]}`);
+  console.error(`error: ${testCase.id} passed but is marked known_failure: ${testCase.known_failure}; remove the marker`);
+  process.exit(1);
 }
-const passed = cases.length - known.length;
-console.log(`Tier 1 deterministic evals passed: ${passed}/${passed}${known.length ? `; known failures: ${known.length}` : ''}`);
+const passed = cases.length - knownFailures.length;
+console.log(`Tier 1 deterministic evals passed: ${passed}/${passed}${knownFailures.length ? `; known failures: ${knownFailures.length}` : ''}`);

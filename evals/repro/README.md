@@ -24,17 +24,18 @@ fixture differs from `scenario.fixture`.
 ## Landing a case before its fix
 
 Mark the row `known_failure: <case_id>` (same value as `repro`). tier1 then reports the row
-without failing CI and fails if it passes, so the fix PR drops the marker. An agentic
+without failing CI when one of its checks fails, and fails if it passes, so the fix PR drops the
+marker. A broken row (bad output, unknown parse mode) still fails. An agentic
 `known_failure` row passes the suite while it fails at least one rep. The lint fails a marker
-more than 60 days after the case's `created_on`. Agentic repro and `known_failure` rows run in
-`RELEASE-CHECKLIST.md` with `bun run agentic --repro --reps 5`, since the agentic suite never
-runs in CI.
+more than 60 days after the case's `created_on`. The agentic suite never runs in CI, so
+`RELEASE-CHECKLIST.md` covers agentic repro rows: fixed ones pass 3/3 in the full run, and
+`bun run agentic --known-failures --reps 5` confirms each marked row still fails a rep.
 
 ## Privacy
 
 The lint runs the PII pattern scan (`src/lib/pii-scan.mjs`: email, URL, phone, street address,
 home-directory path, long digit runs) over every case, every tier1 and agentic seed, and
-`fixtures/`. Only reserved example domains (`example.com`) and schema vocabularies pass.
+`fixtures/`. Only reserved example domains (`example.com`, `.org`, `.net`) and schema vocabularies pass.
 Findings name the file, line and rule, never the matched text.
 
 `testdata/` holds the synthetic example case and row that `example.test.mjs` runs end to end.

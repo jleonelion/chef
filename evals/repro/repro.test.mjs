@@ -17,9 +17,9 @@ const validCase = () => ({
   reviewers: { maintainer: 'chef-maintainer', overlap_review: 'pass' },
 });
 
-const lint = ({ cases = [validCase()], tier1 = [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }], agentic = [], today = '2026-11-15', exists = () => true } = {}) =>
+const lint = ({ file, cases = [validCase()], tier1 = [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }], agentic = [], today = '2026-11-15', exists = () => true } = {}) =>
   lintRepro({
-    cases: cases.map((data) => ({ file: `${data.case_id}.json`, data, text: JSON.stringify(data, null, 2) })),
+    cases: cases.map((data) => ({ file: file ?? `${data.case_id}.json`, data, text: JSON.stringify(data, null, 2) })),
     suites: { tier1, agentic },
     today,
     exists,
@@ -43,8 +43,7 @@ test('target and test pointer must agree', () => {
 });
 
 test('the file name must be the case_id', () => {
-  const errors = lintRepro({ cases: [{ file: 'other.json', data: validCase(), text: '{}' }], suites: { tier1: [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }], agentic: [] }, today: '2026-11-15', exists: () => true });
-  assert.deepEqual(errors, ['evals/repro/other.json: file name must be settings-units-ignored.json']);
+  assert.deepEqual(lint({ file: 'other.json' }), ['evals/repro/other.json: file name must be settings-units-ignored.json']);
 });
 
 test('a case pointing at a missing row, or a row without its repro, fails', () => {
@@ -58,7 +57,7 @@ test('a row whose repro names a missing case, or a case pointing elsewhere, fail
   assert.deepEqual(lint({ cases: [], tier1: [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }] }), [
     'tier1 row settings-units-ignored: repro case settings-units-ignored not found in evals/repro',
   ]);
-  const other = { ...validCase(), scenario: { fixture: 'data-root', test: 'agentic:plan-week' } , target: 'agentic-eval' };
+  const other = { ...validCase(), scenario: { fixture: 'data-root', test: 'agentic:plan-week' }, target: 'agentic-eval' };
   assert.deepEqual(lint({ cases: [other], tier1: [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }], agentic: [{ id: 'plan-week', repro: 'settings-units-ignored' }] }), [
     'tier1 row settings-units-ignored: repro case settings-units-ignored points at agentic:plan-week',
   ]);
