@@ -233,15 +233,15 @@
         "parse": "json",
         "assertions": [
           { "path": "$.entries.length", "equals": 3 },
-          { "path": "$.entries[?(@.slot=='breakfast')].recipe", "equals": "chickpea-spinach-stew" },
-          { "path": "$.entries[?(@.slot=='breakfast')].servings", "equals": 1 },
-          { "path": "$.entries[?(@.slot=='breakfast')].cooked", "equals": true },
-          { "path": "$.entries[?(@.slot=='lunch')].recipe", "equals": "lemon-garlic-pasta" },
-          { "path": "$.entries[?(@.slot=='lunch')].servings", "equals": 1 },
-          { "path": "$.entries[?(@.slot=='lunch')].cooked", "equals": false },
-          { "path": "$.entries[?(@.slot=='dinner')].recipe", "equals": "chickpea-spinach-stew" },
-          { "path": "$.entries[?(@.slot=='dinner')].servings", "equals": 2 },
-          { "path": "$.entries[?(@.slot=='dinner')].cooked", "equals": true }
+          { "path": "$.entries.[?(@slot=='breakfast')].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries.[?(@slot=='breakfast')].servings", "equals": 1 },
+          { "path": "$.entries.[?(@slot=='breakfast')].cooked", "equals": true },
+          { "path": "$.entries.[?(@slot=='lunch')].recipe", "equals": "lemon-garlic-pasta" },
+          { "path": "$.entries.[?(@slot=='lunch')].servings", "equals": 1 },
+          { "path": "$.entries.[?(@slot=='lunch')].cooked", "equals": false },
+          { "path": "$.entries.[?(@slot=='dinner')].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries.[?(@slot=='dinner')].servings", "equals": 2 },
+          { "path": "$.entries.[?(@slot=='dinner')].cooked", "equals": true }
         ]
       }
     ],
