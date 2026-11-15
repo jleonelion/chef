@@ -60,6 +60,10 @@ _Avoid_: fixture copy, test from report
 A public GitHub issue a maintainer writes about what a feedback report describes; holds none of the report's content and identifies neither the report nor its reporter.
 _Avoid_: exported report, issue from report
 
+**Overlap review**:
+The check, run inside feedback intake, that a reproduction case or sanitized issue repeats none of its feedback report's text; answers only pass or fail, so the report never leaves feedback intake.
+_Avoid_: similarity check, PII review
+
 **Evidence gap**:
 A named kind of fact Chef could not observe for a report, such as what happened before a script started; means "not observed", never "did not happen".
 _Avoid_: missing data, null
