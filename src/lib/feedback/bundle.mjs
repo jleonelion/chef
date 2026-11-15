@@ -15,12 +15,17 @@ const OS_FAMILIES = { darwin: 'macos', linux: 'linux', win32: 'windows' };
 // Chef observes only its own scripts, never the agent or host around them.
 const ALWAYS_UNOBSERVED = ['pre_launch_unobserved', 'host_action_unconfirmed', 'post_return_unobserved'];
 
-// Runs in the last hour (of one skill, when named), newest MAX_EVENTS, oldest first. The
-// last-10-runs fallback and its preview flag belong to the class flows (#77).
-export function selectEvents(events, { now, skill } = {}) {
-  return events
-    .filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (!skill || event.skill_id === skill))
+const FALLBACK_EVENTS = 10;
+
+// Runs of the named skill (of every skill when `wide` or none is named) in the last hour, newest
+// MAX_EVENTS, oldest first. With none there, the last FALLBACK_EVENTS runs of any skill, and
+// `fallback` says so for the preview.
+export function selectEvents(events, { now, skill, wide = false }) {
+  const inWindow = events
+    .filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (wide || !skill || event.skill_id === skill))
     .slice(-MAX_EVENTS);
+  if (inWindow.length || !events.length) return { events: inWindow, fallback: false };
+  return { events: events.slice(-FALLBACK_EVENTS), fallback: true };
 }
 
 // Chef skills installed beside each other. Muse custom skills use underscores (chef_setup).

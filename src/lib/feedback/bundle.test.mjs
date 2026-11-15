@@ -69,13 +69,33 @@ test('what Chef cannot observe becomes evidence gaps', () => {
   assert.deepEqual(diagnosticBundleProblems(off), []);
 });
 
-test('selection keeps runs from the last 60 minutes, newest 50, optionally of one skill', () => {
+const idsOf = ({ events }) => events.map((e) => e.invocation_id);
+const at = (started_at, skill_id = 'chef-recipe-search') => ({ ...trace[2], started_at, skill_id });
+
+test('selection keeps runs of the named skill from the last 60 minutes, newest 50', () => {
   const now = new Date('2026-11-15T10:59:00.000Z');
-  assert.deepEqual(selectEvents(trace, { now }).map((e) => e.invocation_id), [ids[1], ids[2]]);
-  assert.deepEqual(selectEvents(trace, { now, skill: 'chef-meal-planning' }), []);
-  const many = Array.from({ length: 60 }, (_, i) => ({ ...trace[2], started_at: `2026-11-15T10:${String(i % 60).padStart(2, '0')}:00.000Z` }));
-  assert.equal(selectEvents(many, { now }).length, 50);
-  assert.equal(selectEvents(many, { now }).at(-1).started_at, '2026-11-15T10:59:00.000Z');
+  assert.deepEqual(selectEvents(trace, { now }), { events: [trace[1], trace[2]], fallback: false });
+  assert.deepEqual(idsOf(selectEvents(trace, { now, skill: 'chef-recipe-search' })), [ids[1], ids[2]]);
+  const many = Array.from({ length: 60 }, (_, i) => at(`2026-11-15T10:${String(i).padStart(2, '0')}:00.000Z`));
+  const { events } = selectEvents(many, { now });
+  assert.equal(events.length, 50);
+  assert.equal(events.at(-1).started_at, '2026-11-15T10:59:00.000Z');
+});
+
+test('with no runs of the skill in the window, selection falls back to the last 10 runs of any skill', () => {
+  const now = new Date('2026-11-15T12:00:00.000Z');
+  const old = Array.from({ length: 12 }, (_, i) => at(`2026-11-15T08:${String(i).padStart(2, '0')}:00.000Z`, 'chef-meal-planning'));
+  const recent = [at('2026-11-15T11:30:00.000Z', 'chef-shopping-lists')];
+  const { events, fallback } = selectEvents([...old, ...recent], { now, skill: 'chef-recipe-search' });
+  assert.equal(fallback, true);
+  assert.deepEqual(events, [...old.slice(-9), ...recent]);
+  assert.deepEqual(selectEvents([], { now, skill: 'chef-recipe-search' }), { events: [], fallback: false });
+});
+
+test('widened selection keeps runs of every skill in the window', () => {
+  const now = new Date('2026-11-15T12:00:00.000Z');
+  const runs = [at('2026-11-15T10:30:00.000Z'), at('2026-11-15T11:10:00.000Z', 'chef-meal-planning'), at('2026-11-15T11:20:00.000Z')];
+  assert.deepEqual(selectEvents(runs, { now, skill: 'chef-recipe-search', wide: true }), { events: runs.slice(1), fallback: false });
 });
 
 test('installed skills are the chef skills next to this one, with hyphenated IDs', () => {
