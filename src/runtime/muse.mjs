@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { DELIVERY_TASKS } from '../lib/recurring-tasks.mjs';
+import { unsupported } from './generic.mjs';
 
 const LOCALE_VARS = ['LC_ALL', 'LC_MEASUREMENT', 'LANG'];
 const isUsable = (value) => Boolean(value) && value !== 'C' && value !== 'POSIX' && !value.startsWith('C.');
@@ -82,7 +83,7 @@ export const muse = {
   // No submit capability until the Chef feedback connector lands; reports are saved locally.
   feedback: {
     capabilities: () => [],
-    submit: async () => ({ ok: false, reason: 'unsupported' }),
+    submit: unsupported,
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   // Household delivery: a payload for the user's Gmail connector. Scripts never send email.

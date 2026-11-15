@@ -11,6 +11,9 @@ export const ADAPTER_CONTRACT_VERSION = 1;
 // Muse is the only runtime Chef identifies; anything else is generic, never assumed to be Muse.
 export const currentRuntime = ({ exists = fs.existsSync } = {}) => (muse.isMuse({ exists }) ? muse : generic);
 
+// True when the adapter can do some `<prefix>.*` thing right now, e.g. hasCapability(a, 'submit').
+export const hasCapability = (adapter, prefix) => adapter.feedback.capabilities().some((name) => name.startsWith(`${prefix}.`));
+
 // Returns the adapter, or throws when core cannot trust it.
 export function checkAdapter(adapter) {
   const major = adapter.adapterContractVersion;

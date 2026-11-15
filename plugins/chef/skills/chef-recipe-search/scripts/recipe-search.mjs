@@ -7007,6 +7007,18 @@ var recurring_tasks_default = [
 var RECURRING_TASKS = recurring_tasks_default;
 var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
+};
+
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
@@ -7069,7 +7081,7 @@ var muse = {
   adapterContractVersion: 1,
   feedback: {
     capabilities: () => [],
-    submit: async () => ({ ok: false, reason: "unsupported" })
+    submit: unsupported
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
@@ -7152,7 +7164,7 @@ var facts_v1_default = {
 // plugins/chef/.claude-plugin/plugin.json
 var plugin_default = {
   name: "chef",
-  version: "1.1.0",
+  version: "1.2.0",
   description: "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
   author: { name: "jleonelion" },
   repository: "https://github.com/jleonelion/chef",
@@ -7161,19 +7173,6 @@ var plugin_default = {
 
 // src/runtime/contract.mjs
 import fs2 from "node:fs";
-// src/runtime/generic.mjs
-var unsupported = async () => ({ ok: false, reason: "unsupported" });
-var generic = {
-  name: "unknown",
-  adapterVersion: 1,
-  adapterContractVersion: 1,
-  feedback: {
-    capabilities: () => [],
-    submit: unsupported
-  }
-};
-
-// src/runtime/contract.mjs
 var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
 
 // src/lib/schema.mjs
@@ -7343,12 +7342,13 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
   }
   return kept;
 }
-function rewrite(file, events) {
+function writePrivate(file, text) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs5.writeFileSync(temp, events.map(lineOf).join(""), PRIVATE_FILE);
+  fs5.writeFileSync(temp, text, PRIVATE_FILE);
   fs5.chmodSync(temp, 384);
   fs5.renameSync(temp, file);
 }
+var rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(""));
 function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   ensureDiagnosticsDir(root);
   const file = path5.join(root, TRACE_FILE);

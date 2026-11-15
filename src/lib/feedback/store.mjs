@@ -1,21 +1,13 @@
 // Local feedback files under the data root's diagnostics/ folder (git-ignored, 0700): the one
-// report draft in progress and the outbox of approved reports this runtime could not send.
+// report draft in progress and the feedback outbox of approved reports this runtime could not send.
 // Both expire like the invocation trace, checked lazily whenever they are read or written.
 import fs from 'node:fs';
 import path from 'node:path';
-import { DIAGNOSTICS_DIR, ensureDiagnosticsDir, TRACE_BOUNDS } from '../diagnostics/trace.mjs';
+import { DIAGNOSTICS_DIR, ensureDiagnosticsDir, TRACE_BOUNDS, writePrivate } from '../diagnostics/trace.mjs';
 
 export const DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 export const OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
-const PRIVATE_FILE = { mode: 0o600 };
 const expired = (file, now) => now - fs.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
-
-function writePrivate(file, text) {
-  const temp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temp, text, PRIVATE_FILE);
-  fs.chmodSync(temp, 0o600);
-  fs.renameSync(temp, file);
-}
 
 function pruneOutbox(root, now) {
   const dir = path.join(root, OUTBOX_DIR);

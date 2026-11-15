@@ -110,6 +110,6 @@
         "facts": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/facts" }
       }
     },
-    "key": { "description": "Per-bundle invocation key.", "type": "string", "pattern": "^inv-[1-9][0-9]{0,2}$" }
+    "key": { "description": "Per-bundle invocation key. A parent_id is kept only when the parent run is in the same bundle; a key outside it would link the bundle to the trace.", "type": "string", "pattern": "^inv-[1-9][0-9]{0,2}$" }
   }
 }

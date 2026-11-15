@@ -14,7 +14,7 @@ const GAPS = {
   post_return_unobserved: 'what happened after a script returned',
   runtime_extension_unavailable: 'evidence from the runtime itself',
   correlation_unavailable: 'which conversation turn each run belonged to',
-  trace_unavailable: 'Chef script runs (the invocation trace is off or unreadable)',
+  trace_unavailable: 'Chef script runs (the invocation trace is off)',
 };
 const RULE_NAMES = {
   email: 'an email address',
@@ -71,13 +71,20 @@ export function renderPreview({ report, numbers }) {
   ].join('\n');
 }
 
-function place(root, id, value) {
+// Where an item id points: its parent node and either a key or an array element.
+// `diagnostic_bundle.events[inv-2]` -> { parent: bundle, key: 'events', element: 'inv-2' }.
+export function locate(root, id) {
   const segments = id.split('.');
   const last = segments.pop();
   const parent = segments.reduce((node, key) => node[key], root);
-  const element = /^([a-z_]+)\[[^\]]+\]$/.exec(last);
-  if (element) parent[element[1]].push(value);
-  else parent[last] = value;
+  const element = /^([a-z_]+)\[([^\]]+)\]$/.exec(last);
+  return element ? { parent, key: element[1], element: element[2] } : { parent, key: last };
+}
+
+function place(root, id, value) {
+  const { parent, key, element } = locate(root, id);
+  if (element) parent[key].push(value);
+  else parent[key] = value;
 }
 
 // The exact payload bytes a preview shows.

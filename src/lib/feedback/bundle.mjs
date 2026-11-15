@@ -5,16 +5,18 @@ import fs from 'node:fs';
 import path from 'node:path';
 import SCHEMA from '../../../schemas/feedback/diagnostic-bundle.v1.json' with { type: 'json' };
 import PLUGIN from '../../../plugins/chef/.claude-plugin/plugin.json' with { type: 'json' };
+import { hasCapability } from '../../runtime/contract.mjs';
 
 export const BUNDLE_SCHEMA_VERSION = 1;
 export const MAX_EVENTS = SCHEMA.properties.events.maxItems;
-const WINDOW_MS = 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
+const WINDOW_MS = HOUR_MS;
 const OS_FAMILIES = { darwin: 'macos', linux: 'linux', win32: 'windows' };
 // Chef observes only its own scripts, never the agent or host around them.
 const ALWAYS_UNOBSERVED = ['pre_launch_unobserved', 'host_action_unconfirmed', 'post_return_unobserved'];
 
-// Runs in the last hour (of one skill, when named), newest MAX_EVENTS, oldest first.
+// Runs in the last hour (of one skill, when named), newest MAX_EVENTS, oldest first. The
+// last-10-runs fallback and its preview flag belong to the class flows (#77).
 export function selectEvents(events, { now, skill } = {}) {
   return events
     .filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (!skill || event.skill_id === skill))
@@ -48,9 +50,9 @@ function rekey(events) {
   return { anchor, events: rekeyed };
 }
 
-function evidenceGaps(capabilities, traceOn) {
+function evidenceGaps(adapter, traceOn) {
   const gaps = [...ALWAYS_UNOBSERVED];
-  if (!capabilities.some((name) => name.startsWith('evidence.'))) gaps.push('runtime_extension_unavailable');
+  if (!hasCapability(adapter, 'evidence')) gaps.push('runtime_extension_unavailable');
   gaps.push('correlation_unavailable');
   if (!traceOn) gaps.push('trace_unavailable');
   return gaps;
@@ -70,7 +72,7 @@ export function buildBundle({ events, adapter, traceOn, skills, now = new Date()
       os_family: OS_FAMILIES[platform] ?? 'other',
     },
     events: rekeyed,
-    evidence_gaps: evidenceGaps(capabilities, traceOn),
+    evidence_gaps: evidenceGaps(adapter, traceOn),
     runtime_evidence: [],
   };
 }

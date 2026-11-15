@@ -4,7 +4,7 @@
 // new submission_nonce, so a preview the user saw before the change can never be sent.
 import { randomUUID } from 'node:crypto';
 import SCHEMA from '../../../schemas/feedback/feedback-report.v1.json' with { type: 'json' };
-import { itemsOf, TEXT_FIELDS } from './preview.mjs';
+import { itemsOf, locate, TEXT_FIELDS } from './preview.mjs';
 
 export const REPORT_SCHEMA_VERSION = 1;
 export const MAX_BYTES = SCHEMA['x-max-bytes'];
@@ -17,6 +17,7 @@ const REMOVABLE = [/^skill_ids$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.en
 const EDITABLE = new Set([...TEXT_FIELDS, 'frequency', 'skill_ids']);
 
 export const serialize = (report) => JSON.stringify(report);
+export const splitSkillIds = (raw = '') => raw.split(',').map((id) => id.trim()).filter(Boolean);
 
 function textProblem(field, value) {
   if (typeof value !== 'string' || value.trim() === '') return `${field}: required`;
@@ -66,12 +67,9 @@ function itemId({ report, numbers }, number) {
 const changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID() }) });
 
 function withoutItem(report, id) {
-  const segments = id.split('.');
-  const last = segments.pop();
-  const parent = segments.reduce((node, key) => node[key], report);
-  const element = /^([a-z_]+)\[([^\]]+)\]$/.exec(last);
-  if (element) parent[element[1]] = parent[element[1]].filter((entry) => entry.invocation_id !== element[2]);
-  else delete parent[last];
+  const { parent, key, element } = locate(report, id);
+  if (element) parent[key] = parent[key].filter((entry) => entry.invocation_id !== element);
+  else delete parent[key];
 }
 
 export function removeItem(draft, number) {
@@ -90,6 +88,6 @@ export function removeItem(draft, number) {
 export function editItem(draft, number, value) {
   const id = itemId(draft, number);
   if (!EDITABLE.has(id)) throw new Error(`item ${number} (${id}) cannot be edited`);
-  const parsed = id === 'skill_ids' ? value.split(',').map((skill) => skill.trim()).filter(Boolean) : value;
+  const parsed = id === 'skill_ids' ? splitSkillIds(value) : value;
   return changed(draft, { ...draft.report, [id]: parsed });
 }

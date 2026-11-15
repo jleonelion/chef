@@ -133,7 +133,9 @@ test('oversized text is refused by the same limits feedback intake uses', () => 
 
 test('an oversized payload is refused at the schema byte limit', () => {
   const { report } = defect();
-  const big = { ...report, diagnostic_bundle: { ...report.diagnostic_bundle, events: Array(50).fill(report.diagnostic_bundle.events[0]).map((e, i) => ({ ...e, invocation_id: `inv-${i + 1}`, facts: Object.fromEntries(Array.from({ length: 16 }, (_, j) => [`f${j}`.padEnd(64, 'x'), 'v'.repeat(64)])) })) } };
+  const wideFacts = Object.fromEntries(Array.from({ length: 16 }, (_, j) => [`f${j}`.padEnd(64, 'x'), 'v'.repeat(64)]));
+  const events = Array.from({ length: 50 }, (_, i) => ({ ...report.diagnostic_bundle.events[0], invocation_id: `inv-${i + 1}`, facts: wideFacts }));
+  const big = { ...report, diagnostic_bundle: { ...report.diagnostic_bundle, events } };
   assert.ok(Buffer.byteLength(JSON.stringify(big)) > 65536);
   assert.match(feedbackReportProblems(big).join('\n'), /over 65536/);
   assert.throws(() => newDraft({ class: 'defect', summary: 's', expected: 'e', actual: 'a', frequency: 'once', bundle: big.diagnostic_bundle }), /over 65536 bytes/);

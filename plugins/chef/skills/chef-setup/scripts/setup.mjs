@@ -7009,6 +7009,18 @@ var recurring_tasks_default = [
 var RECURRING_TASKS = recurring_tasks_default;
 var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
+};
+
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
@@ -7071,7 +7083,7 @@ var muse = {
   adapterContractVersion: 1,
   feedback: {
     capabilities: () => [],
-    submit: async () => ({ ok: false, reason: "unsupported" })
+    submit: unsupported
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
@@ -7127,7 +7139,7 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
 // plugins/chef/.claude-plugin/plugin.json
 var plugin_default = {
   name: "chef",
-  version: "1.1.0",
+  version: "1.2.0",
   description: "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
   author: { name: "jleonelion" },
   repository: "https://github.com/jleonelion/chef",
@@ -7148,21 +7160,10 @@ var capabilities_v1_default = {
   evidence_kinds: {}
 };
 
-// src/runtime/generic.mjs
-var unsupported = async () => ({ ok: false, reason: "unsupported" });
-var generic = {
-  name: "unknown",
-  adapterVersion: 1,
-  adapterContractVersion: 1,
-  feedback: {
-    capabilities: () => [],
-    submit: unsupported
-  }
-};
-
 // src/runtime/contract.mjs
 var ADAPTER_CONTRACT_VERSION = 1;
 var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
+var hasCapability = (adapter, prefix) => adapter.feedback.capabilities().some((name) => name.startsWith(`${prefix}.`));
 function checkAdapter(adapter) {
   const major = adapter.adapterContractVersion;
   if (major !== ADAPTER_CONTRACT_VERSION)
@@ -7367,12 +7368,13 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
   }
   return kept;
 }
-function rewrite(file, events) {
+function writePrivate(file, text) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs5.writeFileSync(temp, events.map(lineOf).join(""), PRIVATE_FILE);
+  fs5.writeFileSync(temp, text, PRIVATE_FILE);
   fs5.chmodSync(temp, 384);
   fs5.renameSync(temp, file);
 }
+var rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(""));
 function readTrace(root, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   const file = path5.join(root, TRACE_FILE);
   const stored = storedEvents(file);
@@ -8637,15 +8639,15 @@ var diagnostic_bundle_v1_default = {
         facts: { $ref: "urn:chef:feedback:invocation-event:v1#/properties/facts" }
       }
     },
-    key: { description: "Per-bundle invocation key.", type: "string", pattern: "^inv-[1-9][0-9]{0,2}$" }
+    key: { description: "Per-bundle invocation key. A parent_id is kept only when the parent run is in the same bundle; a key outside it would link the bundle to the trace.", type: "string", pattern: "^inv-[1-9][0-9]{0,2}$" }
   }
 };
 
 // src/lib/feedback/bundle.mjs
 var BUNDLE_SCHEMA_VERSION = 1;
 var MAX_EVENTS = diagnostic_bundle_v1_default.properties.events.maxItems;
-var WINDOW_MS = 60 * 60 * 1000;
 var HOUR_MS = 60 * 60 * 1000;
+var WINDOW_MS = HOUR_MS;
 var OS_FAMILIES = { darwin: "macos", linux: "linux", win32: "windows" };
 var ALWAYS_UNOBSERVED = ["pre_launch_unobserved", "host_action_unconfirmed", "post_return_unobserved"];
 function selectEvents(events, { now, skill } = {}) {
@@ -8671,9 +8673,9 @@ function rekey(events) {
   }));
   return { anchor, events: rekeyed };
 }
-function evidenceGaps(capabilities, traceOn) {
+function evidenceGaps(adapter, traceOn) {
   const gaps = [...ALWAYS_UNOBSERVED];
-  if (!capabilities.some((name) => name.startsWith("evidence.")))
+  if (!hasCapability(adapter, "evidence"))
     gaps.push("runtime_extension_unavailable");
   gaps.push("correlation_unavailable");
   if (!traceOn)
@@ -8694,7 +8696,7 @@ function buildBundle({ events, adapter, traceOn, skills, now = new Date, engine 
       os_family: OS_FAMILIES[platform] ?? "other"
     },
     events: rekeyed,
-    evidence_gaps: evidenceGaps(capabilities, traceOn),
+    evidence_gaps: evidenceGaps(adapter, traceOn),
     runtime_evidence: []
   };
 }
@@ -8739,7 +8741,7 @@ var GAPS = {
   post_return_unobserved: "what happened after a script returned",
   runtime_extension_unavailable: "evidence from the runtime itself",
   correlation_unavailable: "which conversation turn each run belonged to",
-  trace_unavailable: "Chef script runs (the invocation trace is off or unreadable)"
+  trace_unavailable: "Chef script runs (the invocation trace is off)"
 };
 var RULE_NAMES = {
   email: "an email address",
@@ -8794,15 +8796,19 @@ function renderPreview({ report, numbers }) {
   ].join(`
 `);
 }
-function place(root, id, value) {
+function locate(root, id) {
   const segments = id.split(".");
   const last = segments.pop();
   const parent = segments.reduce((node, key) => node[key], root);
-  const element = /^([a-z_]+)\[[^\]]+\]$/.exec(last);
+  const element = /^([a-z_]+)\[([^\]]+)\]$/.exec(last);
+  return element ? { parent, key: element[1], element: element[2] } : { parent, key: last };
+}
+function place(root, id, value) {
+  const { parent, key, element } = locate(root, id);
   if (element)
-    parent[element[1]].push(value);
+    parent[key].push(value);
   else
-    parent[last] = value;
+    parent[key] = value;
 }
 function bytesFromPreview(text) {
   const root = {};
@@ -9039,6 +9045,7 @@ var SKILL_ID = /^chef-[a-z0-9-]+$/;
 var REMOVABLE = [/^skill_ids$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
 var EDITABLE = new Set([...TEXT_FIELDS, "frequency", "skill_ids"]);
 var serialize = (report) => JSON.stringify(report);
+var splitSkillIds = (raw = "") => raw.split(",").map((id) => id.trim()).filter(Boolean);
 function textProblem(field, value) {
   if (typeof value !== "string" || value.trim() === "")
     return `${field}: required`;
@@ -9089,14 +9096,11 @@ function itemId({ report, numbers }, number) {
 }
 var changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID() }) });
 function withoutItem(report, id) {
-  const segments = id.split(".");
-  const last = segments.pop();
-  const parent = segments.reduce((node, key) => node[key], report);
-  const element = /^([a-z_]+)\[([^\]]+)\]$/.exec(last);
+  const { parent, key, element } = locate(report, id);
   if (element)
-    parent[element[1]] = parent[element[1]].filter((entry) => entry.invocation_id !== element[2]);
+    parent[key] = parent[key].filter((entry) => entry.invocation_id !== element);
   else
-    delete parent[last];
+    delete parent[key];
 }
 function removeItem(draft, number) {
   const id = itemId(draft, number);
@@ -9113,7 +9117,7 @@ function editItem(draft, number, value) {
   const id = itemId(draft, number);
   if (!EDITABLE.has(id))
     throw new Error(`item ${number} (${id}) cannot be edited`);
-  const parsed = id === "skill_ids" ? value.split(",").map((skill) => skill.trim()).filter(Boolean) : value;
+  const parsed = id === "skill_ids" ? splitSkillIds(value) : value;
   return changed(draft, { ...draft.report, [id]: parsed });
 }
 
@@ -9122,14 +9126,7 @@ import fs18 from "node:fs";
 import path17 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
-var PRIVATE_FILE2 = { mode: 384 };
 var expired = (file, now) => now - fs18.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
-function writePrivate(file, text) {
-  const temp = `${file}.${process.pid}.tmp`;
-  fs18.writeFileSync(temp, text, PRIVATE_FILE2);
-  fs18.chmodSync(temp, 384);
-  fs18.renameSync(temp, file);
-}
 function pruneOutbox(root, now) {
   const dir = path17.join(root, OUTBOX_DIR);
   if (!fs18.existsSync(dir))
@@ -9180,8 +9177,8 @@ function saveToOutbox(root, bytes, { nonce, now = new Date }) {
 // src/lib/feedback/send.mjs
 var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
-var canSend = (adapter) => adapter.feedback.capabilities().some((name) => name.startsWith("submit."));
-async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
+var canSend = (adapter) => hasCapability(adapter, "submit");
+function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
   checkAdapter(adapter);
   if (nonce !== draft.report.submission_nonce) {
     return { status: "refused", reason: "the report changed since that preview; show the current preview and ask again" };
@@ -9200,13 +9197,28 @@ async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now 
 }
 
 // src/skills/chef-setup/scripts/lib/report-modes.mjs
-var REPORT_FLAGS = Object.fromEntries(["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "skill-ids", "diagnostics", "item", "value", "nonce"].map((flag) => [flag, { type: "string" }]));
-REPORT_FLAGS.raw = { type: "boolean" };
+var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior"];
+var REPORT_FLAGS = {
+  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce"].map((flag) => [flag, { type: "string" }])),
+  raw: { type: "boolean" }
+};
 var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
 var invalid = (root, error) => ({ status: "invalid-input", data_root: root, problems: error.problems ?? [error.message] });
 function shown(root, draft, adapter) {
-  return { status: "draft", data_root: root, preview: renderPreview(draft), submission_nonce: draft.report.submission_nonce, can_send: canSend(adapter), ...canSend(adapter) ? {} : { send_notice: SAVE_ONLY } };
+  const sendable = canSend(adapter);
+  return {
+    status: "draft",
+    data_root: root,
+    preview: renderPreview(draft),
+    submission_nonce: draft.report.submission_nonce,
+    can_send: sendable,
+    ...sendable ? {} : { send_notice: SAVE_ONLY }
+  };
 }
+var withDraft = (mode) => (root, values, context) => {
+  const draft = readDraft(root);
+  return draft ? mode(root, draft, values, context) : { ...NO_DRAFT, data_root: root };
+};
 function bundleFor(root, values, skillIds, { adapter, skillsDir }) {
   if ((values.diagnostics ?? (values.class === "defect" ? "on" : "off")) !== "on")
     return;
@@ -9216,7 +9228,7 @@ function bundleFor(root, values, skillIds, { adapter, skillsDir }) {
   return buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
 }
 function draftMode(root, values, context) {
-  const skillIds = values["skill-ids"]?.split(",").map((id) => id.trim()).filter(Boolean) ?? [];
+  const skillIds = splitSkillIds(values["skill-ids"]);
   try {
     const draft = newDraft({
       class: values.class,
@@ -9236,42 +9248,30 @@ function draftMode(root, values, context) {
     return invalid(root, error);
   }
 }
-function previewMode(root, values, { adapter }) {
-  const draft = readDraft(root);
-  if (!draft)
-    return { ...NO_DRAFT, data_root: root };
+function previewMode(root, draft, values, { adapter }) {
   return values.raw ? { status: "draft", data_root: root, raw: serialize(draft.report) } : shown(root, draft, adapter);
 }
-function changeMode(change) {
-  return (root, values, { adapter }) => {
-    const draft = readDraft(root);
-    if (!draft)
-      return { ...NO_DRAFT, data_root: root };
-    try {
-      const next = change(draft, Number(values.item), values.value ?? "");
-      saveDraft(root, next);
-      return shown(root, next, adapter);
-    } catch (error) {
-      return invalid(root, error);
-    }
-  };
-}
-async function sendMode(root, values, { adapter }) {
-  const draft = readDraft(root);
-  if (!draft)
-    return { ...NO_DRAFT, data_root: root };
-  return { data_root: root, ...await sendReport(root, draft, { nonce: values.nonce, adapter }) };
-}
+var changeMode = (change) => (root, draft, values, { adapter }) => {
+  try {
+    const next = change(draft, Number(values.item), values.value ?? "");
+    saveDraft(root, next);
+    return shown(root, next, adapter);
+  } catch (error) {
+    return invalid(root, error);
+  }
+};
+var sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
 var MODES = {
   "report-draft": draftMode,
-  "report-preview": previewMode,
-  "report-edit": changeMode(editItem),
-  "report-remove": changeMode((draft, item) => removeItem(draft, item)),
-  "report-send": sendMode,
+  "report-preview": withDraft(previewMode),
+  "report-edit": withDraft(changeMode(editItem)),
+  "report-remove": withDraft(changeMode(removeItem)),
+  "report-send": withDraft(sendMode),
   "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root })
 };
 function reportModes({ skillsDir }) {
-  return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir })]));
+  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir });
+  return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, bound(mode)]));
 }
 
 // src/skills/chef-setup/scripts/lib/init-data-root.mjs

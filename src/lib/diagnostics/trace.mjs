@@ -54,12 +54,15 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
   return kept;
 }
 
-function rewrite(file, events) {
+// Atomic write of a 0600 file.
+export function writePrivate(file, text) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs.writeFileSync(temp, events.map(lineOf).join(''), PRIVATE_FILE);
+  fs.writeFileSync(temp, text, PRIVATE_FILE);
   fs.chmodSync(temp, 0o600);
   fs.renameSync(temp, file);
 }
+
+const rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(''));
 
 export function appendEvent(root, event, { now = new Date(), bounds = TRACE_BOUNDS } = {}) {
   ensureDiagnosticsDir(root);

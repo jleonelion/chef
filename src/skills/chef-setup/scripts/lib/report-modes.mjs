@@ -5,22 +5,37 @@ import { traceEnabled } from '../../../../lib/diagnostics/capture.mjs';
 import { readTrace } from '../../../../lib/diagnostics/trace.mjs';
 import { buildBundle, installedSkills, selectEvents } from '../../../../lib/feedback/bundle.mjs';
 import { renderPreview } from '../../../../lib/feedback/preview.mjs';
-import { editItem, newDraft, removeItem, serialize } from '../../../../lib/feedback/report.mjs';
+import { editItem, newDraft, removeItem, serialize, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
 import { deleteDraft, readDraft, saveDraft } from '../../../../lib/feedback/store.mjs';
 import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
 
-export const REPORT_FLAGS = Object.fromEntries(
-  ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'skill-ids', 'diagnostics', 'item', 'value', 'nonce'].map((flag) => [flag, { type: 'string' }]),
-);
-REPORT_FLAGS.raw = { type: 'boolean' };
+const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior'];
+export const REPORT_FLAGS = {
+  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce'].map((flag) => [flag, { type: 'string' }])),
+  raw: { type: 'boolean' },
+};
 
 const NO_DRAFT = { status: 'refused', reason: 'there is no report draft; start one with report-draft' };
 const invalid = (root, error) => ({ status: 'invalid-input', data_root: root, problems: error.problems ?? [error.message] });
 
 function shown(root, draft, adapter) {
-  return { status: 'draft', data_root: root, preview: renderPreview(draft), submission_nonce: draft.report.submission_nonce, can_send: canSend(adapter), ...(canSend(adapter) ? {} : { send_notice: SAVE_ONLY }) };
+  const sendable = canSend(adapter);
+  return {
+    status: 'draft',
+    data_root: root,
+    preview: renderPreview(draft),
+    submission_nonce: draft.report.submission_nonce,
+    can_send: sendable,
+    ...(sendable ? {} : { send_notice: SAVE_ONLY }),
+  };
 }
+
+// Runs `mode` on the saved draft, or refuses when there is none.
+const withDraft = (mode) => (root, values, context) => {
+  const draft = readDraft(root);
+  return draft ? mode(root, draft, values, context) : { ...NO_DRAFT, data_root: root };
+};
 
 // Diagnostics attach by default to defects only.
 function bundleFor(root, values, skillIds, { adapter, skillsDir }) {
@@ -32,7 +47,7 @@ function bundleFor(root, values, skillIds, { adapter, skillsDir }) {
 }
 
 function draftMode(root, values, context) {
-  const skillIds = values['skill-ids']?.split(',').map((id) => id.trim()).filter(Boolean) ?? [];
+  const skillIds = splitSkillIds(values['skill-ids']);
   try {
     const draft = newDraft({
       class: values.class,
@@ -53,42 +68,33 @@ function draftMode(root, values, context) {
   }
 }
 
-function previewMode(root, values, { adapter }) {
-  const draft = readDraft(root);
-  if (!draft) return { ...NO_DRAFT, data_root: root };
+function previewMode(root, draft, values, { adapter }) {
   return values.raw ? { status: 'draft', data_root: root, raw: serialize(draft.report) } : shown(root, draft, adapter);
 }
 
-function changeMode(change) {
-  return (root, values, { adapter }) => {
-    const draft = readDraft(root);
-    if (!draft) return { ...NO_DRAFT, data_root: root };
-    try {
-      const next = change(draft, Number(values.item), values.value ?? '');
-      saveDraft(root, next);
-      return shown(root, next, adapter);
-    } catch (error) {
-      return invalid(root, error);
-    }
-  };
-}
+const changeMode = (change) => (root, draft, values, { adapter }) => {
+  try {
+    const next = change(draft, Number(values.item), values.value ?? '');
+    saveDraft(root, next);
+    return shown(root, next, adapter);
+  } catch (error) {
+    return invalid(root, error);
+  }
+};
 
-async function sendMode(root, values, { adapter }) {
-  const draft = readDraft(root);
-  if (!draft) return { ...NO_DRAFT, data_root: root };
-  return { data_root: root, ...(await sendReport(root, draft, { nonce: values.nonce, adapter })) };
-}
+const sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
 
 const MODES = {
   'report-draft': draftMode,
-  'report-preview': previewMode,
-  'report-edit': changeMode(editItem),
-  'report-remove': changeMode((draft, item) => removeItem(draft, item)),
-  'report-send': sendMode,
+  'report-preview': withDraft(previewMode),
+  'report-edit': withDraft(changeMode(editItem)),
+  'report-remove': withDraft(changeMode(removeItem)),
+  'report-send': withDraft(sendMode),
   'report-discard': (root) => ({ status: deleteDraft(root) ? 'discarded' : 'empty', data_root: root }),
 };
 
 // { mode: (root, values) => result } for setup.mjs, bound to this runtime and skills folder.
 export function reportModes({ skillsDir }) {
-  return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir })]));
+  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir });
+  return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, bound(mode)]));
 }
