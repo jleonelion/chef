@@ -56,7 +56,7 @@ Every question is optional. If the user skips one, or all of them, leave that se
 1. **Units.** Run `node scripts/setup.mjs settings` and read `settings.units` (the default from the user's locale). Ask: "Chef will show shopping lists and pantry amounts in US units (cups, ounces, pounds). Would you rather use metric (grams, milliliters)?" Swap the wording if the default is `metric`. Recipes keep the amounts they were written in unless the user opts in next.
 2. **Recipe amounts.** Ask right after units, naming the system they chose (here US): "Recipes show amounts as they were written. Do you also want recipe ingredients shown in US units, with the original amount in brackets?" Only a yes sets `--convert-recipe-units true`.
 3. **Household recipients.** Ask: "Who should Chef email shopping lists to by default? Chef emails them automatically only if you approve the Chef shopping list recurring task. You can still ask Chef to email a shopping list to anyone. Give me their email addresses, or skip to see lists here in chat."
-4. **Receipt intake.** Ask: "Should Chef check your Gmail daily for grocery receipts and update your pantry?" Only if they say yes, ask: "Which stores' receipt emails should it trust?" Chef reads receipts only from those senders.
+4. **Receipt intake.** Ask verbatim: "Should Chef check your Gmail daily for grocery receipts and update your pantry?" Only if they say yes, ask verbatim: "Which stores' receipt emails should it trust?" Chef reads receipts only from those senders.
 
 Then save every answer in one call, passing only the settings the user gave:
 
