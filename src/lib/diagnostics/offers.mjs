@@ -23,7 +23,7 @@ function writeCodes(root, codes) {
 }
 
 // True, and remembered, when Chef may offer a report for `code` now.
-export function takeOffer(root, code, { now = new Date() } = {}) {
+export function claimOffer(root, code, { now = new Date() } = {}) {
   const codes = readCodes(root);
   const { offered_at, declined_at } = codes[code] ?? {};
   if (declined_at || (offered_at && now - Date.parse(offered_at) < OFFER_INTERVAL_MS)) return false;

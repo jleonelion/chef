@@ -87,3 +87,12 @@ test('"no thanks" suppresses that error code; turning offers off and on again re
   assert.equal(crash(root).out.report_offer, undefined, 'off means no offers');
   assert.ok(readTrace(root).events.length >= 2, 'the trace is unaffected');
 });
+
+test('removing an item that does not exist is invalid input, not an internal error', () => {
+  const root = fixtureRoot();
+  run(root, setup, 'report-draft', '--focus', crash(root).out.report_offer.focus);
+  const { status, out } = run(root, setup, 'report-remove', '--item', '999');
+  assert.equal(status, 2);
+  assert.equal(out.status, 'invalid-input');
+  assert.equal(out.report_offer, undefined);
+});

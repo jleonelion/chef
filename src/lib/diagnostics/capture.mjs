@@ -9,7 +9,7 @@ import PLUGIN from '../../../plugins/chef/.claude-plugin/plugin.json' with { typ
 import { currentRuntime } from '../../runtime/contract.mjs';
 import { readSchemaVersion } from '../schema.mjs';
 import { readSettings } from '../settings.mjs';
-import { takeOffer } from './offers.mjs';
+import { claimOffer } from './offers.mjs';
 import { appendEvent } from './trace.mjs';
 
 export const EVENT_SCHEMA_VERSION = 1;
@@ -96,7 +96,7 @@ function record(context, describe) {
 function reportOffer(root, event) {
   if (event?.outcome !== 'internal-error') return null;
   try {
-    if (readSettings(root).settings.post_error_offers !== 'on' || !takeOffer(root, event.error_code)) return null;
+    if (readSettings(root).settings.post_error_offers !== 'on' || !claimOffer(root, event.error_code)) return null;
   } catch {
     return null;
   }

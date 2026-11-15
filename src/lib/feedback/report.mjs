@@ -74,9 +74,10 @@ function withoutItem(report, id) {
 }
 
 // True when removing item `number` takes away the failing run a post-error report is about.
+// An unknown number is false here; removeItem reports it.
 export function dropsFocus({ report, numbers }, number) {
-  const id = itemId({ report, numbers }, number);
   const focus = report.focus_invocation;
+  const id = Object.keys(numbers).find((key) => numbers[key] === number);
   return Boolean(focus) && ['focus_invocation', 'diagnostic_bundle', `diagnostic_bundle.events[${focus}]`].includes(id);
 }
 

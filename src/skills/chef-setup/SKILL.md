@@ -246,7 +246,7 @@ When any chef- script's result has `report_offer`, Chef hit an internal error an
 - **Yes**: `node scripts/setup.mjs report-draft --focus <report_offer.focus>`. This skips classification: it drafts a defect about the failing run, with summary, expected and actual pre-drafted from the run. Show the preview and continue from step 3 above; the user can edit anything.
 - **No thanks**: `node scripts/setup.mjs report-offer-decline --code <report_offer.error_code>`. Chef won't offer for that error again.
 - Removing `focus_invocation`, the failing run or the whole diagnostics returns `confirmation-required` with `warning`: say it in plain words, and only on a yes repeat the `report-remove` with `--confirm`. The report then becomes user-initiated.
-- "Stop offering to report errors" or "offer again": `set --post-error-offers off` or `on`. Turning offers on again forgets every "no thanks". The trace is a separate setting.
+- "Stop offering to report errors" or "offer again": `set --post-error-offers off` or `on`. Turning offers on again forgets every "no thanks". Offers need the failing run in the trace, so with the trace off there are none; turning offers off leaves the trace on.
 
 ## Schema mismatch
 
