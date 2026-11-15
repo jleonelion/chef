@@ -8209,5 +8209,5 @@ else if (!/^\d{4}-\d{2}-\d{2}$/.test(values["week-start"] ?? "") || Number.isNaN
     result = planWeek(root, { weekStart: values["week-start"], meals, overrides });
 }
 console.log(JSON.stringify(result));
-if (["invalid-input", "refused"].includes(result.status) || mode === "plan" && result.status === "no-plan")
+if (["invalid-input", "refused"].includes(result.status))
   process.exitCode = 2;

@@ -48,4 +48,4 @@ else if (!/^\d{4}-\d{2}-\d{2}$/.test(values['week-start'] ?? '') || Number.isNaN
 }
 
 console.log(JSON.stringify(result));
-if (['invalid-input', 'refused'].includes(result.status) || (mode === 'plan' && result.status === 'no-plan')) process.exitCode = 2;
+if (['invalid-input', 'refused'].includes(result.status)) process.exitCode = 2;
