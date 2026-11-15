@@ -22,8 +22,8 @@ function render() {
   return renderBatchPrep(root, weekStart);
 }
 
-const capture = { root, skill: 'chef-batch-prep-planning', script: 'batch-prep', operation: positionals[0], failures: { 'not-found': 'no-plan' } };
+const capture = { root, skill: 'chef-batch-prep-planning', script: 'batch-prep', operation: positionals[0], failures: { 'not-found': 'no-plan', unreadable: 'store-unreadable' } };
 const result = await chefCapture(capture, render);
 
 console.log(JSON.stringify(result));
-if (['invalid-input', 'refused', 'not-found'].includes(result.status)) process.exitCode = 2;
+if (['invalid-input', 'refused', 'not-found', 'unreadable'].includes(result.status)) process.exitCode = 2;
