@@ -15,6 +15,7 @@ test('metric shows US weights and volumes converted, the original in parens, und
     '- 910 g (2 lb) potatoes',
     '- 1 onion',
   ]);
+  assert.match(body, /\n## Ingredients\n\nAmounts converted to metric units;[^\n]*\n\n- 235 ml/);
 });
 
 test('US shows metric amounts in kitchen steps', () => {

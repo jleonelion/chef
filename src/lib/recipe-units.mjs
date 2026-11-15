@@ -48,5 +48,5 @@ export function convertRecipeBody(body, system) {
   });
   if (!converted) return out.join('\n');
   const note = `Amounts converted to ${SYSTEM_NAME[system]}; steps keep the recipe's original amounts.`;
-  return out.join('\n').replace(/^## Ingredients\s*$/im, (heading) => `${heading}\n\n${note}`);
+  return out.join('\n').replace(/^## Ingredients[ \t]*$/im, (heading) => `${heading}\n\n${note}`);
 }
