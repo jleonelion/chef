@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { parseOverrides } from '../../../lib/dietary-gate.mjs';
 import { readRuleset } from '../../../lib/dietary-ruleset.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
@@ -26,6 +27,8 @@ function run(root) {
   return { ...list, delivery, ...(settings.warning && { settings_warning: settings.warning }) };
 }
 
-const result = run(resolveDataRoot({ flag: values['data-root'] }));
+const root = resolveDataRoot({ flag: values['data-root'] });
+const capture = { root, skill: 'chef-shopping-lists', script: 'shopping-lists', operation: positionals[0], failures: { 'no-plan': 'no-plan' } };
+const result = await chefCapture(capture, () => run(root));
 console.log(JSON.stringify(result));
 if (['invalid-input', 'refused', 'no-plan'].includes(result.status)) process.exitCode = 2;

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { deleteMeal, editMeal, logMeal } from './lib/log.mjs';
 
 const { values, positionals } = parseArgs({
@@ -25,9 +26,9 @@ if (!['log', 'edit', 'delete'].includes(positionals[0])) {
 }
 
 const root = resolveDataRoot({ flag: values['data-root'] });
-let result;
-if (positionals[0] === 'log') {
-  result = logMeal(root, {
+const operation = positionals[0];
+const OPERATIONS = {
+  log: () => logMeal(root, {
     date: values.date,
     slot: values.slot,
     recipe: values.recipe,
@@ -35,9 +36,8 @@ if (positionals[0] === 'log') {
     servings: Number(values.servings),
     cooked: values.cooked ?? false,
     loggedAt: values['logged-at'] ?? new Date().toISOString(),
-  });
-} else if (positionals[0] === 'edit') {
-  result = editMeal(root, {
+  }),
+  edit: () => editMeal(root, {
     id: values.id,
     date: values.date,
     slot: values.slot,
@@ -45,9 +45,10 @@ if (positionals[0] === 'log') {
     food: values.food,
     servings: values.servings === undefined ? undefined : Number(values.servings),
     cooked: values.cooked ? true : values['not-cooked'] ? false : undefined,
-  });
-} else {
-  result = deleteMeal(root, { id: values.id });
-}
+  }),
+  delete: () => deleteMeal(root, { id: values.id }),
+};
+const failures = { 'not-found': 'record-not-found' };
+const result = await chefCapture({ root, skill: 'chef-meal-logging', script: 'meal-logging', operation, failures }, OPERATIONS[operation]);
 console.log(JSON.stringify({ data_root: root, ...result }));
 if (['invalid-input', 'not-found', 'refused'].includes(result.status)) process.exitCode = 2;

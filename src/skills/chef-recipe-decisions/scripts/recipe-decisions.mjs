@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
 import { today } from '../../../lib/recipes.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
@@ -92,6 +93,8 @@ if (!Object.hasOwn(MODES, mode)) {
   process.exit(64);
 }
 
-const result = readSchemaVersion(root) === null ? { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' } : await MODES[mode]();
+const run = () => (readSchemaVersion(root) === null ? { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' } : MODES[mode]());
+const failures = { 'not-found': 'record-not-found' };
+const result = await chefCapture({ root, skill: 'chef-recipe-decisions', script: 'recipe-decisions', operation: mode, failures }, run);
 console.log(JSON.stringify(result));
 if (['refused', 'invalid-input', 'not-found'].includes(result.status)) process.exitCode = 2;

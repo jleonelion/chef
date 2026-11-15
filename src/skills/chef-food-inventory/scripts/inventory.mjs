@@ -3,6 +3,7 @@
 // Modes: view, check-sender, add-receipt, edit, deduct, expiring, health, rollup. Prints one JSON object.
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { displayQuantity } from '../../../lib/quantity.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
@@ -75,11 +76,11 @@ if (!Object.hasOwn(MODES, mode ?? '')) {
   process.exit(64);
 }
 const root = resolveDataRoot({ flag: values['data-root'] });
-let result;
-if (readSchemaVersion(root) === null) result = { status: 'refused', reason: 'not a Chef data root; run chef-setup first' };
-else {
+function run() {
+  if (readSchemaVersion(root) === null) return { status: 'refused', reason: 'not a Chef data root; run chef-setup first' };
   const { settings, warning } = readSettings(root);
-  result = { data_root: root, ...MODES[mode](root, settings), ...(warning ? { settings_warning: warning } : {}) };
+  return { data_root: root, ...MODES[mode](root, settings), ...(warning ? { settings_warning: warning } : {}) };
 }
+const result = await chefCapture({ root, skill: 'chef-food-inventory', script: 'inventory', operation: mode }, run);
 console.log(JSON.stringify(result));
 if (result.status === 'refused' || result.status === 'invalid-input') process.exitCode = 2;

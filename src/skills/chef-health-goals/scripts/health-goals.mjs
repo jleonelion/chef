@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { today } from '../../../lib/recipes.mjs';
 import { NOT_MEDICAL_ADVICE } from '../../../lib/safety-text.mjs';
 import { clearGoal, parseTargets, readGoal, setGoal } from './lib/goals.mjs';
@@ -41,7 +42,9 @@ const commands = {
   report: () => (isDate(values['week-start']) ? weeklyReport(root, { weekStart: values['week-start'] }) : invalid(['--week-start must be YYYY-MM-DD'])),
 };
 
-const command = commands[positionals[0]];
-const result = command ? command() : invalid([`supported commands: ${Object.keys(commands).join(', ')}`]);
+const operation = positionals[0];
+const run = () => (Object.hasOwn(commands, operation) ? commands[operation]() : invalid([`supported commands: ${Object.keys(commands).join(', ')}`]));
+const failures = { unreadable: 'store-unreadable' };
+const result = await chefCapture({ root, skill: 'chef-health-goals', script: 'health-goals', operation, failures }, run);
 console.log(JSON.stringify(result));
 if (['invalid-input', 'refused', 'unreadable'].includes(result.status)) process.exitCode = 2;
