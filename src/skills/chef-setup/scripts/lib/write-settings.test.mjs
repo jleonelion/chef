@@ -4,6 +4,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { appendEvent, TRACE_FILE } from '../../../../lib/diagnostics/trace.mjs';
+import { buildEvent } from '../../../../lib/diagnostics/capture.mjs';
 import { initDataRoot } from './init-data-root.mjs';
 import { writeSettings } from './write-settings.mjs';
 
@@ -23,7 +25,7 @@ test('saves only user-set values and never commits them', () => {
 
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.changed, ['household_recipients', 'units']);
-  assert.deepEqual(stored(root), { settings_version: 1, household_recipients: ['a@example.com'], units: 'metric' });
+  assert.deepEqual(stored(root), { settings_version: 2, household_recipients: ['a@example.com'], units: 'metric' });
   assert.equal(git(root, 'ls-files'), '.gitignore\nschema-version.json');
   assert.equal(git(root, 'status', '--porcelain'), '');
 });
@@ -32,7 +34,7 @@ test('null resets a key to its default', () => {
   const root = newRoot();
   writeSettings(root, { calendar: 'Family' }, US);
   const result = writeSettings(root, { calendar: null }, US);
-  assert.deepEqual(stored(root), { settings_version: 1 });
+  assert.deepEqual(stored(root), { settings_version: 2 });
   assert.equal(result.settings.calendar, null);
 });
 
@@ -40,7 +42,7 @@ test('preserves unknown keys', () => {
   const root = newRoot();
   seed(root, '{"settings_version":1,"future_key":{"a":1}}');
   writeSettings(root, { units: 'us' }, US);
-  assert.deepEqual(stored(root), { settings_version: 1, future_key: { a: 1 }, units: 'us' });
+  assert.deepEqual(stored(root), { settings_version: 2, future_key: { a: 1 }, diagnostics: { trace: 'on' }, units: 'us' });
 });
 
 test('flags recipient changes so delivery tasks get re-created', () => {
@@ -66,7 +68,7 @@ test('rejects invalid input without touching the file', () => {
   const result = writeSettings(root, { trusted_receipt_senders: ['not-an-email'] }, US);
   assert.equal(result.status, 'invalid-input');
   assert.match(result.problems[0], /not-an-email/);
-  assert.deepEqual(stored(root), { settings_version: 1 });
+  assert.deepEqual(stored(root), { settings_version: 2 });
 });
 
 test('refuses a broken or newer file unless rewrite is confirmed', () => {
@@ -79,7 +81,7 @@ test('refuses a broken or newer file unless rewrite is confirmed', () => {
 
   const rewritten = writeSettings(root, { units: 'metric' }, { ...US, rewrite: true });
   assert.equal(rewritten.status, 'saved');
-  assert.deepEqual(stored(root), { settings_version: 1, units: 'metric' });
+  assert.deepEqual(stored(root), { settings_version: 2, units: 'metric' });
 });
 
 test('refuses a folder that is not a data root', () => {
@@ -102,7 +104,7 @@ test('refuses when settings.json is tracked by data-root git', () => {
   const result = writeSettings(root, { household_recipients: ['a@example.com'] }, US);
   assert.equal(result.status, 'refused');
   assert.match(result.reason, /tracked/);
-  assert.deepEqual(stored(root), { settings_version: 1 });
+  assert.deepEqual(stored(root), { settings_version: 2 });
 });
 
 test('refuses on a schema mismatch and points at update Chef', () => {
@@ -112,5 +114,26 @@ test('refuses on a schema mismatch and points at update Chef', () => {
   assert.equal(result.status, 'refused');
   assert.match(result.reason, /update Chef/);
   assert.equal(result.schema_version, 2);
-  assert.deepEqual(stored(root), { settings_version: 1 });
+  assert.deepEqual(stored(root), { settings_version: 2 });
+});
+
+const traceEvent = () => buildEvent({ skill: 'chef-recipe-search', script: 'recipe-search', operation: 'show', outcome: 'ok', startedAt: new Date(), durationMs: 1 });
+
+test('turning the trace off deletes the existing trace immediately', () => {
+  const root = newRoot();
+  appendEvent(root, traceEvent());
+  const result = writeSettings(root, { diagnostics: { trace: 'off' } }, US);
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(result.changed, ['diagnostics']);
+  assert.equal(result.trace_cleared, true);
+  assert.deepEqual(stored(root), { settings_version: 2, diagnostics: { trace: 'off' } });
+  assert.equal(fs.existsSync(path.join(root, TRACE_FILE)), false);
+});
+
+test('other settings changes leave the trace alone', () => {
+  const root = newRoot();
+  appendEvent(root, traceEvent());
+  const result = writeSettings(root, { units: 'metric' }, US);
+  assert.equal(result.trace_cleared, undefined);
+  assert.equal(fs.existsSync(path.join(root, TRACE_FILE)), true);
 });

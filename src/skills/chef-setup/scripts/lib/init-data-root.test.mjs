@@ -16,7 +16,7 @@ test('creates a committed data root with an ignored settings file', () => {
   assert.equal(result.status, 'created');
   assert.equal(result.schema_version, 1);
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'schema-version.json'), 'utf8')), { schema_version: 1 });
-  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'settings.json'), 'utf8')), { settings_version: 1 });
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(root, 'settings.json'), 'utf8')), { settings_version: 2 });
   assert.equal(git(root, 'ls-files'), '.gitignore\nschema-version.json');
   assert.equal(git(root, 'status', '--porcelain'), '');
   assert.equal(git(root, 'check-ignore', 'settings.json'), 'settings.json');

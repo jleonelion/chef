@@ -2,6 +2,7 @@
 // user-set values, and makes sure settings.json stays out of data-root git.
 import fs from 'node:fs';
 import path from 'node:path';
+import { clearTrace } from '../../../../lib/diagnostics/trace.mjs';
 import { git } from '../../../../lib/git.mjs';
 import { schemaWriteBlocker } from '../../../../lib/schema.mjs';
 import { readSettings, SETTING_KEYS, SETTINGS_FILE, SETTINGS_VERSION, validateSettings } from '../../../../lib/settings.mjs';
@@ -66,5 +67,7 @@ export function writeSettings(root, changes, { locale, rewrite = false } = {}) {
   const changed = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
   const side_effects = changed.map((key) => SIDE_EFFECTS[key]).filter(Boolean);
   const recipients = changed.includes('household_recipients') && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
-  return { status: 'saved', data_root: root, settings: saved.settings, changed, side_effects, ...recipients };
+  // Turning the trace off stops capture and deletes what was kept, right away.
+  const traceOff = changed.includes('diagnostics') && saved.settings.diagnostics.trace === 'off' && { trace_cleared: clearTrace(root) };
+  return { status: 'saved', data_root: root, settings: saved.settings, changed, side_effects, ...recipients, ...traceOff };
 }

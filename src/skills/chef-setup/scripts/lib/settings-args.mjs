@@ -7,6 +7,7 @@ const FLAGS = {
   'household-recipients': ['household_recipients', (raw) => orReset(splitList(raw), splitList(raw).length === 0)],
   'trusted-receipt-senders': ['trusted_receipt_senders', (raw) => orReset(splitList(raw), splitList(raw).length === 0)],
   calendar: ['calendar', (raw) => orReset(raw.trim(), raw.trim() === '' || raw.trim() === 'none')],
+  trace: ['diagnostics', (raw) => orReset({ trace: raw.trim() }, raw.trim() === 'default')],
 };
 
 export const SETTING_FLAGS = Object.fromEntries(Object.keys(FLAGS).map((flag) => [flag, { type: 'string' }]));
