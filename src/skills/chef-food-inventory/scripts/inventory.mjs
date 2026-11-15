@@ -7,7 +7,7 @@ import { displayQuantity } from '../../../lib/quantity.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
 import { OPTIONS, readTranscript, today } from './lib/cli-args.mjs';
-import { commitInventory } from './lib/commit.mjs';
+import { regenerateRollup } from './lib/commit.mjs';
 import { deductRecipe } from './lib/deduct.mjs';
 import { editItem } from './lib/edit.mjs';
 import { expiringItems } from './lib/expiration.mjs';
@@ -23,12 +23,6 @@ const days = () => {
   return Number.isInteger(value) && value >= 0 && value <= 365 ? value : 3;
 };
 const window = () => ({ today: values.today ?? today(), days: days() });
-
-function rollup(root) {
-  const inventory = { ...loadInventory(root), lastUpdated: now };
-  const written = commitInventory(root, { inventory, action: 'rollup', details: {}, message: 'chef-food-inventory: regenerate rollup' });
-  return written.status === 'written' ? { status: 'regenerated', rollup: written.pages[0] } : written;
-}
 
 const MODES = {
   // amount/unit as stored (for edits); display in the household's unit system.
@@ -72,7 +66,7 @@ const MODES = {
   }),
   expiring: (root) => ({ status: 'ok', ...window(), ...expiringItems(loadInventory(root), window()) }),
   health: (root) => checkHealth(root, window()),
-  rollup,
+  rollup: (root) => regenerateRollup(root, now),
 };
 
 const mode = positionals[0];

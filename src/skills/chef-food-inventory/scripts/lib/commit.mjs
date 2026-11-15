@@ -1,8 +1,9 @@
 // Every inventory change is one call here: the store, one audit line, any extra store or raw
 // files, and the regenerated rollup page land in one data-root commit via the shared write path.
+import { readSettings } from '../../../../lib/settings.mjs';
 import { writeWiki } from '../../../../lib/wiki.mjs';
 import { renderRollup } from './rollup.mjs';
-import { readText, serializeInventory, sha256, STORE, validateInventory } from './store.mjs';
+import { loadInventory, readText, serializeInventory, sha256, STORE, validateInventory } from './store.mjs';
 
 export function commitInventory(root, { inventory, action, details, data = [], raw = [], message }) {
   const problems = validateInventory(inventory);
@@ -12,9 +13,16 @@ export function commitInventory(root, { inventory, action, details, data = [], r
   const audit = { ts: inventory.lastUpdated, actor: 'chef-food-inventory', action, before_hash: before === null ? null : sha256(before), after_hash: sha256(content), details };
   const auditText = `${readText(root, STORE.audit) ?? ''}${JSON.stringify(audit)}\n`;
   return writeWiki(root, {
-    pages: [renderRollup(inventory)],
+    pages: [renderRollup(inventory, readSettings(root).settings.units)],
     data: [{ path: STORE.inventory, content }, { path: STORE.audit, content: auditText }, ...data],
     raw,
     message,
   });
+}
+
+// Rewrites the rollup page from the store, e.g. after an import or a units change.
+export function regenerateRollup(root, now) {
+  const inventory = { ...loadInventory(root), lastUpdated: now };
+  const written = commitInventory(root, { inventory, action: 'rollup', details: {}, message: 'chef-food-inventory: regenerate rollup' });
+  return written.status === 'written' ? { status: 'regenerated', rollup: written.pages[0] } : written;
 }

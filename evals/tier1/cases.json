@@ -304,6 +304,62 @@
     ]
   },
   {
+    "id": "chef-setup-units-change-regenerates-inventory-page",
+    "description": "Changing units rewrites the generated inventory page in the new system and commits it; the inventory store keeps its own units.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.changed",
+        "equals": [
+          "units"
+        ]
+      },
+      {
+        "path": "$.inventory_page.status",
+        "equals": "regenerated"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- jasmine rice: 925 g"
+          },
+          {
+            "path": "$.content",
+            "includes": "- whole milk: 3.8 l (expires 2026-01-21)"
+          }
+        ]
+      },
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.dairy.whole_milk.unit",
+            "equals": "gal"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
     "id": "chef-setup-set-refuses-invalid-file-without-rewrite",
     "description": "Change-settings never silently overwrites a broken settings.json.",
     "env": {
@@ -1086,7 +1142,7 @@
           },
           {
             "path": "$.content",
-            "includes": "- whole milk: 2 gal (expires 2026-01-21)"
+            "includes": "- whole milk: 8 qt (expires 2026-01-21)"
           }
         ]
       }
@@ -3737,7 +3793,7 @@
       },
       {
         "path": "$.text",
-        "includes": "- 1 1/2 tsp ground cumin"
+        "includes": "- 1.5 tsp ground cumin"
       },
       {
         "path": "$.delivery.mode",
@@ -3751,7 +3807,7 @@
   },
   {
     "id": "chef-shopping-lists-shows-us-units",
-    "description": "With units set to us, the same list shows a fixed US unit ladder rounded up with ASCII fractions; sources keep each recipe's grams.",
+    "description": "With units set to us, the same list shows a fixed US unit ladder rounded up, as decimals; sources keep each recipe's grams.",
     "seed": [
       {
         "path": "knowledge/wiki/meal-plans/2026-01-19.md",
@@ -3791,7 +3847,7 @@
       },
       {
         "path": "$.text",
-        "includes": "- 1 1/2 lb crushed tomatoes"
+        "includes": "- 1.5 lb crushed tomatoes"
       },
       {
         "path": "$.text",

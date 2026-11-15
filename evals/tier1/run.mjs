@@ -103,7 +103,8 @@ async function runCase(testCase, skillsDir, fixture, { skipPdfFiles = false } = 
       const [cmd, ...args] = step.command.map(expand);
       const result = spawnSync(cmd, args, {
         cwd: tmp,
-        env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
+        // A fixed US locale keeps unit-dependent output (default `units`) stable; cases may override.
+        env: { ...process.env, LANG: 'en_US.UTF-8', LC_ALL: '', LC_MEASUREMENT: '', CHEF_DATA_ROOT: dataRoot, ...testCase.env },
         encoding: 'utf8',
         timeout: 30000,
       });

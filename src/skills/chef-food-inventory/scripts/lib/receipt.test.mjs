@@ -77,10 +77,12 @@ test('one unreadable line refuses the whole receipt', () => {
 
 test('the rollup page matches the store after successive receipts', () => {
   const root = dataRoot();
+  fs.writeFileSync(path.join(root, 'settings.json'), JSON.stringify({ settings_version: 1, units: 'us' }));
   addReceipt(root, base);
   addReceipt(root, { ...base, transcript: '- 1 gal whole milk — $3.49\n- 3 ct avocados — $4.50\n', now: '2026-01-16T09:00:00.000Z', date: '2026-01-16' });
-  const expected = renderRollup(loadInventory(root));
+  const expected = renderRollup(loadInventory(root), 'us');
   assert.ok(read(root, ROLLUP_PATH).endsWith(expected.body));
+  assert.match(expected.body, /whole milk: 8 qt/);
   assert.equal(loadInventory(root).fridge.dairy.whole_milk.amount, 2);
 });
 
