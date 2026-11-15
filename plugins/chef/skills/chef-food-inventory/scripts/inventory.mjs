@@ -7065,6 +7065,7 @@ function updateInstall({ skillDir, repository }) {
 var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes to that task. Ask Muse to create it as a recurring task with exactly the given name, cadence (in the user's timezone) and prompt, then list the tasks you created. If a task with that name already exists, leave it as it is. Approve any Gmail send grant Muse asks for only with the user.";
 var muse = {
   name: "muse",
+  adapterVersion: 1,
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
@@ -7289,8 +7290,11 @@ function schemaWriteBlocker(root) {
 import fs3 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
-var SETTINGS_VERSION = 1;
-var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units"];
+var SETTINGS_VERSION = 2;
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics"];
+var SETTINGS_MIGRATIONS = {
+  1: (stored) => ({ ...stored, settings_version: 2, diagnostics: { trace: "on" } })
+};
 var IMPERIAL_REGIONS = new Set(["US", "LR", "MM"]);
 var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function unitsForLocale(locale = "") {
@@ -7298,7 +7302,7 @@ function unitsForLocale(locale = "") {
   return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
 }
 function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: "on" } };
 }
 function emailListProblem(key, value) {
   if (!Array.isArray(value))
@@ -7306,10 +7310,12 @@ function emailListProblem(key, value) {
   const bad = value.find((entry) => typeof entry !== "string" || !EMAIL.test(entry));
   return bad === undefined ? null : `${key}: ${JSON.stringify(bad)} is not an email address`;
 }
+var isTraceSetting = (value) => value !== null && typeof value === "object" && Object.keys(value).join() === "trace" && ["on", "off"].includes(value.trace);
 var CHECKS = {
   household_recipients: (value) => emailListProblem("household_recipients", value),
   trusted_receipt_senders: (value) => emailListProblem("trusted_receipt_senders", value),
   units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
+  diagnostics: (value) => isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}',
   calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null",
   convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false"
 };
@@ -7324,6 +7330,13 @@ function parse(content) {
   } catch {
     return null;
   }
+}
+function upgraded(stored) {
+  let next = stored;
+  while (Number.isInteger(next?.settings_version) && next.settings_version >= 1 && next.settings_version < SETTINGS_VERSION) {
+    next = SETTINGS_MIGRATIONS[next.settings_version](next);
+  }
+  return next;
 }
 function classify(stored) {
   if (!stored)
@@ -7343,7 +7356,7 @@ function readSettings(root, { locale } = {}) {
   if (!fs3.existsSync(file))
     return { status: "missing", settings: defaults };
   const content = fs3.readFileSync(file, "utf8");
-  const stored = parse(content);
+  const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== "ok")
     return { status, settings: defaults, warning: warn(reason), content };

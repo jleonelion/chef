@@ -1,8 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { SETTINGS_FILE, SETTINGS_VERSION } from './settings.mjs';
-
-export const SETTINGS_MIGRATIONS = {};
+import { SETTINGS_FILE, SETTINGS_MIGRATIONS, SETTINGS_VERSION } from './settings.mjs';
 
 function storedSettings(root) {
   const file = path.join(root, SETTINGS_FILE);

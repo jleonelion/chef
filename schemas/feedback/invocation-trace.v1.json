@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chef:feedback:invocation-trace:v1",
+  "title": "Invocation trace",
+  "description": "The bounded, local-only sequence of invocation events, oldest first, as `show trace` returns it. Stored as one event per line in <data root>/diagnostics/trace.jsonl, evicting the oldest once any bound is hit: events.maxItems, x-max-bytes (serialized JSONL size) or x-max-age-days. Never submitted as a whole.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "events"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "$ref": "urn:chef:feedback:invocation-event:v1"
+      }
+    }
+  },
+  "x-max-bytes": 262144,
+  "x-max-age-days": 14
+}

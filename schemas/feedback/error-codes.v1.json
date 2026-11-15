@@ -1,0 +1,10 @@
+{
+  "registry_version": 1,
+  "description": "Error-code registry: every error_code an invocation event may carry, with the outcome it belongs to. Unknown throws are recorded as internal-error + unclassified. Adding an entry is a reviewed change.",
+  "codes": {
+    "unclassified": { "outcome": "internal-error", "description": "The script threw something no code covers." },
+    "not-a-data-root": { "outcome": "validation-error", "description": "The data root is missing or has no schema-version file." },
+    "invalid-input": { "outcome": "validation-error", "description": "The script refused its arguments." },
+    "recipe-not-found": { "outcome": "validation-error", "description": "No recipe has the requested slug." }
+  }
+}
