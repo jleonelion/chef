@@ -4853,6 +4853,73 @@
     ]
   },
   {
+    "id": "chef-setup-report-draft-off-muse",
+    "description": "A defect report drafted off Muse attaches the recent recipe-search run, previews it as numbered lines, names the runtime unknown and says sending is not supported here; the data root stays clean in git.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "report-draft",
+      "--class",
+      "defect",
+      "--summary",
+      "Search finds nothing for a pasta shape",
+      "--expected",
+      "Matching recipes",
+      "--actual",
+      "An empty list",
+      "--frequency",
+      "always",
+      "--skill-ids",
+      "chef-recipe-search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "draft"
+      },
+      {
+        "path": "$.can_send",
+        "equals": false
+      },
+      {
+        "path": "$.send_notice",
+        "includes": "isn't supported in this runtime"
+      },
+      {
+        "path": "$.preview",
+        "includes": "[ 2] class = \"defect\""
+      },
+      {
+        "path": "$.preview",
+        "includes": "\"runtime\":\"unknown\""
+      },
+      {
+        "path": "$.preview",
+        "includes": "diagnostic_bundle.events[inv-1] = "
+      },
+      {
+        "path": "$.preview",
+        "includes": "Not observed: "
+      }
+    ],
+    "git": {
+      "clean": true,
+      "headUnchanged": true
+    }
+  },
+  {
     "id": "chef-setup-trace-off-stops-capture",
     "description": "Setting the trace off deletes the existing trace and stops capture: a later search writes no event.",
     "steps": [

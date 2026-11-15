@@ -28243,6 +28243,9 @@ var recurring_tasks_default = [
 var RECURRING_TASKS = recurring_tasks_default;
 var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
@@ -28302,6 +28305,11 @@ var SCHEDULE_SETUP = "Create each task only after the user gives an explicit yes
 var muse = {
   name: "muse",
   adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {

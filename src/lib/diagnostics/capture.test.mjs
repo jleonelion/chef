@@ -3,11 +3,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { generic } from '../../runtime/generic.mjs';
+import { muse } from '../../runtime/muse.mjs';
 import { buildEvent, chefCapture } from './capture.mjs';
 import { invocationEventProblems } from './test-schemas.mjs';
 import { readTrace, TRACE_FILE } from './trace.mjs';
 
-const offMuse = { name: 'muse', adapterVersion: 1, isMuse: () => false };
 const run = (overrides = {}) => ({
   skill: 'chef-recipe-search',
   script: 'recipe-search',
@@ -17,7 +18,7 @@ const run = (overrides = {}) => ({
   facts: { results: 3 },
   startedAt: new Date('2026-11-15T10:00:00.000Z'),
   durationMs: 42,
-  adapter: offMuse,
+  adapter: generic,
   ...overrides,
 });
 
@@ -36,7 +37,7 @@ test('a failed run carries its registered error code', () => {
 });
 
 test('on Muse the runtime is muse', () => {
-  assert.equal(buildEvent(run({ adapter: { ...offMuse, isMuse: () => true } })).runtime, 'muse');
+  assert.equal(buildEvent(run({ adapter: muse })).runtime, 'muse');
 });
 
 test('an undeclared fact is rejected', () => {
@@ -69,7 +70,7 @@ function dataRoot(settings) {
   return root;
 }
 const searchRun = (root, classify = (result) => ({ outcome: 'ok', facts: { results: result.count } })) =>
-  ({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: 'search', classify, adapter: offMuse });
+  ({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: 'search', classify, adapter: generic });
 const traced = (root) => readTrace(root).events;
 
 test('a captured run returns its result and appends one event classified from it', async () => {

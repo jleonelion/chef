@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong), asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
 ---
 
 # Chef setup
@@ -208,6 +208,27 @@ Chef keeps an **invocation trace** of its script runs (in plain words, a short l
 - **Show trace** ("show me Chef's log", "what has Chef been doing"): run `node scripts/setup.mjs trace`. Render `trace.events` as a table, newest last: time (`started_at`), skill (`skill_id`), operation, outcome, error code, duration. Mention `tracing` (on or off) and the bounds. If there are no events, say the trace is empty.
 - **Clear trace** ("delete Chef's log"): run `node scripts/setup.mjs clear-trace`. `cleared`: say the trace is deleted from this machine. `empty`: say there was nothing to delete. Nothing is sent anywhere either way.
 - **Turn tracing off or on**: `node scripts/setup.mjs set --trace off` (or `on`). Turning it off stops capture and deletes the trace right away.
+
+## Report a problem
+
+When the user wants to report something Chef got wrong, build a **feedback report** with them. Nothing leaves the machine without their explicit "send", and in this release no runtime can send: an approved report is saved on this machine.
+
+1. **Draft.** Ask what they expected, what happened instead and how often (`once`, `sometimes`, `always` or `unknown`). Write a one-line summary (at most 500 characters) and the other answers (at most 2,000 each) in general terms: "a dairy item", not the food; never copy recipes, household, health, dietary or conversation content into them. Say what you generalized. Then run:
+
+   ```sh
+   node scripts/setup.mjs report-draft --class defect --summary "..." --expected "..." --actual "..." --frequency always --skill-ids chef-recipe-search
+   ```
+
+   `--skill-ids` names the skill the problem is about. Recent runs of it from the invocation trace attach as diagnostics; `--diagnostics off` leaves them out.
+2. **Preview.** Show `preview` exactly as returned, in a code block, every line. Each numbered line is exactly what the report holds; a `= {}` or `= []` line starts a section whose items follow. Lines starting `Not sent`, `Not observed` and `Check item` are notes, not content. If `send_notice` is present, tell the user in plain words that sending isn't supported in this runtime and "send" saves the report on this machine. If the user asks for the raw report, run `report-preview --raw` and show `raw` exactly.
+3. **Change.** The user removes or changes items by number:
+   - Remove: `node scripts/setup.mjs report-remove --item 19`. Only optional parts can be removed; required fields can only be edited.
+   - Edit: `node scripts/setup.mjs report-edit --item 4 --value "..."` (summary, the class fields, frequency and `skill_ids`, comma-separated).
+   Every change returns a new `preview` and `submission_nonce`; show the whole new preview again. On `invalid-input`, show `problems`. For a `Check item` note, point out the item, suggest removing or rewording it, and change it only if the user asks.
+4. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`.
+   - `saved`: say `notice` in plain words and give `path` (inside the data root). Offer no other way to send it: no email, no GitHub issue, no upload.
+   - `refused`: the report changed since that preview; show the current one (`report-preview`) and ask again.
+5. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days.
 
 ## Schema mismatch
 

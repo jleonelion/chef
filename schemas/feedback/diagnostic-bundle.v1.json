@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chef:feedback:diagnostic-bundle:v1",
+  "title": "Diagnostic bundle",
+  "description": "A snapshot of selected invocation events and coarse environment facts, built for one feedback report and existing only inside it. Invocation IDs are re-keyed per bundle (parent links kept) and times are millisecond offsets from one UTC hour, so a bundle cannot be joined to the local trace or to another report.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "anchor_hour", "environment", "events", "evidence_gaps", "runtime_evidence"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "anchor_hour": {
+      "description": "UTC hour at or before the earliest event; event times are offsets from it.",
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:00:00Z$"
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["chef_version", "runtime"],
+      "properties": {
+        "chef_version": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/chef_version" },
+        "runtime": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "adapter_version", "adapter_contract_version", "capabilities"],
+          "properties": {
+            "name": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/runtime" },
+            "adapter_version": { "type": "integer", "minimum": 1 },
+            "adapter_contract_version": { "type": "integer", "minimum": 1 },
+            "capabilities": {
+              "description": "What the adapter's feedback.capabilities() returned when the bundle was built; names from capabilities.v1.json.",
+              "type": "array",
+              "uniqueItems": true,
+              "maxItems": 16,
+              "items": { "type": "string", "pattern": "^[a-z]+(\\.[a-z0-9-]+)+$", "maxLength": 64 }
+            }
+          }
+        },
+        "skills": {
+          "description": "Installed Chef skills and their versions.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "version"],
+            "properties": {
+              "id": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/skill_id" },
+              "version": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/chef_version" }
+            }
+          }
+        },
+        "js_engine": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "version"],
+          "properties": {
+            "name": { "enum": ["node", "bun", "other"] },
+            "version": { "type": "string", "pattern": "^[0-9A-Za-z.+-]+$", "maxLength": 32 }
+          }
+        },
+        "os_family": { "enum": ["macos", "linux", "windows", "other"] }
+      }
+    },
+    "events": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/event" }
+    },
+    "evidence_gaps": {
+      "description": "Kinds of fact Chef could not observe for this report: not observed, never 'did not happen'.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "pre_launch_unobserved",
+          "host_action_unconfirmed",
+          "post_return_unobserved",
+          "runtime_extension_unavailable",
+          "correlation_unavailable",
+          "trace_unavailable"
+        ]
+      }
+    },
+    "runtime_evidence": {
+      "description": "Evidence from the runtime adapter, each entry in a fixed provenance envelope. No evidence kind is registered in v1, so it is always empty.",
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "$defs": {
+    "event": {
+      "description": "An invocation event re-keyed for this bundle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["invocation_id", "offset_ms", "duration_ms", "chef_version", "skill_id", "script_id", "operation", "outcome", "error_code", "runtime", "adapter_version", "facts"],
+      "properties": {
+        "invocation_id": { "$ref": "#/$defs/key" },
+        "parent_id": { "$ref": "#/$defs/key" },
+        "offset_ms": { "type": "integer", "minimum": 0, "maximum": 1209600000 },
+        "duration_ms": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/duration_ms" },
+        "chef_version": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/chef_version" },
+        "skill_id": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/skill_id" },
+        "script_id": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/script_id" },
+        "operation": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/operation" },
+        "outcome": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/outcome" },
+        "error_code": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/error_code" },
+        "runtime": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/runtime" },
+        "adapter_version": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/adapter_version" },
+        "facts": { "$ref": "urn:chef:feedback:invocation-event:v1#/properties/facts" }
+      }
+    },
+    "key": { "description": "Per-bundle invocation key. A parent_id is kept only when the parent run is in the same bundle; a key outside it would link the bundle to the trace.", "type": "string", "pattern": "^inv-[1-9][0-9]{0,2}$" }
+  }
+}
