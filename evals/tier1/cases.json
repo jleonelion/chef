@@ -36,7 +36,7 @@
         "assertions": [
           {
             "path": "$.settings_version",
-            "equals": 1
+            "equals": 2
           }
         ]
       },
@@ -273,7 +273,13 @@
           },
           {
             "path": "$.settings_version",
-            "equals": 1
+            "equals": 2
+          },
+          {
+            "path": "$.diagnostics",
+            "equals": {
+              "trace": "on"
+            }
           },
           {
             "path": "$.units",
@@ -4549,6 +4555,189 @@
       {
         "path": "$.reason",
         "includes": "not authenticated"
+      }
+    ]
+  },
+  {
+    "id": "chef-recipe-search-writes-one-invocation-event",
+    "description": "A recipe search appends one allowlisted invocation event to the local trace; chef-setup trace shows it, holding no query or recipe content, and the data root stays clean in git.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.tracing",
+        "equals": "on"
+      },
+      {
+        "path": "$.bounds",
+        "equals": {
+          "events": 200,
+          "kib": 256,
+          "days": 14
+        }
+      },
+      {
+        "path": "$.trace.schema_version",
+        "equals": 1
+      },
+      {
+        "path": "$.trace.events.length",
+        "equals": 1
+      },
+      {
+        "path": "$.trace.events[0].skill_id",
+        "equals": "chef-recipe-search"
+      },
+      {
+        "path": "$.trace.events[0].operation",
+        "equals": "search"
+      },
+      {
+        "path": "$.trace.events[0].outcome",
+        "equals": "ok"
+      },
+      {
+        "path": "$.trace.events[0].error_code",
+        "equals": null
+      },
+      {
+        "path": "$.trace.events[0].facts.query",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "diagnostics/.gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "*\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true,
+      "headUnchanged": true
+    }
+  },
+  {
+    "id": "chef-setup-clear-trace-deletes-it",
+    "description": "chef-setup clear-trace deletes the local invocation trace; trace then shows no events.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "clear-trace"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.trace.events",
+        "equals": []
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-trace-off-stops-capture",
+    "description": "Setting the trace off deletes the existing trace and stops capture: a later search writes no event.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set",
+          "--trace",
+          "off"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.tracing",
+        "equals": "off"
+      },
+      {
+        "path": "$.trace.events",
+        "equals": []
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.diagnostics",
+            "equals": {
+              "trace": "off"
+            }
+          }
+        ]
       }
     ]
   }
