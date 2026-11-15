@@ -1,0 +1,12 @@
+{
+  "registry_version": 1,
+  "description": "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). Adding an entry is a reviewed change.",
+  "scripts": {
+    "chef-recipe-search/recipe-search": {
+      "operations": ["search", "show"],
+      "facts": {
+        "results": { "type": "integer", "minimum": 0, "maximum": 10000, "description": "Recipes returned by a search." }
+      }
+    }
+  }
+}

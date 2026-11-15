@@ -76,6 +76,7 @@ const SCHEDULE_SETUP = 'Create each task only after the user gives an explicit y
 
 export const muse = {
   name: 'muse',
+  adapterVersion: 1,
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   // Household delivery: a payload for the user's Gmail connector. Scripts never send email.
   householdEmail({ to, subject, body }) {
