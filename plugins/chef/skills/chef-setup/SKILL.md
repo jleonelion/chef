@@ -133,7 +133,7 @@ A list flag replaces the whole list, so to add one address, pass the current lis
 
 Act on the `set` output:
 
-- `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. If household recipients or receipt senders went from none to some, offer **Recurring tasks** again for the task that is now offered. A `units` change affects shopping lists and pantry amounts from now on; recipes are never converted or rewritten.
+- `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. If household recipients or receipt senders went from none to some, offer **Recurring tasks** again for the task that is now offered. A `units` change affects shopping lists and pantry amounts from now on, and `inventory_page` reports the inventory page redrawn in the new units; recipes and the inventory store are never converted or rewritten.
 - `invalid-input`: show the `problems` and ask the user for a corrected value.
 - `refused` with `content`: the settings file is broken or was written by a newer Chef. Show the user `reason` and `content`, and ask whether to replace it. Only if they agree, rerun the same command with `--rewrite`; that discards the old file's values.
 - `refused` without `content`: tell the user `reason` and change nothing.

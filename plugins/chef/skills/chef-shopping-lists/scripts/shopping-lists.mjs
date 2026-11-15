@@ -7904,7 +7904,6 @@ var SPOONS = LADDERS.us.volume.slice(0, 2);
 var SPOON_UNITS = new Set(["tsp", "tbsp"]);
 var QUARTER_CUP = VOLUME.cup / 4;
 var EPSILON = 0.000000001;
-var FRACTIONS2 = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4" };
 var PLURAL = { cup: "cups" };
 var roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
 var round22 = (n) => Math.round(n * 100) / 100;
@@ -7921,11 +7920,6 @@ function onLadder(base, ladder, table) {
       return { amount, unit };
   }
 }
-function usNumber(amount) {
-  const whole = Math.floor(amount + EPSILON);
-  const fraction = FRACTIONS2[round22(amount - whole)];
-  return [whole || (fraction ? "" : "0"), fraction].filter(Boolean).join(" ");
-}
 var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
 function displayQuantity(amount, unit, system, { spoon } = {}) {
   const from = normalizeUnit(unit);
@@ -7938,8 +7932,7 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
   const base = amount * table[from];
   const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
   const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
-  const number = system === "us" || SPOON_UNITS.has(shown.unit) ? usNumber(shown.amount) : String(shown.amount);
-  return { ...shown, text: `${number} ${label(shown.amount, shown.unit)}` };
+  return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
 }
 
 // src/skills/chef-shopping-lists/scripts/lib/combine.mjs
