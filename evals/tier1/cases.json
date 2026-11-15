@@ -2816,6 +2816,10 @@
     "description": "The case that motivated per-meal plans: a week with breakfast, lunch and dinner on some days and only dinner on another, all from saved recipes, saves every planned meal with its slot; today lists a three-meal day in slot order.",
     "seed": [
       {
+        "path": "knowledge/wiki/household/profile.md",
+        "content": "---\ntitle: Household profile\ntype: household-profile\nportions_per_meal: 3\nupdated: 2026-01-15\n---\n# Household profile\n\nSynthetic fixture household.\n"
+      },
+      {
         "path": "knowledge/wiki/recipes/overnight-oats.md",
         "content": "---\ntype: recipe\ntitle: Overnight Oats\nservings: 2\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-16\nupdated: 2026-01-16\ndietary_flags: []\n---\n# Overnight Oats\n\nSynthetic fixture recipe, written for Chef's test suite.\n\n## Ingredients\n\n- 1 cup rolled oats\n- 1 cup milk\n\n## Steps\n\n1. Cook.\n"
       },
