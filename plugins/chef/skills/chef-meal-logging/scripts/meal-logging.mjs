@@ -7323,6 +7323,9 @@ function readMealLog(root) {
   }
 }
 
+// src/lib/meal-slots.mjs
+var MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+
 // src/lib/recipes.mjs
 import fs5 from "node:fs";
 import path6 from "node:path";
@@ -7882,7 +7885,6 @@ function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Dat
 
 // src/skills/chef-meal-logging/scripts/lib/log.mjs
 var MEAL_LOG_FILE = MEAL_LOG_PATH;
-var SLOTS = new Set(["breakfast", "lunch", "dinner", "snack"]);
 function entryFor(root, input, id = null) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
   const perServing = recipe?.frontmatter.nutrition_status === "complete" ? recipe.frontmatter.nutrition_per_serving : null;
@@ -7902,7 +7904,7 @@ function validate(root, input) {
   const problems = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date ?? "") || Number.isNaN(Date.parse(`${input.date}T00:00:00Z`)))
     problems.push("date: must be YYYY-MM-DD");
-  if (!SLOTS.has(input.slot))
+  if (!MEAL_SLOTS.includes(input.slot))
     problems.push("slot: must be breakfast, lunch, dinner or snack");
   if (Boolean(input.recipe) === Boolean(input.food?.trim()))
     problems.push("provide exactly one of recipe or food");

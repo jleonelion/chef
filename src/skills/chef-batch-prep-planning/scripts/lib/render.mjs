@@ -4,6 +4,7 @@ import { PDFDocument, PageSizes, StandardFonts, rgb } from 'pdf-lib';
 import { gateRecipe } from '../../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
+import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { muse } from '../../../../runtime/muse.mjs';
 import { writeWiki } from '../../../../lib/wiki.mjs';
@@ -44,7 +45,7 @@ function drawRecipePage(pdf, fonts, group, dietary) {
     page.drawText(line, { x: MARGIN, y, size: 23, font: fonts.bold, color: rgb(0.12, 0.22, 0.18) });
     y -= 28;
   }
-  page.drawText(`Planned: ${group.meals.map((meal) => meal.date).join(', ')}`, { x: MARGIN, y, size: 10, font: fonts.regular });
+  page.drawText(`Planned: ${group.meals.map((meal) => `${meal.date} ${meal.slot}`).join(', ')}`, { x: MARGIN, y, size: 10, font: fonts.regular });
   y -= 16;
   page.drawText(`Servings: ${group.meals.map((meal) => meal.servings).join(', ')}`, { x: MARGIN, y, size: 10, font: fonts.regular });
   y -= 30;
@@ -95,7 +96,7 @@ function loadPlan(root, weekStart) {
   try {
     const plan = parsePage(fs.readFileSync(file, 'utf8')).frontmatter;
     if (plan.type !== 'meal-plan' || !Array.isArray(plan.meals) || !plan.meals.length) throw new Error('meal plan has no meals');
-    return { plan, relative };
+    return { plan: { ...plan, meals: plan.meals.map(withSlot).sort(byDateAndSlot) }, relative };
   } catch (error) {
     return { problem: { status: 'refused', reason: `saved meal plan cannot be read: ${error.message}` } };
   }

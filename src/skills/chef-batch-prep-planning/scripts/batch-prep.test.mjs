@@ -6,6 +6,7 @@ import path from 'node:path';
 import { afterEach, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { PDFDocument } from 'pdf-lib';
+import { readPdf } from '../../../../evals/tier1/pdf.mjs';
 import { serializePage } from '../../../lib/frontmatter.mjs';
 
 const roots = [];
@@ -110,4 +111,14 @@ test('saved meal plan renders as a valid committed PDF with one page per recipe'
   assert.match(pdf.getSubject(), /Tomato Soup/);
   assert.match(pdf.getSubject(), /Herbed Rice/);
   assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
+});
+
+test('a v1 one-per-day plan renders each planned date as dinner', async () => {
+  const root = makeRoot();
+
+  const { output } = run(root);
+
+  const { text } = await readPdf(fs.readFileSync(path.join(root, output.path)));
+  assert.ok(text.includes('Planned: 2026-01-19 dinner'));
+  assert.ok(text.includes('Planned: 2026-01-20 dinner'));
 });

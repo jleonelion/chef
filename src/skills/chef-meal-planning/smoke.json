@@ -1,3 +1,3 @@
 [
-  { "id": "plan-needs-git-history", "script": "scripts/meal-planning.mjs", "args": ["plan", "--week-start", "2026-01-19"], "expect": { "exit": 2, "status": "refused" } }
+  { "id": "plan-needs-git-history", "script": "scripts/meal-planning.mjs", "args": ["plan", "--week-start", "2026-01-19"], "stdin": [{ "date": "2026-01-19", "slot": "dinner", "recipe": "chickpea-spinach-stew" }], "expect": { "exit": 2, "status": "refused" } }
 ]

@@ -8088,7 +8088,8 @@ function runCase(skillDir, testCase, fixture) {
   try {
     fs11.cpSync(fixture, dataRoot, { recursive: true });
     const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
-    const run = spawnSync(process.execPath, [path12.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000 });
+    const input = testCase.stdin === undefined ? undefined : JSON.stringify(testCase.stdin);
+    const run = spawnSync(process.execPath, [path12.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000, input });
     const status = parseStatus(run.stdout);
     if (run.status !== testCase.expect.exit)
       return `exit ${run.status}, expected ${testCase.expect.exit}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`;

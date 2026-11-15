@@ -94,6 +94,32 @@ test('a planned recipe that no longer exists is reported, not guessed', () => {
   assert.deepEqual(list.items, []);
 });
 
+const slottedPlan = (weekStart, meals) => ({
+  path: `knowledge/wiki/meal-plans/${weekStart}.md`,
+  content: serializePage({ type: 'meal-plan', title: `Meal plan: week of ${weekStart}`, week_start: weekStart, meals }, '# Plan\n'),
+});
+
+test('a recipe planned at two meals buys for both meals\' servings and the list shows each meal\'s slot', () => {
+  const root = makeRoot([
+    recipe('oats', ['1 cup rolled oats']),
+    slottedPlan('2026-01-19', [
+      { date: '2026-01-19', slot: 'breakfast', slug: 'oats', title: 'oats', servings: 4 },
+      { date: '2026-01-19', slot: 'snack', slug: 'oats', title: 'oats', servings: 1 },
+    ]),
+  ]);
+  const list = buildList(root, { units: 'us' });
+  assert.deepEqual(list.items.map(({ item, amount, unit }) => [item, amount, unit]), [['rolled oats', 2.5, 'cup']]);
+  assert.deepEqual(list.meals, [
+    { date: '2026-01-19', slot: 'breakfast', slug: 'oats', servings: 4 },
+    { date: '2026-01-19', slot: 'snack', slug: 'oats', servings: 1 },
+  ]);
+});
+
+test('a v1 one-per-day plan reads as dinners', () => {
+  const root = makeRoot([recipe('stew', ['2 can chickpeas']), plan('2026-01-19', [['stew', 2]])]);
+  assert.deepEqual(buildList(root, {}).meals, [{ date: '2026-01-19', slot: 'dinner', slug: 'stew', servings: 2 }]);
+});
+
 test('quantities show in the household unit system; sources keep each recipe\'s units', () => {
   const root = makeRoot([
     recipe('soup', ['1 cup milk', '400 g tomatoes']),

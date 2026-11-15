@@ -1,10 +1,10 @@
 import { mealEntryId, MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-log.mjs';
+import { MEAL_SLOTS } from '../../../../lib/meal-slots.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { slugify, writeWiki } from '../../../../lib/wiki.mjs';
 import { deductionApplied, deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
 
 export const MEAL_LOG_FILE = MEAL_LOG_PATH;
-const SLOTS = new Set(['breakfast', 'lunch', 'dinner', 'snack']);
 
 function entryFor(root, input, id = null) {
   const recipe = listRecipes(root).recipes.find((candidate) => candidate.slug === input.recipe);
@@ -29,7 +29,7 @@ function entryFor(root, input, id = null) {
 function validate(root, input) {
   const problems = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date ?? '') || Number.isNaN(Date.parse(`${input.date}T00:00:00Z`))) problems.push('date: must be YYYY-MM-DD');
-  if (!SLOTS.has(input.slot)) problems.push('slot: must be breakfast, lunch, dinner or snack');
+  if (!MEAL_SLOTS.includes(input.slot)) problems.push('slot: must be breakfast, lunch, dinner or snack');
   if (Boolean(input.recipe) === Boolean(input.food?.trim())) problems.push('provide exactly one of recipe or food');
   if (!Number.isFinite(input.servings) || input.servings <= 0) problems.push('servings: must be a positive number');
   if (typeof input.cooked !== 'boolean') problems.push('cooked: must be a boolean');
