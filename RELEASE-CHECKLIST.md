@@ -51,5 +51,5 @@ item maps to its source paths.
 - [x] Fixture recipe bodies passed copyright review (2026-11-08 audit: clean). (`fixtures/data-root/knowledge/wiki/recipes`, `fixtures/schema-v1/knowledge/wiki/recipes`)
 - [ ] CI is green on the exact commit to tag. (`.github/workflows/ci.yml`)
 - [ ] `bun run agentic` passes every row 3/3 with the current default model; attach `evals/agentic/results/agentic-<commit>.json` to the release. (`evals/agentic/run.mjs`, `evals/agentic/rows.json`)
-- [ ] Tag the prepared commit `v1.0.0`; the `1.0.0` package, marketplace and plugin manifest versions use SemVer. (`package.json`, `.claude-plugin/marketplace.json`, `plugins/chef/.claude-plugin/plugin.json`)
-- [ ] Publish GitHub release notes from the v1 draft and attach the agentic result. (`RELEASE-NOTES-v1.md`, `evals/agentic/run.mjs`)
+- [ ] Tag the prepared commit `vX.Y.Z`; the package, marketplace and plugin manifest versions are `X.Y.Z` (SemVer). (`package.json`, `.claude-plugin/marketplace.json`, `plugins/chef/.claude-plugin/plugin.json`)
+- [ ] Publish GitHub release notes from the release draft and attach the agentic result. (`RELEASE-NOTES-vX.Y.md`, `evals/agentic/run.mjs`)
