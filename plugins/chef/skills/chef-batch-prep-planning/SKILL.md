@@ -7,7 +7,7 @@ description: Turn a saved weekly meal plan into a printable PDF batch-prep plan,
 
 Render a saved meal plan as a printable PDF. The plan must already exist; create one with `chef-meal-planning` first.
 
-Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input`, `not-found` or `refused`.
+Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input`, `not-found`, `refused` or `unreadable`.
 
 ## Render the prep plan
 
@@ -27,6 +27,7 @@ Report `recipes`, and pass `dietary.nudge`, `dietary.footer` and `dietary.caveat
 ## Refusals
 
 - `not-found`: no plan is saved for that week. Offer to plan it with `chef-meal-planning`.
+- `unreadable`: the saved meal plan for that week can't be parsed. Say so with `reason`, and offer to re-plan the week; never edit the plan file by hand.
 - `refused` with `missing`: the plan names recipes that no longer exist. Offer to re-plan.
 - `refused` with `blocked`: a recipe was retired or no longer passes the dietary gate since the plan was saved. Show each recipe and reason, and offer to re-plan. Never render around the gate.
 

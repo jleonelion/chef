@@ -118,3 +118,15 @@ test('an unexpected throw is recorded as internal-error without its message', ()
   assert.deepEqual([event.outcome, event.error_code], ['internal-error', 'unclassified']);
   assert.doesNotMatch(JSON.stringify(event), /quince|JSON|position/i);
 });
+
+test('a saved plan Chef cannot read is recorded as store-unreadable', () => {
+  const root = fixtureRoot();
+  const plans = path.join(root, 'knowledge', 'wiki', 'meal-plans');
+  fs.mkdirSync(plans, { recursive: true });
+  fs.writeFileSync(path.join(plans, `${WEEK}.md`), '---\ntype: [unclosed\n---\n');
+  const result = run(root, 'chef-batch-prep-planning', 'batch-prep', ['render', '--week-start', WEEK]);
+  assert.equal(result.status, 2);
+  assert.equal(JSON.parse(result.stdout).status, 'unreadable');
+  const [event] = readTrace(root).events;
+  assert.deepEqual([event.outcome, event.error_code], ['validation-error', 'store-unreadable']);
+});

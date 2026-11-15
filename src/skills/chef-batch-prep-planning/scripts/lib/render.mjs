@@ -98,7 +98,7 @@ function loadPlan(root, weekStart) {
     if (plan.type !== 'meal-plan' || !Array.isArray(plan.meals) || !plan.meals.length) throw new Error('meal plan has no meals');
     return { plan: { ...plan, meals: plan.meals.map(withSlot).sort(byDateAndSlot) }, relative };
   } catch (error) {
-    return { problem: { status: 'refused', reason: `saved meal plan cannot be read: ${error.message}` } };
+    return { problem: { status: 'unreadable', reason: `saved meal plan cannot be read: ${error.message}` } };
   }
 }
 
