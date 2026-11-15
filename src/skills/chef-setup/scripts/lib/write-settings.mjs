@@ -2,6 +2,7 @@
 // user-set values, and makes sure settings.json stays out of data-root git.
 import fs from 'node:fs';
 import path from 'node:path';
+import { clearDeclines } from '../../../../lib/diagnostics/offers.mjs';
 import { clearTrace } from '../../../../lib/diagnostics/trace.mjs';
 import { git } from '../../../../lib/git.mjs';
 import { schemaWriteBlocker } from '../../../../lib/schema.mjs';
@@ -69,5 +70,7 @@ export function writeSettings(root, changes, { locale, rewrite = false } = {}) {
   const recipients = changed.includes('household_recipients') && { delivery_tasks: muse.deliveryTasks(saved.settings.household_recipients) };
   // Turning the trace off stops capture and deletes what was kept, right away.
   const traceOff = changed.includes('diagnostics') && saved.settings.diagnostics.trace === 'off' && { trace_cleared: clearTrace(root) };
+  // Turning post-error offers back on forgets every "no thanks".
+  if (changed.includes('post_error_offers') && saved.settings.post_error_offers === 'on') clearDeclines(root);
   return { status: 'saved', data_root: root, settings: saved.settings, changed, side_effects, ...recipients, ...traceOff };
 }

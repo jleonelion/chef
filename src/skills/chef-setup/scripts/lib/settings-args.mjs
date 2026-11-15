@@ -10,6 +10,7 @@ const FLAGS = {
   calendar: ['calendar', (raw) => orReset(raw.trim(), raw.trim() === '' || raw.trim() === 'none')],
   'convert-recipe-units': ['convert_recipe_units', (raw) => orReset(Object.hasOwn(BOOLEAN, raw) ? BOOLEAN[raw] : raw, raw === 'default')],
   trace: ['diagnostics', (raw) => orReset({ trace: raw.trim() }, raw.trim() === 'default')],
+  'post-error-offers': ['post_error_offers', (raw) => orReset(raw.trim(), raw.trim() === 'default')],
 };
 
 export const SETTING_FLAGS = Object.fromEntries(Object.keys(FLAGS).map((flag) => [flag, { type: 'string' }]));
