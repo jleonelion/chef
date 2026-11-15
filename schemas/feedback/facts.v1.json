@@ -1,11 +1,65 @@
 {
   "registry_version": 1,
-  "description": "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). Adding an entry is a reviewed change.",
+  "description": "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). A script's `status` values are its ok results; any other status is a failure that must map to an error code. Adding an entry is a reviewed change.",
   "scripts": {
+    "chef-add-recipe/add-recipe": {
+      "operations": ["url", "draft", "enrich", "verify"],
+      "facts": {
+        "status": { "type": "enum", "values": ["added", "would-add", "exists", "needs-draft", "enriched", "unchanged", "verified"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-batch-prep-planning/batch-prep": {
+      "operations": ["render"],
+      "facts": {
+        "status": { "type": "enum", "values": ["rendered"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-food-inventory/inventory": {
+      "operations": ["view", "check-sender", "add-receipt", "edit", "deduct", "expiring", "health", "rollup"],
+      "facts": {
+        "status": { "type": "enum", "values": ["ok", "trusted", "added", "duplicate", "saved", "deducted", "regenerated", "healthy", "problems"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-health-goals/health-goals": {
+      "operations": ["status", "set", "clear", "report"],
+      "facts": {
+        "status": { "type": "enum", "values": ["active", "dormant", "saved", "cleared", "report"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-meal-logging/meal-logging": {
+      "operations": ["log", "edit", "delete"],
+      "facts": {
+        "status": { "type": "enum", "values": ["logged", "unchanged", "edited", "deleted"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-meal-planning/meal-planning": {
+      "operations": ["plan", "today"],
+      "facts": {
+        "status": { "type": "enum", "values": ["saved", "planned", "no-plan"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-recipe-decisions/recipe-decisions": {
+      "operations": ["propose", "decide", "publish", "list", "retire", "restore", "rules", "rule-add", "rule-remove"],
+      "facts": {
+        "status": { "type": "enum", "values": ["proposed", "auto-accepted", "auto-rejected", "already-proposed", "already-accepted", "already-rejected", "exists", "decided", "unchanged", "published", "ok", "retired", "restored", "added", "replaced", "removed"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
     "chef-recipe-search/recipe-search": {
       "operations": ["search", "show"],
       "facts": {
         "results": { "type": "integer", "minimum": 0, "maximum": 10000, "description": "Recipes returned by a search." }
+      }
+    },
+    "chef-setup/setup": {
+      "operations": ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard"],
+      "facts": {
+        "status": { "type": "enum", "values": ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "fail", "connected", "declared", "none-declared", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-shopping-lists/shopping-lists": {
+      "operations": ["build"],
+      "facts": {
+        "status": { "type": "enum", "values": ["built"], "description": "The run's top-level result status: a fixed word from the script, never user content." }
       }
     }
   }
