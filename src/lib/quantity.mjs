@@ -75,8 +75,12 @@ function onLadder(base, ladder, table, round) {
 
 const label = (amount, unit) => (amount > 1 && PLURAL[unit]) || unit;
 
+// How a display rounds: its ladders per system, its spoon ladder and its rounding.
+const SHOPPING = { ladders: LADDERS, spoons: SPOONS, round: roundUp };
+const KITCHEN = { ladders: KITCHEN_LADDERS, spoons: KITCHEN_SPOONS, round: roundNearest };
+
 // Mass or volume on the system's ladder -> { amount, unit, text }; null for other units.
-function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
+function measuredOnLadder(amount, unit, system, { ladders, spoons, round }, spoon) {
   const from = normalizeUnit(unit);
   const kind = quantityDimension(from);
   if (kind !== 'volume' && kind !== 'mass') return null;
@@ -89,7 +93,7 @@ function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
 
 // -> { amount, unit, text }. `spoon`: a contributing line used tsp/tbsp (defaults to `unit`'s).
 export function displayQuantity(amount, unit, system, { spoon } = {}) {
-  const shown = onSystem(amount, unit, system, { ladders: LADDERS, spoons: SPOONS, round: roundUp, spoon });
+  const shown = measuredOnLadder(amount, unit, system, SHOPPING, spoon);
   if (shown) return shown;
   const rounded = round2(amount);
   return { amount: rounded, unit: normalizeUnit(unit), text: `${rounded} ${normalizeUnit(unit)}` };
@@ -98,6 +102,6 @@ export function displayQuantity(amount, unit, system, { spoon } = {}) {
 // A recipe amount at the nearest kitchen-friendly step -> { amount, unit, text }, or null when
 // the unit is not mass or volume or the amount rounds to nothing.
 export function kitchenQuantity(amount, unit, system) {
-  const shown = onSystem(amount, unit, system, { ladders: KITCHEN_LADDERS, spoons: KITCHEN_SPOONS, round: roundNearest });
+  const shown = measuredOnLadder(amount, unit, system, KITCHEN);
   return shown && shown.amount > 0 ? shown : null;
 }

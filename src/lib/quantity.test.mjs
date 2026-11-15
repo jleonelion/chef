@@ -119,6 +119,19 @@ test('kitchen metric: 1 below 20, 5 below 250, 10 up to 1 kg or l, then 0.05', (
   assert.equal(kitchen(1, 'gal', 'metric'), '3.8 l');
 });
 
+test('kitchen steps change exactly at 20 and 250 g, 4 oz and 1/4 cup', () => {
+  assert.equal(kitchen(19.4, 'g', 'metric'), '19 g');
+  assert.equal(kitchen(20, 'g', 'metric'), '20 g');
+  assert.equal(kitchen(22.4, 'g', 'metric'), '20 g');
+  assert.equal(kitchen(249, 'g', 'metric'), '250 g');
+  assert.equal(kitchen(254, 'g', 'metric'), '250 g');
+  assert.equal(kitchen(256, 'g', 'metric'), '260 g');
+  assert.equal(kitchen(3.7, 'oz', 'us'), '3.5 oz');
+  assert.equal(kitchen(4.4, 'oz', 'us'), '4 oz');
+  assert.equal(kitchen(4, 'tbsp', 'us'), '0.25 cup');
+  assert.equal(kitchen(3.9, 'tbsp', 'us'), '3.875 tbsp');
+});
+
 test('kitchen keeps spoons below 1/4 cup, like displayQuantity', () => {
   assert.equal(kitchen(2, 'tbsp', 'metric'), '2 tbsp');
   assert.equal(kitchen(0.3, 'tsp', 'metric'), '0.25 tsp');
