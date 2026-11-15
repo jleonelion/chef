@@ -53,18 +53,19 @@ Show each line of `screen` as given, keeping the link. Do not reword the second 
 
 Every question is optional. If the user skips one, or all of them, leave that setting at its default; Chef still works. Ask in this order, one at a time:
 
-1. **Household recipients.** Ask: "Do you want Chef to send shopping lists and prep plans to anyone? Give me their email addresses, or skip and Chef will show lists here in chat."
-2. **Receipt forwarding.** Ask: "Do you want to forward grocery receipts to Chef by email so it can update your pantry?" Only if they say yes, ask which addresses the receipts come from. Chef reads receipts only from those senders.
+1. **Units.** Run `node scripts/setup.mjs settings` and read `settings.units` (the default from the user's locale). Ask: "Chef will show shopping lists and pantry amounts in US units (cups, ounces, pounds). Would you rather use metric (grams, milliliters)?" Swap the wording if the default is `metric`.
+2. **Household recipients.** Ask: "Do you want Chef to send shopping lists and prep plans to anyone? Give me their email addresses, or skip and Chef will show lists here in chat."
+3. **Receipt forwarding.** Ask: "Do you want to forward grocery receipts to Chef by email so it can update your pantry?" Only if they say yes, ask which addresses the receipts come from. Chef reads receipts only from those senders.
 
 Then save every answer in one call, passing only the settings the user gave:
 
 ```sh
-node scripts/setup.mjs set --household-recipients "a@example.com,b@example.com" --trusted-receipt-senders "receipts@example.com"
+node scripts/setup.mjs set --units metric --household-recipients "a@example.com,b@example.com" --trusted-receipt-senders "receipts@example.com"
 ```
 
 Confirm what was saved from the `settings` field of the output. If the user skipped everything, do not run `set`.
 
-3. **Allergies.** Ask: "Does anyone in your household have allergies or foods they must never eat?" This is household data, not a setting.
+4. **Allergies.** Ask: "Does anyone in your household have allergies or foods they must never eat?" This is household data, not a setting.
    - **No:** run `node scripts/setup.mjs set-dietary --none`.
    - **Yes:** record each person as in **Dietary ruleset** below.
    - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.
@@ -123,7 +124,7 @@ When the user asks to change a setting, run `set` with only that flag:
 
 | Setting | Flag | Reset to default |
 |---|---|---|
-| Unit system (`us` or `metric`; stored for an upcoming feature, no effect yet) | `--units metric` | `--units default` (from locale) |
+| Units for shopping lists and pantry amounts (`us` or `metric`) | `--units metric` | `--units default` (from locale) |
 | Who receives lists and prep plans | `--household-recipients "a@example.com,b@example.com"` | `--household-recipients ""` (show in chat) |
 | Senders Chef accepts receipts from | `--trusted-receipt-senders "receipts@example.com"` | `--trusted-receipt-senders ""` (forwarding off) |
 | Calendar Chef adds meal plans to | `--calendar "Family"` | `--calendar none` (no calendar writes) |
@@ -132,7 +133,7 @@ A list flag replaces the whole list, so to add one address, pass the current lis
 
 Act on the `set` output:
 
-- `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. If household recipients or receipt senders went from none to some, offer **Recurring tasks** again for the task that is now offered. A `units` change has no effect yet (planned in #38): recipes and lists keep their own units.
+- `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. If household recipients or receipt senders went from none to some, offer **Recurring tasks** again for the task that is now offered. A `units` change affects shopping lists and pantry amounts from now on; recipes are never converted or rewritten.
 - `invalid-input`: show the `problems` and ask the user for a corrected value.
 - `refused` with `content`: the settings file is broken or was written by a newer Chef. Show the user `reason` and `content`, and ask whether to replace it. Only if they agree, rerun the same command with `--rewrite`; that discards the old file's values.
 - `refused` without `content`: tell the user `reason` and change nothing.

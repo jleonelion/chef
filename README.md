@@ -33,9 +33,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 
 - Data root: `~/workspace/chef` by default. Set `CHEF_DATA_ROOT`, or name a folder during
   setup, to put it elsewhere.
-- `settings.json` in the data root holds your per-user settings: who gets shopping
-  lists and prep plans, which senders' receipts Chef accepts, a calendar, and a unit
-  system (stored only; recipes and lists keep their own units). All are optional.
+- `settings.json` in the data root holds your per-user settings: units for shopping
+  lists and pantry amounts, who gets shopping lists and prep plans, which senders'
+  receipts Chef accepts, and a calendar. All are optional.
   Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
   (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.
 - Recipes are Markdown pages in `knowledge/wiki/recipes/`, each with an unchanged copy of its source in
