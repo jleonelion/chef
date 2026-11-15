@@ -27,6 +27,7 @@ export function readStream(text) {
   return {
     model: all.find((event) => event.type === 'system' && event.subtype === 'init')?.model,
     skills,
+    response: result?.result ?? '',
     cost_usd: result?.total_cost_usd ?? 0,
     error: !result || result.is_error === true,
   };
@@ -35,6 +36,10 @@ export function readStream(text) {
 export function checkSkills(fired, { skills = [], forbidSkills = [] }) {
   for (const skill of skills) assert(fired.includes(skill), `${skill} did not fire (fired: ${fired.join(', ') || 'none'})`);
   for (const skill of forbidSkills) assert(!fired.includes(skill), `${skill} fired`);
+}
+
+export function checkResponse(response, assertions = []) {
+  for (const assertion of assertions) assertCase({ content: response }, assertion);
 }
 
 function countFiles(abs) {
