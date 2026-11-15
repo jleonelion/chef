@@ -1,5 +1,24 @@
 [
   {
+    "id": "setup-household-recipients",
+    "flow": "core",
+    "description": "Onboarding explains that household recipients are defaults for an approved shopping-list recurring task, not a restriction on one-off delivery (#39).",
+    "turns": [
+      "Continue onboarding for this existing Chef data root. I have seen the safety screen and want to keep the current units. Ask me the household recipients question next."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "email shopping lists to by default" },
+        { "path": "$.content", "includes": "automatically" },
+        { "path": "$.content", "includes": "approve the Chef shopping list recurring task" },
+        { "path": "$.content", "includes": "email a shopping list to anyone" }
+      ]
+    ],
+    "skills": ["chef-setup"],
+    "files": [{ "path": "settings.json", "absent": true }],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
     "id": "add-recipe",
     "flow": "core",
     "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",

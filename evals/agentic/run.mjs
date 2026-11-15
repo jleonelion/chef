@@ -4,7 +4,8 @@
 // not, script output, git state). Every row must pass every rep; nothing is retried.
 // Local only: it spends real Claude usage, so it never runs in CI. Rows are in rows.json:
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
-//   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts; later turns resume the session), skills, files
+//   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts;
+//   later turns resume the session), responses (assertions against each turn's final reply), skills, files
 //   (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
 //   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
@@ -18,7 +19,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { today } from '../../src/lib/recipes.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, checkFiles, checkSkills, readStream } from './report.mjs';
+import { aggregate, checkFiles, checkResponse, checkSkills, readStream } from './report.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const TURN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -83,6 +84,7 @@ async function runRep(row, number, { model, logDir }) {
       Object.assign(run, { model: run.model ?? turn.model, cost_usd: run.cost_usd + turn.cost_usd });
       run.skills.push(...turn.skills);
       if (turn.error) throw new Error(`turn ${index + 1} did not finish (see ${row.id}-${number}-${index + 1}.jsonl)`);
+      checkResponse(turn.response, row.responses?.[index]);
     }
     checkSkills(run.skills, row);
     checkFiles(rep.dataRoot, row.files);

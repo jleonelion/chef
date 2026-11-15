@@ -34,8 +34,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Data root: `~/workspace/chef` by default. Set `CHEF_DATA_ROOT`, or name a folder during
   setup, to put it elsewhere.
 - `settings.json` in the data root holds your per-user settings: units for shopping
-  lists, pantry amounts and the inventory page (and, if you opt in, recipe ingredients), who
-  gets shopping lists and prep plans, which senders' receipts Chef accepts, and a calendar.
+  lists, pantry amounts and the inventory page (and, if you opt in, recipe ingredients), the default
+  recipients for emailed shopping lists, which senders' receipts Chef accepts, and a calendar.
   All are optional.
   Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
   (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.
@@ -104,7 +104,7 @@ Requires Node 20+ and Bun.
 The agentic suite runs `claude -p` with `plugins/chef` loaded against a fresh copy of the fixture
 per rep, so it needs a signed-in Claude Code and spends real usage. It never runs in CI. Each row
 in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with deterministic
-asserts only (skills fired, files written or not, script output, git state). A row must pass
+asserts only (skills fired, reply text, files written or not, script output, git state). A row must pass
 every rep; failing rows get fixed or dropped, never retried. The result file
 (`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version and per-row pass
 counts) is attached to the release. `--rows <id,id>`, `--known-failures`, `--reps`, `--model` and `--out` narrow a run.

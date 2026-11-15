@@ -3,19 +3,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { aggregate, checkFiles, checkSkills, readStream } from './report.mjs';
+import { aggregate, checkFiles, checkResponse, checkSkills, readStream } from './report.mjs';
 
 const stream = [
   { type: 'system', subtype: 'init', model: 'claude-test-1', session_id: 's1' },
   { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'chef:chef-add-recipe' } }] } },
   { type: 'assistant', message: { content: [{ type: 'text', text: 'ok' }, { type: 'tool_use', name: 'Bash', input: { command: 'ls' } }] } },
-  { type: 'result', subtype: 'success', total_cost_usd: 0.25, is_error: false },
+  { type: 'result', subtype: 'success', result: 'Final reply', total_cost_usd: 0.25, is_error: false },
 ]
   .map((event) => JSON.stringify(event))
   .join('\n');
 
 test('readStream reports the model, skills fired and cost of one turn', () => {
-  assert.deepEqual(readStream(`${stream}\nnot json\n`), { model: 'claude-test-1', skills: ['chef-add-recipe'], cost_usd: 0.25, error: false });
+  assert.deepEqual(readStream(`${stream}\nnot json\n`), { model: 'claude-test-1', skills: ['chef-add-recipe'], response: 'Final reply', cost_usd: 0.25, error: false });
 });
 
 test('readStream marks a turn with no result event as an error', () => {
@@ -26,6 +26,14 @@ test('checkSkills requires every expected skill and forbids listed ones', () => 
   checkSkills(['chef-recipe-search', 'chef-add-recipe'], { skills: ['chef-add-recipe'], forbidSkills: ['chef-meal-planning'] });
   assert.throws(() => checkSkills(['chef-recipe-search'], { skills: ['chef-add-recipe'] }), /chef-add-recipe did not fire/);
   assert.throws(() => checkSkills(['chef-meal-planning'], { forbidSkills: ['chef-meal-planning'] }), /chef-meal-planning fired/);
+});
+
+test('checkResponse applies content assertions to the final reply', () => {
+  checkResponse('Shopping-list recipients are defaults, not a restriction.', [
+    { path: '$.content', includes: 'defaults' },
+    { path: '$.content', includes: 'not a restriction' },
+  ]);
+  assert.throws(() => checkResponse('Recipients are required.', [{ path: '$.content', includes: 'defaults' }]), /missing "defaults"/);
 });
 
 function dataRoot(t) {
