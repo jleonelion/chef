@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong), asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong), asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch, a USDA connection hint or a `report_offer` after an internal error.
 ---
 
 # Chef setup
@@ -131,6 +131,7 @@ When the user asks to change a setting, run `set` with only that flag:
 | Senders Chef accepts receipts from | `--trusted-receipt-senders "receipts@example.com"` | `--trusted-receipt-senders ""` (forwarding off) |
 | Calendar Chef adds meal plans to | `--calendar "Family"` | `--calendar none` (no calendar writes) |
 | Invocation trace of script runs (`on` or `off`) | `--trace off` | `--trace default` (on) |
+| Offer to report an internal error right after it happens (`on` or `off`) | `--post-error-offers off` | `--post-error-offers default` (on) |
 
 A list flag replaces the whole list, so to add one address, pass the current list plus the new one. Read the current values with `node scripts/setup.mjs settings`.
 
@@ -237,6 +238,15 @@ When the user wants to report a problem, ask for something new or ask Chef to be
    - `saved`: say `notice` in plain words and give `path` (inside the data root). Offer no other way to send it: no email, no GitHub issue, no upload.
    - `refused`: the report changed since that preview; show the current one (`report-preview`) and ask again.
 6. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days.
+
+### After an internal error
+
+When any chef- script's result has `report_offer`, Chef hit an internal error and may offer a report once. Follow its `message`: say in one plain sentence that something went wrong inside Chef and ask whether they want to report it. Never offer for any other failure, and never offer again for the same error.
+
+- **Yes**: `node scripts/setup.mjs report-draft --focus <report_offer.focus>`. This skips classification: it drafts a defect about the failing run, with summary, expected and actual pre-drafted from the run. Show the preview and continue from step 3 above; the user can edit anything.
+- **No thanks**: `node scripts/setup.mjs report-offer-decline --code <report_offer.error_code>`. Chef won't offer for that error again.
+- Removing `focus_invocation`, the failing run or the whole diagnostics returns `confirmation-required` with `warning`: say it in plain words, and only on a yes repeat the `report-remove` with `--confirm`. The report then becomes user-initiated.
+- "Stop offering to report errors" or "offer again": `set --post-error-offers off` or `on`. Turning offers on again forgets every "no thanks". The trace is a separate setting.
 
 ## Schema mismatch
 
