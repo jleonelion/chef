@@ -92,19 +92,20 @@ function record(context, describe) {
 }
 
 // A recorded internal-error may come with one offer to report it (#78): only with post-error
-// offers on, at most once per error code per hour, never for a code the user declined.
+// offers on, at most once per skill and error code per hour, never for one the user declined.
 function reportOffer(root, event) {
   if (event?.outcome !== 'internal-error') return null;
   try {
-    if (readSettings(root).settings.post_error_offers !== 'on' || !claimOffer(root, event.error_code)) return null;
+    if (readSettings(root).settings.post_error_offers !== 'on' || !claimOffer(root, { skill: event.skill_id, code: event.error_code })) return null;
   } catch {
     return null;
   }
   const focus = event.invocation_id;
   return {
+    skill_id: event.skill_id,
     error_code: event.error_code,
     focus,
-    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --code ${event.error_code}\`. Don't offer again either way.`,
+    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --skill ${event.skill_id} --code ${event.error_code}\`. Don't offer again for this error either way.`,
   };
 }
 

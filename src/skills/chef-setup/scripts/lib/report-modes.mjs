@@ -7,14 +7,14 @@ import { declineOffer } from '../../../../lib/diagnostics/offers.mjs';
 import { readTrace } from '../../../../lib/diagnostics/trace.mjs';
 import { buildBundle, installedSkills, selectAround, selectEvents } from '../../../../lib/feedback/bundle.mjs';
 import { renderPreview } from '../../../../lib/feedback/preview.mjs';
-import { dropsFocus, editItem, newDraft, removeItem, serialize, splitSkillIds } from '../../../../lib/feedback/report.mjs';
+import { dropsFocus, editItem, newDraft, removeItem, serialize, SKILL_ID, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
 import { deleteDraft, readDraft, saveDraft } from '../../../../lib/feedback/store.mjs';
 import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
 
 const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'contact'];
 export const REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce', 'focus', 'code'].map((flag) => [flag, { type: 'string' }])),
+  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce', 'focus', 'skill', 'code'].map((flag) => [flag, { type: 'string' }])),
   raw: { type: 'boolean' },
 };
 
@@ -134,10 +134,15 @@ const removeMode = (root, draft, values, context) => {
   return changeMode(removeItem)(root, draft, values, context);
 };
 
+// "No thanks" to an offer: { skill, code } from the offer's skill_id and error_code.
 function declineMode(root, values) {
-  if (!Object.hasOwn(ERROR_CODES.codes, values.code ?? '')) return invalid(root, new Error('code: must be the error_code of the offer'));
-  declineOffer(root, values.code);
-  return { status: 'declined', data_root: root, error_code: values.code };
+  const problems = [
+    !SKILL_ID.test(values.skill ?? '') && 'skill: must be the skill_id of the offer',
+    !Object.hasOwn(ERROR_CODES.codes, values.code ?? '') && 'code: must be the error_code of the offer',
+  ].filter(Boolean);
+  if (problems.length) return { status: 'invalid-input', data_root: root, problems };
+  declineOffer(root, { skill: values.skill, code: values.code });
+  return { status: 'declined', data_root: root, skill_id: values.skill, error_code: values.code };
 }
 
 const sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });

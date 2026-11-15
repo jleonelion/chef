@@ -11,7 +11,7 @@ export const MAX_BYTES = SCHEMA['x-max-bytes'];
 export const CLASS_FIELDS = { defect: ['expected', 'actual', 'frequency'], enhancement: ['desired_outcome'], behavior_change: ['current_behavior', 'desired_behavior'] };
 const FREQUENCIES = SCHEMA.properties.frequency.enum;
 const maxLength = (field) => SCHEMA.$defs[field === 'summary' ? 'short_text' : 'text'].maxLength;
-const SKILL_ID = /^chef-[a-z0-9-]+$/;
+export const SKILL_ID = /^chef-[a-z0-9-]+$/;
 // Optional parts the user may withhold. Required fields can only be edited; evidence only removed.
 const REMOVABLE = [/^skill_ids$/, /^focus_invocation$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
 const EDITABLE = new Set([...TEXT_FIELDS, 'frequency', 'skill_ids']);

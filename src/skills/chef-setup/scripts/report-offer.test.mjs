@@ -36,9 +36,9 @@ test('an internal error offers a report once; other failures never do', () => {
   assert.equal(first.status, 1);
   assert.equal(first.out.status, 'internal-error');
   const [event] = readTrace(root).events;
-  assert.deepEqual(first.out.report_offer, { error_code: 'unclassified', focus: event.invocation_id, message: first.out.report_offer.message });
+  assert.deepEqual(first.out.report_offer, { skill_id: 'chef-food-inventory', error_code: 'unclassified', focus: event.invocation_id, message: first.out.report_offer.message });
   assert.match(first.out.report_offer.message, /report-draft --focus/);
-  assert.equal(crash(root).out.report_offer, undefined, 'at most once per error code per hour');
+  assert.equal(crash(root).out.report_offer, undefined, 'at most once per skill and error code per hour');
   assert.ok(fs.existsSync(path.join(root, 'diagnostics', 'offers.json')));
   assert.equal(run(root, logging, 'delete', '--id', 'no-such-entry').out.report_offer, undefined);
 });
@@ -74,9 +74,10 @@ test('removing the focus run warns first, then makes the report user-initiated',
   assert.ok(report.removed_fields.includes('focus_invocation'));
 });
 
-test('"no thanks" suppresses that error code; turning offers off and on again resets it', () => {
+test('"no thanks" suppresses that skill and error code; turning offers off and on again resets it', () => {
   const root = fixtureRoot();
-  assert.equal(run(root, setup, 'report-offer-decline', '--code', 'unclassified').out.status, 'declined');
+  assert.equal(run(root, setup, 'report-offer-decline', '--skill', 'chef-food-inventory', '--code', 'nope').out.status, 'invalid-input');
+  assert.equal(run(root, setup, 'report-offer-decline', '--skill', 'chef-food-inventory', '--code', 'unclassified').out.status, 'declined');
   assert.equal(crash(root).out.report_offer, undefined);
 
   assert.equal(run(root, setup, 'set', '--post-error-offers', 'off').out.status, 'saved');
