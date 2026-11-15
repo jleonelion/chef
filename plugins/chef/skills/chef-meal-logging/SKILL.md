@@ -1,6 +1,6 @@
 ---
 name: chef-meal-logging
-description: Log, edit or delete meal-log entries after chat confirmation, including saved recipes or free-text foods, and deduct ingredients from inventory when the user cooked a saved recipe at home. Use when the user says what they ate, asks to log breakfast, lunch, dinner or a snack, correct or remove a logged meal, or says they cooked a meal and want inventory updated.
+description: Log, edit or delete meal-log entries after chat confirmation, including saved recipes or free-text foods, and deduct ingredients from inventory when the user cooked a saved recipe at home. Use when the user says what they ate, asks to log breakfast, lunch, dinner or a snack, asks to log meals from their meal plan, correct or remove a logged meal, or says they cooked a meal and want inventory updated.
 ---
 
 # Chef meal logging
@@ -21,6 +21,19 @@ node scripts/meal-logging.mjs log --date 2026-01-16 --slot snack --food "apple a
 ```
 
 Do not pass `--cooked` for restaurant, takeaway, packaged or otherwise not-cooked-at-home meals. Free-text food can be marked cooked, but without a saved recipe there are no recipe ingredients to deduct.
+
+## Log from the plan
+
+When the user ate a planned meal ("I had my planned dinner", "log today from the plan"), read that date's planned meals with `chef-meal-planning`'s read-only `today` command, passing `--date YYYY-MM-DD` for any day other than today.
+
+Each planned meal pre-fills one proposed entry: its date, `slot`, recipe `slug` as `--recipe`, and `servings` as `--servings` (planned servings are servings eaten). Always ask whether each meal was cooked at home; the plan never answers that. Then confirm as above: show every proposed entry, let the user change any field, and log only after an explicit yes.
+
+- One planned meal: propose the meal in the slot the user named.
+- A whole day: propose every planned meal for that date in one confirmation, with a cooked yes/no per meal, then run one `log` per meal and report each result.
+- `no-plan`, or no planned meal in the requested slot: say so, then log manually.
+- `log` returns `recipe not found` for a planned recipe: report it and offer manual logging with the user's own choice of recipe or food.
+
+The entry is an ordinary meal-log entry with no link to the plan. Logging never changes the plan.
 
 ## Report the result
 

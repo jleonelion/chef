@@ -1,6 +1,6 @@
 ---
 name: chef-meal-planning
-description: Plan and save a week of meals from the user's recipe book, household profile, dietary rules and food inventory, with a nutrition rollup and an optional runtime calendar payload, or show today's meals read-only. Use when the user asks for a meal plan, weekly menu, today's planned meals or meals added to their configured calendar.
+description: Plan and save a week of meals from the user's recipe book, household profile, dietary rules and food inventory, with a nutrition rollup and an optional runtime calendar payload, or show any day's planned meals read-only. Use when the user asks for a meal plan, weekly menu, a day's planned meals or meals added to their configured calendar.
 ---
 
 # Chef meal planning
@@ -9,13 +9,14 @@ Plan from Chef's saved recipes, household profile, dietary ruleset and inventory
 
 Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input` or `refused`; the read-only `today` mode exits 0 when nothing is planned.
 
-## Show today's meals
+## Show a day's meals
 
 ```sh
 node scripts/meal-planning.mjs today
+node scripts/meal-planning.mjs today --date 2026-01-20
 ```
 
-This reads the saved plan containing today's meals and writes nothing. `planned` returns `meals` in slot order (breakfast, lunch, dinner, snack), each with its `slot`, plus `dietary.footer` when the saved plan has one. `no-plan` prints one clear message and exits successfully. Use `--date YYYY-MM-DD` only for deterministic testing.
+This reads the saved plan containing that day's meals and writes nothing. Without `--date` it reads today; pass `--date YYYY-MM-DD` to read any other day, past or future. `planned` returns `meals` in slot order (breakfast, lunch, dinner, snack), each with its `slot`, recipe `slug`, `title` and `servings`, plus `dietary.footer` when the saved plan has one. `no-plan` prints one clear message and exits successfully.
 
 ## Plan meals
 

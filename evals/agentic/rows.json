@@ -84,7 +84,12 @@
     "description": "A prep plan for a week with a saved meal plan is rendered as the week's PDF under the data root.",
     "setup": [
       {
-        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19", "--days", "3", "--recipes", "lemon-garlic-pasta,chickpea-spinach-stew,lemon-garlic-pasta"]
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta" },
+          { "date": "2026-01-20", "slot": "dinner", "recipe": "chickpea-spinach-stew" },
+          { "date": "2026-01-21", "slot": "dinner", "recipe": "lemon-garlic-pasta" }
+        ]
       }
     ],
     "turns": ["Make me a printable batch-prep plan for the week starting 2026-01-19."],
@@ -173,6 +178,85 @@
       },
       { "path": "knowledge/wiki/recipes/mushroom-barley-soup.md", "absent": true }
     ],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "log-planned-dinner",
+    "flow": "core",
+    "description": "\"I ate my planned dinner\" pre-fills the entry from that date's planned meal; after the cooked answer and a yes, the log holds one matching entry (#48).",
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta" },
+          { "date": "2026-01-20", "slot": "dinner", "recipe": "chickpea-spinach-stew", "servings": 2 }
+        ]
+      }
+    ],
+    "turns": ["I ate my planned dinner on 2026-01-20. Log it in Chef.", "I cooked it at home. Yes, log it."],
+    "skills": ["chef-meal-logging"],
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.entries.length", "equals": 1 },
+          { "path": "$.entries[0].date", "equals": "2026-01-20" },
+          { "path": "$.entries[0].slot", "equals": "dinner" },
+          { "path": "$.entries[0].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries[0].servings", "equals": 2 },
+          { "path": "$.entries[0].cooked", "equals": true }
+        ]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "log-day-from-plan",
+    "flow": "core",
+    "description": "\"Log today from the plan\" with breakfast, lunch and dinner planned gives one confirmation, with a cooked answer per meal, and three log entries (#48).",
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "{today}"],
+        "stdin": [
+          { "date": "{today}", "slot": "breakfast", "recipe": "chickpea-spinach-stew", "servings": 1 },
+          { "date": "{today}", "slot": "lunch", "recipe": "lemon-garlic-pasta", "servings": 1 },
+          { "date": "{today}", "slot": "dinner", "recipe": "chickpea-spinach-stew", "servings": 2 }
+        ]
+      }
+    ],
+    "turns": ["Log today from my Chef meal plan.", "I cooked breakfast and dinner at home; lunch I did not cook at home. Yes, log all three."],
+    "skills": ["chef-meal-logging"],
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.entries.length", "equals": 3 },
+          { "path": "$.entries[?(@.slot=='breakfast')].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries[?(@.slot=='breakfast')].servings", "equals": 1 },
+          { "path": "$.entries[?(@.slot=='breakfast')].cooked", "equals": true },
+          { "path": "$.entries[?(@.slot=='lunch')].recipe", "equals": "lemon-garlic-pasta" },
+          { "path": "$.entries[?(@.slot=='lunch')].servings", "equals": 1 },
+          { "path": "$.entries[?(@.slot=='lunch')].cooked", "equals": false },
+          { "path": "$.entries[?(@.slot=='dinner')].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries[?(@.slot=='dinner')].servings", "equals": 2 },
+          { "path": "$.entries[?(@.slot=='dinner')].cooked", "equals": true }
+        ]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "log-from-plan-no-plan",
+    "flow": "should-not-act",
+    "description": "Logging from the plan for a date with no plan falls back to manual logging, and nothing is logged before the user confirms the proposed entry (#48).",
+    "turns": [
+      "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
+      "I had 1 serving of the chickpea spinach stew, cooked at home."
+    ],
+    "skills": ["chef-meal-logging"],
+    "files": [{ "path": "data/meal-log/log.json", "absent": true }],
     "git": { "headUnchanged": true, "clean": true }
   },
   {
