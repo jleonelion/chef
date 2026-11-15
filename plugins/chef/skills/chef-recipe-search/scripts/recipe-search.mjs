@@ -7545,6 +7545,7 @@ function plusAmount(rest, amount, unit) {
   return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
 }
 var VULGAR = "[½¼¾⅓⅔⅛]";
+var asciiFractions = (text) => text.replace(new RegExp(VULGAR, "g"), (c) => FRACTIONS[c]);
 var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
 var measurable = (unit) => [ML_PER, GRAMS_PER].find((table) => table[unit]);
 function measuredLead(line) {
@@ -7556,7 +7557,7 @@ function measuredLead(line) {
   const plus = after.trimStart().match(PLUS);
   if (plus && measurable(unitOf(plus[2])) !== measurable(unit))
     return null;
-  const amount = toNumber(lead[1].replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]));
+  const amount = toNumber(asciiFractions(lead[1]));
   if (!plus)
     return { text: lead[0], amount, unit };
   const rest = after.trimStart().slice(plus[0].length);
@@ -7674,7 +7675,8 @@ function onLadder(base, ladder, table, round) {
   }
 }
 var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
-function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
+var KITCHEN = { ladders: KITCHEN_LADDERS, spoons: KITCHEN_SPOONS, round: roundNearest };
+function measuredOnLadder(amount, unit, system, { ladders, spoons, round }, spoon) {
   const from = normalizeUnit(unit);
   const kind = quantityDimension(from);
   if (kind !== "volume" && kind !== "mass")
@@ -7686,7 +7688,7 @@ function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
   return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
 }
 function kitchenQuantity(amount, unit, system) {
-  const shown = onSystem(amount, unit, system, { ladders: KITCHEN_LADDERS, spoons: KITCHEN_SPOONS, round: roundNearest });
+  const shown = measuredOnLadder(amount, unit, system, KITCHEN);
   return shown && shown.amount > 0 ? shown : null;
 }
 
@@ -7695,51 +7697,55 @@ var NATIVE = { us: new Set(["tsp", "tbsp", "cup", "floz", "pt", "qt", "oz", "lb"
 var SYSTEM_NAME = { us: "US units", metric: "metric units" };
 var QUARTER_CUP_TSP = 12;
 var SCALE = { us: "F", metric: "C" };
-var TEMPERATURE = /(?<!\(\s*)\b(\d+(?:\.\d+)?)(\s?(?:°\s?|degrees\s)([FC]))\b(?!\s*\(\s*\d)/g;
-var toOther = { F: (f) => (f - 32) * 5 / 9, C: (c) => c * 9 / 5 + 32 };
+var HAS_CONVERSION = /^\s*[(/]\s*\d/;
+var TEMPERATURE = /(?<![(/]\s*)\b(\d+(?:\.\d+)?)\s?(?:°\s?|degrees\s)([FC])\b(?!\s*[(/]\s*\d)/gi;
+var TO_SCALE = { C: (f) => (f - 32) * 5 / 9, F: (c) => c * 9 / 5 + 32 };
 var keptSpoon = ({ amount, unit }) => SPOON_UNITS.has(unit) && convertQuantity(amount, unit, "tsp") < QUARTER_CUP_TSP;
 function convertLine(line, system) {
   const lead = measuredLead(line);
   if (!lead || NATIVE[system].has(lead.unit) || keptSpoon(lead))
     return null;
+  const rest = line.slice(lead.text.length);
+  if (HAS_CONVERSION.test(rest))
+    return null;
   const shown = kitchenQuantity(lead.amount, lead.unit, system);
-  return shown && `${shown.text} (${lead.text})${line.slice(lead.text.length)}`;
+  return shown && `${shown.text} (${lead.text})${rest}`;
 }
 function convertTemperatures(line, system) {
   const target = SCALE[system];
-  return line.replace(TEMPERATURE, (match, degrees, _unit, scale) => {
-    if (scale === target)
+  return line.replace(TEMPERATURE, (match, degrees, scale) => {
+    if (scale.toUpperCase() === target)
       return match;
-    return `${match} (${Math.round(toOther[scale](Number(degrees)) / 5) * 5}°${target})`;
+    return `${match} (${Math.round(TO_SCALE[target](Number(degrees)) / 5) * 5}°${target})`;
   });
 }
 function convertRecipeBody(body, system) {
   let section = null;
+  let ingredientsAt = -1;
   let converted = false;
   const out = body.split(`
-`).map((line) => {
+`).map((line, index) => {
     const heading = line.match(/^## (.+?)\s*$/);
     if (heading) {
       section = heading[1].toLowerCase();
+      if (section === "ingredients")
+        ingredientsAt = index;
       return line;
     }
     if (section === "steps")
       return convertTemperatures(line, system);
     const bullet = section === "ingredients" && line.match(/^(\s*[-*]\s+)(.+)$/);
-    const next = bullet && convertLine(bullet[2], system);
-    if (!next)
+    const shown = bullet && convertLine(bullet[2], system);
+    if (!shown)
       return line;
     converted = true;
-    return `${bullet[1]}${next}`;
+    return `${bullet[1]}${shown}`;
   });
-  if (!converted)
-    return out.join(`
-`);
   const note = `Amounts converted to ${SYSTEM_NAME[system]}; steps keep the recipe's original amounts.`;
+  if (converted)
+    out.splice(ingredientsAt + 1, 0, "", note);
   return out.join(`
-`).replace(/^## Ingredients[ \t]*$/im, (heading) => `${heading}
-
-${note}`);
+`);
 }
 
 // src/lib/settings.mjs

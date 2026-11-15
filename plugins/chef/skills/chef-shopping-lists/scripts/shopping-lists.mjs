@@ -7806,9 +7806,10 @@ function parseCitrus(line, text) {
   return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
 }
 var VULGAR = "[½¼¾⅓⅔⅛]";
+var asciiFractions = (text) => text.replace(new RegExp(VULGAR, "g"), (c) => FRACTIONS[c]);
 var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
 function parseIngredientLine(line) {
-  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  let text = asciiFractions(line).trim();
   const citrus = parseCitrus(line, text);
   if (citrus)
     return citrus;
@@ -7937,7 +7938,8 @@ function onLadder(base, ladder, table, round) {
   }
 }
 var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
-function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
+var SHOPPING = { ladders: LADDERS, spoons: SPOONS, round: roundUp };
+function measuredOnLadder(amount, unit, system, { ladders, spoons, round }, spoon) {
   const from = normalizeUnit(unit);
   const kind = quantityDimension(from);
   if (kind !== "volume" && kind !== "mass")
@@ -7949,7 +7951,7 @@ function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
   return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
 }
 function displayQuantity(amount, unit, system, { spoon } = {}) {
-  const shown = onSystem(amount, unit, system, { ladders: LADDERS, spoons: SPOONS, round: roundUp, spoon });
+  const shown = measuredOnLadder(amount, unit, system, SHOPPING, spoon);
   if (shown)
     return shown;
   const rounded = round22(amount);

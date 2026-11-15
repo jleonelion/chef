@@ -7749,7 +7749,8 @@ function onLadder(base, ladder, table, round) {
   }
 }
 var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
-function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
+var SHOPPING = { ladders: LADDERS, spoons: SPOONS, round: roundUp };
+function measuredOnLadder(amount, unit, system, { ladders, spoons, round }, spoon) {
   const from = normalizeUnit(unit);
   const kind = quantityDimension(from);
   if (kind !== "volume" && kind !== "mass")
@@ -7761,7 +7762,7 @@ function onSystem(amount, unit, system, { ladders, spoons, round, spoon }) {
   return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
 }
 function displayQuantity(amount, unit, system, { spoon } = {}) {
-  const shown = onSystem(amount, unit, system, { ladders: LADDERS, spoons: SPOONS, round: roundUp, spoon });
+  const shown = measuredOnLadder(amount, unit, system, SHOPPING, spoon);
   if (shown)
     return shown;
   const rounded = round2(amount);

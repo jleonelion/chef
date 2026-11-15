@@ -7745,9 +7745,10 @@ function parseCitrus(line, text) {
   return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
 }
 var VULGAR = "[½¼¾⅓⅔⅛]";
+var asciiFractions = (text) => text.replace(new RegExp(VULGAR, "g"), (c) => FRACTIONS[c]);
 var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
 function parseIngredientLine(line) {
-  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  let text = asciiFractions(line).trim();
   const citrus = parseCitrus(line, text);
   if (citrus)
     return citrus;
