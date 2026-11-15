@@ -11,7 +11,7 @@ const list = (uses, system, stock = []) => {
 
 test('same item in compatible units merges, scaled per meal, shown in the chosen system', () => {
   const uses = [use('1 cup rice', 2, 'a'), use('4 tbsp rice', 1, 'b')];
-  assert.deepEqual(shown(list(uses, 'us').items), [['rice', '2 1/4 cups']]);
+  assert.deepEqual(shown(list(uses, 'us').items), [['rice', '2.25 cups']]);
   assert.deepEqual(shown(list(uses, 'metric').items), [['rice', '550 ml']]);
   assert.deepEqual(list(uses, 'us').items[0].recipes, ['a', 'b']);
 });
@@ -22,7 +22,7 @@ test('merged rows get the same unit no matter the recipe order', () => {
   for (const system of ['us', 'metric']) {
     assert.deepEqual(shown(list([a, b], system).items), shown(list([b, a], system).items));
   }
-  assert.deepEqual(shown(list([a, b], 'us').items), [['milk', '2 1/4 cups']]);
+  assert.deepEqual(shown(list([a, b], 'us').items), [['milk', '2.25 cups']]);
   assert.deepEqual(shown(list([b, a], 'metric').items), [['milk', '500 ml']]);
 });
 
@@ -57,13 +57,13 @@ test('inventory is subtracted in convertible units; fully covered items move to 
   const result = list([use('500 g spaghetti'), use('3 can chickpeas'), use('2 cup milk')], 'us', [
     stock('spaghetti', 1, 'kg'), stock('chickpeas', 1, 'can'), stock('milk', 0.25, 'cup'),
   ]);
-  assert.deepEqual(shown(result.items), [['chickpeas', '2 can'], ['milk', '1 3/4 cups']]);
-  assert.deepEqual(result.covered.map((c) => [c.item, c.on_hand.text]), [['spaghetti', '2 1/4 lb']]);
+  assert.deepEqual(shown(result.items), [['chickpeas', '2 can'], ['milk', '1.75 cups']]);
+  assert.deepEqual(result.covered.map((c) => [c.item, c.on_hand.text]), [['spaghetti', '2.25 lb']]);
 });
 
 test('inventory subtraction uses exact amounts, not the rounded display', () => {
-  // 1.1 cup needed shows as 1 1/4 cups; 1.2 cups on hand covers it exactly.
-  assert.deepEqual(shown(list([use('1.1 cup milk')], 'us', [stock('milk', 1.2, 'cup')]).covered), [['milk', '1 1/4 cups']]);
+  // 1.1 cup needed shows as 1.25 cups; 1.2 cups on hand covers it exactly.
+  assert.deepEqual(shown(list([use('1.1 cup milk')], 'us', [stock('milk', 1.2, 'cup')]).covered), [['milk', '1.25 cups']]);
   // 1 cup + 1 tsp needed, 1 cup on hand: 1 tsp left, not the 1/4 cup rounding would leave.
   assert.deepEqual(shown(list([use('1 cup oil'), use('1 tsp oil')], 'us', [stock('oil', 1, 'cup')]).items), [['oil', '1 tsp']]);
   // 990 g needed rounds to 1 kg; 980 g on hand leaves 10 g, not 20 g.

@@ -25,19 +25,19 @@ test('US volume climbs tsp -> tbsp -> cup -> qt, largest unit keeping the amount
   assert.equal(shown(3, 'tsp', 'us'), '1 tbsp');
   assert.equal(shown(15, 'tbsp', 'us'), '15 tbsp');
   assert.equal(shown(16, 'tbsp', 'us'), '1 cup');
-  assert.equal(shown(3.5, 'cup', 'us'), '3 1/2 cups');
+  assert.equal(shown(3.5, 'cup', 'us'), '3.5 cups');
   assert.equal(shown(4, 'cup', 'us'), '1 qt');
   assert.equal(shown(1, 'gal', 'us'), '4 qt');
-  assert.equal(shown(500, 'ml', 'us'), '2 1/4 cups');
+  assert.equal(shown(500, 'ml', 'us'), '2.25 cups');
 });
 
 test('US rounds up: 1/2 tsp and tbsp, 1/4 cup, qt and lb, whole oz', () => {
-  assert.equal(shown(0.3, 'tsp', 'us'), '1/2 tsp');
-  assert.equal(shown(1.1, 'tbsp', 'us'), '1 1/2 tbsp');
-  assert.equal(shown(1.01, 'cup', 'us'), '1 1/4 cups');
-  assert.equal(shown(1.6, 'qt', 'us'), '1 3/4 qt');
+  assert.equal(shown(0.3, 'tsp', 'us'), '0.5 tsp');
+  assert.equal(shown(1.1, 'tbsp', 'us'), '1.5 tbsp');
+  assert.equal(shown(1.01, 'cup', 'us'), '1.25 cups');
+  assert.equal(shown(1.6, 'qt', 'us'), '1.75 qt');
   assert.equal(shown(12.2, 'oz', 'us'), '13 oz');
-  assert.equal(shown(500, 'g', 'us'), '1 1/4 lb');
+  assert.equal(shown(500, 'g', 'us'), '1.25 lb');
   assert.equal(shown(0.75, 'lb', 'us'), '12 oz');
 });
 
@@ -61,21 +61,21 @@ test('metric climbs ml -> l and g -> kg, rounding up 5 below 100, 25 below 1000,
 
 test('spoons stay spoons below 1/4 cup in both systems; metric uses ml otherwise', () => {
   assert.equal(shown(2, 'tbsp', 'metric'), '2 tbsp');
-  assert.equal(shown(7, 'tsp', 'metric'), '2 1/2 tbsp');
+  assert.equal(shown(7, 'tsp', 'metric'), '2.5 tbsp');
   assert.equal(shown(4, 'tbsp', 'metric'), '60 ml');
   assert.equal(shown(30, 'ml', 'metric'), '30 ml');
   assert.equal(shown(10, 'tsp', 'metric', { spoon: false }), '50 ml');
-  assert.equal(shown(30, 'ml', 'metric', { spoon: true }), '2 1/2 tbsp');
-  assert.equal(shown(7, 'tsp', 'us'), '2 1/2 tbsp');
+  assert.equal(shown(30, 'ml', 'metric', { spoon: true }), '2.5 tbsp');
+  assert.equal(shown(7, 'tsp', 'us'), '2.5 tbsp');
 });
 
-test('US amounts print as ASCII fractions, never glyphs; display also returns amount and unit', () => {
+test('amounts print as decimals in both systems; display also returns amount and unit', () => {
   assert.deepEqual(displayQuantity(0.75, 'lb', 'us'), { amount: 12, unit: 'oz', text: '12 oz' });
-  assert.deepEqual(displayQuantity(1.5, 'cup', 'us'), { amount: 1.5, unit: 'cup', text: '1 1/2 cups' });
+  assert.deepEqual(displayQuantity(1.5, 'cup', 'us'), { amount: 1.5, unit: 'cup', text: '1.5 cups' });
   assert.equal(shown(0.25, 'cup', 'us'), '4 tbsp');
   assert.equal(shown(1, 'cup', 'us'), '1 cup');
-  assert.doesNotMatch(shown(2.75, 'lb', 'us'), /[½¼¾]/);
-  assert.equal(shown(2.75, 'lb', 'us'), '2 3/4 lb');
+  assert.equal(shown(7, 'tsp', 'metric'), '2.5 tbsp');
+  assert.equal(shown(2.75, 'lb', 'us'), '2.75 lb');
 });
 
 test('count and unknown units keep their unit and are never converted', () => {

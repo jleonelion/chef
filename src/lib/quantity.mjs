@@ -33,7 +33,7 @@ export function convertQuantity(amount, fromUnit, toUnit) {
 }
 
 // Display only: the household's unit system, a fixed ladder per kind (largest unit keeping the
-// amount >= 1), rounded up. Stored and merged amounts stay exact; only output passes through here.
+// amount >= 1), rounded up, printed as decimals. Stored and merged amounts stay exact; only output passes through here.
 const TABLES = { volume: VOLUME, mass: MASS };
 const fixed = (step) => () => step;
 const metricSmall = (n) => (n < 100 ? 5 : 25);
@@ -46,7 +46,6 @@ const SPOONS = LADDERS.us.volume.slice(0, 2);
 export const SPOON_UNITS = new Set(['tsp', 'tbsp']);
 const QUARTER_CUP = VOLUME.cup / 4;
 const EPSILON = 1e-9;
-const FRACTIONS = { 0.25: '1/4', 0.5: '1/2', 0.75: '3/4' };
 const PLURAL = { cup: 'cups' };
 
 const roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
@@ -64,12 +63,6 @@ function onLadder(base, ladder, table) {
   }
 }
 
-function usNumber(amount) {
-  const whole = Math.floor(amount + EPSILON);
-  const fraction = FRACTIONS[round2(amount - whole)];
-  return [whole || (fraction ? '' : '0'), fraction].filter(Boolean).join(' ');
-}
-
 const label = (amount, unit) => (amount > 1 && PLURAL[unit]) || unit;
 
 // -> { amount, unit, text }. `spoon`: a contributing line used tsp/tbsp (defaults to `unit`'s).
@@ -84,6 +77,5 @@ export function displayQuantity(amount, unit, system, { spoon } = {}) {
   const base = amount * table[from];
   const spoons = kind === 'volume' && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
   const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
-  const number = system === 'us' || SPOON_UNITS.has(shown.unit) ? usNumber(shown.amount) : String(shown.amount);
-  return { ...shown, text: `${number} ${label(shown.amount, shown.unit)}` };
+  return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
 }

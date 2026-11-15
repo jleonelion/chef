@@ -103,8 +103,8 @@ test('quantities show in the household unit system; sources keep each recipe\'s 
   ]);
   const us = buildList(root, { units: 'us' });
   const metric = buildList(root, { units: 'metric' });
-  assert.match(us.text, /- 2 1\/4 cups milk/);
+  assert.match(us.text, /- 2\.25 cups milk/);
   assert.match(metric.text, /- 500 ml milk/);
   assert.deepEqual(metric.items[0].sources.map((s) => [s.recipe, s.amount, s.unit]), [['soup', 1, 'cup'], ['bake', 250, 'ml']]);
-  assert.deepEqual(us.covered.map((c) => [c.item, c.text, c.on_hand.text]), [['tomatoes', '2 lb', '4 1/2 lb']]);
+  assert.deepEqual(us.covered.map((c) => [c.item, c.text, c.on_hand.text]), [['tomatoes', '2 lb', '4.5 lb']]);
 });
