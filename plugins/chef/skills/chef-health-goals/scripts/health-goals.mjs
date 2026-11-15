@@ -7151,54 +7151,55 @@ var error_codes_v1_default = {
     "no-plan": { outcome: "validation-error", description: "No saved meal plan covers the requested week." },
     "store-unreadable": { outcome: "validation-error", description: "A Chef data file can't be parsed." },
     "page-fetch-failed": { outcome: "dependency-unavailable", description: "The recipe page could not be fetched." },
-    "usda-unavailable": { outcome: "dependency-unavailable", description: "The USDA FoodData Central check failed." }
+    "usda-unavailable": { outcome: "dependency-unavailable", description: "The USDA FoodData Central check failed." },
+    "install-check-failed": { outcome: "dependency-unavailable", description: "The installed Chef skills failed verify install, on their own or after an update." }
   }
 };
 // schemas/feedback/facts.v1.json
 var facts_v1_default = {
   registry_version: 1,
-  description: "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). A script's `status` values are its ok results; any other status is a failure that must map to an error code. Adding an entry is a reviewed change.",
+  description: "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). A script's `status` values are its ok results: the script ran and answered, even when the answer is that a file is unreadable (`settings`, `dietary`). Any other status is a failure that must map to an error code. Adding an entry is a reviewed change.",
   scripts: {
     "chef-add-recipe/add-recipe": {
       operations: ["url", "draft", "enrich", "verify"],
       facts: {
-        status: { type: "enum", values: ["added", "would-add", "exists", "needs-draft", "enriched", "unchanged", "verified"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["added", "would-add", "exists", "needs-draft", "enriched", "unchanged", "verified"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-batch-prep-planning/batch-prep": {
       operations: ["render"],
       facts: {
-        status: { type: "enum", values: ["rendered"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["rendered"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-food-inventory/inventory": {
       operations: ["view", "check-sender", "add-receipt", "edit", "deduct", "expiring", "health", "rollup"],
       facts: {
-        status: { type: "enum", values: ["ok", "trusted", "added", "duplicate", "saved", "deducted", "regenerated", "healthy", "problems"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["ok", "trusted", "added", "duplicate", "saved", "deducted", "regenerated", "healthy", "problems"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-health-goals/health-goals": {
       operations: ["status", "set", "clear", "report"],
       facts: {
-        status: { type: "enum", values: ["active", "dormant", "saved", "cleared", "report"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["active", "dormant", "saved", "cleared", "report"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-meal-logging/meal-logging": {
       operations: ["log", "edit", "delete"],
       facts: {
-        status: { type: "enum", values: ["logged", "unchanged", "edited", "deleted"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["logged", "unchanged", "edited", "deleted"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-meal-planning/meal-planning": {
       operations: ["plan", "today"],
       facts: {
-        status: { type: "enum", values: ["saved", "planned", "no-plan"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["saved", "planned", "no-plan"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-recipe-decisions/recipe-decisions": {
       operations: ["propose", "decide", "publish", "list", "retire", "restore", "rules", "rule-add", "rule-remove"],
       facts: {
-        status: { type: "enum", values: ["proposed", "auto-accepted", "auto-rejected", "already-proposed", "already-accepted", "already-rejected", "exists", "decided", "unchanged", "published", "ok", "retired", "restored", "added", "replaced", "removed"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["proposed", "auto-accepted", "auto-rejected", "already-proposed", "already-accepted", "already-rejected", "exists", "decided", "unchanged", "published", "ok", "retired", "restored", "added", "replaced", "removed"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-recipe-search/recipe-search": {
@@ -7210,13 +7211,13 @@ var facts_v1_default = {
     "chef-setup/setup": {
       operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "fail", "connected", "declared", "none-declared", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
       operations: ["build"],
       facts: {
-        status: { type: "enum", values: ["built"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+        status: { type: "enum", values: ["built"], description: "Top-level result status of an ok run." }
       }
     }
   }
@@ -7520,19 +7521,19 @@ function record(context, describe) {
   } catch {}
 }
 var COMMON_FAILURES = { "invalid-input": "invalid-input", refused: "action-refused" };
-function classifyStatus({ root, skill, script, failures = {} }) {
+function classifyStatus({ skill, script, failures = {} }) {
   const okStatuses = facts_v1_default.scripts[`${skill}/${script}`]?.facts.status?.values ?? [];
   const codes = { ...COMMON_FAILURES, ...failures };
   return ({ status }) => {
     if (okStatuses.includes(status))
       return { outcome: "ok", facts: { status } };
-    const code = status === "refused" && readSchemaVersion(root) === null ? "not-a-data-root" : codes[status];
+    const code = codes[status];
     return Object.hasOwn(error_codes_v1_default.codes, code) ? { outcome: error_codes_v1_default.codes[code].outcome, error_code: code } : { outcome: "internal-error", error_code: "unclassified" };
   };
 }
 async function chefCapture({ root, skill, script, operation, classify: classify2, failures, adapter = currentRuntime() }, run) {
   const context = { root, skill, script, operation, adapter, startedAt: new Date };
-  const classifyResult = classify2 ?? classifyStatus({ root, skill, script, failures });
+  const classifyResult = classify2 ?? classifyStatus({ skill, script, failures });
   const started = performance.now();
   const elapsed = () => ({ durationMs: performance.now() - started });
   try {
