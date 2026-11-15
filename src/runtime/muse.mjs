@@ -1,5 +1,6 @@
-// Muse runtime adapter: the only place that knows runtime specifics. Other runtimes
-// (Claude Code, Muse Code) reuse it and override the data root with CHEF_DATA_ROOT.
+// Muse runtime adapter: the only place that knows Muse specifics. Off Muse, runtime identity and
+// feedback come from the generic adapter (see contract.mjs); the household helpers here still
+// serve Claude Code and Muse Code, which override the data root with CHEF_DATA_ROOT.
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -77,6 +78,12 @@ const SCHEDULE_SETUP = 'Create each task only after the user gives an explicit y
 export const muse = {
   name: 'muse',
   adapterVersion: 1,
+  adapterContractVersion: 1,
+  // No submit capability until the Chef feedback connector lands; reports are saved locally.
+  feedback: {
+    capabilities: () => [],
+    submit: async () => ({ ok: false, reason: 'unsupported' }),
+  },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   // Household delivery: a payload for the user's Gmail connector. Scripts never send email.
   householdEmail({ to, subject, body }) {

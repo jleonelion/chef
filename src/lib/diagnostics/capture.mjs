@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import ERROR_CODES from '../../../schemas/feedback/error-codes.v1.json' with { type: 'json' };
 import FACTS from '../../../schemas/feedback/facts.v1.json' with { type: 'json' };
 import PLUGIN from '../../../plugins/chef/.claude-plugin/plugin.json' with { type: 'json' };
-import { muse } from '../../runtime/muse.mjs';
+import { currentRuntime } from '../../runtime/contract.mjs';
 import { readSchemaVersion } from '../schema.mjs';
 import { readSettings } from '../settings.mjs';
 import { appendEvent } from './trace.mjs';
@@ -45,7 +45,7 @@ function checkErrorCode(outcome, code) {
 }
 
 // Throws when anything is not declared in the registries.
-export function buildEvent({ skill, script, operation, outcome, error_code = null, facts = {}, startedAt, durationMs, adapter = muse }) {
+export function buildEvent({ skill, script, operation, outcome, error_code = null, facts = {}, startedAt, durationMs, adapter = currentRuntime() }) {
   const declared = declaredScript(skill, script, operation);
   checkErrorCode(outcome, error_code);
   return {
@@ -59,7 +59,7 @@ export function buildEvent({ skill, script, operation, outcome, error_code = nul
     operation,
     outcome,
     error_code,
-    runtime: adapter.isMuse() ? adapter.name : 'unknown',
+    runtime: adapter.name,
     adapter_version: adapter.adapterVersion,
     facts: checkedFacts(declared.facts, facts),
   };
@@ -90,7 +90,7 @@ function record(context, describe) {
 // Runs `run` and records one event. `classify(result)` maps the script's result to
 // { outcome, error_code?, facts? } using only registry entries. A throw is recorded as
 // internal-error + unclassified (never its message) and rethrown.
-export async function chefCapture({ root, skill, script, operation, classify, adapter = muse }, run) {
+export async function chefCapture({ root, skill, script, operation, classify, adapter = currentRuntime() }, run) {
   const context = { root, skill, script, operation, adapter, startedAt: new Date() };
   const started = performance.now();
   const elapsed = () => ({ durationMs: performance.now() - started });
