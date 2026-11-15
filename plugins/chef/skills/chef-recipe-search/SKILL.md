@@ -54,7 +54,7 @@ Every search applies the household's dietary ruleset; follow `references/dietary
 node scripts/recipe-search.mjs show --slug lemon-garlic-pasta
 ```
 
-Returns `frontmatter` and `body` (the Markdown with ingredients and steps). `not-found` means there is no recipe with that slug; search for it instead. `dietary_conflicts` means the gate would leave this recipe out; show the recipe the user asked for, but warn them with the reasons first.
+Returns `frontmatter` and `body` (the Markdown with ingredients and steps). With the `convert_recipe_units` setting on, ingredient weights and volumes in `body` are in the household's units with the recipe's own amount in brackets (`235 ml (1 cup) milk`), and step oven temperatures carry the household's scale; show `body` as given and never convert amounts yourself. `not-found` means there is no recipe with that slug; search for it instead. `dietary_conflicts` means the gate would leave this recipe out; show the recipe the user asked for, but warn them with the reasons first.
 
 ## Rules
 

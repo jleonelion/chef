@@ -7170,7 +7170,7 @@ import fs3 from "node:fs";
 import path4 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 2;
-var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "diagnostics"];
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics"];
 var SETTINGS_MIGRATIONS = {
   1: (stored) => ({ ...stored, settings_version: 2, diagnostics: { trace: "on" } })
 };
@@ -7181,7 +7181,7 @@ function unitsForLocale(locale = "") {
   return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
 }
 function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, diagnostics: { trace: "on" } };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: "on" } };
 }
 function emailListProblem(key, value) {
   if (!Array.isArray(value))
@@ -7195,7 +7195,8 @@ var CHECKS = {
   trusted_receipt_senders: (value) => emailListProblem("trusted_receipt_senders", value),
   units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
   diagnostics: (value) => isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}',
-  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null"
+  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null",
+  convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false"
 };
 function validateSettings(values) {
   return SETTING_KEYS.filter((key) => Object.hasOwn(values, key)).map((key) => CHECKS[key](values[key])).filter(Boolean);
@@ -7782,6 +7783,269 @@ function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLA
   return { excluded: reasons.length > 0, reasons, overridden: all.filter(lifted), avoidances };
 }
 
+// src/lib/ingredient-line.mjs
+var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
+var UNITS = {
+  g: ["g", "gram", "grams", "gr"],
+  kg: ["kg", "kilogram", "kilograms"],
+  oz: ["oz", "ounce", "ounces"],
+  lb: ["lb", "lbs", "pound", "pounds"],
+  tsp: ["tsp", "teaspoon", "teaspoons"],
+  tbsp: ["tbsp", "tbs", "tablespoon", "tablespoons"],
+  cup: ["cup", "cups", "c"],
+  ml: ["ml", "milliliter", "milliliters", "millilitre", "millilitres"],
+  l: ["l", "liter", "liters", "litre", "litres"],
+  floz: ["fl oz", "fluid ounce", "fluid ounces"],
+  pt: ["pint", "pints", "pt"],
+  qt: ["quart", "quarts", "qt"],
+  clove: ["clove", "cloves"],
+  slice: ["slice", "slices"],
+  can: ["can", "cans"],
+  stick: ["stick", "sticks"],
+  bunch: ["bunch", "bunches"],
+  head: ["head", "heads"],
+  sprig: ["sprig", "sprigs"],
+  piece: ["piece", "pieces"],
+  stalk: ["stalk", "stalks"],
+  leaf: ["leaf", "leaves"],
+  serving: ["serving", "servings"],
+  pinch: ["pinch", "pinches"],
+  dash: ["dash", "dashes"]
+};
+var UNIT_OF = new Map(Object.entries(UNITS).flatMap(([unit, names]) => names.map((name) => [name, unit])));
+var UNIT_NAMES = [...UNIT_OF.keys()].sort((a, b) => b.length - a.length).map((n) => n.replace(" ", "\\s+"));
+var GRAMS_PER = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var ML_PER = { tsp: 4.92892, tbsp: 14.7868, cup: 236.588, ml: 1, l: 1000, floz: 29.5735, pt: 473.176, qt: 946.353 };
+var TRACE = new Set(["pinch", "dash"]);
+var NUMBER = String.raw`\d+\s+\d+/\d+|\d+/\d+|\d+(?:\.\d+)?`;
+var UNIT_GROUP = `(${UNIT_NAMES.join("|")})\\.?(?![a-z])`;
+var CITRUS_COUNT = String.raw`${NUMBER}|half\s+an?|an?|one|two|three|four|five|six`;
+var JUICE_OF = new RegExp(String.raw`^(zest\s+(?:and|&)\s+)?juice(\s+(?:and|&)\s+zest)?\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
+var JUICED = new RegExp(String.raw`^(${CITRUS_COUNT})\s+(lemon|lime)s?,?\s+juiced\b`, "i");
+var ZEST_OF = new RegExp(String.raw`^zest\s+(?:of|from)\s+(${CITRUS_COUNT})\s+(lemon|lime)s?\b`, "i");
+var HYPHEN_PACKAGE = new RegExp(String.raw`^(${NUMBER})\s+(${NUMBER})-${UNIT_GROUP}\s*`, "i");
+var PLUS = new RegExp(String.raw`^plus\s+(${NUMBER})\s*${UNIT_GROUP}\s*`, "i");
+var LEAD = new RegExp(String.raw`^(${NUMBER})(?:\s*(?:-|–|to)\s*(?:${NUMBER}))?\s*(?:\((${NUMBER})\s*(${UNIT_NAMES.join("|")})\.?\))?\s*(?:(${UNIT_NAMES.join("|")})\.?(?![a-z]))?\s*`, "i");
+function toNumber(text) {
+  return text.trim().split(/\s+/).reduce((sum, part) => {
+    const [n, d] = part.split("/").map(Number);
+    return sum + (d ? n / d : n);
+  }, 0);
+}
+var round2 = (n) => Math.round(n * 100) / 100;
+var unitOf = (text) => text ? UNIT_OF.get(text.toLowerCase().replace(/\s+/g, " ")) ?? null : null;
+function plusAmount(rest, amount, unit) {
+  const plus = rest.match(PLUS);
+  if (!plus)
+    return { rest, amount };
+  const extra = unitOf(plus[2]);
+  const per = [ML_PER, GRAMS_PER].find((table) => table[unit] && table[extra]);
+  return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
+}
+var VULGAR = "[½¼¾⅓⅔⅛]";
+var asciiFractions = (text) => text.replace(new RegExp(VULGAR, "g"), (c) => FRACTIONS[c]);
+var MEASURED = new RegExp(String.raw`^(\d+\s*${VULGAR}|${VULGAR}|${NUMBER})\s*${UNIT_GROUP}`, "i");
+var measurable = (unit) => [ML_PER, GRAMS_PER].find((table) => table[unit]);
+function measuredLead(line) {
+  const lead = line.match(MEASURED);
+  const unit = lead && unitOf(lead[2]);
+  if (!measurable(unit))
+    return null;
+  const after = line.slice(lead[0].length);
+  const plus = after.trimStart().match(PLUS);
+  if (plus && measurable(unitOf(plus[2])) !== measurable(unit))
+    return null;
+  const amount = toNumber(asciiFractions(lead[1]));
+  if (!plus)
+    return { text: lead[0], amount, unit };
+  const rest = after.trimStart().slice(plus[0].length);
+  return { text: line.slice(0, line.length - rest.length).trimEnd(), amount: plusAmount(plus[0], amount, unit).amount, unit };
+}
+
+// src/lib/quantity.mjs
+var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
+var MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
+var ALIASES2 = {
+  teaspoons: "tsp",
+  teaspoon: "tsp",
+  tablespoons: "tbsp",
+  tablespoon: "tbsp",
+  cups: "cup",
+  milliliters: "ml",
+  milliliter: "ml",
+  millilitres: "ml",
+  millilitre: "ml",
+  liters: "l",
+  liter: "l",
+  litres: "l",
+  litre: "l",
+  "fl oz": "floz",
+  "fluid ounce": "floz",
+  "fluid ounces": "floz",
+  pints: "pt",
+  pint: "pt",
+  quarts: "qt",
+  quart: "qt",
+  gallons: "gal",
+  gallon: "gal",
+  grams: "g",
+  gram: "g",
+  kilograms: "kg",
+  kilogram: "kg",
+  ounces: "oz",
+  ounce: "oz",
+  lbs: "lb",
+  pounds: "lb",
+  pound: "lb",
+  pieces: "piece",
+  slices: "slice",
+  cloves: "clove",
+  cans: "can",
+  jars: "jar",
+  bunches: "bunch",
+  heads: "head",
+  sprigs: "sprig",
+  sticks: "stick",
+  boxes: "box",
+  dozens: "dozen"
+};
+var normalizeUnit = (unit) => ALIASES2[String(unit ?? "").trim().toLowerCase()] ?? String(unit ?? "").trim().toLowerCase();
+function quantityDimension(unit) {
+  const normalized = normalizeUnit(unit);
+  if (Object.hasOwn(VOLUME, normalized))
+    return "volume";
+  if (Object.hasOwn(MASS, normalized))
+    return "mass";
+  if (COUNT.has(normalized))
+    return "count";
+  return null;
+}
+function convertQuantity(amount, fromUnit, toUnit) {
+  const from = normalizeUnit(fromUnit);
+  const to = normalizeUnit(toUnit);
+  const dimension = quantityDimension(from);
+  if (!dimension || dimension !== quantityDimension(to))
+    return null;
+  if (dimension === "volume")
+    return amount * VOLUME[from] / VOLUME[to];
+  if (dimension === "mass")
+    return amount * MASS[from] / MASS[to];
+  if (from === to)
+    return amount;
+  if (from === "dozen" && to === "each")
+    return amount * 12;
+  if (from === "each" && to === "dozen")
+    return amount / 12;
+  return null;
+}
+var TABLES = { volume: VOLUME, mass: MASS };
+var fixed = (step) => () => step;
+var metricSmall = (n) => n < 100 ? 5 : 25;
+var LADDERS = {
+  us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
+};
+var metricKitchen = (n) => n < 20 ? 1 : n < 250 ? 5 : 10;
+var KITCHEN_LADDERS = {
+  us: { volume: [["tsp", fixed(0.125)], ["tbsp", fixed(0.125)], ["cup", fixed(0.25), 0.25]], mass: [["oz", (n) => n < 4 ? 0.5 : 1], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricKitchen], ["l", fixed(0.05)]], mass: [["g", metricKitchen], ["kg", fixed(0.05)]] }
+};
+var SPOONS = LADDERS.us.volume.slice(0, 2);
+var KITCHEN_SPOONS = KITCHEN_LADDERS.us.volume.slice(0, 2);
+var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = VOLUME.cup / 4;
+var EPSILON = 0.000000001;
+var PLURAL = { cup: "cups" };
+var roundNearest = (n, step) => Number((Math.round(n / step) * step).toFixed(9));
+function onLadder(base, ladder, table, round) {
+  const size = (i2) => table[ladder[i2][0]];
+  const fits = (amount, i2) => amount / size(i2) >= (ladder[i2][2] ?? 1) - EPSILON;
+  let i = Math.max(0, ladder.findLastIndex((_, j) => fits(base, j)));
+  for (;; ) {
+    const [unit, step] = ladder[i];
+    const exact = base / size(i);
+    const amount = round(exact, step(exact));
+    if (i + 1 < ladder.length && fits(amount * size(i), i + 1))
+      i += 1;
+    else
+      return { amount, unit };
+  }
+}
+var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
+var KITCHEN = { ladders: KITCHEN_LADDERS, spoons: KITCHEN_SPOONS, round: roundNearest };
+function measuredOnLadder(amount, unit, system, { ladders, spoons, round }, spoon) {
+  const from = normalizeUnit(unit);
+  const kind = quantityDimension(from);
+  if (kind !== "volume" && kind !== "mass")
+    return null;
+  const table = TABLES[kind];
+  const base = amount * table[from];
+  const keepSpoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
+  const shown = onLadder(base, keepSpoons ? spoons : ladders[system][kind], table, round);
+  return { ...shown, text: `${shown.amount} ${label(shown.amount, shown.unit)}` };
+}
+function kitchenQuantity(amount, unit, system) {
+  const shown = measuredOnLadder(amount, unit, system, KITCHEN);
+  return shown && shown.amount > 0 ? shown : null;
+}
+
+// src/lib/recipe-units.mjs
+var NATIVE = { us: new Set(["tsp", "tbsp", "cup", "floz", "pt", "qt", "oz", "lb"]), metric: new Set(["g", "kg", "ml", "l"]) };
+var SYSTEM_NAME = { us: "US units", metric: "metric units" };
+var QUARTER_CUP_TSP = 12;
+var SCALE = { us: "F", metric: "C" };
+var HAS_CONVERSION = /^\s*[(/]\s*\d/;
+var TEMPERATURE = /(?<![(/]\s*)\b(\d+(?:\.\d+)?)\s?(?:°\s?|degrees\s)([FC])\b(?!\s*[(/]\s*\d)/gi;
+var TO_SCALE = { C: (f) => (f - 32) * 5 / 9, F: (c) => c * 9 / 5 + 32 };
+var keptSpoon = ({ amount, unit }) => SPOON_UNITS.has(unit) && convertQuantity(amount, unit, "tsp") < QUARTER_CUP_TSP;
+function convertLine(line, system) {
+  const lead = measuredLead(line);
+  if (!lead || NATIVE[system].has(lead.unit) || keptSpoon(lead))
+    return null;
+  const rest = line.slice(lead.text.length);
+  if (HAS_CONVERSION.test(rest))
+    return null;
+  const shown = kitchenQuantity(lead.amount, lead.unit, system);
+  return shown && `${shown.text} (${lead.text})${rest}`;
+}
+function convertTemperatures(line, system) {
+  const target = SCALE[system];
+  return line.replace(TEMPERATURE, (match, degrees, scale) => {
+    if (scale.toUpperCase() === target)
+      return match;
+    return `${match} (${Math.round(TO_SCALE[target](Number(degrees)) / 5) * 5}°${target})`;
+  });
+}
+function convertRecipeBody(body, system) {
+  let section = null;
+  let ingredientsAt = -1;
+  let converted = false;
+  const out = body.split(`
+`).map((line, index) => {
+    const heading = line.match(/^## (.+?)\s*$/);
+    if (heading) {
+      section = heading[1].toLowerCase();
+      if (section === "ingredients")
+        ingredientsAt = index;
+      return line;
+    }
+    if (section === "steps")
+      return convertTemperatures(line, system);
+    const bullet = section === "ingredients" && line.match(/^(\s*[-*]\s+)(.+)$/);
+    const shown = bullet && convertLine(bullet[2], system);
+    if (!shown)
+      return line;
+    converted = true;
+    return `${bullet[1]}${shown}`;
+  });
+  const note = `Amounts converted to ${SYSTEM_NAME[system]}; steps keep the recipe's original amounts.`;
+  if (converted)
+    out.splice(ingredientsAt + 1, 0, "", note);
+  return out.join(`
+`);
+}
+
 // src/skills/chef-recipe-search/scripts/lib/search.mjs
 var escape3 = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 var wordStart = (needle) => new RegExp(`(^|[^\\p{L}\\p{N}])${escape3(needle.trim())}`, "iu");
@@ -7910,7 +8174,9 @@ function show(recipes) {
     return { status: "not-found", data_root: root, slug: values.slug ?? null };
   const verdict = gateRecipe(recipe, readRuleset(root));
   const conflicts = verdict.excluded ? { dietary_conflicts: verdict.reasons } : {};
-  return { status: "ok", data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body: recipe.body, ...conflicts };
+  const { units, convert_recipe_units: convert } = readSettings(root).settings;
+  const body = convert ? convertRecipeBody(recipe.body, units) : recipe.body;
+  return { status: "ok", data_root: root, slug: recipe.slug, path: recipe.path, frontmatter: recipe.frontmatter, body, ...conflicts };
 }
 var MODES = { search, show };
 var mode = positionals[0];

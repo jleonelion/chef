@@ -34,8 +34,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - Data root: `~/workspace/chef` by default. Set `CHEF_DATA_ROOT`, or name a folder during
   setup, to put it elsewhere.
 - `settings.json` in the data root holds your per-user settings: units for shopping
-  lists, pantry amounts and the inventory page, who gets shopping lists and prep plans, which senders'
-  receipts Chef accepts, and a calendar. All are optional.
+  lists, pantry amounts and the inventory page (and, if you opt in, recipe ingredients), who
+  gets shopping lists and prep plans, which senders' receipts Chef accepts, and a calendar.
+  All are optional.
   Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
   (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.
 - Recipes are Markdown pages in `knowledge/wiki/recipes/`, each with an unchanged copy of its source in
@@ -94,7 +95,8 @@ Requires Node 20+ and Bun.
 | Command | What it does |
 |---|---|
 | `bun run build` | Bundle `src/skills/*` into `plugins/chef/skills/*` (commit the result) |
-| `bun run check` | Skill-format lint, unit tests, tier1 evals, migration regression |
+| `bun run check` | Skill-format lint, unit tests, tier1 evals, reproduction-case lint, migration regression |
+| `bun run repro` | Lint reproduction cases in `evals/repro/` (schema, test links, `known_failure` age, PII scan); see its README |
 | `bun run smoke` | Run tier1 against a copy of the built skills outside the repo |
 | `bun run hygiene` | Public-hygiene scan; set `CHEF_HYGIENE_DENY` to the deny-list patterns |
 | `bun run agentic` | Agentic suite: headless Claude Code with the built plugin, 3 reps per row (local only) |
@@ -105,7 +107,7 @@ in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with d
 asserts only (skills fired, files written or not, script output, git state). A row must pass
 every rep; failing rows get fixed or dropped, never retried. The result file
 (`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version and per-row pass
-counts) is attached to the release. `--rows <id,id>`, `--reps`, `--model` and `--out` narrow a run.
+counts) is attached to the release. `--rows <id,id>`, `--known-failures`, `--reps`, `--model` and `--out` narrow a run.
 
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
 synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per

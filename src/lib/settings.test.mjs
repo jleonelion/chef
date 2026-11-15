@@ -26,6 +26,7 @@ test('defaults cover every key; the invocation trace is on', () => {
     trusted_receipt_senders: [],
     units: 'us',
     calendar: null,
+    convert_recipe_units: false,
     diagnostics: { trace: 'on' },
   });
 });
@@ -88,6 +89,8 @@ test('validateSettings checks each v1 key', () => {
   assert.deepEqual(validateSettings({ trusted_receipt_senders: 'a@example.com' }), ['trusted_receipt_senders: must be a list of email addresses']);
   assert.deepEqual(validateSettings({ calendar: '' }), ['calendar: must be a calendar name or null']);
   assert.deepEqual(validateSettings({ units: 'metric', other: 1 }), []);
+  assert.deepEqual(validateSettings({ convert_recipe_units: true }), []);
+  assert.deepEqual(validateSettings({ convert_recipe_units: 'yes' }), ['convert_recipe_units: must be true or false']);
   assert.deepEqual(validateSettings({ diagnostics: { trace: 'off' } }), []);
   assert.deepEqual(validateSettings({ diagnostics: { trace: 'maybe' } }), ['diagnostics: must be {"trace": "on"} or {"trace": "off"}']);
   assert.deepEqual(validateSettings({ diagnostics: 'off' }), ['diagnostics: must be {"trace": "on"} or {"trace": "off"}']);

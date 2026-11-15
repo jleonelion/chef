@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { convertQuantity, displayQuantity, quantityDimension } from './quantity.mjs';
+import { convertQuantity, displayQuantity, kitchenQuantity, quantityDimension } from './quantity.mjs';
 
 test('quantity conversion stays within measurement dimensions', () => {
   assert.equal(convertQuantity(500, 'g', 'kg'), 0.5);
@@ -82,4 +82,63 @@ test('count and unknown units keep their unit and are never converted', () => {
   assert.deepEqual(displayQuantity(1.5, 'bunch', 'metric'), { amount: 1.5, unit: 'bunch', text: '1.5 bunch' });
   assert.equal(shown(2, 'can', 'us'), '2 can');
   assert.equal(shown(1 / 3, 'handful', 'us'), '0.33 handful');
+});
+
+const kitchen = (amount, unit, system) => kitchenQuantity(amount, unit, system)?.text ?? null;
+
+test('kitchen US volume rounds to the nearest 1/8 tsp or tbsp, cups from 1/4 cup in 1/4 steps', () => {
+  assert.equal(kitchen(2, 'ml', 'us'), '0.375 tsp');
+  assert.equal(kitchen(15, 'ml', 'us'), '1 tbsp');
+  assert.equal(kitchen(55, 'ml', 'us'), '3.75 tbsp');
+  assert.equal(kitchen(59, 'ml', 'us'), '0.25 cup');
+  assert.equal(kitchen(120, 'ml', 'us'), '0.5 cup');
+  assert.equal(kitchen(240, 'ml', 'us'), '1 cup');
+  assert.equal(kitchen(1, 'l', 'us'), '4.25 cups');
+  assert.equal(kitchen(2, 'l', 'us'), '8.5 cups');
+});
+
+test('kitchen US mass: 1/2 oz below 4 oz, whole oz to 1 lb, then 1/4 lb', () => {
+  assert.equal(kitchen(30, 'g', 'us'), '1 oz');
+  assert.equal(kitchen(100, 'g', 'us'), '3.5 oz');
+  assert.equal(kitchen(110, 'g', 'us'), '4 oz');
+  assert.equal(kitchen(250, 'g', 'us'), '9 oz');
+  assert.equal(kitchen(450, 'g', 'us'), '1 lb');
+  assert.equal(kitchen(500, 'g', 'us'), '1 lb');
+  assert.equal(kitchen(1, 'kg', 'us'), '2.25 lb');
+});
+
+test('kitchen metric: 1 below 20, 5 below 250, 10 up to 1 kg or l, then 0.05', () => {
+  assert.equal(kitchen(0.5, 'oz', 'metric'), '14 g');
+  assert.equal(kitchen(3, 'oz', 'metric'), '85 g');
+  assert.equal(kitchen(8, 'oz', 'metric'), '225 g');
+  assert.equal(kitchen(1, 'lb', 'metric'), '450 g');
+  assert.equal(kitchen(2.2, 'lb', 'metric'), '1 kg');
+  assert.equal(kitchen(3, 'lb', 'metric'), '1.35 kg');
+  assert.equal(kitchen(1, 'cup', 'metric'), '235 ml');
+  assert.equal(kitchen(1, 'qt', 'metric'), '950 ml');
+  assert.equal(kitchen(1, 'gal', 'metric'), '3.8 l');
+});
+
+test('kitchen steps change exactly at 20 and 250 g, 4 oz and 1/4 cup', () => {
+  assert.equal(kitchen(19.4, 'g', 'metric'), '19 g');
+  assert.equal(kitchen(20, 'g', 'metric'), '20 g');
+  assert.equal(kitchen(22.4, 'g', 'metric'), '20 g');
+  assert.equal(kitchen(249, 'g', 'metric'), '250 g');
+  assert.equal(kitchen(254, 'g', 'metric'), '250 g');
+  assert.equal(kitchen(256, 'g', 'metric'), '260 g');
+  assert.equal(kitchen(3.7, 'oz', 'us'), '3.5 oz');
+  assert.equal(kitchen(4.4, 'oz', 'us'), '4 oz');
+  assert.equal(kitchen(4, 'tbsp', 'us'), '0.25 cup');
+  assert.equal(kitchen(3.9, 'tbsp', 'us'), '3.875 tbsp');
+});
+
+test('kitchen keeps spoons below 1/4 cup, like displayQuantity', () => {
+  assert.equal(kitchen(2, 'tbsp', 'metric'), '2 tbsp');
+  assert.equal(kitchen(0.3, 'tsp', 'metric'), '0.25 tsp');
+  assert.equal(kitchen(8, 'tbsp', 'metric'), '120 ml');
+});
+
+test('kitchen gives null for amounts that round to nothing and units it cannot convert', () => {
+  assert.equal(kitchen(0.1, 'ml', 'us'), null);
+  assert.equal(kitchen(2, 'clove', 'us'), null);
 });
