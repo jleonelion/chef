@@ -53,8 +53,8 @@ Show each line of `screen` as given, keeping the link. Do not reword the second 
 
 Every question is optional. If the user skips one, or all of them, leave that setting at its default; Chef still works. Ask in this order, one at a time:
 
-1. **Units.** Run `node scripts/setup.mjs settings` and read `settings.units` (the default from the user's locale). Ask: "Chef will show shopping lists and pantry amounts in US units (cups, ounces, pounds). Would you rather use metric (grams, milliliters)?" Swap the wording if the default is `metric`.
-2. **Recipe amounts.** Ask right after units, using the system they chose: "Recipes show amounts as they were written. Do you also want recipe ingredients shown in metric, with the original amount in brackets?" Only a yes sets `--convert-recipe-units true`.
+1. **Units.** Run `node scripts/setup.mjs settings` and read `settings.units` (the default from the user's locale). Ask: "Chef will show shopping lists and pantry amounts in US units (cups, ounces, pounds). Would you rather use metric (grams, milliliters)?" Swap the wording if the default is `metric`. Recipes keep the amounts they were written in unless the user opts in next.
+2. **Recipe amounts.** Ask right after units, naming the system they chose (here US): "Recipes show amounts as they were written. Do you also want recipe ingredients shown in US units, with the original amount in brackets?" Only a yes sets `--convert-recipe-units true`.
 3. **Household recipients.** Ask: "Do you want Chef to send shopping lists and prep plans to anyone? Give me their email addresses, or skip and Chef will show lists here in chat."
 4. **Receipt forwarding.** Ask: "Do you want to forward grocery receipts to Chef by email so it can update your pantry?" Only if they say yes, ask which addresses the receipts come from. Chef reads receipts only from those senders.
 
