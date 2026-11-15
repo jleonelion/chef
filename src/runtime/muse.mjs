@@ -95,6 +95,13 @@ export const muse = {
       instruction: 'Re-create each of these recurring Chef tasks that exists, so Muse asks the user to approve the new recipients, then list the tasks you re-created. Do not create a task that did not exist.',
     };
   },
+  recurringTaskUpdates(changes) {
+    return {
+      action: 'recreate-recurring-tasks',
+      tasks: changes,
+      instruction: "For each listed recurring Chef task that already exists, ask for the user's explicit approval to re-create it with the new prompt while keeping its name and the user's chosen time. Re-create only tasks the user approves. Do not create a task that did not exist. Then list the tasks you re-created.",
+    };
+  },
   // How the agent turns a confirmed chef-setup schedule proposal into recurring tasks.
   scheduleSetup: () => ({ scheduler: 'muse-recurring-tasks', instruction: SCHEDULE_SETUP }),
   defaultDataRoot: () => path.join(os.homedir(), 'workspace', 'chef'),

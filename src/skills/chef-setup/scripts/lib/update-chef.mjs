@@ -9,6 +9,7 @@ import { muse } from '../../../../runtime/muse.mjs';
 import { verifyInstall } from './verify-install.mjs';
 
 const TAG = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?$/;
+const UPDATE_BASE_REF = 'refs/chef/update-base';
 
 export function semver(tag) {
   const match = tag.match(TAG);
@@ -72,6 +73,30 @@ function skillChanges(skillsDir, expected) {
   };
 }
 
+function recurringTasksAt(repository, ref) {
+  const file = 'src/lib/recurring-tasks.json';
+  if (!git(repository, ['ls-tree', '--name-only', ref, '--', file])) return null;
+  const object = `${ref}:${file}`;
+  return JSON.parse(git(repository, ['show', object]));
+}
+
+function recurringTaskChanges(repository, target) {
+  let base;
+  try {
+    base = git(repository, ['rev-parse', '--verify', UPDATE_BASE_REF]);
+  } catch {
+    base = git(repository, ['rev-parse', 'HEAD']);
+    git(repository, ['update-ref', UPDATE_BASE_REF, base]);
+  }
+  const installedTasks = recurringTasksAt(repository, base);
+  const targetTasks = recurringTasksAt(repository, target);
+  if (!installedTasks || !targetTasks) return [];
+  const installed = new Map(installedTasks.map((task) => [task.name, task.prompt]));
+  return targetTasks
+    .filter((task) => installed.has(task.name) && installed.get(task.name) !== task.prompt)
+    .map(({ name, prompt }) => ({ name, prompt }));
+}
+
 function syncSkills(repository, skillsDir, sourceNames, expectedNames) {
   const source = path.join(repository, 'plugins', 'chef', 'skills');
   if (path.resolve(source) === path.resolve(skillsDir)) {
@@ -110,6 +135,7 @@ export function updateChef(root, {
   const sourceNames = taggedSkills(install.repository, release);
   const expectedNames = sourceNames.map((name) => installedName(name, install.nameForSkill));
   const skills = skillChanges(install.skillsDir, expectedNames);
+  const promptChanges = recurringTaskChanges(install.repository, release);
   const dataPlan = migrationPlan(root, { migrations, target: targetSchema });
   const settingsPlan = settingsMigrationPlan(root, { migrations: settingsMigrations, target: targetSettings });
 
@@ -117,12 +143,19 @@ export function updateChef(root, {
   const repositoryChanges = git(install.repository, ['status', '--short', '--untracked-files=all']);
   if (repositoryChanges) throw new Error(`Chef repository is not clean after checking out ${release}`);
   syncSkills(install.repository, install.skillsDir, sourceNames, expectedNames);
-  const changes = { skills, migrations: { data_root: dataPlan.applied, settings: settingsPlan.applied } };
+  const changes = {
+    skills,
+    migrations: { data_root: dataPlan.applied, settings: settingsPlan.applied },
+    recurring_tasks: promptChanges,
+  };
   if (!confirm) return { status: 'confirmation-required', data_root: root, release, changes };
 
   migrate(root, { migrations, target: targetSchema });
   migrateSettings(root, { migrations: settingsMigrations, target: targetSettings });
   commitPending(root, `Migrate Chef data root to schema ${targetSchema}`);
   const verify = verifyInstall(root, { skillsDir: install.skillsDir, fixture });
-  return { status: verify.status === 'pass' ? 'updated' : 'fail', data_root: root, release, changes, verify };
+  const taskUpdates = promptChanges.length > 0 && { recurring_tasks: adapter.recurringTaskUpdates(promptChanges) };
+  const status = verify.status === 'pass' ? 'updated' : 'fail';
+  if (status === 'updated') git(install.repository, ['update-ref', '-d', UPDATE_BASE_REF]);
+  return { status, data_root: root, release, changes, verify, ...taskUpdates };
 }
