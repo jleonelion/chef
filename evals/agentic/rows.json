@@ -1,5 +1,26 @@
 [
   {
+    "id": "setup-receipt-intake",
+    "flow": "core",
+    "description": "Onboarding says Chef checks the user's Gmail for grocery receipts and asks for trusted senders only after consent (#40).",
+    "turns": [
+      "Continue onboarding for this existing Chef data root. I have seen the safety screen, kept the current units, and answered the household recipients question. Ask me the receipt intake question next.",
+      "Yes."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "check your Gmail daily for grocery receipts and update your pantry" },
+        { "path": "$.content", "excludes": "Which stores' receipt emails should it trust" }
+      ],
+      [
+        { "path": "$.content", "includes": "Which stores' receipt emails should it trust" }
+      ]
+    ],
+    "skills": ["chef-setup"],
+    "files": [{ "path": "settings.json", "absent": true }],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
     "id": "setup-household-recipients",
     "flow": "core",
     "description": "Onboarding explains that household recipients are defaults for an approved shopping-list recurring task, not a restriction on one-off delivery (#39).",

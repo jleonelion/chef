@@ -56,7 +56,7 @@ Every question is optional. If the user skips one, or all of them, leave that se
 1. **Units.** Run `node scripts/setup.mjs settings` and read `settings.units` (the default from the user's locale). Ask: "Chef will show shopping lists and pantry amounts in US units (cups, ounces, pounds). Would you rather use metric (grams, milliliters)?" Swap the wording if the default is `metric`. Recipes keep the amounts they were written in unless the user opts in next.
 2. **Recipe amounts.** Ask right after units, naming the system they chose (here US): "Recipes show amounts as they were written. Do you also want recipe ingredients shown in US units, with the original amount in brackets?" Only a yes sets `--convert-recipe-units true`.
 3. **Household recipients.** Ask: "Who should Chef email shopping lists to by default? Chef emails them automatically only if you approve the Chef shopping list recurring task. You can still ask Chef to email a shopping list to anyone. Give me their email addresses, or skip to see lists here in chat."
-4. **Receipt forwarding.** Ask: "Do you want to forward grocery receipts to Chef by email so it can update your pantry?" Only if they say yes, ask which addresses the receipts come from. Chef reads receipts only from those senders.
+4. **Receipt intake.** Ask: "Should Chef check your Gmail daily for grocery receipts and update your pantry?" Only if they say yes, ask: "Which stores' receipt emails should it trust?" Chef reads receipts only from those senders.
 
 Then save every answer in one call, passing only the settings the user gave:
 
@@ -100,7 +100,7 @@ Optional. Chef's scripts never schedule anything; you create each task with the 
 node scripts/setup.mjs schedule
 ```
 
-It writes nothing. `tasks` lists what Chef recommends for this user, each with `name`, `cadence`, `prompt` and `why`; `not_offered` lists the rest with a `reason` (no health goal, no household recipients, receipt forwarding off).
+It writes nothing. `tasks` lists what Chef recommends for this user, each with `name`, `cadence`, `prompt` and `why`; `not_offered` lists the rest with a `reason` (no health goal, no household recipients, receipt intake off).
 
 1. Show the tasks one at a time: name, cadence and `why`. Ask "Do you want this one?" for each. The update notice is opt-in: offer it, never recommend it by default.
 2. A task gets created only after an explicit yes to that task. Silence, "sure, whatever you think" about the list, or a yes to a different task is not a yes. Never create a task the user did not confirm, and never create one from `not_offered`.
@@ -128,7 +128,7 @@ When the user asks to change a setting, run `set` with only that flag:
 | Units for shopping lists and pantry amounts, and recipes when converted (`us` or `metric`) | `--units metric` | `--units default` (from locale) |
 | Show recipe ingredients in those units, original in brackets (`true` or `false`) | `--convert-recipe-units true` | `--convert-recipe-units default` (off) |
 | Default recipients for emailed shopping lists | `--household-recipients "a@example.com,b@example.com"` | `--household-recipients ""` (show in chat) |
-| Senders Chef accepts receipts from | `--trusted-receipt-senders "receipts@example.com"` | `--trusted-receipt-senders ""` (forwarding off) |
+| Senders Chef accepts receipts from | `--trusted-receipt-senders "receipts@example.com"` | `--trusted-receipt-senders ""` (receipt intake off) |
 | Calendar Chef adds meal plans to | `--calendar "Family"` | `--calendar none` (no calendar writes) |
 | Invocation trace of script runs (`on` or `off`) | `--trace off` | `--trace default` (on) |
 

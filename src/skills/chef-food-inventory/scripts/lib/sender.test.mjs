@@ -55,8 +55,8 @@ test('a parent or child domain is not a match', () => {
   assert.equal(checkSender('receipts@example.com', trusted, { authenticated: 'mail.example.com' }).ok, false);
 });
 
-test('an empty trusted list means forwarding is off', () => {
+test('an empty trusted list means receipt intake is off', () => {
   const result = checkSender('receipts@example.com', []);
   assert.equal(result.ok, false);
-  assert.match(result.reason, /forwarding is off/);
+  assert.match(result.reason, /receipt intake is off/);
 });
