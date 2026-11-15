@@ -5,6 +5,7 @@ import path from 'node:path';
 import { gateRecipe } from '../../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
+import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
 import { ingredientLines, listRecipes } from '../../../../lib/recipes.mjs';
 import { WIKI_DIR, WIKI_FOLDERS } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
@@ -23,7 +24,8 @@ function readPlan(root, weekStart) {
   const rel = `${PLANS_DIR}/${weekStart}.md`;
   const file = path.join(root, rel);
   if (!fs.existsSync(file)) return null;
-  return { path: rel, meals: parsePage(fs.readFileSync(file, 'utf8')).frontmatter.meals ?? [] };
+  const meals = parsePage(fs.readFileSync(file, 'utf8')).frontmatter.meals ?? [];
+  return { path: rel, meals: meals.map(withSlot).sort(byDateAndSlot) };
 }
 
 const multiplier = (meal, recipe) => {
@@ -70,6 +72,7 @@ export function buildList(root, { weekStart, overrides = [] }) {
     data_root: root,
     week_start: week,
     plan: plan.path,
+    meals: plan.meals.map(({ date, slot, slug, servings }) => ({ date, slot, slug, servings })),
     ...list,
     covered,
     excluded,

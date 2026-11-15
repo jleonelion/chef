@@ -19,13 +19,14 @@ export function rollupNutrition(meals) {
   const totals = Object.fromEntries(fields.map((field) => [field, 0]));
   const missing = [];
   const rolled = meals.map((meal) => {
+    const id = { date: meal.date, ...(meal.slot && { slot: meal.slot }), slug: meal.slug };
     if (!meal.nutrition_per_serving || meal.nutrition_status && meal.nutrition_status !== 'complete') {
-      missing.push({ date: meal.date, slug: meal.slug, reason: 'recipe nutrition is not complete' });
-      return { date: meal.date, slug: meal.slug, servings: meal.servings, status: meal.nutrition_status ?? 'not-computed' };
+      missing.push({ ...id, reason: 'recipe nutrition is not complete' });
+      return { ...id, servings: meal.servings, status: meal.nutrition_status ?? 'not-computed' };
     }
     const mealTotals = Object.fromEntries(fields.map((field) => [field, round(field, meal.nutrition_per_serving[field] * meal.servings)]));
     for (const field of fields) totals[field] += mealTotals[field];
-    return { date: meal.date, slug: meal.slug, servings: meal.servings, totals: mealTotals };
+    return { ...id, servings: meal.servings, totals: mealTotals };
   });
   if (missing.length) return { status: 'incomplete', meals: rolled, missing };
   return {

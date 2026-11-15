@@ -7727,14 +7727,15 @@ function rollupNutrition(meals) {
   const totals = Object.fromEntries(fields.map((field) => [field, 0]));
   const missing = [];
   const rolled = meals.map((meal) => {
+    const id = { date: meal.date, ...meal.slot && { slot: meal.slot }, slug: meal.slug };
     if (!meal.nutrition_per_serving || meal.nutrition_status && meal.nutrition_status !== "complete") {
-      missing.push({ date: meal.date, slug: meal.slug, reason: "recipe nutrition is not complete" });
-      return { date: meal.date, slug: meal.slug, servings: meal.servings, status: meal.nutrition_status ?? "not-computed" };
+      missing.push({ ...id, reason: "recipe nutrition is not complete" });
+      return { ...id, servings: meal.servings, status: meal.nutrition_status ?? "not-computed" };
     }
     const mealTotals = Object.fromEntries(fields.map((field) => [field, round(field, meal.nutrition_per_serving[field] * meal.servings)]));
     for (const field of fields)
       totals[field] += mealTotals[field];
-    return { date: meal.date, slug: meal.slug, servings: meal.servings, totals: mealTotals };
+    return { ...id, servings: meal.servings, totals: mealTotals };
   });
   if (missing.length)
     return { status: "incomplete", meals: rolled, missing };
@@ -7925,7 +7926,7 @@ var oneDecimal2 = (value) => Math.round(value * 10) / 10;
 function targetView(nutrient, bounds, servings) {
   const values = servings.map((s) => s.values[nutrient]);
   const average = oneDecimal2(values.reduce((a, b) => a + b, 0) / values.length);
-  const over = bounds.max === undefined ? [] : servings.filter((s) => s.values[nutrient] > bounds.max).map((s) => ({ date: s.date, slug: s.slug, per_serving: s.values[nutrient] }));
+  const over = bounds.max === undefined ? [] : servings.filter((s) => s.values[nutrient] > bounds.max).map((s) => ({ ...s.meal, per_serving: s.values[nutrient] }));
   return {
     nutrient,
     ...bounds,
@@ -7944,8 +7945,7 @@ function healthSuggestions(plan, goal) {
     };
   }
   const servings = plan.nutrition.meals.map((m) => ({
-    date: m.date,
-    slug: m.slug,
+    meal: { date: m.date, ...m.slot && { slot: m.slot }, slug: m.slug },
     values: Object.fromEntries(Object.entries(m.totals).map(([field, total]) => [field, oneDecimal2(total / m.servings)]))
   }));
   return {

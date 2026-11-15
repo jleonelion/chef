@@ -28797,6 +28797,12 @@ function gateRecipe(recipe, ruleset, { overrides = [], autoFlagsCount = AUTO_FLA
   return { excluded: reasons.length > 0, reasons, overridden: all.filter(lifted), avoidances };
 }
 
+// src/lib/meal-slots.mjs
+var MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+var slotOf = (meal) => meal.slot ?? "dinner";
+var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
+var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
+
 // src/skills/chef-batch-prep-planning/scripts/lib/render.mjs
 var PLAN_DIR = "knowledge/wiki/meal-plans";
 var OUTPUT_DIR = "data/batch-prep-plans";
@@ -28834,7 +28840,7 @@ function drawRecipePage(pdf, fonts, group, dietary) {
     page.drawText(line, { x: MARGIN, y, size: 23, font: fonts.bold, color: import_pdf_lib.rgb(0.12, 0.22, 0.18) });
     y -= 28;
   }
-  page.drawText(`Planned: ${group.meals.map((meal) => meal.date).join(", ")}`, { x: MARGIN, y, size: 10, font: fonts.regular });
+  page.drawText(`Planned: ${group.meals.map((meal) => `${meal.date} ${meal.slot}`).join(", ")}`, { x: MARGIN, y, size: 10, font: fonts.regular });
   y -= 16;
   page.drawText(`Servings: ${group.meals.map((meal) => meal.servings).join(", ")}`, { x: MARGIN, y, size: 10, font: fonts.regular });
   y -= 30;
@@ -28886,7 +28892,7 @@ function loadPlan(root, weekStart) {
     const plan = parsePage(fs6.readFileSync(file, "utf8")).frontmatter;
     if (plan.type !== "meal-plan" || !Array.isArray(plan.meals) || !plan.meals.length)
       throw new Error("meal plan has no meals");
-    return { plan, relative };
+    return { plan: { ...plan, meals: plan.meals.map(withSlot).sort(byDateAndSlot) }, relative };
   } catch (error) {
     return { problem: { status: "refused", reason: `saved meal plan cannot be read: ${error.message}` } };
   }

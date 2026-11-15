@@ -7640,6 +7640,12 @@ function readSettings(root, { locale } = {}) {
 import fs8 from "node:fs";
 import path9 from "node:path";
 
+// src/lib/meal-slots.mjs
+var MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+var slotOf = (meal) => meal.slot ?? "dinner";
+var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
+var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
+
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import fs7 from "node:fs";
 import path8 from "node:path";
@@ -7953,7 +7959,8 @@ function readPlan(root, weekStart) {
   const file = path9.join(root, rel);
   if (!fs8.existsSync(file))
     return null;
-  return { path: rel, meals: parsePage(fs8.readFileSync(file, "utf8")).frontmatter.meals ?? [] };
+  const meals = parsePage(fs8.readFileSync(file, "utf8")).frontmatter.meals ?? [];
+  return { path: rel, meals: meals.map(withSlot).sort(byDateAndSlot) };
 }
 var multiplier = (meal, recipe) => {
   const base = Number(recipe.frontmatter.servings);
@@ -8001,6 +8008,7 @@ function buildList(root, { weekStart, overrides = [] }) {
     data_root: root,
     week_start: week,
     plan: plan.path,
+    meals: plan.meals.map(({ date, slot, slug, servings }) => ({ date, slot, slug, servings })),
     ...list,
     covered,
     excluded,

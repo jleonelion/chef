@@ -4268,7 +4268,7 @@
   },
   {
     "id": "chef-batch-prep-planning-renders-pdf-from-saved-plan",
-    "description": "A saved meal plan renders as a valid PDF under the data root with one page per unique recipe, each titled with the recipe, committed through the guarded writer; off Muse there is no attachment instruction.",
+    "description": "A saved meal plan renders as a valid PDF under the data root with one page per unique recipe, each titled with the recipe and listing its planned dates with meal slots, committed through the guarded writer; off Muse there is no attachment instruction.",
     "steps": [
       {
         "command": [
@@ -4357,6 +4357,14 @@
           {
             "path": "$.text",
             "includes": "Boil the spaghetti in salted water until just tender."
+          },
+          {
+            "path": "$.text",
+            "includes": "Planned: 2026-01-19 dinner, 2026-01-21 dinner"
+          },
+          {
+            "path": "$.text",
+            "includes": "Planned: 2026-01-20 lunch"
           }
         ]
       }

@@ -260,6 +260,23 @@ test('with a declared goal, the saved plan gets advisory health suggestions that
   assert.deepEqual(result.meals.map((meal) => meal.slug), ['soup']);
   assert.equal(result.health_suggestions.status, 'advisory');
   assert.equal(result.health_suggestions.footer, 'Chef gives general information, not medical advice.');
-  assert.deepEqual(result.health_suggestions.targets[0].over_daily_max, [{ date: '2026-01-19', slug: 'soup', per_serving: 2500 }]);
+  assert.deepEqual(result.health_suggestions.targets[0].over_daily_max, [{ date: '2026-01-19', slot: 'dinner', slug: 'soup', per_serving: 2500 }]);
   assert.doesNotMatch(JSON.stringify(result.health_suggestions), /cheesy/);
+});
+
+test('nutrition and health suggestions are per planned meal, so one recipe at two slots on a day stays two meals', () => {
+  const root = makeRoot([measured('soup', 2500), goalsFile]);
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'lunch', recipe: 'soup' }, { date: '2026-01-19', slot: 'dinner', recipe: 'soup', servings: 2 }],
+  });
+  assert.deepEqual(result.nutrition.meals.map(({ date, slot, slug, servings }) => [date, slot, slug, servings]), [
+    ['2026-01-19', 'lunch', 'soup', 1],
+    ['2026-01-19', 'dinner', 'soup', 2],
+  ]);
+  assert.equal(result.nutrition.totals.calories, 1200);
+  assert.deepEqual(result.health_suggestions.targets[0].over_daily_max, [
+    { date: '2026-01-19', slot: 'lunch', slug: 'soup', per_serving: 2500 },
+    { date: '2026-01-19', slot: 'dinner', slug: 'soup', per_serving: 2500 },
+  ]);
 });

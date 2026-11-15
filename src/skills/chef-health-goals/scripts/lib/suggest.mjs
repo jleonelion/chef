@@ -9,7 +9,7 @@ function targetView(nutrient, bounds, servings) {
   const values = servings.map((s) => s.values[nutrient]);
   const average = oneDecimal(values.reduce((a, b) => a + b, 0) / values.length);
   const over = bounds.max === undefined ? [] : servings.filter((s) => s.values[nutrient] > bounds.max)
-    .map((s) => ({ date: s.date, slug: s.slug, per_serving: s.values[nutrient] }));
+    .map((s) => ({ ...s.meal, per_serving: s.values[nutrient] }));
   return {
     nutrient,
     ...bounds,
@@ -29,8 +29,7 @@ export function healthSuggestions(plan, goal) {
     };
   }
   const servings = plan.nutrition.meals.map((m) => ({
-    date: m.date,
-    slug: m.slug,
+    meal: { date: m.date, ...(m.slot && { slot: m.slot }), slug: m.slug },
     values: Object.fromEntries(Object.entries(m.totals).map(([field, total]) => [field, oneDecimal(total / m.servings)])),
   }));
   return {
