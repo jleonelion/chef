@@ -7458,25 +7458,26 @@ function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}
 // src/lib/diagnostics/offers.mjs
 var OFFERS_FILE = `${DIAGNOSTICS_DIR}/offers.json`;
 var OFFER_INTERVAL_MS = 60 * 60 * 1000;
-function readCodes(root) {
+var keyOf = ({ skill, code }) => `${skill}/${code}`;
+function readErrors(root) {
   try {
-    const { codes } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
-    return codes !== null && typeof codes === "object" ? codes : {};
+    const { errors } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
+    return errors !== null && typeof errors === "object" ? errors : {};
   } catch {
     return {};
   }
 }
-function writeCodes(root, codes) {
+function writeErrors(root, errors) {
   ensureDiagnosticsDir(root);
-  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ codes })}
+  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ errors })}
 `);
 }
-function claimOffer(root, code, { now = new Date } = {}) {
-  const codes = readCodes(root);
-  const { offered_at, declined_at } = codes[code] ?? {};
+function claimOffer(root, error, { now = new Date } = {}) {
+  const errors = readErrors(root);
+  const { offered_at, declined_at } = errors[keyOf(error)] ?? {};
   if (declined_at || offered_at && now - Date.parse(offered_at) < OFFER_INTERVAL_MS)
     return false;
-  writeCodes(root, { ...codes, [code]: { offered_at: now.toISOString() } });
+  writeErrors(root, { ...errors, [keyOf(error)]: { offered_at: now.toISOString() } });
   return true;
 }
 
@@ -7561,16 +7562,17 @@ function reportOffer(root, event) {
   if (event?.outcome !== "internal-error")
     return null;
   try {
-    if (readSettings(root).settings.post_error_offers !== "on" || !claimOffer(root, event.error_code))
+    if (readSettings(root).settings.post_error_offers !== "on" || !claimOffer(root, { skill: event.skill_id, code: event.error_code }))
       return null;
   } catch {
     return null;
   }
   const focus = event.invocation_id;
   return {
+    skill_id: event.skill_id,
     error_code: event.error_code,
     focus,
-    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --code ${event.error_code}\`. Don't offer again either way.`
+    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --skill ${event.skill_id} --code ${event.error_code}\`. Don't offer again for this error either way.`
   };
 }
 var withOffer = (result, offer) => offer ? { ...result, report_offer: offer } : result;

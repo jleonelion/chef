@@ -241,10 +241,10 @@ When the user wants to report a problem, ask for something new or ask Chef to be
 
 ### After an internal error
 
-When any chef- script's result has `report_offer`, Chef hit an internal error and may offer a report once. Follow its `message`: say in one plain sentence that something went wrong inside Chef and ask whether they want to report it. Never offer for any other failure, and never offer again for the same error.
+When any chef- script's result has `report_offer`, Chef hit an internal error and may offer a report once. Follow its `message`: say in one plain sentence that something went wrong inside Chef and ask whether they want to report it. Never offer for any other failure. An error is one skill's error code: Chef offers at most once an hour for it.
 
 - **Yes**: `node scripts/setup.mjs report-draft --focus <report_offer.focus>`. This skips classification: it drafts a defect about the failing run, with summary, expected and actual pre-drafted from the run. Show the preview and continue from step 3 above; the user can edit anything.
-- **No thanks**: `node scripts/setup.mjs report-offer-decline --code <report_offer.error_code>`. Chef won't offer for that error again.
+- **No thanks**: `node scripts/setup.mjs report-offer-decline --skill <report_offer.skill_id> --code <report_offer.error_code>`. Chef won't offer for that error again; errors in other skills are still offered.
 - Removing `focus_invocation`, the failing run or the whole diagnostics returns `confirmation-required` with `warning`: say it in plain words, and only on a yes repeat the `report-remove` with `--confirm`. The report then becomes user-initiated.
 - "Stop offering to report errors" or "offer again": `set --post-error-offers off` or `on`. Turning offers on again forgets every "no thanks". Offers need the failing run in the trace, so with the trace off there are none; turning offers off leaves the trace on.
 

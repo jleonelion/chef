@@ -7498,34 +7498,35 @@ function clearTrace(root) {
 // src/lib/diagnostics/offers.mjs
 var OFFERS_FILE = `${DIAGNOSTICS_DIR}/offers.json`;
 var OFFER_INTERVAL_MS = 60 * 60 * 1000;
-function readCodes(root) {
+var keyOf = ({ skill, code }) => `${skill}/${code}`;
+function readErrors(root) {
   try {
-    const { codes } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
-    return codes !== null && typeof codes === "object" ? codes : {};
+    const { errors } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
+    return errors !== null && typeof errors === "object" ? errors : {};
   } catch {
     return {};
   }
 }
-function writeCodes(root, codes) {
+function writeErrors(root, errors) {
   ensureDiagnosticsDir(root);
-  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ codes })}
+  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ errors })}
 `);
 }
-function claimOffer(root, code, { now = new Date } = {}) {
-  const codes = readCodes(root);
-  const { offered_at, declined_at } = codes[code] ?? {};
+function claimOffer(root, error, { now = new Date } = {}) {
+  const errors = readErrors(root);
+  const { offered_at, declined_at } = errors[keyOf(error)] ?? {};
   if (declined_at || offered_at && now - Date.parse(offered_at) < OFFER_INTERVAL_MS)
     return false;
-  writeCodes(root, { ...codes, [code]: { offered_at: now.toISOString() } });
+  writeErrors(root, { ...errors, [keyOf(error)]: { offered_at: now.toISOString() } });
   return true;
 }
-function declineOffer(root, code, { now = new Date } = {}) {
-  const codes = readCodes(root);
-  writeCodes(root, { ...codes, [code]: { ...codes[code], declined_at: now.toISOString() } });
+function declineOffer(root, error, { now = new Date } = {}) {
+  const errors = readErrors(root);
+  writeErrors(root, { ...errors, [keyOf(error)]: { ...errors[keyOf(error)], declined_at: now.toISOString() } });
 }
 function clearDeclines(root) {
-  const codes = readCodes(root);
-  writeCodes(root, Object.fromEntries(Object.entries(codes).map(([code, { declined_at, ...rest }]) => [code, rest])));
+  const errors = readErrors(root);
+  writeErrors(root, Object.fromEntries(Object.entries(errors).map(([key, { declined_at, ...rest }]) => [key, rest])));
 }
 
 // src/lib/diagnostics/capture.mjs
@@ -7609,16 +7610,17 @@ function reportOffer(root, event) {
   if (event?.outcome !== "internal-error")
     return null;
   try {
-    if (readSettings(root).settings.post_error_offers !== "on" || !claimOffer(root, event.error_code))
+    if (readSettings(root).settings.post_error_offers !== "on" || !claimOffer(root, { skill: event.skill_id, code: event.error_code }))
       return null;
   } catch {
     return null;
   }
   const focus = event.invocation_id;
   return {
+    skill_id: event.skill_id,
     error_code: event.error_code,
     focus,
-    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --code ${event.error_code}\`. Don't offer again either way.`
+    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --skill ${event.skill_id} --code ${event.error_code}\`. Don't offer again for this error either way.`
   };
 }
 var withOffer = (result, offer) => offer ? { ...result, report_offer: offer } : result;
@@ -9485,7 +9487,7 @@ function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new 
 // src/skills/chef-setup/scripts/lib/report-modes.mjs
 var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "contact"];
 var REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "code"].map((flag) => [flag, { type: "string" }])),
+  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "skill", "code"].map((flag) => [flag, { type: "string" }])),
   raw: { type: "boolean" }
 };
 var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
@@ -9592,10 +9594,14 @@ var removeMode = (root, draft, values, context) => {
   return changeMode(removeItem)(root, draft, values, context);
 };
 function declineMode(root, values) {
-  if (!Object.hasOwn(error_codes_v1_default.codes, values.code ?? ""))
-    return invalid(root, new Error("code: must be the error_code of the offer"));
-  declineOffer(root, values.code);
-  return { status: "declined", data_root: root, error_code: values.code };
+  const problems = [
+    !SKILL_ID.test(values.skill ?? "") && "skill: must be the skill_id of the offer",
+    !Object.hasOwn(error_codes_v1_default.codes, values.code ?? "") && "code: must be the error_code of the offer"
+  ].filter(Boolean);
+  if (problems.length)
+    return { status: "invalid-input", data_root: root, problems };
+  declineOffer(root, { skill: values.skill, code: values.code });
+  return { status: "declined", data_root: root, skill_id: values.skill, error_code: values.code };
 }
 var sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
 var MODES = {

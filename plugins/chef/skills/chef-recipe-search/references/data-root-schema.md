@@ -8,7 +8,7 @@ The data root is one folder under local git. `schema-version.json` at its root h
 |---|---|
 | `schema-version.json` | Schema version stamp |
 | `settings.json` | Per-user settings. Git-ignored; only `chef-setup` writes it |
-| `diagnostics/` | Local diagnostics: `trace.jsonl`, the invocation trace (one event per line, shape in the chef repo's `schemas/feedback/`). Folder 0700, files 0600. Git-ignored by its own `.gitignore`, so no commit ever holds it. Bounded to 200 events, 256 KiB and 14 days; `chef-setup clear-trace` deletes it, `set --trace off` stops it. Also `offers.json` (when Chef last offered a post-error report per error code, and the codes the user declined), `report-draft.json` and `outbox/` |
+| `diagnostics/` | Local diagnostics: `trace.jsonl`, the invocation trace (one event per line, shape in the chef repo's `schemas/feedback/`). Folder 0700, files 0600. Git-ignored by its own `.gitignore`, so no commit ever holds it. Bounded to 200 events, 256 KiB and 14 days; `chef-setup clear-trace` deletes it, `set --trace off` stops it. Also `offers.json` (when Chef last offered a post-error report for each skill's error code, and the ones the user declined), `report-draft.json` and `outbox/` |
 | `cache/` | Optional, only with `CHEF_FDC_CACHE=1`: USDA food-detail replies by FDC id (`cache/fdc/food/<fdcId>.json`). Git-ignored by its own `.gitignore`; safe to delete |
 | `knowledge/wiki/<type>/<slug>.md` | Curated pages, Markdown with YAML frontmatter |
 | `knowledge/raw/<type>/` | Source material as it arrived. Append-only: files are never changed or replaced |
