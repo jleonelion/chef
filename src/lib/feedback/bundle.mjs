@@ -28,6 +28,18 @@ export function selectEvents(events, { now, skill }) {
   return { events: events.slice(-FALLBACK_EVENTS), fallback: true };
 }
 
+// For a post-error report: runs of the failing run's skill within half an hour either side of it,
+// the MAX_EVENTS nearest, oldest first. Null when the run is not in the trace.
+export function selectAround(events, focusId) {
+  const focus = events.find((event) => event.invocation_id === focusId);
+  if (!focus) return null;
+  const at = Date.parse(focus.started_at);
+  const distance = (event) => Math.abs(Date.parse(event.started_at) - at);
+  const near = events.filter((event) => event.skill_id === focus.skill_id && distance(event) <= WINDOW_MS / 2);
+  const kept = new Set([...near].sort((a, b) => distance(a) - distance(b)).slice(0, MAX_EVENTS));
+  return { events: near.filter((event) => kept.has(event)), focus };
+}
+
 // Chef skills installed beside each other. Muse custom skills use underscores (chef_setup).
 export function installedSkills(skillsDir, version = PLUGIN.version) {
   let entries;

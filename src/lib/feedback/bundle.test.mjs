@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { generic } from '../../runtime/generic.mjs';
 import { diagnosticBundleProblems } from '../diagnostics/test-schemas.mjs';
-import { buildBundle, installedSkills, selectEvents } from './bundle.mjs';
+import { buildBundle, installedSkills, selectAround, selectEvents } from './bundle.mjs';
 
 const ids = ['11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222', '33333333-3333-4333-8333-333333333333'];
 const event = (i, startedAt, extra = {}) => ({
@@ -109,4 +109,11 @@ test('installed skills are the chef skills next to this one, with hyphenated IDs
     { id: 'chef-recipe-search', version: '1.1.0' },
     { id: 'chef-setup', version: '1.1.0' },
   ]);
+});
+
+test('a post-error selection is the failing skill runs within half an hour either side of the failing run', () => {
+  const focus = { ...at('2026-11-15T10:00:00.000Z'), invocation_id: 'focus' };
+  const runs = [at('2026-11-15T09:20:00.000Z'), at('2026-11-15T09:40:00.000Z'), focus, at('2026-11-15T10:10:00.000Z', 'chef-meal-planning'), at('2026-11-15T10:25:00.000Z'), at('2026-11-15T10:45:00.000Z')];
+  assert.deepEqual(selectAround(runs, 'focus'), { events: [runs[1], focus, runs[4]], focus });
+  assert.equal(selectAround(runs, 'gone'), null);
 });

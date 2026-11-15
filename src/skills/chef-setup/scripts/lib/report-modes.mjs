@@ -1,18 +1,20 @@
 // chef-setup feedback report modes: report-draft, report-preview, report-edit, report-remove,
 // report-send and report-discard. One draft at a time lives under diagnostics/; every mode that
 // changes it returns the full new preview and its submission_nonce, which report-send requires.
+import ERROR_CODES from '../../../../../schemas/feedback/error-codes.v1.json' with { type: 'json' };
 import { traceEnabled } from '../../../../lib/diagnostics/capture.mjs';
+import { declineOffer } from '../../../../lib/diagnostics/offers.mjs';
 import { readTrace } from '../../../../lib/diagnostics/trace.mjs';
-import { buildBundle, installedSkills, selectEvents } from '../../../../lib/feedback/bundle.mjs';
+import { buildBundle, installedSkills, selectAround, selectEvents } from '../../../../lib/feedback/bundle.mjs';
 import { renderPreview } from '../../../../lib/feedback/preview.mjs';
-import { editItem, newDraft, removeItem, serialize, splitSkillIds } from '../../../../lib/feedback/report.mjs';
+import { dropsFocus, editItem, newDraft, removeItem, serialize, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
 import { deleteDraft, readDraft, saveDraft } from '../../../../lib/feedback/store.mjs';
 import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
 
 const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'contact'];
 export const REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce'].map((flag) => [flag, { type: 'string' }])),
+  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce', 'focus', 'code'].map((flag) => [flag, { type: 'string' }])),
   raw: { type: 'boolean' },
 };
 
@@ -56,24 +58,52 @@ function diagnosticsFor(root, values, skillIds, { adapter, skillsDir }) {
   return { bundle, ...(fallback && { notes: { diagnostics_fallback: { skill: skill ?? null } } }) };
 }
 
-function draftMode(root, values, context) {
+// Accepting a post-error offer: a defect about the failing run, with answers pre-drafted from the
+// run's registry fields only (skill, operation, error code) for the user to change.
+function postErrorFields(root, values, { adapter, skillsDir }) {
+  const now = new Date();
+  const around = traceEnabled(root) ? selectAround(readTrace(root, { now }).events, values.focus) : null;
+  if (!around) throw new Error('focus: that run is not in the invocation trace');
+  const { events, focus } = around;
+  const bundle = buildBundle({ events, adapter, traceOn: true, skills: installedSkills(skillsDir), now });
+  const run = `${focus.skill_id} ${focus.operation}`;
+  return {
+    class: 'defect',
+    trigger: 'post-error',
+    summary: values.summary ?? `${run} stopped with an internal error`,
+    expected: values.expected ?? `${run} finishes`,
+    actual: values.actual ?? `It stopped with an internal error (${focus.error_code}).`,
+    frequency: values.frequency ?? 'unknown',
+    skill_ids: [focus.skill_id],
+    focus_invocation: bundle.events[events.indexOf(focus)].invocation_id,
+    bundle,
+  };
+}
+
+function userFields(root, values, context) {
   const skillIds = splitSkillIds(values['skill-ids']);
+  const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
+  return {
+    notes,
+    class: values.class,
+    summary: values.summary,
+    expected: values.expected,
+    actual: values.actual,
+    frequency: values.frequency,
+    desired_outcome: values['desired-outcome'],
+    current_behavior: values['current-behavior'],
+    desired_behavior: values['desired-behavior'],
+    skill_ids: skillIds,
+    bundle,
+  };
+}
+
+function draftMode(root, values, context) {
   try {
-    const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
+    const { notes, ...fields } = values.focus === undefined ? userFields(root, values, context) : postErrorFields(root, values, context);
     // No v1 adapter declares contact.opaque; its transport lands with the Muse submit path (#80).
     if (values.contact !== undefined && canTakeContact(context.adapter)) throw new Error('contact transport not implemented');
-    const draft = newDraft({
-      class: values.class,
-      summary: values.summary,
-      expected: values.expected,
-      actual: values.actual,
-      frequency: values.frequency,
-      desired_outcome: values['desired-outcome'],
-      current_behavior: values['current-behavior'],
-      desired_behavior: values['desired-behavior'],
-      skill_ids: skillIds,
-      bundle,
-    });
+    const draft = newDraft(fields);
     if (notes) draft.notes = notes;
     saveDraft(root, draft);
     return { ...shown(root, draft, context.adapter), ...(values.contact !== undefined && { contact_notice: CONTACT_DROPPED }) };
@@ -96,14 +126,29 @@ const changeMode = (change) => (root, draft, values, { adapter }) => {
   }
 };
 
+const FOCUS_WARNING = 'Removing this takes away the failing run, so the report becomes user-initiated: it will no longer say which run failed. Ask the user to confirm first.';
+
+// Removing the failing run of a post-error report needs --confirm.
+const removeMode = (root, draft, values, context) => {
+  if (!values.confirm && dropsFocus(draft, Number(values.item))) return { status: 'confirmation-required', data_root: root, item: Number(values.item), warning: FOCUS_WARNING };
+  return changeMode(removeItem)(root, draft, values, context);
+};
+
+function declineMode(root, values) {
+  if (!Object.hasOwn(ERROR_CODES.codes, values.code ?? '')) return invalid(root, new Error('code: must be the error_code of the offer'));
+  declineOffer(root, values.code);
+  return { status: 'declined', data_root: root, error_code: values.code };
+}
+
 const sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
 
 const MODES = {
   'report-draft': draftMode,
   'report-preview': withDraft(previewMode),
   'report-edit': withDraft(changeMode(editItem)),
-  'report-remove': withDraft(changeMode(removeItem)),
+  'report-remove': withDraft(removeMode),
   'report-send': withDraft(sendMode),
+  'report-offer-decline': declineMode,
   'report-discard': (root) => ({ status: deleteDraft(root) ? 'discarded' : 'empty', data_root: root }),
 };
 
