@@ -7468,7 +7468,7 @@ function writeCodes(root, codes) {
   writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ codes })}
 `);
 }
-function takeOffer(root, code, { now = new Date } = {}) {
+function claimOffer(root, code, { now = new Date } = {}) {
   const codes = readCodes(root);
   const { offered_at, declined_at } = codes[code] ?? {};
   if (declined_at || offered_at && now - Date.parse(offered_at) < OFFER_INTERVAL_MS)
@@ -7558,7 +7558,7 @@ function reportOffer(root, event) {
   if (event?.outcome !== "internal-error")
     return null;
   try {
-    if (readSettings(root).settings.post_error_offers !== "on" || !takeOffer(root, event.error_code))
+    if (readSettings(root).settings.post_error_offers !== "on" || !claimOffer(root, event.error_code))
       return null;
   } catch {
     return null;
