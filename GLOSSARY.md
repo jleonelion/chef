@@ -87,3 +87,19 @@ _Avoid_: feature flag, tracing support
 **Unit system**:
 The household's choice of US or metric measures for quantities Chef shows; stored recipes keep the units they were written in.
 _Avoid_: units preference, measurement mode
+
+**Meal plan**:
+The household's planned meals for one week, starting on a chosen day.
+_Avoid_: menu, schedule
+
+**Planned meal**:
+One meal in a meal plan: a date, a meal slot, what is eaten (a saved recipe, free-text food, or leftovers) and how many servings.
+_Avoid_: day slot, plan entry
+
+**Meal slot**:
+Which meal of the day something is eaten at: breakfast, lunch, dinner or snack. Planned and logged meals use the same slots.
+_Avoid_: meal type, course, slot (alone)
+
+**Leftovers**:
+A planned meal eaten from servings cooked at an earlier planned meal, so the dish is cooked and shopped for once.
+_Avoid_: repeat, reheat
