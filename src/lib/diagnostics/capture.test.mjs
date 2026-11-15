@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { buildEvent, chefCapture } from './capture.mjs';
-import { invocationEventProblems } from './feedback-schemas.mjs';
+import { invocationEventProblems } from './test-schemas.mjs';
 import { readTrace, TRACE_FILE } from './trace.mjs';
 
 const offMuse = { name: 'muse', adapterVersion: 1, isMuse: () => false };
@@ -96,6 +96,14 @@ test('with the trace off nothing is written', async () => {
   const root = dataRoot({ settings_version: 2, diagnostics: { trace: 'off' } });
   await chefCapture(searchRun(root), () => ({ count: 1 }));
   assert.equal(fs.existsSync(path.join(root, 'diagnostics')), false);
+});
+
+test('settings Chef cannot read fail closed: nothing is written', async () => {
+  for (const settings of [{ settings_version: 2, units: 'furlongs' }, { settings_version: 99 }]) {
+    const root = dataRoot(settings);
+    await chefCapture(searchRun(root), () => ({ count: 1 }));
+    assert.equal(fs.existsSync(path.join(root, 'diagnostics')), false);
+  }
 });
 
 test('a folder that is not a data root gets no diagnostics folder', async () => {

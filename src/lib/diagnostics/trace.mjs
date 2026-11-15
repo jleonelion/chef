@@ -3,11 +3,14 @@
 // so no Chef commit ever holds it. Bounds are enforced lazily on every read and write; no daemon.
 import fs from 'node:fs';
 import path from 'node:path';
+import SCHEMA from '../../../schemas/feedback/invocation-trace.v1.json' with { type: 'json' };
 
 export const DIAGNOSTICS_DIR = 'diagnostics';
 export const TRACE_FILE = `${DIAGNOSTICS_DIR}/trace.jsonl`;
 export const TRACE_SCHEMA_VERSION = 1;
-export const TRACE_BOUNDS = { maxEvents: 200, maxBytes: 256 * 1024, maxAgeMs: 14 * 24 * 60 * 60 * 1000 };
+export const DAY_MS = 24 * 60 * 60 * 1000;
+// The bounds live in the trace schema, the single source shared with feedback intake.
+export const TRACE_BOUNDS = { maxEvents: SCHEMA.properties.events.maxItems, maxBytes: SCHEMA['x-max-bytes'], maxAgeMs: SCHEMA['x-max-age-days'] * DAY_MS };
 
 const PRIVATE_FILE = { mode: 0o600 };
 const lineOf = (event) => `${JSON.stringify(event)}\n`;
@@ -37,14 +40,14 @@ function storedEvents(file) {
   });
 }
 
-// Newest events that fit every bound, oldest first.
+// Unexpired events, newest that fit the count and byte bounds, in stored order.
 function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
+  const fresh = events.filter((event) => now - Date.parse(event.started_at) <= maxAgeMs);
   const kept = [];
   let bytes = 0;
-  for (const event of [...events].reverse()) {
-    const age = now - Date.parse(event.started_at);
+  for (const event of fresh.reverse()) {
     const size = Buffer.byteLength(lineOf(event));
-    if (!(age <= maxAgeMs) || kept.length === maxEvents || bytes + size > maxBytes) break;
+    if (kept.length === maxEvents || bytes + size > maxBytes) break;
     kept.unshift(event);
     bytes += size;
   }

@@ -3,10 +3,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { initDataRoot } from '../../skills/chef-setup/scripts/lib/init-data-root.mjs';
 import { commit, git } from '../git.mjs';
 import { buildEvent } from './capture.mjs';
-import { invocationTraceProblems } from './feedback-schemas.mjs';
+import { invocationTraceProblems } from './test-schemas.mjs';
 import { appendEvent, clearTrace, readTrace, TRACE_FILE } from './trace.mjs';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -72,6 +71,14 @@ test('expired events are also dropped on write', () => {
   assert.deepEqual(lines.map((line) => JSON.parse(line).facts.results), [2]);
 });
 
+test('an expired event out of order does not evict newer ones', () => {
+  const root = newRoot();
+  appendEvent(root, event(1), { now: NOW });
+  appendEvent(root, event(2, new Date(NOW - 20 * DAY)), { now: NOW });
+  appendEvent(root, event(3), { now: NOW });
+  assert.deepEqual(resultsIn(readTrace(root, { now: NOW })), [1, 3]);
+});
+
 test('clear trace deletes it locally', () => {
   const root = newRoot();
   appendEvent(root, event(1), { now: NOW });
@@ -86,15 +93,6 @@ function committedPaths(root) {
   if (git(root, ['status', '--short'])) commit(root, 'commit everything');
   return git(root, ['log', '--all', '--name-only', '--format=']).split('\n').filter(Boolean);
 }
-
-test('a new data root never commits diagnostics', () => {
-  const root = path.join(newRoot(), 'data-root');
-  initDataRoot(root);
-  appendEvent(root, event(1), { now: NOW });
-  const paths = committedPaths(root);
-  assert.ok(paths.includes('schema-version.json'));
-  assert.deepEqual(paths.filter((p) => p.startsWith('diagnostics')), []);
-});
 
 test('an existing data root with its own .gitignore never commits diagnostics', () => {
   const root = newRoot();

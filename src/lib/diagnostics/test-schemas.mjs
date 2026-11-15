@@ -5,6 +5,7 @@ import event from '../../../schemas/feedback/invocation-event.v1.json' with { ty
 import trace from '../../../schemas/feedback/invocation-trace.v1.json' with { type: 'json' };
 
 const ajv = new Ajv({ allErrors: true, strict: true });
+ajv.addVocabulary(['x-max-bytes', 'x-max-age-days']);
 ajv.addSchema(event);
 ajv.addSchema(trace);
 

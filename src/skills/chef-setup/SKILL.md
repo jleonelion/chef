@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear the trace (Chef's local technical log) or turn it off, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch or a USDA connection hint.
 ---
 
 # Chef setup
@@ -128,14 +128,14 @@ When the user asks to change a setting, run `set` with only that flag:
 | Who receives lists and prep plans | `--household-recipients "a@example.com,b@example.com"` | `--household-recipients ""` (show in chat) |
 | Senders Chef accepts receipts from | `--trusted-receipt-senders "receipts@example.com"` | `--trusted-receipt-senders ""` (forwarding off) |
 | Calendar Chef adds meal plans to | `--calendar "Family"` | `--calendar none` (no calendar writes) |
-| Local technical log of script runs (`on` or `off`) | `--trace off` | `--trace default` (on) |
+| Invocation trace of script runs (`on` or `off`) | `--trace off` | `--trace default` (on) |
 
 A list flag replaces the whole list, so to add one address, pass the current list plus the new one. Read the current values with `node scripts/setup.mjs settings`.
 
 Act on the `set` output:
 
 - `saved`: confirm the new values. If the result has `delivery_tasks`, follow its `instruction`: re-create each listed recurring Chef task that exists so the runtime asks the user to approve the new recipients, then list the tasks you re-created. If household recipients or receipt senders went from none to some, offer **Recurring tasks** again for the task that is now offered. A `units` change affects shopping lists and pantry amounts from now on, and `inventory_page` reports the inventory page redrawn in the new units; recipes and the inventory store are never converted or rewritten.
-  With `trace_cleared` in the result, the trace is off and the old log is gone; say so.
+  With `trace_cleared` in the result, the trace is off and the kept trace is deleted; say so.
 - `invalid-input`: show the `problems` and ask the user for a corrected value.
 - `refused` with `content`: the settings file is broken or was written by a newer Chef. Show the user `reason` and `content`, and ask whether to replace it. Only if they agree, rerun the same command with `--rewrite`; that discards the old file's values.
 - `refused` without `content`: tell the user `reason` and change nothing.
@@ -197,11 +197,11 @@ node scripts/setup.mjs update --confirm
 - `fail`: the update ran but verify-install found problems. Show each failed check from `verify.checks`.
 - `refused`: show `reason` and change nothing manually. Never delete user data to repair an update.
 
-Settings key renames and removals are major-release migrations and run only in the confirmed step, with the data-root schema migrations.
+Settings key renames and removals are major-release migrations and run only in the confirmed step, with the data-root schema migrations. Additive settings migrations (such as 1 -> 2, which adds `diagnostics.trace: on`) also apply when settings are read, and are saved by the next `set`.
 
 ## Invocation trace
 
-Chef keeps a short local technical log of its script runs, the **invocation trace**: which script ran, how long it took and how it ended. It never records what the user asked for, recipes, household, health or dietary details, and it never leaves the machine on its own. It holds at most 200 runs, 256 KiB and 14 days; older runs drop off. It lives in the data root's `diagnostics/` folder, which git never commits.
+Chef keeps an **invocation trace** of its script runs (in plain words, a short local technical log): which script ran, how long it took and how it ended. It never records what the user asked for, recipes, household, health or dietary details, and it never leaves the machine on its own. It holds at most 200 runs, 256 KiB and 14 days; older runs drop off. It lives in the data root's `diagnostics/` folder, which git never commits.
 
 - **Show trace** ("show me Chef's log", "what has Chef been doing"): run `node scripts/setup.mjs trace`. Render `trace.events` as a table, newest last: time (`started_at`), skill (`skill_id`), operation, outcome, error code, duration. Mention `tracing` (on or off) and the bounds. If there are no events, say the trace is empty.
 - **Clear trace** ("delete Chef's log"): run `node scripts/setup.mjs clear-trace`. `cleared`: say the trace is deleted from this machine. `empty`: say there was nothing to delete. Nothing is sent anywhere either way.

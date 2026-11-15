@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { traceEnabled } from '../../../lib/diagnostics/capture.mjs';
-import { clearTrace, readTrace, TRACE_BOUNDS } from '../../../lib/diagnostics/trace.mjs';
+import { clearTrace, DAY_MS, readTrace, TRACE_BOUNDS } from '../../../lib/diagnostics/trace.mjs';
 import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
 import { today } from '../../../lib/recipes.mjs';
@@ -88,14 +88,14 @@ function setDietary(root) {
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
 
-function showTrace(root) {
+function showTraceMode(root) {
   if (readSchemaVersion(root) === null) return { ...NOT_A_ROOT, data_root: root };
   const { maxEvents, maxBytes, maxAgeMs } = TRACE_BOUNDS;
-  const bounds = { events: maxEvents, kib: maxBytes / 1024, days: maxAgeMs / 86400000 };
+  const bounds = { events: maxEvents, kib: maxBytes / 1024, days: maxAgeMs / DAY_MS };
   return { status: 'ok', data_root: root, tracing: traceEnabled(root) ? 'on' : 'off', bounds, trace: readTrace(root) };
 }
 
-function clear(root) {
+function clearTraceMode(root) {
   if (readSchemaVersion(root) === null) return { ...NOT_A_ROOT, data_root: root };
   return { status: clearTrace(root) ? 'cleared' : 'empty', data_root: root };
 }
@@ -113,8 +113,8 @@ const MODES = {
   'set-dietary': setDietary,
   schedule: scheduleProposal,
   'check-update': () => checkUpdate({ skillDir }),
-  trace: showTrace,
-  'clear-trace': clear,
+  trace: showTraceMode,
+  'clear-trace': clearTraceMode,
 };
 
 const mode = positionals[0] ?? 'init';

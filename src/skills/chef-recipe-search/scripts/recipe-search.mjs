@@ -70,7 +70,7 @@ if (!Object.hasOwn(MODES, mode)) {
   process.exit(64);
 }
 
-function run() {
+function runMode() {
   if (readSchemaVersion(root) === null) return { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' };
   const { recipes, unreadable } = listRecipes(root);
   const result = MODES[mode](recipes);
@@ -81,10 +81,12 @@ function run() {
 // Invocation event: registry codes and counts only (schemas/feedback/).
 const FAILURES = { refused: 'not-a-data-root', 'invalid-input': 'invalid-input', 'not-found': 'recipe-not-found' };
 function classify(result) {
-  if (result.status !== 'ok') return { outcome: 'validation-error', error_code: FAILURES[result.status] ?? 'unclassified' };
-  return { outcome: 'ok', facts: mode === 'search' ? { results: result.recipes.length } : {} };
+  if (result.status === 'ok') return { outcome: 'ok', facts: mode === 'search' ? { results: result.recipes.length } : {} };
+  return Object.hasOwn(FAILURES, result.status)
+    ? { outcome: 'validation-error', error_code: FAILURES[result.status] }
+    : { outcome: 'internal-error', error_code: 'unclassified' };
 }
 
-const result = await chefCapture({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: mode, classify }, run);
+const result = await chefCapture({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: mode, classify }, runMode);
 console.log(JSON.stringify(result));
 if (['refused', 'invalid-input'].includes(result.status)) process.exitCode = 2;

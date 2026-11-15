@@ -65,10 +65,13 @@ export function buildEvent({ skill, script, operation, outcome, error_code = nul
   };
 }
 
-// Capture runs only inside a Chef data root whose settings leave the trace on.
+// Capture runs only inside a Chef data root whose settings leave the trace on. Settings Chef
+// cannot read (invalid, newer version) fail closed: the user may have turned the trace off.
 export function traceEnabled(root) {
   try {
-    return readSchemaVersion(root) !== null && readSettings(root).settings.diagnostics.trace === 'on';
+    if (readSchemaVersion(root) === null) return false;
+    const { status, settings } = readSettings(root);
+    return ['ok', 'missing'].includes(status) && settings.diagnostics.trace === 'on';
   } catch {
     return false;
   }

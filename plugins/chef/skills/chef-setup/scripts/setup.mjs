@@ -7235,10 +7235,40 @@ function readSettings(root, { locale } = {}) {
 // src/lib/diagnostics/trace.mjs
 import fs4 from "node:fs";
 import path5 from "node:path";
+// schemas/feedback/invocation-trace.v1.json
+var invocation_trace_v1_default = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "urn:chef:feedback:invocation-trace:v1",
+  title: "Invocation trace",
+  description: "The bounded, local-only sequence of invocation events, oldest first, as `show trace` returns it. Stored as one event per line in <data root>/diagnostics/trace.jsonl, evicting the oldest once any bound is hit: events.maxItems, x-max-bytes (serialized JSONL size) or x-max-age-days. Never submitted as a whole.",
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schema_version",
+    "events"
+  ],
+  properties: {
+    schema_version: {
+      const: 1
+    },
+    events: {
+      type: "array",
+      maxItems: 200,
+      items: {
+        $ref: "urn:chef:feedback:invocation-event:v1"
+      }
+    }
+  },
+  "x-max-bytes": 262144,
+  "x-max-age-days": 14
+};
+
+// src/lib/diagnostics/trace.mjs
 var DIAGNOSTICS_DIR = "diagnostics";
 var TRACE_FILE = `${DIAGNOSTICS_DIR}/trace.jsonl`;
 var TRACE_SCHEMA_VERSION = 1;
-var TRACE_BOUNDS = { maxEvents: 200, maxBytes: 256 * 1024, maxAgeMs: 14 * 24 * 60 * 60 * 1000 };
+var DAY_MS = 24 * 60 * 60 * 1000;
+var TRACE_BOUNDS = { maxEvents: invocation_trace_v1_default.properties.events.maxItems, maxBytes: invocation_trace_v1_default["x-max-bytes"], maxAgeMs: invocation_trace_v1_default["x-max-age-days"] * DAY_MS };
 var PRIVATE_FILE = { mode: 384 };
 var lineOf = (event) => `${JSON.stringify(event)}
 `;
@@ -7259,12 +7289,12 @@ function storedEvents(file) {
   });
 }
 function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
+  const fresh = events.filter((event) => now - Date.parse(event.started_at) <= maxAgeMs);
   const kept = [];
   let bytes = 0;
-  for (const event of [...events].reverse()) {
-    const age = now - Date.parse(event.started_at);
+  for (const event of fresh.reverse()) {
     const size = Buffer.byteLength(lineOf(event));
-    if (!(age <= maxAgeMs) || kept.length === maxEvents || bytes + size > maxBytes)
+    if (kept.length === maxEvents || bytes + size > maxBytes)
       break;
     kept.unshift(event);
     bytes += size;
@@ -7296,7 +7326,10 @@ function clearTrace(root) {
 // src/lib/diagnostics/capture.mjs
 function traceEnabled(root) {
   try {
-    return readSchemaVersion(root) !== null && readSettings(root).settings.diagnostics.trace === "on";
+    if (readSchemaVersion(root) === null)
+      return false;
+    const { status, settings } = readSettings(root);
+    return ["ok", "missing"].includes(status) && settings.diagnostics.trace === "on";
   } catch {
     return false;
   }
@@ -8710,14 +8743,14 @@ function setDietary(root) {
   const change = { none: values.none, member: values.member, hard: list(values.hard), avoid: list(values.avoid) };
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
-function showTrace(root) {
+function showTraceMode(root) {
   if (readSchemaVersion(root) === null)
     return { ...NOT_A_ROOT, data_root: root };
   const { maxEvents, maxBytes, maxAgeMs } = TRACE_BOUNDS;
-  const bounds = { events: maxEvents, kib: maxBytes / 1024, days: maxAgeMs / 86400000 };
+  const bounds = { events: maxEvents, kib: maxBytes / 1024, days: maxAgeMs / DAY_MS };
   return { status: "ok", data_root: root, tracing: traceEnabled(root) ? "on" : "off", bounds, trace: readTrace(root) };
 }
-function clear(root) {
+function clearTraceMode(root) {
   if (readSchemaVersion(root) === null)
     return { ...NOT_A_ROOT, data_root: root };
   return { status: clearTrace(root) ? "cleared" : "empty", data_root: root };
@@ -8735,8 +8768,8 @@ var MODES = {
   "set-dietary": setDietary,
   schedule: scheduleProposal,
   "check-update": () => checkUpdate({ skillDir }),
-  trace: showTrace,
-  "clear-trace": clear
+  trace: showTraceMode,
+  "clear-trace": clearTraceMode
 };
 var mode = positionals[0] ?? "init";
 if (!Object.hasOwn(MODES, mode)) {
