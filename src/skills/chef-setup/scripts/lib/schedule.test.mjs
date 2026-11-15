@@ -27,6 +27,7 @@ test('with default settings and no goal, only the briefing and update notice are
   assert.equal(result.status, 'proposal');
   assert.deepEqual(names(result.tasks), ['Chef morning briefing', 'Chef update notice']);
   assert.deepEqual(names(result.not_offered), ['Chef weekly health report', 'Chef shopping list', 'Chef receipt check']);
+  assert.equal(result.not_offered.find((task) => task.name === 'Chef receipt check').reason, 'receipt intake is off');
   for (const task of result.tasks) {
     for (const key of ['name', 'cadence', 'prompt', 'why']) assert.ok(task[key], `${task.name} has ${key}`);
   }
