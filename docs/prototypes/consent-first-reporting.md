@@ -1,5 +1,7 @@
 # Prototype: consent-first reporting experience (Muse)
 
+> **Resolved 2026-11-14.** Decision recorded on [the ticket](https://github.com/jleonelion/chef/issues/56) (P1 preview, both confirmations, receipt secret disk-only, post-error offer on `internal-error` once per code per hour, 60-min skill window, contact only with `contact.opaque`, generalized drafting, "send"/"submit"/"send it" only, stable field numbers). Where this doc and the resolution differ, the resolution wins; the Q1-Q8 options below are kept as the record of what was weighed.
+
 Rough interaction artifact for [Design the consent-first reporting experience](https://github.com/jleonelion/chef/issues/56). Throwaway branch, never merged. React to it: mark what's wrong, what's missing, which option wins.
 
 Built on: [data contract](https://github.com/jleonelion/chef/issues/55), [privacy and lifecycle policy](https://github.com/jleonelion/chef/issues/57), [adapter contract](https://github.com/jleonelion/chef/issues/59), [Muse capabilities](https://github.com/jleonelion/chef/issues/52), [intake architecture](https://github.com/jleonelion/chef/issues/53).
@@ -275,11 +277,11 @@ Chef: Sounds like an enhancement. What would you want Chef to do? (I'll write it
 
 ## Questions to react to
 
-- [ ] Q1. Preview: P1 (numbered readable rendering + `show raw`) or P2 (raw JSON is the preview)?
-- [ ] Q2. Two confirmations (Chef "send" then Muse approval): acceptable, or does Muse's prompt make Chef's redundant when the write is classified sensitive?
-- [ ] Q3. Post-error offer: only `internal-error`, or also repeated `dependency-unavailable`? Once per error code per conversation OK?
-- [ ] Q4. Default diagnostic window: session events for the inferred skill (cap 50), or a fixed "last N runs"?
-- [ ] Q5. Receipt secret shown once in chat: necessary, given Chef saves it locally? Showing it puts a secret in conversation history; not showing it means losing the VM loses the receipt.
-- [ ] Q6. Contact: where does it enter? Prototype omits it (Muse v1 likely lacks `contact.opaque`). Ask at step 6 only when available?
-- [ ] Q7. Agent-generalized drafting ("a dairy item" for "milk"): right default, or too paternalistic?
-- [ ] Q8. "send" as the literal confirm word, re-asking on anything else: too strict?
+- [x] Q1. Preview: P1 (numbered readable rendering + `show raw`) or P2 (raw JSON is the preview)?
+- [x] Q2. Two confirmations (Chef "send" then Muse approval): acceptable, or does Muse's prompt make Chef's redundant when the write is classified sensitive?
+- [x] Q3. Post-error offer: only `internal-error`, or also repeated `dependency-unavailable`? Once per error code per conversation OK?
+- [x] Q4. Default diagnostic window: session events for the inferred skill (cap 50), or a fixed "last N runs"?
+- [x] Q5. Receipt secret shown once in chat: necessary, given Chef saves it locally? Showing it puts a secret in conversation history; not showing it means losing the VM loses the receipt.
+- [x] Q6. Contact: where does it enter? Prototype omits it (Muse v1 likely lacks `contact.opaque`). Ask at step 6 only when available?
+- [x] Q7. Agent-generalized drafting ("a dairy item" for "milk"): right default, or too paternalistic?
+- [x] Q8. "send" as the literal confirm word, re-asking on anything else: too strict?
