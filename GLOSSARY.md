@@ -103,3 +103,11 @@ _Avoid_: meal type, course, slot (alone)
 **Leftovers**:
 A planned meal eaten from servings cooked at an earlier planned meal, so the dish is cooked and shopped for once.
 _Avoid_: repeat, reheat
+
+**Free-text food**:
+What is eaten, written as text with no saved recipe: a meal out, takeaway or a simple food. Logged and planned meals can both hold it. Chef does not shop for it, prep it, gate it or estimate its nutrition.
+_Avoid_: custom meal, other
+
+**Amount to cook**:
+The servings cooked at a planned meal: its own servings plus the servings of every leftovers meal that points to it. Shopping lists and batch prep use it; nutrition uses servings eaten.
+_Avoid_: batch size, yield (a recipe's `yield` field is what one batch makes)
