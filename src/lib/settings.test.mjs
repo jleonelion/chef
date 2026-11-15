@@ -26,6 +26,7 @@ test('defaults cover every v1 key', () => {
     trusted_receipt_senders: [],
     units: 'us',
     calendar: null,
+    convert_recipe_units: false,
   });
 });
 
@@ -74,4 +75,6 @@ test('validateSettings checks each v1 key', () => {
   assert.deepEqual(validateSettings({ trusted_receipt_senders: 'a@example.com' }), ['trusted_receipt_senders: must be a list of email addresses']);
   assert.deepEqual(validateSettings({ calendar: '' }), ['calendar: must be a calendar name or null']);
   assert.deepEqual(validateSettings({ units: 'metric', other: 1 }), []);
+  assert.deepEqual(validateSettings({ convert_recipe_units: true }), []);
+  assert.deepEqual(validateSettings({ convert_recipe_units: 'yes' }), ['convert_recipe_units: must be true or false']);
 });

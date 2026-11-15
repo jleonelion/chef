@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { migrateSettings, settingsMigrationPlan } from './settings-migrations.mjs';
+import { readSettings } from './settings.mjs';
 
 function root(content) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-settings-migrate-'));
@@ -29,6 +30,14 @@ test('applies confirmed settings renames and removals while preserving unrelated
     future_key: 7,
     units: 'metric',
   });
+});
+
+test('a v1 file from before convert_recipe_units needs no migration and reads it as off', () => {
+  const content = '{"settings_version":1,"units":"metric"}\n';
+  const dir = root(content);
+  assert.deepEqual(migrateSettings(dir), { from: 1, to: 1, applied: [] });
+  assert.equal(fs.readFileSync(path.join(dir, 'settings.json'), 'utf8'), content);
+  assert.equal(readSettings(dir).settings.convert_recipe_units, false);
 });
 
 test('missing settings need no migration and are not created', () => {
