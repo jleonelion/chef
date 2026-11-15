@@ -8837,8 +8837,8 @@ var WINDOW_MS = HOUR_MS;
 var OS_FAMILIES = { darwin: "macos", linux: "linux", win32: "windows" };
 var ALWAYS_UNOBSERVED = ["pre_launch_unobserved", "host_action_unconfirmed", "post_return_unobserved"];
 var FALLBACK_EVENTS = 10;
-function selectEvents(events, { now, skill, wide = false }) {
-  const inWindow = events.filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (wide || !skill || event.skill_id === skill)).slice(-MAX_EVENTS);
+function selectEvents(events, { now, skill }) {
+  const inWindow = events.filter((event) => now - Date.parse(event.started_at) <= WINDOW_MS && (!skill || event.skill_id === skill)).slice(-MAX_EVENTS);
   if (inWindow.length || !events.length)
     return { events: inWindow, fallback: false };
   return { events: events.slice(-FALLBACK_EVENTS), fallback: true };
@@ -8972,17 +8972,15 @@ function scanNotes(numbers, report) {
     return [`Check item ${numbers[field]} (${field}): may contain ${what}. Chef changed nothing; ask to edit or remove it if it is personal.`];
   });
 }
-function draftNotes(report, notes = {}, contact) {
-  const lines = [];
-  if (report.diagnostic_bundle && Object.hasOwn(notes, "diagnostics_fallback")) {
-    const runs = notes.diagnostics_fallback ? `runs of ${notes.diagnostics_fallback}` : "Chef runs";
-    lines.push(`Diagnostics: no ${runs} in the last hour, so these are the last 10 runs of any skill. Ask to widen or drop them.`);
-  }
-  if (contact !== undefined)
-    lines.push(`Contact, sent apart from the report and stored separately: ${JSON.stringify(contact)}`);
-  return lines;
+function fallbackNote(report, fallback) {
+  if (!fallback || !report.diagnostic_bundle)
+    return [];
+  const missing = fallback.skill ? `runs of ${fallback.skill}` : "Chef runs";
+  const runs = report.diagnostic_bundle.events.length;
+  const taken = runs === 1 ? "this is the last run" : `these are the last ${runs} runs`;
+  return [`Diagnostics: no ${missing} in the last hour, so ${taken} of any skill. Ask to drop them if they don't help.`];
 }
-function renderPreview({ report, numbers, notes, contact }) {
+function renderPreview({ report, numbers, notes = {} }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -8992,7 +8990,7 @@ function renderPreview({ report, numbers, notes, contact }) {
     "",
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
-    ...draftNotes(report, notes, contact),
+    ...fallbackNote(report, notes.diagnostics_fallback),
     ...scanNotes(numbers, report)
   ].join(`
 `);
@@ -9407,7 +9405,7 @@ var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one
 var invalid = (root, error) => ({ status: "invalid-input", data_root: root, problems: error.problems ?? [error.message] });
 var DIAGNOSTICS = ["on", "off", "wide"];
 var CONTACT_DROPPED = "This runtime can't take contact details, so Chef dropped the contact you gave; it is not in the report.";
-var canTakeContact = (adapter) => hasCapability(adapter, "contact");
+var canTakeContact = (adapter) => adapter.feedback.capabilities().includes("contact.opaque");
 function shown(root, draft, adapter) {
   const sendable = canSend(adapter);
   return {
@@ -9432,17 +9430,17 @@ function diagnosticsFor(root, values, skillIds, { adapter, skillsDir }) {
     return {};
   const now = new Date;
   const traceOn = traceEnabled(root);
-  const wide = choice === "wide";
-  const skill = wide ? undefined : skillIds[0];
-  const { events, fallback } = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill, wide }) : { events: [], fallback: false };
+  const skill = choice === "wide" ? undefined : skillIds[0];
+  const { events, fallback } = traceOn ? selectEvents(readTrace(root, { now }).events, { now, skill }) : { events: [], fallback: false };
   const bundle = buildBundle({ events, adapter, traceOn, skills: installedSkills(skillsDir), now });
-  return { bundle, ...fallback && { notes: { diagnostics_fallback: skill ?? null } } };
+  return { bundle, ...fallback && { notes: { diagnostics_fallback: { skill: skill ?? null } } } };
 }
 function draftMode(root, values, context) {
   const skillIds = splitSkillIds(values["skill-ids"]);
   try {
     const { bundle, notes } = diagnosticsFor(root, values, skillIds, context);
-    const keepContact = values.contact !== undefined && canTakeContact(context.adapter);
+    if (values.contact !== undefined && canTakeContact(context.adapter))
+      throw new Error("contact transport not implemented");
     const draft = newDraft({
       class: values.class,
       summary: values.summary,
@@ -9455,10 +9453,10 @@ function draftMode(root, values, context) {
       skill_ids: skillIds,
       bundle
     });
-    Object.assign(draft, notes && { notes }, keepContact && { contact: values.contact });
+    if (notes)
+      draft.notes = notes;
     saveDraft(root, draft);
-    const dropped = values.contact !== undefined && !keepContact;
-    return { ...shown(root, draft, context.adapter), ...dropped && { contact_notice: CONTACT_DROPPED } };
+    return { ...shown(root, draft, context.adapter), ...values.contact !== undefined && { contact_notice: CONTACT_DROPPED } };
   } catch (error) {
     return invalid(root, error);
   }
