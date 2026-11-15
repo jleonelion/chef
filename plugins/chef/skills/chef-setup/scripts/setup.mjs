@@ -7136,6 +7136,93 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   const raw = flag ?? env.CHEF_DATA_ROOT ?? adapter.defaultDataRoot();
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
+
+// src/lib/diagnostics/capture.mjs
+import { randomUUID } from "node:crypto";
+// schemas/feedback/error-codes.v1.json
+var error_codes_v1_default = {
+  registry_version: 1,
+  description: "Error-code registry: every error_code an invocation event may carry, with the outcome it belongs to. Unknown throws are recorded as internal-error + unclassified. Adding an entry is a reviewed change.",
+  codes: {
+    unclassified: { outcome: "internal-error", description: "The script threw something no code covers." },
+    "not-a-data-root": { outcome: "validation-error", description: "The data root is missing or has no schema-version file." },
+    "invalid-input": { outcome: "validation-error", description: "The script refused its arguments." },
+    "recipe-not-found": { outcome: "validation-error", description: "No recipe has the requested slug." },
+    "action-refused": { outcome: "validation-error", description: "A guard refused the action: an untrusted sender, a store Chef can't safely change, a dietary conflict, a missing confirmation." },
+    "record-not-found": { outcome: "validation-error", description: "No meal entry, proposal, rule or recipe has the requested id." },
+    "no-plan": { outcome: "validation-error", description: "No saved meal plan covers the requested week." },
+    "store-unreadable": { outcome: "validation-error", description: "A Chef data file can't be parsed." },
+    "page-fetch-failed": { outcome: "dependency-unavailable", description: "The recipe page could not be fetched." },
+    "usda-unavailable": { outcome: "dependency-unavailable", description: "The USDA FoodData Central check failed." }
+  }
+};
+// schemas/feedback/facts.v1.json
+var facts_v1_default = {
+  registry_version: 1,
+  description: "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). A script's `status` values are its ok results; any other status is a failure that must map to an error code. Adding an entry is a reviewed change.",
+  scripts: {
+    "chef-add-recipe/add-recipe": {
+      operations: ["url", "draft", "enrich", "verify"],
+      facts: {
+        status: { type: "enum", values: ["added", "would-add", "exists", "needs-draft", "enriched", "unchanged", "verified"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-batch-prep-planning/batch-prep": {
+      operations: ["render"],
+      facts: {
+        status: { type: "enum", values: ["rendered"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-food-inventory/inventory": {
+      operations: ["view", "check-sender", "add-receipt", "edit", "deduct", "expiring", "health", "rollup"],
+      facts: {
+        status: { type: "enum", values: ["ok", "trusted", "added", "duplicate", "saved", "deducted", "regenerated", "healthy", "problems"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-health-goals/health-goals": {
+      operations: ["status", "set", "clear", "report"],
+      facts: {
+        status: { type: "enum", values: ["active", "dormant", "saved", "cleared", "report"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-meal-logging/meal-logging": {
+      operations: ["log", "edit", "delete"],
+      facts: {
+        status: { type: "enum", values: ["logged", "unchanged", "edited", "deleted"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-meal-planning/meal-planning": {
+      operations: ["plan", "today"],
+      facts: {
+        status: { type: "enum", values: ["saved", "planned", "no-plan"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-recipe-decisions/recipe-decisions": {
+      operations: ["propose", "decide", "publish", "list", "retire", "restore", "rules", "rule-add", "rule-remove"],
+      facts: {
+        status: { type: "enum", values: ["proposed", "auto-accepted", "auto-rejected", "already-proposed", "already-accepted", "already-rejected", "exists", "decided", "unchanged", "published", "ok", "retired", "restored", "added", "replaced", "removed"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-recipe-search/recipe-search": {
+      operations: ["search", "show"],
+      facts: {
+        results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
+      }
+    },
+    "chef-setup/setup": {
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard"],
+      facts: {
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "fail", "connected", "declared", "none-declared", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    },
+    "chef-shopping-lists/shopping-lists": {
+      operations: ["build"],
+      facts: {
+        status: { type: "enum", values: ["built"], description: "The run's top-level result status: a fixed word from the script, never user content." }
+      }
+    }
+  }
+};
 // plugins/chef/.claude-plugin/plugin.json
 var plugin_default = {
   name: "chef",
@@ -7375,6 +7462,17 @@ function writePrivate(file, text) {
   fs5.renameSync(temp, file);
 }
 var rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(""));
+function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
+  ensureDiagnosticsDir(root);
+  const file = path5.join(root, TRACE_FILE);
+  const stored = storedEvents(file);
+  const kept = withinBounds([...stored, event], now, bounds);
+  const onlyAppended = kept.length === stored.length + 1 && fs5.existsSync(file);
+  if (onlyAppended)
+    fs5.appendFileSync(file, lineOf(event), PRIVATE_FILE);
+  else
+    rewrite(file, kept);
+}
 function readTrace(root, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   const file = path5.join(root, TRACE_FILE);
   const stored = storedEvents(file);
@@ -7392,6 +7490,61 @@ function clearTrace(root) {
 }
 
 // src/lib/diagnostics/capture.mjs
+var EVENT_SCHEMA_VERSION = 1;
+function declaredScript(skill, script, operation) {
+  const entry = facts_v1_default.scripts[`${skill}/${script}`];
+  if (!entry)
+    throw new Error(`undeclared script "${skill}/${script}"`);
+  if (!entry.operations.includes(operation))
+    throw new Error(`undeclared operation "${operation}"`);
+  return entry;
+}
+function factProblem(spec, value) {
+  if (spec.type === "integer")
+    return Number.isInteger(value) && value >= spec.minimum && value <= spec.maximum ? null : `must be an integer from ${spec.minimum} to ${spec.maximum}`;
+  return spec.values.includes(value) ? null : `must be one of ${spec.values.join(", ")}`;
+}
+function checkedFacts(declared, facts) {
+  for (const [name, value] of Object.entries(facts)) {
+    if (!Object.hasOwn(declared, name))
+      throw new Error(`undeclared fact "${name}"`);
+    const problem = factProblem(declared[name], value);
+    if (problem)
+      throw new Error(`fact "${name}" ${problem}`);
+  }
+  return { ...facts };
+}
+function checkErrorCode(outcome, code) {
+  if (outcome === "ok") {
+    if (code !== null)
+      throw new Error("ok runs carry no error code");
+    return;
+  }
+  const entry = error_codes_v1_default.codes[code];
+  if (!entry)
+    throw new Error(`undeclared error code "${code}"`);
+  if (entry.outcome !== outcome)
+    throw new Error(`error code "${code}" belongs to ${entry.outcome}, not ${outcome}`);
+}
+function buildEvent({ skill, script, operation, outcome, error_code = null, facts = {}, startedAt, durationMs, adapter = currentRuntime() }) {
+  const declared = declaredScript(skill, script, operation);
+  checkErrorCode(outcome, error_code);
+  return {
+    schema_version: EVENT_SCHEMA_VERSION,
+    invocation_id: randomUUID(),
+    started_at: startedAt.toISOString(),
+    duration_ms: Math.max(0, Math.round(durationMs)),
+    chef_version: plugin_default.version,
+    skill_id: skill,
+    script_id: script,
+    operation,
+    outcome,
+    error_code,
+    runtime: adapter.name,
+    adapter_version: adapter.adapterVersion,
+    facts: checkedFacts(declared.facts, facts)
+  };
+}
 function traceEnabled(root) {
   try {
     if (readSchemaVersion(root) === null)
@@ -7400,6 +7553,38 @@ function traceEnabled(root) {
     return ["ok", "missing"].includes(status) && settings.diagnostics.trace === "on";
   } catch {
     return false;
+  }
+}
+function record(context, describe) {
+  if (!traceEnabled(context.root))
+    return;
+  try {
+    appendEvent(context.root, buildEvent({ ...context, ...describe() }), { now: new Date });
+  } catch {}
+}
+var COMMON_FAILURES = { "invalid-input": "invalid-input", refused: "action-refused" };
+function classifyStatus({ root, skill, script, failures = {} }) {
+  const okStatuses = facts_v1_default.scripts[`${skill}/${script}`]?.facts.status?.values ?? [];
+  const codes = { ...COMMON_FAILURES, ...failures };
+  return ({ status }) => {
+    if (okStatuses.includes(status))
+      return { outcome: "ok", facts: { status } };
+    const code = status === "refused" && readSchemaVersion(root) === null ? "not-a-data-root" : codes[status];
+    return Object.hasOwn(error_codes_v1_default.codes, code) ? { outcome: error_codes_v1_default.codes[code].outcome, error_code: code } : { outcome: "internal-error", error_code: "unclassified" };
+  };
+}
+async function chefCapture({ root, skill, script, operation, classify: classify2, failures, adapter = currentRuntime() }, run) {
+  const context = { root, skill, script, operation, adapter, startedAt: new Date };
+  const classifyResult = classify2 ?? classifyStatus({ root, skill, script, failures });
+  const started = performance.now();
+  const elapsed = () => ({ durationMs: performance.now() - started });
+  try {
+    const result = await run();
+    record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
+    return result;
+  } catch (error) {
+    record(context, () => ({ ...elapsed(), outcome: "internal-error", error_code: "unclassified" }));
+    throw error;
   }
 }
 
@@ -8822,7 +9007,7 @@ function bytesFromPreview(text) {
 }
 
 // src/lib/feedback/report.mjs
-import { randomUUID } from "node:crypto";
+import { randomUUID as randomUUID2 } from "node:crypto";
 // schemas/feedback/feedback-report.v1.json
 var feedback_report_v1_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -9084,7 +9269,7 @@ function newDraft({ class: kind, trigger = "user-initiated", summary, skill_ids,
     ...skill_ids?.length ? { skill_ids } : {},
     ...bundle ? { diagnostic_bundle: bundle } : {},
     removed_fields: [],
-    submission_nonce: randomUUID()
+    submission_nonce: randomUUID2()
   });
   return { report, numbers: Object.fromEntries(itemsOf(report).map((item, i) => [item.id, i + 1])) };
 }
@@ -9094,7 +9279,7 @@ function itemId({ report, numbers }, number) {
     throw new Error(`no item ${number} in this draft`);
   return id;
 }
-var changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID() }) });
+var changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID2() }) });
 function withoutItem(report, id) {
   const { parent, key, element } = locate(report, id);
   if (element)
@@ -9614,7 +9799,10 @@ if (!Object.hasOwn(MODES2, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES2).join(", ")}`);
   process.exit(64);
 }
-var result2 = await MODES2[mode](resolveDataRoot({ flag: values["data-root"] }));
+var root = resolveDataRoot({ flag: values["data-root"] });
+var UNTRACED = ["trace", "clear-trace"];
+var capture = { root, skill: "chef-setup", script: "setup", operation: mode, failures: { failed: "usda-unavailable" } };
+var result2 = UNTRACED.includes(mode) ? MODES2[mode](root) : await chefCapture(capture, () => MODES2[mode](root));
 console.log(JSON.stringify(result2));
 if (result2.status === "refused" || result2.status === "invalid-input")
   process.exitCode = 2;
