@@ -56,6 +56,10 @@ _Avoid_: receipt (unqualified), ticket number, token
 A maintainer-written scenario with synthetic data that reproduces what a feedback report describes; refers back to the report but holds none of its content.
 _Avoid_: fixture copy, test from report
 
+**Sanitized issue**:
+A public GitHub issue a maintainer writes about what a feedback report describes; holds none of the report's content and identifies neither the report nor its reporter.
+_Avoid_: exported report, issue from report
+
 **Evidence gap**:
 A named kind of fact Chef could not observe for a report, such as what happened before a script started; means "not observed", never "did not happen".
 _Avoid_: missing data, null
