@@ -4,8 +4,9 @@
 // not, script output, git state). Every row must pass every rep; nothing is retried.
 // Local only: it spends real Claude usage, so it never runs in CI. Rows are in rows.json:
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
-//   run before the first turn), turns (prompts; later turns resume the session), skills, files
+//   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts; later turns resume the session), skills, files
 //   (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
+//   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
 //   bun run agentic [--reps 3] [--rows id,id] [--model <id>] [--concurrency 4] [--out <file>]
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -13,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { today } from '../../src/lib/recipes.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, checkFiles, checkSkills, readStream } from './report.mjs';
 
@@ -35,13 +37,14 @@ function prepare(row) {
   const plugin = path.join(tmp, 'plugin');
   fs.cpSync(path.join(repo, 'plugins', 'chef'), plugin, { recursive: true });
   const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, CHEF_USDA_FDC_KEY: '' };
-  const expand = (text) => text.replaceAll('{skills}', path.join(plugin, 'skills')).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp);
+  const expand = (text) => text.replaceAll('{skills}', path.join(plugin, 'skills')).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp).replaceAll('{today}', today());
   return { tmp, dataRoot, plugin, env, expand };
 }
 
 function script(rep, step) {
   const [cmd, ...args] = step.command.map(rep.expand);
-  const result = spawnSync(cmd, args, { cwd: rep.tmp, env: rep.env, encoding: 'utf8', timeout: 60000 });
+  const input = step.stdin === undefined ? undefined : rep.expand(typeof step.stdin === 'string' ? step.stdin : JSON.stringify(step.stdin));
+  const result = spawnSync(cmd, args, { cwd: rep.tmp, env: rep.env, input, encoding: 'utf8', timeout: 60000 });
   if (result.status !== 0) throw new Error(`${step.command.slice(0, 3).join(' ')} exited ${result.status}\n${result.stdout}${result.stderr}`);
   return JSON.parse(result.stdout);
 }
