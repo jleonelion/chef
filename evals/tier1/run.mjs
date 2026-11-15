@@ -4,6 +4,7 @@
 // first (the fixture is then committed to a fresh git repo); `afterCommitSeed` creates pending
 // user changes. `updateInstall` creates a local tagged release checkout and custom-skills install.
 // `env` overrides environment variables (e.g. a fixed LANG for locale defaults).
+// `stdin` (on a case or step) is piped to the command; a non-string value is sent as JSON.
 // Each assertion is {path, <check>}: `equals` (exact deep-equal), `includes` (string/array member),
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 // File targets parse as `text` (default), `json`, or `pdf` ({valid, pages, title, text[]}; see pdf.mjs).
@@ -106,6 +107,7 @@ async function runCase(testCase, skillsDir, fixture, { skipPdfFiles = false } = 
         env: { ...process.env, CHEF_DATA_ROOT: dataRoot, ...testCase.env },
         encoding: 'utf8',
         timeout: 30000,
+        ...(step.stdin !== undefined && { input: typeof step.stdin === 'string' ? step.stdin : JSON.stringify(step.stdin) }),
       });
       const expected = step.expectedStatus ?? 0;
       assert.equal(result.status, expected, `${testCase.id} exited ${result.status}, expected ${expected}\n${result.stdout}\n${result.stderr}`);

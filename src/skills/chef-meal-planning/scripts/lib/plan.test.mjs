@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, test } from 'node:test';
-import { serializePage } from '../../../../lib/frontmatter.mjs';
+import { parsePage, serializePage } from '../../../../lib/frontmatter.mjs';
 import { planWeek } from './plan.mjs';
 
 const roots = [];
@@ -58,16 +58,70 @@ function ruleset(members) {
   };
 }
 
-test('chosen day slots stay ordered and only empty slots are auto-filled', () => {
-  const root = makeRoot([recipe('alpha'), recipe('beta'), recipe('gamma')]);
+// The synthetic week: breakfast, lunch and dinner on Monday and Tuesday, only dinner on Wednesday.
+const week = () => [
+  recipe('overnight-oats', { title: 'Overnight Oats', ingredients: ['1 cup oats'] }),
+  recipe('lentil-salad', { title: 'Lentil Salad', ingredients: ['1 cup lentils'] }),
+  recipe('bean-chili', { title: 'Bean Chili', ingredients: ['2 can beans'] }),
+];
+const weekMeals = [
+  { date: '2026-01-21', slot: 'dinner', recipe: 'bean-chili' },
+  { date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili', servings: 4 },
+  { date: '2026-01-19', slot: 'breakfast', recipe: 'overnight-oats' },
+  { date: '2026-01-19', slot: 'lunch', recipe: 'lentil-salad', note: 'pack for work' },
+  { date: '2026-01-20', slot: 'breakfast', recipe: 'overnight-oats' },
+  { date: '2026-01-20', slot: 'lunch', recipe: 'bean-chili' },
+  { date: '2026-01-20', slot: 'dinner', recipe: 'lentil-salad' },
+];
 
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 3, slots: ['beta', '', 'alpha'] });
+test('a breakfast, lunch and dinner week saves every planned meal with its slot, in date and slot order', () => {
+  const root = makeRoot(week());
+
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: weekMeals });
 
   assert.equal(result.status, 'saved');
-  assert.deepEqual(result.meals.map((meal) => meal.slug), ['beta', 'gamma', 'alpha']);
-  assert.equal(result.servings_source, 'default');
-  assert.equal(fs.existsSync(path.join(root, 'knowledge/wiki/meal-plans/2026-01-19.md')), true);
+  const saved = parsePage(fs.readFileSync(path.join(root, result.path), 'utf8')).frontmatter.meals;
+  assert.deepEqual(saved, [
+    { date: '2026-01-19', slot: 'breakfast', slug: 'overnight-oats', title: 'Overnight Oats', servings: 1 },
+    { date: '2026-01-19', slot: 'lunch', slug: 'lentil-salad', title: 'Lentil Salad', servings: 1, note: 'pack for work' },
+    { date: '2026-01-19', slot: 'dinner', slug: 'bean-chili', title: 'Bean Chili', servings: 4 },
+    { date: '2026-01-20', slot: 'breakfast', slug: 'overnight-oats', title: 'Overnight Oats', servings: 1 },
+    { date: '2026-01-20', slot: 'lunch', slug: 'bean-chili', title: 'Bean Chili', servings: 1 },
+    { date: '2026-01-20', slot: 'dinner', slug: 'lentil-salad', title: 'Lentil Salad', servings: 1 },
+    { date: '2026-01-21', slot: 'dinner', slug: 'bean-chili', title: 'Bean Chili', servings: 1 },
+  ]);
+  assert.deepEqual(result.meals, saved);
 });
+
+const invalidInputs = [
+  ['input that is not a list', { date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili' }, 'meals: must be a list of planned meals'],
+  ['an empty list', [], 'meals: must list at least one planned meal'],
+  ['an unknown slot', [{ date: '2026-01-19', slot: 'brunch', recipe: 'bean-chili' }], 'meals[0].slot: must be breakfast, lunch, dinner or snack'],
+  ['a day past the end of the month', [{ date: '2026-02-30', slot: 'dinner', recipe: 'bean-chili' }], 'meals[0].date: must be a real YYYY-MM-DD date'],
+  ['a day no month has', [{ date: '2026-01-32', slot: 'dinner', recipe: 'bean-chili' }], 'meals[0].date: must be a real YYYY-MM-DD date'],
+  ['a date outside the week', [{ date: '2026-01-26', slot: 'dinner', recipe: 'bean-chili' }], 'meals[0].date: must fall in the week starting 2026-01-19'],
+  ['a missing recipe', [{ date: '2026-01-19', slot: 'dinner' }], 'meals[0].recipe: must be a recipe slug'],
+  ['non-positive servings', [{ date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili', servings: 0 }], 'meals[0].servings: must be a number greater than zero'],
+  ['a note that is not text', [{ date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili', note: 3 }], 'meals[0].note: must be text'],
+  ['two meals in one date and slot', [
+    { date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili' },
+    { date: '2026-01-19', slot: 'dinner', recipe: 'lentil-salad' },
+  ], 'meals[1]: 2026-01-19 dinner is already planned'],
+];
+
+for (const [name, meals, problem] of invalidInputs) {
+  test(`${name} returns invalid-input and writes nothing`, () => {
+    const root = makeRoot(week());
+    const beforeHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
+
+    const result = planWeek(root, { weekStart: '2026-01-19', meals });
+
+    assert.equal(result.status, 'invalid-input');
+    assert.deepEqual(result.problems, [problem]);
+    assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }), beforeHead);
+    assert.equal(fs.existsSync(path.join(root, 'knowledge/wiki/meal-plans')), false);
+  });
+}
 
 test('a gated chosen recipe is refused with reasons before anything is written', () => {
   const root = makeRoot([
@@ -77,12 +131,13 @@ test('a gated chosen recipe is refused with reasons before anything is written',
   ]);
   const beforeHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
 
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 1, slots: ['dairy'] });
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: [{ date: '2026-01-20', slot: 'lunch', recipe: 'dairy' }] });
 
   assert.equal(result.status, 'refused');
   assert.equal(result.reason, 'chosen recipes cannot be planned');
   assert.deepEqual(result.refused_choices, [{
-    slot: 1,
+    date: '2026-01-20',
+    slot: 'lunch',
     slug: 'dairy',
     reasons: [{ member: 'Alex Example', constraint: 'dairy', why: 'flagged', detail: 'contains-dairy' }, { member: 'Alex Example', constraint: 'dairy', why: 'ingredient-text', detail: '30 g parmesan' }],
   }]);
@@ -90,25 +145,32 @@ test('a gated chosen recipe is refused with reasons before anything is written',
   assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
 });
 
-test('auto-fill ranks avoidances last and reports planned avoidance matches', () => {
+test('avoidances never block a planned meal and are reported per planned meal', () => {
   const root = makeRoot([
     recipe('a-olive-pasta', { ingredients: ['100 g olives'] }),
     recipe('z-tomato-pasta', { ingredients: ['100 g tomatoes'] }),
     ruleset([{ name: 'Sam Example', avoidances: ['olives'] }]),
   ]);
 
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 2 });
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'z-tomato-pasta' },
+      { date: '2026-01-20', slot: 'lunch', recipe: 'a-olive-pasta' },
+    ],
+  });
 
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.meals.map((meal) => meal.slug), ['z-tomato-pasta', 'a-olive-pasta']);
   assert.deepEqual(result.avoidance_notes, [{
     date: '2026-01-20',
+    slot: 'lunch',
     slug: 'a-olive-pasta',
     avoidances: [{ member: 'Sam Example', avoidance: 'olives', detail: '100 g olives' }],
   }]);
 });
 
-test('servings come from household profile frontmatter, never body prose', () => {
+test('household servings from profile frontmatter apply when a planned meal gives none', () => {
   const profile = {
     path: 'knowledge/wiki/household/profile.md',
     content: serializePage(
@@ -118,20 +180,14 @@ test('servings come from household profile frontmatter, never body prose', () =>
   };
   const root = makeRoot([recipe('soup'), profile]);
 
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 1 });
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }, { date: '2026-01-20', slot: 'dinner', recipe: 'soup', servings: 2 }],
+  });
 
   assert.equal(result.status, 'saved');
-  assert.equal(result.meals[0].servings, 4);
+  assert.deepEqual(result.meals.map((meal) => meal.servings), [4, 2]);
   assert.equal(result.servings_source, 'profile');
-});
-
-test('auto-fill does not repeat while enough distinct allowed recipes exist', () => {
-  const root = makeRoot([recipe('alpha'), recipe('beta'), recipe('gamma')]);
-
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 3, slots: ['', 'alpha', ''] });
-
-  assert.equal(result.status, 'saved');
-  assert.deepEqual(result.meals.map((meal) => meal.slug), ['beta', 'alpha', 'gamma']);
 });
 
 test('a one-plan override allows the chosen recipe and reports lifted reasons', () => {
@@ -142,8 +198,7 @@ test('a one-plan override allows the chosen recipe and reports lifted reasons', 
 
   const result = planWeek(root, {
     weekStart: '2026-01-19',
-    days: 1,
-    slots: ['dairy'],
+    meals: [{ date: '2026-01-19', slot: 'breakfast', recipe: 'dairy' }],
     overrides: [{ member: 'Alex Example', constraint: 'dairy' }],
   });
 
@@ -159,18 +214,25 @@ test('a one-plan override allows the chosen recipe and reports lifted reasons', 
   assert.doesNotMatch(fs.readFileSync(path.join(root, result.path), 'utf8'), /overrid(?:e|den)/);
 });
 
-test('unknown and retired chosen recipes are refused with slot-specific reasons', () => {
+test('unknown and retired recipes are refused per planned meal', () => {
   const root = makeRoot([
     recipe('retired-soup', { frontmatter: { lifecycle: 'retired', retired: '2026-01-16' } }),
     recipe('active-soup'),
   ]);
 
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 2, slots: ['missing-soup', 'retired-soup'] });
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'missing-soup' },
+      { date: '2026-01-19', slot: 'lunch', recipe: 'active-soup' },
+      { date: '2026-01-20', slot: 'snack', recipe: 'retired-soup' },
+    ],
+  });
 
   assert.equal(result.status, 'refused');
   assert.deepEqual(result.refused_choices, [
-    { slot: 1, slug: 'missing-soup', reasons: [{ why: 'not-found' }] },
-    { slot: 2, slug: 'retired-soup', reasons: [{ why: 'retired' }] },
+    { date: '2026-01-19', slot: 'dinner', slug: 'missing-soup', reasons: [{ why: 'not-found' }] },
+    { date: '2026-01-20', slot: 'snack', slug: 'retired-soup', reasons: [{ why: 'retired' }] },
   ]);
   assert.equal(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }), '');
 });
@@ -182,7 +244,7 @@ const goalsFile = { path: 'data/health-goals/goals.json', content: '{"goal":"Low
 
 test('with no declared goal, planning has no health output', () => {
   const root = makeRoot([measured('soup', 2500)]);
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 1 });
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }] });
   assert.equal(result.status, 'saved');
   assert.equal(result.health_suggestions, undefined);
 });
@@ -194,7 +256,7 @@ test('with a declared goal, the saved plan gets advisory health suggestions that
     ruleset([{ name: 'Alex Example', hard_constraints: ['dairy'] }]),
     goalsFile,
   ]);
-  const result = planWeek(root, { weekStart: '2026-01-19', days: 1 });
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }] });
   assert.deepEqual(result.meals.map((meal) => meal.slug), ['soup']);
   assert.equal(result.health_suggestions.status, 'advisory');
   assert.equal(result.health_suggestions.footer, 'Chef gives general information, not medical advice.');

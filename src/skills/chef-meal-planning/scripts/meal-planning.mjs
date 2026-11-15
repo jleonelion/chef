@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { parseOverrides } from '../../../lib/dietary-gate.mjs';
@@ -12,9 +13,7 @@ const { values, positionals } = parseArgs({
   options: {
     'data-root': { type: 'string' },
     'week-start': { type: 'string' },
-    days: { type: 'string' },
     date: { type: 'string' },
-    recipes: { type: 'string' },
     override: many,
   },
   allowPositionals: true,
@@ -22,8 +21,15 @@ const { values, positionals } = parseArgs({
 
 const root = resolveDataRoot({ flag: values['data-root'] });
 const mode = positionals[0];
-const days = values.days === undefined ? 7 : /^\d+$/.test(values.days) ? Number(values.days) : NaN;
-const slots = values.recipes === undefined ? [] : values.recipes.split(',').map((slug) => slug.trim());
+
+function readPlannedMeals() {
+  try {
+    return { meals: JSON.parse(fs.readFileSync(0, 'utf8')) };
+  } catch {
+    return { problem: 'stdin: must be a JSON list of planned meals' };
+  }
+}
+
 let result;
 if (mode === 'today') {
   const date = values.date ?? localToday();
@@ -35,10 +41,10 @@ else if (!/^\d{4}-\d{2}-\d{2}$/.test(values['week-start'] ?? '') || Number.isNaN
   result = { status: 'invalid-input', data_root: root, problems: ['--week-start must be YYYY-MM-DD'] };
 } else {
   const { overrides, problems } = parseOverrides(values.override, readRuleset(root));
-  if (!Number.isInteger(days) || days < 1 || days > 7) problems.push('--days must be a whole number from 1 to 7');
-  if (slots.length > days) problems.push('--recipes cannot contain more slots than --days');
+  const { meals, problem } = readPlannedMeals();
+  if (problem) problems.push(problem);
   if (problems.length) result = { status: 'invalid-input', data_root: root, problems };
-  else result = planWeek(root, { weekStart: values['week-start'], days, slots, overrides });
+  else result = planWeek(root, { weekStart: values['week-start'], meals, overrides });
 }
 
 console.log(JSON.stringify(result));

@@ -6946,6 +6946,7 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-meal-planning/scripts/meal-planning.mjs
+import fs11 from "node:fs";
 import { parseArgs } from "node:util";
 
 // src/lib/data-root.mjs
@@ -7745,6 +7746,12 @@ function rollupNutrition(meals) {
 }
 var FIELDS = Object.keys(NUTRIENTS);
 
+// src/lib/meal-slots.mjs
+var MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+var slotOf = (meal) => meal.slot ?? "dinner";
+var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
+var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
+
 // src/lib/settings.mjs
 import fs6 from "node:fs";
 import path7 from "node:path";
@@ -7950,6 +7957,52 @@ function healthSuggestions(plan, goal) {
   };
 }
 
+// src/skills/chef-meal-planning/scripts/lib/planned-meals.mjs
+var DATE = /^\d{4}-\d{2}-\d{2}$/;
+var isRealDate = (value) => typeof value === "string" && DATE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+function weekDates(weekStart) {
+  const start = Date.parse(`${weekStart}T00:00:00Z`);
+  return new Set(Array.from({ length: 7 }, (_, day) => new Date(start + day * 86400000).toISOString().slice(0, 10)));
+}
+function mealProblems(meal, at, week, weekStart) {
+  if (meal === null || typeof meal !== "object" || Array.isArray(meal))
+    return [`${at}: must be an object`];
+  const problems = [];
+  if (!isRealDate(meal.date))
+    problems.push(`${at}.date: must be a real YYYY-MM-DD date`);
+  else if (!week.has(meal.date))
+    problems.push(`${at}.date: must fall in the week starting ${weekStart}`);
+  if (!MEAL_SLOTS.includes(meal.slot))
+    problems.push(`${at}.slot: must be breakfast, lunch, dinner or snack`);
+  if (typeof meal.recipe !== "string" || !meal.recipe.trim())
+    problems.push(`${at}.recipe: must be a recipe slug`);
+  if (meal.servings !== undefined && !(typeof meal.servings === "number" && meal.servings > 0)) {
+    problems.push(`${at}.servings: must be a number greater than zero`);
+  }
+  if (meal.note !== undefined && typeof meal.note !== "string")
+    problems.push(`${at}.note: must be text`);
+  return problems;
+}
+function plannedMealProblems(meals, weekStart) {
+  if (!Array.isArray(meals))
+    return ["meals: must be a list of planned meals"];
+  if (!meals.length)
+    return ["meals: must list at least one planned meal"];
+  const week = weekDates(weekStart);
+  const taken = new Set;
+  return meals.flatMap((meal, index) => {
+    const at = `meals[${index}]`;
+    const problems = mealProblems(meal, at, week, weekStart);
+    if (problems.length)
+      return problems;
+    const key = `${meal.date} ${meal.slot}`;
+    if (taken.has(key))
+      return [`${at}: ${key} is already planned`];
+    taken.add(key);
+    return [];
+  });
+}
+
 // src/skills/chef-meal-planning/scripts/lib/plan.mjs
 var PROFILE_PATH = wikiPath("household-profile", "profile");
 function household(root) {
@@ -7961,17 +8014,15 @@ function household(root) {
   const fromProfile = Number.isInteger(portions) && portions > 0;
   return { path: PROFILE_PATH, servings: fromProfile ? portions : 1, servings_source: fromProfile ? "profile" : "default" };
 }
-function dateAt(weekStart, offset) {
-  const date = new Date(`${weekStart}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
-}
-function inventoryScore(recipe, items) {
-  const lines = ingredientLines(recipe.body).map((line) => line.toLowerCase());
-  return items.filter((item) => lines.some((line) => line.includes(item.name.toLowerCase()))).length;
-}
-function mealView(recipe, date, servings) {
-  return { date, slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, servings };
+function mealView(planned, recipe, householdServings) {
+  return {
+    date: planned.date,
+    slot: planned.slot,
+    slug: recipe.slug,
+    title: recipe.frontmatter.title ?? recipe.slug,
+    servings: planned.servings ?? householdServings,
+    ...planned.note && { note: planned.note }
+  };
 }
 function nutritionInput(meal, recipe) {
   return { ...meal, nutrition_status: recipe.frontmatter.nutrition_status, nutrition_per_serving: recipe.frontmatter.nutrition_per_serving };
@@ -7983,40 +8034,28 @@ function calendarPayload(calendar, meals) {
     calendar: {
       action: "create-events",
       calendar,
-      events: meals.map((meal) => ({ date: meal.date, title: meal.title, recipe_slug: meal.slug })),
+      events: meals.map((meal) => ({ date: meal.date, slot: meal.slot, title: meal.title, recipe_slug: meal.slug })),
       instruction: "Use the runtime calendar connector to create these events; this script does not call a calendar API."
     }
   };
 }
 function planBody(weekStart, meals) {
-  const rows = meals.map((meal) => `| ${meal.date} | ${meal.title} | ${meal.servings} |`).join(`
+  const rows = meals.map((meal) => `| ${meal.date} | ${meal.slot} | ${meal.title} | ${meal.servings} | ${meal.note ?? ""} |`).join(`
 `);
   return `# Meal plan: week of ${weekStart}
 
-| Date | Recipe | Servings |
-|---|---|---:|
+| Date | Meal | Recipe | Servings | Note |
+|---|---|---|---:|---|
 ${rows}
 `;
 }
 function applyHealthSuggestions(plan, goal) {
   return goal ? { ...plan, health_suggestions: healthSuggestions(plan, goal) } : plan;
 }
-function selectRecipes(allowed, bySlug, slots, days) {
-  const used = new Set(slots.filter(Boolean));
-  return Array.from({ length: days }, (_, index) => {
-    const chosen = slots[index];
-    if (chosen)
-      return bySlug.get(chosen);
-    let candidate = allowed.find(({ recipe }) => !used.has(recipe.slug));
-    if (!candidate) {
-      used.clear();
-      candidate = allowed[0];
-    }
-    used.add(candidate.recipe.slug);
-    return candidate.recipe;
-  });
-}
-function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
+function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
+  const problems = plannedMealProblems(planned, weekStart);
+  if (problems.length)
+    return { status: "invalid-input", data_root: root, week_start: weekStart, problems };
   const ruleset = readRuleset(root);
   const { recipes, unreadable } = listRecipes(root);
   const candidates = recipes.filter((recipe) => recipe.frontmatter.type === "recipe");
@@ -8024,17 +8063,16 @@ function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
   const active = judged.filter(({ recipe }) => recipe.frontmatter.lifecycle !== "retired");
   const excluded = active.filter(({ verdict }) => verdict.excluded).map(({ recipe, verdict }) => ({ slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, reasons: verdict.reasons }));
   const bySlug = new Map(judged.map((entry) => [entry.recipe.slug, entry]));
-  const refusedChoices = slots.flatMap((slug, index) => {
-    if (!slug)
-      return [];
+  const ordered = [...planned].sort(byDateAndSlot);
+  const refusedChoices = ordered.flatMap(({ date, slot, recipe: slug }) => {
     const entry = bySlug.get(slug);
     if (!entry)
-      return [{ slot: index + 1, slug, reasons: [{ why: "not-found" }] }];
+      return [{ date, slot, slug, reasons: [{ why: "not-found" }] }];
     const reasons = [
       ...entry.recipe.frontmatter.lifecycle === "retired" ? [{ why: "retired" }] : [],
       ...entry.verdict.reasons
     ];
-    return reasons.length ? [{ slot: index + 1, slug, reasons }] : [];
+    return reasons.length ? [{ date, slot, slug, reasons }] : [];
   });
   if (refusedChoices.length) {
     return {
@@ -8047,21 +8085,16 @@ function planWeek(root, { weekStart, days = 7, slots = [], overrides = [] }) {
     };
   }
   const inventoryItems = listItems(loadInventory(root));
-  const allowed = active.filter(({ verdict }) => !verdict.excluded).sort((a, b) => Number(Boolean(a.verdict.avoidances.length)) - Number(Boolean(b.verdict.avoidances.length)) || inventoryScore(b.recipe, inventoryItems) - inventoryScore(a.recipe, inventoryItems) || a.recipe.slug.localeCompare(b.recipe.slug));
-  if (!allowed.length) {
-    return { status: "no-plan", data_root: root, week_start: weekStart, meals: [], excluded, unreadable, dietary: dietaryNotes(ruleset) };
-  }
   const profile = household(root);
-  const activeBySlug = new Map(active.map(({ recipe }) => [recipe.slug, recipe]));
-  const selected = selectRecipes(allowed, activeBySlug, slots, days);
-  const meals = selected.map((recipe, index) => mealView(recipe, dateAt(weekStart, index), profile.servings));
+  const selected = ordered.map(({ recipe: slug }) => bySlug.get(slug).recipe);
+  const meals = ordered.map((entry, index) => mealView(entry, selected[index], profile.servings));
   const overridden = [...new Set(selected.map((recipe) => recipe.slug))].flatMap((slug) => {
     const reasons = bySlug.get(slug).verdict.overridden;
     return reasons.length ? [{ slug, reasons }] : [];
   });
   const avoidanceNotes = meals.flatMap((meal) => {
     const avoidances = bySlug.get(meal.slug).verdict.avoidances;
-    return avoidances.length ? [{ date: meal.date, slug: meal.slug, avoidances }] : [];
+    return avoidances.length ? [{ date: meal.date, slot: meal.slot, slug: meal.slug, avoidances }] : [];
   });
   const nutrition = rollupNutrition(meals.map((meal, index) => nutritionInput(meal, selected[index])));
   const dietary = dietaryNotes(ruleset);
@@ -8132,7 +8165,7 @@ function todayPlan(root, date) {
     data_root: root,
     date,
     meal_plan: plan.path,
-    meals: plan.frontmatter.meals.filter((meal) => meal.date === date),
+    meals: plan.frontmatter.meals.filter((meal) => meal.date === date).map(withSlot).sort(byDateAndSlot),
     ...typeof footer === "string" && footer ? { dietary: { footer } } : {}
   };
 }
@@ -8143,17 +8176,20 @@ var { values, positionals } = parseArgs({
   options: {
     "data-root": { type: "string" },
     "week-start": { type: "string" },
-    days: { type: "string" },
     date: { type: "string" },
-    recipes: { type: "string" },
     override: many
   },
   allowPositionals: true
 });
 var root = resolveDataRoot({ flag: values["data-root"] });
 var mode = positionals[0];
-var days = values.days === undefined ? 7 : /^\d+$/.test(values.days) ? Number(values.days) : NaN;
-var slots = values.recipes === undefined ? [] : values.recipes.split(",").map((slug) => slug.trim());
+function readPlannedMeals() {
+  try {
+    return { meals: JSON.parse(fs11.readFileSync(0, "utf8")) };
+  } catch {
+    return { problem: "stdin: must be a JSON list of planned meals" };
+  }
+}
 var result;
 if (mode === "today") {
   const date = values.date ?? today();
@@ -8164,14 +8200,13 @@ else if (!/^\d{4}-\d{2}-\d{2}$/.test(values["week-start"] ?? "") || Number.isNaN
   result = { status: "invalid-input", data_root: root, problems: ["--week-start must be YYYY-MM-DD"] };
 } else {
   const { overrides, problems } = parseOverrides(values.override, readRuleset(root));
-  if (!Number.isInteger(days) || days < 1 || days > 7)
-    problems.push("--days must be a whole number from 1 to 7");
-  if (slots.length > days)
-    problems.push("--recipes cannot contain more slots than --days");
+  const { meals, problem } = readPlannedMeals();
+  if (problem)
+    problems.push(problem);
   if (problems.length)
     result = { status: "invalid-input", data_root: root, problems };
   else
-    result = planWeek(root, { weekStart: values["week-start"], days, slots, overrides });
+    result = planWeek(root, { weekStart: values["week-start"], meals, overrides });
 }
 console.log(JSON.stringify(result));
 if (["invalid-input", "refused"].includes(result.status) || mode === "plan" && result.status === "no-plan")
