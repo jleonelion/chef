@@ -11,6 +11,7 @@
     "no-plan": { "outcome": "validation-error", "description": "No saved meal plan covers the requested week." },
     "store-unreadable": { "outcome": "validation-error", "description": "A Chef data file can't be parsed." },
     "page-fetch-failed": { "outcome": "dependency-unavailable", "description": "The recipe page could not be fetched." },
-    "usda-unavailable": { "outcome": "dependency-unavailable", "description": "The USDA FoodData Central check failed." }
+    "usda-unavailable": { "outcome": "dependency-unavailable", "description": "The USDA FoodData Central check failed." },
+    "install-check-failed": { "outcome": "dependency-unavailable", "description": "The installed Chef skills failed verify install, on their own or after an update." }
   }
 }

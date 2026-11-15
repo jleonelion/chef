@@ -27,7 +27,7 @@ if (!['log', 'edit', 'delete'].includes(positionals[0])) {
 
 const root = resolveDataRoot({ flag: values['data-root'] });
 const operation = positionals[0];
-const OPERATIONS = {
+const MODES = {
   log: () => logMeal(root, {
     date: values.date,
     slot: values.slot,
@@ -49,6 +49,6 @@ const OPERATIONS = {
   delete: () => deleteMeal(root, { id: values.id }),
 };
 const failures = { 'not-found': 'record-not-found' };
-const result = await chefCapture({ root, skill: 'chef-meal-logging', script: 'meal-logging', operation, failures }, OPERATIONS[operation]);
+const result = await chefCapture({ root, skill: 'chef-meal-logging', script: 'meal-logging', operation, failures }, MODES[operation]);
 console.log(JSON.stringify({ data_root: root, ...result }));
 if (['invalid-input', 'not-found', 'refused'].includes(result.status)) process.exitCode = 2;

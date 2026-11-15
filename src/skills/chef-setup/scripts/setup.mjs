@@ -132,7 +132,7 @@ if (!Object.hasOwn(MODES, mode)) {
 const root = resolveDataRoot({ flag: values['data-root'] });
 // Showing or clearing the trace records nothing, so a cleared trace stays empty.
 const UNTRACED = ['trace', 'clear-trace'];
-const capture = { root, skill: 'chef-setup', script: 'setup', operation: mode, failures: { failed: 'usda-unavailable' } };
+const capture = { root, skill: 'chef-setup', script: 'setup', operation: mode, failures: { failed: 'usda-unavailable', fail: 'install-check-failed' } };
 const result = UNTRACED.includes(mode) ? MODES[mode](root) : await chefCapture(capture, () => MODES[mode](root));
 console.log(JSON.stringify(result));
 if (result.status === 'refused' || result.status === 'invalid-input') process.exitCode = 2;

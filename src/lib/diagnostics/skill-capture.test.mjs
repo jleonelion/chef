@@ -63,6 +63,32 @@ test('an operation outside the registry records nothing', () => {
   assert.deepEqual(readTrace(root).events, []);
 });
 
+// Normal answers on a fresh household: none may land as internal-error, or Chef would offer to
+// report a run that went fine.
+const NORMAL_RUNS = [
+  ['chef-setup', 'setup', ['dietary']],
+  ['chef-setup', 'setup', ['safety']],
+  ['chef-setup', 'setup', ['schedule']],
+  ['chef-setup', 'setup', ['report-discard']],
+  ['chef-food-inventory', 'inventory', ['expiring', '--today', WEEK]],
+  ['chef-food-inventory', 'inventory', ['health', '--today', WEEK]],
+  ['chef-health-goals', 'health-goals', ['report', '--week-start', WEEK]],
+  ['chef-health-goals', 'health-goals', ['clear']],
+  ['chef-recipe-decisions', 'recipe-decisions', ['rules']],
+  ['chef-recipe-decisions', 'recipe-decisions', ['retire', '--slug', 'no-such-recipe']],
+  ['chef-recipe-search', 'recipe-search', ['show', '--slug', 'lemon-garlic-pasta']],
+  ['chef-meal-logging', 'meal-logging', ['edit', '--id', 'no-such-entry', '--servings', '2']],
+];
+
+test('no normal run is recorded as internal-error', () => {
+  for (const [skill, script, args] of NORMAL_RUNS) {
+    const root = fixtureRoot();
+    run(root, skill, script, args);
+    const [event] = readTrace(root).events;
+    assert.ok(event, `${skill} ${args[0]} records an event`);
+    assert.notEqual(event.outcome, 'internal-error', `${skill} ${args[0]}`);
+  }
+});
 
 test('household, recipe and dietary content in arguments and data never reaches the trace', () => {
   const root = fixtureRoot();

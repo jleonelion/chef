@@ -91,14 +91,14 @@ function record(context, describe) {
 const COMMON_FAILURES = { 'invalid-input': 'invalid-input', refused: 'action-refused' };
 
 // classify for a result with a top-level `status`: a status the registry lists under the script's
-// `status` fact is an ok run; `failures` maps the rest to error codes. A refusal outside a data
-// root is not-a-data-root. Any status nobody mapped is internal-error + unclassified.
-export function classifyStatus({ root, skill, script, failures = {} }) {
+// `status` fact is an ok run; `failures` maps the rest to error codes. Any status nobody mapped
+// is internal-error + unclassified.
+export function classifyStatus({ skill, script, failures = {} }) {
   const okStatuses = FACTS.scripts[`${skill}/${script}`]?.facts.status?.values ?? [];
   const codes = { ...COMMON_FAILURES, ...failures };
   return ({ status }) => {
     if (okStatuses.includes(status)) return { outcome: 'ok', facts: { status } };
-    const code = status === 'refused' && readSchemaVersion(root) === null ? 'not-a-data-root' : codes[status];
+    const code = codes[status];
     return Object.hasOwn(ERROR_CODES.codes, code) ? { outcome: ERROR_CODES.codes[code].outcome, error_code: code } : { outcome: 'internal-error', error_code: 'unclassified' };
   };
 }
@@ -109,7 +109,7 @@ export function classifyStatus({ root, skill, script, failures = {} }) {
 // unclassified (never its message) and rethrown.
 export async function chefCapture({ root, skill, script, operation, classify, failures, adapter = currentRuntime() }, run) {
   const context = { root, skill, script, operation, adapter, startedAt: new Date() };
-  const classifyResult = classify ?? classifyStatus({ root, skill, script, failures });
+  const classifyResult = classify ?? classifyStatus({ skill, script, failures });
   const started = performance.now();
   const elapsed = () => ({ durationMs: performance.now() - started });
   try {
