@@ -33,13 +33,25 @@ const step = (name, ok, detail = '') => console.log(`${ok ? 'PASS' : 'FAIL'}  ${
 let cred;
 try {
   cred = surrogate();
-  step('1 authdc issues surrogate', true, `placement=${cred.placement}`);
+  // Placement is metadata, not a secret: print its shape so we learn the format.
+  step('1 authdc issues surrogate', true, `placement=${JSON.stringify(cred.placement)}`);
 } catch (error) {
   step('1 authdc issues surrogate', false, error.message);
   process.exit(1);
 }
-const [kind, header] = cred.placement.split(':');
-step('2 placement is a header', kind === 'header', cred.placement);
+// USDA returns 'query_param:api_key'; a custom header connector returns an object.
+function headerOf(placement) {
+  if (typeof placement === 'string') {
+    const [kind, name] = placement.split(':');
+    return kind.endsWith('header') ? name : null;
+  }
+  const kind = String(placement?.type ?? placement?.kind ?? placement?.in ?? '');
+  const name = placement?.name ?? placement?.header ?? placement?.key;
+  return kind.includes('header') && typeof name === 'string' ? name : null;
+}
+const header = headerOf(cred.placement);
+step('2 placement is a header', Boolean(header), JSON.stringify(cred.placement));
+if (!header) process.exit(1);
 
 let response, echoed;
 try {
@@ -47,6 +59,7 @@ try {
     method: 'POST',
     headers: { 'content-type': 'application/json', [header]: cred.surrogate },
     body: approved,
+    redirect: 'manual',
   });
   echoed = await response.json();
   step('3 POST with body leaves the VM', response.ok, `HTTP ${response.status}`);
