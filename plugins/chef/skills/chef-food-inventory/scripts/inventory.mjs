@@ -7117,6 +7117,131 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
+// src/lib/quantity.mjs
+var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
+var MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
+var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
+var ALIASES = {
+  teaspoons: "tsp",
+  teaspoon: "tsp",
+  tablespoons: "tbsp",
+  tablespoon: "tbsp",
+  cups: "cup",
+  milliliters: "ml",
+  milliliter: "ml",
+  millilitres: "ml",
+  millilitre: "ml",
+  liters: "l",
+  liter: "l",
+  litres: "l",
+  litre: "l",
+  "fl oz": "floz",
+  "fluid ounce": "floz",
+  "fluid ounces": "floz",
+  pints: "pt",
+  pint: "pt",
+  quarts: "qt",
+  quart: "qt",
+  gallons: "gal",
+  gallon: "gal",
+  grams: "g",
+  gram: "g",
+  kilograms: "kg",
+  kilogram: "kg",
+  ounces: "oz",
+  ounce: "oz",
+  lbs: "lb",
+  pounds: "lb",
+  pound: "lb",
+  pieces: "piece",
+  slices: "slice",
+  cloves: "clove",
+  cans: "can",
+  jars: "jar",
+  bunches: "bunch",
+  heads: "head",
+  sprigs: "sprig",
+  sticks: "stick",
+  boxes: "box",
+  dozens: "dozen"
+};
+var normalizeUnit = (unit) => ALIASES[String(unit ?? "").trim().toLowerCase()] ?? String(unit ?? "").trim().toLowerCase();
+function quantityDimension(unit) {
+  const normalized = normalizeUnit(unit);
+  if (Object.hasOwn(VOLUME, normalized))
+    return "volume";
+  if (Object.hasOwn(MASS, normalized))
+    return "mass";
+  if (COUNT.has(normalized))
+    return "count";
+  return null;
+}
+function convertQuantity(amount, fromUnit, toUnit) {
+  const from = normalizeUnit(fromUnit);
+  const to = normalizeUnit(toUnit);
+  const dimension = quantityDimension(from);
+  if (!dimension || dimension !== quantityDimension(to))
+    return null;
+  if (dimension === "volume")
+    return amount * VOLUME[from] / VOLUME[to];
+  if (dimension === "mass")
+    return amount * MASS[from] / MASS[to];
+  if (from === to)
+    return amount;
+  if (from === "dozen" && to === "each")
+    return amount * 12;
+  if (from === "each" && to === "dozen")
+    return amount / 12;
+  return null;
+}
+var fixed = (step) => () => step;
+var metricSmall = (n) => n < 100 ? 5 : 25;
+var LADDERS = {
+  us: { volume: [["tsp", fixed(0.5)], ["tbsp", fixed(0.5)], ["cup", fixed(0.25)], ["qt", fixed(0.25)]], mass: [["oz", fixed(1)], ["lb", fixed(0.25)]] },
+  metric: { volume: [["ml", metricSmall], ["l", fixed(0.1)]], mass: [["g", metricSmall], ["kg", fixed(0.1)]] }
+};
+var SPOONS = LADDERS.us.volume.slice(0, 2);
+var SPOON_UNITS = new Set(["tsp", "tbsp"]);
+var QUARTER_CUP = 12;
+var EPSILON = 0.000000001;
+var FRACTIONS = { 0.25: "1/4", 0.5: "1/2", 0.75: "3/4" };
+var PLURAL = { cup: "cups" };
+var roundUp = (n, step) => Number((Math.ceil(n / step - EPSILON) * step).toFixed(9));
+var round2 = (n) => Math.round(n * 100) / 100;
+function onLadder(base, ladder, table) {
+  const size = (i2) => table[ladder[i2][0]];
+  let i = Math.max(0, ladder.findLastIndex(([unit]) => base / table[unit] >= 1 - EPSILON));
+  for (;; ) {
+    const [unit, step] = ladder[i];
+    const exact = base / size(i);
+    const amount = roundUp(exact, step(exact));
+    if (i + 1 < ladder.length && amount * size(i) / size(i + 1) >= 1 - EPSILON)
+      i += 1;
+    else
+      return { amount, unit };
+  }
+}
+function usNumber(amount) {
+  const whole = Math.floor(amount + EPSILON);
+  const fraction = FRACTIONS[round2(amount - whole)];
+  return [whole || (fraction ? "" : "0"), fraction].filter(Boolean).join(" ");
+}
+var label = (amount, unit) => amount > 1 && PLURAL[unit] || unit;
+function displayQuantity(amount, unit, system, { spoon } = {}) {
+  const from = normalizeUnit(unit);
+  const kind = quantityDimension(from);
+  if (kind !== "volume" && kind !== "mass") {
+    const shown2 = round2(amount);
+    return { amount: shown2, unit: from, text: `${shown2} ${from}` };
+  }
+  const table = kind === "volume" ? VOLUME : MASS;
+  const base = amount * table[from];
+  const spoons = kind === "volume" && (spoon ?? SPOON_UNITS.has(from)) && base < QUARTER_CUP - EPSILON;
+  const shown = onLadder(base, spoons ? SPOONS : LADDERS[system][kind], table);
+  const number = system === "us" || SPOON_UNITS.has(shown.unit) ? usNumber(shown.amount) : String(shown.amount);
+  return { ...shown, text: `${number} ${label(shown.amount, shown.unit)}` };
+}
+
 // src/lib/schema.mjs
 import fs2 from "node:fs";
 import path3 from "node:path";
@@ -7548,7 +7673,7 @@ function ingredientLines(body) {
 }
 
 // src/lib/ingredient-line.mjs
-var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
+var FRACTIONS2 = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
 var UNITS = {
   g: ["g", "gram", "grams", "gr"],
   kg: ["kg", "kilogram", "kilograms"],
@@ -7601,7 +7726,7 @@ function toNumber(text) {
     return sum + (d ? n / d : n);
   }, 0);
 }
-var round2 = (n) => Math.round(n * 100) / 100;
+var round22 = (n) => Math.round(n * 100) / 100;
 var unitOf = (text) => text ? UNIT_OF.get(text.toLowerCase().replace(/\s+/g, " ")) ?? null : null;
 function numericLead(text) {
   return text.replace(QUALIFIER, "").replace(WORD_LEAD, (_, word) => `${WORD_NUMBER[word.toLowerCase()]} `).replace(/^(?=(?:pinch|dash)(?:es)?\b)/i, "1 ").replace(HYPHEN_PACKAGE, (_, count, size, unit) => `${count} (${size} ${unit}) `);
@@ -7612,7 +7737,7 @@ function plusAmount(rest, amount, unit) {
     return { rest, amount };
   const extra = unitOf(plus[2]);
   const per = [ML_PER, GRAMS_PER].find((table) => table[unit] && table[extra]);
-  return { rest: rest.slice(plus[0].length), amount: per ? round2(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
+  return { rest: rest.slice(plus[0].length), amount: per ? round22(amount + toNumber(plus[1]) * per[extra] / per[unit]) : amount };
 }
 var citrusCount = (text) => /^half/i.test(text) ? 0.5 : WORD_NUMBER[text.toLowerCase()] ?? toNumber(text);
 function parseCitrus(line, text) {
@@ -7627,7 +7752,7 @@ function parseCitrus(line, text) {
   return juiced ? { ...fruit(juiced[1], juiced[2]), citrus: "juice" } : null;
 }
 function parseIngredientLine(line) {
-  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS[c]).trim();
+  let text = line.replace(/[½¼¾⅓⅔⅛]/g, (c) => FRACTIONS2[c]).trim();
   const citrus = parseCitrus(line, text);
   if (citrus)
     return citrus;
@@ -7635,91 +7760,13 @@ function parseIngredientLine(line) {
   text = numericLead(text.replace(/\bto taste\b/i, "").trim());
   const lead = text.match(LEAD);
   const packageUnit = lead && unitOf(lead[3]);
-  const packageGrams = packageUnit && GRAMS_PER[packageUnit] ? round2(toNumber(lead[2]) * GRAMS_PER[packageUnit]) : null;
+  const packageGrams = packageUnit && GRAMS_PER[packageUnit] ? round22(toNumber(lead[2]) * GRAMS_PER[packageUnit]) : null;
   const unit = lead ? unitOf(lead[4]) : null;
   const { rest, amount } = lead ? plusAmount(text.slice(lead[0].length), toNumber(lead[1]), unit) : { rest: text, amount: null };
   const lower = rest.toLowerCase();
   const size = amount !== null && !unit ? SIZES.find((s) => new RegExp(`\\b${s}\\b`).test(lower)) ?? null : null;
   const item = lower.split(",")[0].replace(/\([^)]*\)/g, " ").replace(/^of\s+/, "").replace(PREP, " ").replace(/\s+/g, " ").trim();
   return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), citrus: null };
-}
-
-// src/lib/quantity.mjs
-var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
-var MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
-var COUNT = new Set(["each", "ct", "dozen", "piece", "slice", "clove", "can", "jar", "bunch", "head", "sprig", "stick", "pkg", "bag", "box"]);
-var ALIASES = {
-  teaspoons: "tsp",
-  teaspoon: "tsp",
-  tablespoons: "tbsp",
-  tablespoon: "tbsp",
-  cups: "cup",
-  milliliters: "ml",
-  milliliter: "ml",
-  millilitres: "ml",
-  millilitre: "ml",
-  liters: "l",
-  liter: "l",
-  litres: "l",
-  litre: "l",
-  "fl oz": "floz",
-  "fluid ounce": "floz",
-  "fluid ounces": "floz",
-  pints: "pt",
-  pint: "pt",
-  quarts: "qt",
-  quart: "qt",
-  gallons: "gal",
-  gallon: "gal",
-  grams: "g",
-  gram: "g",
-  kilograms: "kg",
-  kilogram: "kg",
-  ounces: "oz",
-  ounce: "oz",
-  lbs: "lb",
-  pounds: "lb",
-  pound: "lb",
-  pieces: "piece",
-  slices: "slice",
-  cloves: "clove",
-  cans: "can",
-  jars: "jar",
-  bunches: "bunch",
-  heads: "head",
-  sprigs: "sprig",
-  sticks: "stick",
-  boxes: "box",
-  dozens: "dozen"
-};
-var normalizeUnit = (unit) => ALIASES[String(unit ?? "").trim().toLowerCase()] ?? String(unit ?? "").trim().toLowerCase();
-function quantityDimension(unit) {
-  const normalized = normalizeUnit(unit);
-  if (Object.hasOwn(VOLUME, normalized))
-    return "volume";
-  if (Object.hasOwn(MASS, normalized))
-    return "mass";
-  if (COUNT.has(normalized))
-    return "count";
-  return null;
-}
-function convertQuantity(amount, fromUnit, toUnit) {
-  const from = normalizeUnit(fromUnit);
-  const to = normalizeUnit(toUnit);
-  const dimension = quantityDimension(from);
-  if (!dimension || dimension !== quantityDimension(to))
-    return null;
-  if (dimension === "volume")
-    return amount * VOLUME[from] / VOLUME[to];
-  if (dimension === "mass")
-    return amount * MASS[from] / MASS[to];
-  if (from === to)
-    return amount;
-  if (from === "dozen" && to === "each")
-    return amount * 12;
-  if (from === "each" && to === "dozen")
-    return amount / 12;
-  return null;
 }
 
 // src/skills/chef-food-inventory/scripts/lib/deduct.mjs
@@ -8187,7 +8234,17 @@ function rollup(root) {
   return written.status === "written" ? { status: "regenerated", rollup: written.pages[0] } : written;
 }
 var MODES = {
-  view: (root) => ({ status: "ok", items: listItems(loadInventory(root)).map(({ path: path9, name, amount, unit, expires }) => ({ path: path9, name, amount, unit, expires: expires ?? null })) }),
+  view: (root, settings) => ({
+    status: "ok",
+    items: listItems(loadInventory(root)).map(({ path: path9, name, amount, unit, expires }) => ({
+      path: path9,
+      name,
+      amount,
+      unit,
+      display: displayQuantity(amount, unit, settings.units).text,
+      expires: expires ?? null
+    }))
+  }),
   "check-sender": (root, settings) => {
     const gate = checkSender(values.from, settings.trusted_receipt_senders, { authenticated: values.authenticated });
     return gate.ok ? { status: "trusted" } : { status: "refused", reason: gate.reason };

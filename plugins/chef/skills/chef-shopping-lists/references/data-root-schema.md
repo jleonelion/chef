@@ -230,7 +230,7 @@ A cooked recipe entry uses its `id` as the food-inventory deduction ID. Inventor
 
 `data/shopping-lists/<week-start>.md` belongs to chef-shopping-lists; only its script writes there. It is written only off Muse when `household_recipients` is set, as the household delivery copy, and is rewritten each time the list for that week is built. It holds the list as Markdown, the same text shown in chat. On Muse the list is emailed through the runtime's Gmail connector instead, and with no recipients it is only shown in chat; neither writes to the data root.
 
-A list is built from the saved `meal-plan` page minus `data/food-inventory/current.json`. Amounts combine only within one measurable dimension (mass or volume) or the same count unit; Chef never guesses a conversion, so the same food in units it cannot convert stays on separate rows.
+A list is built from the saved `meal-plan` page minus `data/food-inventory/current.json`. Amounts combine only within one measurable dimension (mass or volume) or the same count unit; Chef never guesses a conversion, so the same food in units it cannot convert stays on separate rows. Mass and volume merge exactly; only the shown amount follows the `units` setting (fixed unit ladder, rounded up), and subtraction uses exact amounts.
 
 ## Batch prep PDFs
 
