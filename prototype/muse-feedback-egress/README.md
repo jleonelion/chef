@@ -2,15 +2,33 @@
 
 Throwaway prototype for [Prove script-side feedback intake egress on Muse](https://github.com/jleonelion/chef/issues/64). Never merged.
 
-## Setup (in the Muse app)
+## Prompts to paste into Muse
 
-1. Ask Muse to create a custom connector: provider `chef-feedback-spike`, API host `httpbin.org`, auth scheme `api_key`, placement header `X-Chef-Intake-Key`.
-2. In the secure entry card, type a dummy key: `spike-dummy-not-secret`. Never a real credential: httpbin echoes headers back.
-3. Allow the host when asked.
+Paste each into a fresh message, in order.
 
-## Run
+**1. Create the connector**
 
-Copy `spike.mjs` into the VM and ask Muse to run `node spike.mjs`. Paste the output and what Muse showed on the ticket.
+```text
+Create a custom connector with your connector tools, with exactly these details: provider `chef-feedback-spike`, API host `httpbin.org`, auth scheme `api_key`, placement header `X-Chef-Intake-Key`. Start Muse's secure entry card so I type the key there, and ask me to allow the host. Do not ask me for the key in chat.
+```
+
+In the secure entry card type the dummy key `spike-dummy-not-secret`. Never a real credential: httpbin echoes headers back. Allow `httpbin.org` when asked.
+
+**2. Fetch and run the spike**
+
+```text
+Download https://raw.githubusercontent.com/jleonelion/chef/prototype/muse-feedback-egress/prototype/muse-feedback-egress/spike.mjs to ~/workspace/chef-spike/spike.mjs, then run `node ~/workspace/chef-spike/spike.mjs` from a script, not with your own web tools. Show me the full output verbatim. Do not retry, edit the script, or print any credential or surrogate value.
+```
+
+**3. Record what Muse did**
+
+Note whether Muse showed an approval prompt before the POST, and what it displayed (host, method, body, or nothing). Paste the output and those notes on the ticket.
+
+**4. Clean up**
+
+```text
+Delete the custom connector `chef-feedback-spike` and the folder ~/workspace/chef-spike.
+```
 
 ## What each result decides
 
