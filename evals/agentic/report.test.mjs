@@ -86,3 +86,21 @@ test('aggregate passes a fully green run', () => {
   const result = aggregate({ meta: {}, reps: 1, rows: [{ id: 'a', flow: 'core' }], runs: [{ row: 'a', rep: 1, pass: true, model: 'm1', cost_usd: 0 }] });
   assert.equal(result.passed, true);
 });
+
+test('a known_failure row passes the suite while it still fails a rep, and fails it once every rep passes', () => {
+  const run = (row, ...passes) => passes.map((pass, i) => ({ row, rep: i + 1, pass, model: 'm1', cost_usd: 0, ...(!pass && { error: 'still broken' }) }));
+  const result = aggregate({
+    meta: {},
+    reps: 2,
+    rows: [{ id: 'broken', flow: 'core', known_failure: 'case-1' }, { id: 'fixed', flow: 'core', known_failure: 'case-2' }],
+    runs: [...run('broken', true, false), ...run('fixed', true, true)],
+  });
+  assert.deepEqual(
+    result.rows.map(({ id, passes, pass, known_failure }) => ({ id, passes, pass, known_failure })),
+    [
+      { id: 'broken', passes: '1/2', pass: true, known_failure: 'case-1' },
+      { id: 'fixed', passes: '2/2', pass: false, known_failure: 'case-2' },
+    ],
+  );
+  assert.equal(result.passed, false);
+});

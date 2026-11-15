@@ -1,0 +1,11 @@
+[
+  {
+    "id": "example-seeded-units",
+    "repro": "example-seeded-units",
+    "description": "Example repro row: a seeded settings.json with metric units wins over a US locale.",
+    "seed": [{ "path": "settings.json", "content": "{\"settings_version\": 1, \"units\": \"metric\"}\n" }],
+    "command": ["node", "{skills}/chef-setup/scripts/setup.mjs", "settings"],
+    "parse": "json",
+    "assertions": [{ "path": "$.settings.units", "equals": "metric" }]
+  }
+]

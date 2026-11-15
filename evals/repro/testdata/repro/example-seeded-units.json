@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "case_id": "example-seeded-units",
+  "class": "defect",
+  "skill_ids": ["chef-setup"],
+  "chef_version_observed": "1.1.0",
+  "provenance_refs": [],
+  "created_on": "2026-11-15",
+  "scenario": { "fixture": "data-root", "test": "tier1:example-seeded-units" },
+  "steps": [
+    "Start from the shared synthetic data root with a US locale.",
+    "Seed settings.json with units set to metric.",
+    "Run chef-setup settings."
+  ],
+  "expected": "Settings report metric units: a saved choice wins over the locale default.",
+  "target": "deterministic-test",
+  "reviewers": { "maintainer": "chef-maintainer", "overlap_review": "pass" }
+}
