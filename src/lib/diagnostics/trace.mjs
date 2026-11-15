@@ -15,7 +15,7 @@ export const TRACE_BOUNDS = { maxEvents: SCHEMA.properties.events.maxItems, maxB
 const PRIVATE_FILE = { mode: 0o600 };
 const lineOf = (event) => `${JSON.stringify(event)}\n`;
 
-function ensureDiagnosticsDir(root) {
+export function ensureDiagnosticsDir(root) {
   const dir = path.join(root, DIAGNOSTICS_DIR);
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   fs.chmodSync(dir, 0o700);
