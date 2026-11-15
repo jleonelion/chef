@@ -14,6 +14,8 @@ import { today } from '../../../lib/recipes.mjs';
 import { SAFETY_SCREEN } from '../../../lib/safety-text.mjs';
 import { readSchemaVersion } from '../../../lib/schema.mjs';
 import { readSettings } from '../../../lib/settings.mjs';
+import { regenerateRollup } from '../../chef-food-inventory/scripts/lib/commit.mjs';
+import { readText, STORE } from '../../chef-food-inventory/scripts/lib/store.mjs';
 import { adoptDataRoot } from './lib/adopt-data-root.mjs';
 import { checkUpdate } from './lib/check-update.mjs';
 import { checkUsda } from './lib/check-usda.mjs';
@@ -46,7 +48,10 @@ const { values, positionals } = parseArgs({
 function set(root) {
   const changes = changesFromFlags(values);
   if (Object.keys(changes).length === 0) return { status: 'invalid-input', data_root: root, problems: ['no settings given'] };
-  return writeSettings(root, changes, { rewrite: values.rewrite ?? false });
+  const saved = writeSettings(root, changes, { rewrite: values.rewrite ?? false });
+  // The generated inventory page shows amounts in the household's units, so redraw it now.
+  const redraw = saved.changed?.includes('units') && readText(root, STORE.inventory) !== null;
+  return redraw ? { ...saved, inventory_page: regenerateRollup(root, new Date().toISOString()) } : saved;
 }
 
 function show(root) {

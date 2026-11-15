@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
+import { readSettings } from '../../../../lib/settings.mjs';
 import { expiringItems } from './expiration.mjs';
 import { loadLedger } from './ledger.mjs';
 import { renderRollup, ROLLUP_PATH } from './rollup.mjs';
@@ -14,13 +15,17 @@ function auditProblems(root, storeText) {
   return last.after_hash === sha256(storeText ?? '') ? [] : ['the store changed outside Chef: it does not match the last audit entry'];
 }
 
-function rollupProblems(root, inventory) {
+// The page matches the store in the household's units; in the other system or stored units it
+// still matches but is stale (units changed, or written before units applied) and needs a redraw.
+function rollupCheck(root, inventory) {
   const text = readText(root, ROLLUP_PATH);
-  if (text === null) return listItems(inventory).length ? ['the rollup page is missing'] : [];
+  if (text === null) return { problems: listItems(inventory).length ? ['the rollup page is missing'] : [] };
   const page = parsePage(text);
-  const expected = renderRollup(inventory);
-  const same = page.body === expected.body && JSON.stringify(page.frontmatter) === JSON.stringify(expected.frontmatter);
-  return same ? [] : ['the rollup page does not match the store'];
+  const units = readSettings(root).settings.units;
+  const same = (expected) => page.body === expected.body && JSON.stringify(page.frontmatter) === JSON.stringify(expected.frontmatter);
+  const match = [units, units === 'us' ? 'metric' : 'us', null].findIndex((u) => same(renderRollup(inventory, u)));
+  if (match === -1) return { problems: ['the rollup page does not match the store'] };
+  return { problems: [], ...(match > 0 && { stale_page: true }) };
 }
 
 function ledgerProblems(root, ledger) {
@@ -44,6 +49,8 @@ export function checkHealth(root, window) {
   } catch (error) {
     return { status: 'problems', problems: [error.message], stats: null };
   }
-  const problems = [...auditProblems(root, readText(root, STORE.inventory)), ...ledgerProblems(root, ledger), ...rollupProblems(root, inventory)];
-  return { status: problems.length ? 'problems' : 'healthy', problems, stats: stats(inventory, ledger, window) };
+  const rollup = rollupCheck(root, inventory);
+  const problems = [...auditProblems(root, readText(root, STORE.inventory)), ...ledgerProblems(root, ledger), ...rollup.problems];
+  const stale = rollup.stale_page && { stale_page: true };
+  return { status: problems.length ? 'problems' : 'healthy', problems, ...stale, stats: stats(inventory, ledger, window) };
 }

@@ -9,7 +9,7 @@ import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
 import { ingredientLines, listRecipes } from '../../../../lib/recipes.mjs';
 import { WIKI_DIR, WIKI_FOLDERS } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
-import { combineLines, subtractInventory } from './combine.mjs';
+import { combineLines, displayItems, subtractInventory } from './combine.mjs';
 
 const PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS['meal-plan']}`;
 const WEEK = /^\d{4}-\d{2}-\d{2}$/;
@@ -33,10 +33,8 @@ const multiplier = (meal, recipe) => {
   return Number.isFinite(base) && base > 0 && Number(meal.servings) > 0 ? meal.servings / base : 1;
 };
 
-const quantity = ({ amount, unit }) => `${amount} ${unit}`;
-
 function listText(weekStart, { items, unquantified }, dietary) {
-  const rows = items.map((row) => `- ${quantity(row)} ${row.item}${row.on_hand ? ` (on hand: ${quantity(row.on_hand)})` : ''}`);
+  const rows = items.map((row) => `- ${row.text} ${row.item}${row.on_hand ? ` (on hand: ${row.on_hand.text})` : ''}`);
   const check = [...new Set(unquantified.map((u) => u.item))].map((item) => `- ${item}`);
   const notes = [dietary.problem, dietary.nudge, ...(dietary.caveats ?? []), dietary.footer].filter(Boolean);
   return [
@@ -47,7 +45,8 @@ function listText(weekStart, { items, unquantified }, dietary) {
   ].join('\n\n') + '\n';
 }
 
-export function buildList(root, { weekStart, overrides = [] }) {
+// units: the household's 'us' | 'metric'; shapes displayed quantities only.
+export function buildList(root, { weekStart, overrides = [], units }) {
   const week = weekStart ?? latestWeek(root);
   const plan = week && readPlan(root, week);
   if (!plan) return { status: 'no-plan', data_root: root, week_start: week, reason: 'no saved meal plan; plan meals with chef-meal-planning first' };
@@ -66,7 +65,7 @@ export function buildList(root, { weekStart, overrides = [] }) {
   });
   const combined = combineLines(uses);
   const { items, covered } = subtractInventory(combined.items, listItems(loadInventory(root)));
-  const list = { items, unquantified: combined.unquantified };
+  const list = { items: displayItems(items, units), unquantified: combined.unquantified };
   return {
     status: 'built',
     data_root: root,
@@ -74,7 +73,7 @@ export function buildList(root, { weekStart, overrides = [] }) {
     plan: plan.path,
     meals: plan.meals.map(({ date, slot, slug, servings }) => ({ date, slot, slug, servings })),
     ...list,
-    covered,
+    covered: displayItems(covered, units),
     excluded,
     missing_recipes: missing,
     dietary,

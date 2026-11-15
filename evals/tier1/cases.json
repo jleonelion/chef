@@ -304,6 +304,62 @@
     ]
   },
   {
+    "id": "chef-setup-units-change-regenerates-inventory-page",
+    "description": "Changing units rewrites the generated inventory page in the new system and commits it; the inventory store keeps its own units.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.changed",
+        "equals": [
+          "units"
+        ]
+      },
+      {
+        "path": "$.inventory_page.status",
+        "equals": "regenerated"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- jasmine rice: 925 g"
+          },
+          {
+            "path": "$.content",
+            "includes": "- whole milk: 3.8 l (expires 2026-01-21)"
+          }
+        ]
+      },
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.dairy.whole_milk.unit",
+            "equals": "gal"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
     "id": "chef-setup-set-refuses-invalid-file-without-rewrite",
     "description": "Change-settings never silently overwrites a broken settings.json.",
     "env": {
@@ -1086,7 +1142,7 @@
           },
           {
             "path": "$.content",
-            "includes": "- whole milk: 2 gal (expires 2026-01-21)"
+            "includes": "- whole milk: 8 qt (expires 2026-01-21)"
           }
         ]
       }
@@ -3952,7 +4008,7 @@
   },
   {
     "id": "chef-shopping-lists-combines-plan-minus-inventory-chat-only",
-    "description": "A saved plan becomes one list: quantities scaled to planned servings and combined across meals, inventory subtracted in convertible units only, and with no household recipients the list is shown in chat with nothing written.",
+    "description": "A saved plan becomes one list: quantities scaled to planned servings and combined across meals, inventory subtracted in convertible units only, quantities shown in metric per the units setting, and with no household recipients the list is shown in chat with nothing written.",
     "seed": [
       {
         "path": "knowledge/wiki/meal-plans/2026-01-19.md",
@@ -3961,6 +4017,10 @@
       {
         "path": "data/food-inventory/current.json",
         "content": "{\n  \"lastUpdated\": \"2026-01-14T18:00:00.000Z\",\n  \"pantry\": {\n    \"grains\": {\n      \"spaghetti\": {\n        \"name\": \"spaghetti\",\n        \"amount\": 0.5,\n        \"unit\": \"lb\"\n      }\n    },\n    \"canned\": {\n      \"chickpeas\": {\n        \"name\": \"chickpeas\",\n        \"amount\": 1,\n        \"unit\": \"can\"\n      }\n    }\n  },\n  \"fridge\": {\n    \"produce\": {\n      \"spinach\": {\n        \"name\": \"spinach\",\n        \"amount\": 1,\n        \"unit\": \"bunch\"\n      }\n    }\n  }\n}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\"}\n"
       }
     ],
     "command": [
@@ -4015,8 +4075,78 @@
         "includes": "- 6 clove garlic"
       },
       {
+        "path": "$.items.[?(@item=='crushed tomatoes')].unit",
+        "equals": "g"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 225 g spinach (on hand: 1 bunch)"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 1.5 tsp ground cumin"
+      },
+      {
         "path": "$.delivery.mode",
         "equals": "chat"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-shopping-lists-shows-us-units",
+    "description": "With units set to us, the same list shows a fixed US unit ladder rounded up, as decimals; sources keep each recipe's grams.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "content": "---\ntype: meal-plan\ntitle: \"Meal plan: week of 2026-01-19\"\nweek_start: 2026-01-19\nmeals:\n  - { date: 2026-01-19, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 4 }\n  - { date: 2026-01-20, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 2 }\n  - { date: 2026-01-21, slug: lemon-garlic-pasta, title: Lemon Garlic Pasta, servings: 2 }\n---\n# Meal plan: week of 2026-01-19\n"
+      },
+      {
+        "path": "data/food-inventory/current.json",
+        "content": "{\n  \"lastUpdated\": \"2026-01-14T18:00:00.000Z\",\n  \"pantry\": {\n    \"grains\": {\n      \"spaghetti\": {\n        \"name\": \"spaghetti\",\n        \"amount\": 0.5,\n        \"unit\": \"lb\"\n      }\n    },\n    \"canned\": {\n      \"chickpeas\": {\n        \"name\": \"chickpeas\",\n        \"amount\": 1,\n        \"unit\": \"can\"\n      }\n    }\n  },\n  \"fridge\": {\n    \"produce\": {\n      \"spinach\": {\n        \"name\": \"spinach\",\n        \"amount\": 1,\n        \"unit\": \"bunch\"\n      }\n    }\n  }\n}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"us\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "built"
+      },
+      {
+        "path": "$.items.[?(@item=='crushed tomatoes')].amount",
+        "equals": 1.5
+      },
+      {
+        "path": "$.items.[?(@item=='crushed tomatoes')].unit",
+        "equals": "lb"
+      },
+      {
+        "path": "$.items.[?(@item=='crushed tomatoes')].sources[0].unit",
+        "equals": "g"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 1.5 lb crushed tomatoes"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 8 oz spinach (on hand: 1 bunch)"
+      },
+      {
+        "path": "$.text",
+        "includes": "- 6 clove garlic"
       }
     ],
     "git": {

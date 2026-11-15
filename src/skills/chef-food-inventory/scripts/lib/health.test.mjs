@@ -43,3 +43,25 @@ test('a missing purchase record and an invalid store are reported, not thrown', 
   assert.equal(result.status, 'problems');
   assert.ok(result.problems.some((p) => /invalid/.test(p)));
 });
+
+const setUnits = (root, units) => fs.writeFileSync(path.join(root, 'settings.json'), JSON.stringify({ settings_version: 1, units }));
+const editPage = (root, from, to) => {
+  const file = path.join(root, ROLLUP_PATH);
+  fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(from, to));
+};
+
+test('a page in other units still matches the store but is flagged stale for a redraw', () => {
+  const root = dataRoot();
+  setUnits(root, 'us');
+  editPage(root, /whole milk: [^(]+\(/, 'whole milk: 4 qt (');
+  assert.equal(Object.hasOwn(checkHealth(root, { today: '2026-01-15', days: 3 }), 'stale_page'), false);
+  editPage(root, 'whole milk: 4 qt', 'whole milk: 1 gal');
+  const legacy = checkHealth(root, { today: '2026-01-15', days: 3 });
+  assert.equal(legacy.status, 'healthy');
+  assert.equal(legacy.stale_page, true);
+  setUnits(root, 'metric');
+  editPage(root, 'whole milk: 1 gal', 'whole milk: 4 qt');
+  assert.equal(checkHealth(root, { today: '2026-01-15', days: 3 }).stale_page, true);
+  editPage(root, 'whole milk: 4 qt', 'whole milk: 9 qt');
+  assert.equal(checkHealth(root, { today: '2026-01-15', days: 3 }).status, 'problems');
+});

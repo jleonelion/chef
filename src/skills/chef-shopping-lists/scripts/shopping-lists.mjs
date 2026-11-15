@@ -18,9 +18,9 @@ function run(root) {
   const { overrides, problems } = parseOverrides(values.override, readRuleset(root));
   if (weekStart !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(weekStart)) problems.push('--week-start must be YYYY-MM-DD');
   if (problems.length) return { status: 'invalid-input', data_root: root, problems };
-  const list = buildList(root, { weekStart, overrides });
-  if (list.status !== 'built') return list;
   const settings = readSettings(root);
+  const list = buildList(root, { weekStart, overrides, units: settings.settings.units });
+  if (list.status !== 'built') return list;
   const delivery = deliverList(root, list, { recipients: settings.settings.household_recipients });
   if (delivery.status === 'refused') return delivery;
   return { ...list, delivery, ...(settings.warning && { settings_warning: settings.warning }) };
