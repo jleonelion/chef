@@ -44,6 +44,10 @@ _Avoid_: attachment, dump, logs
 A defect, enhancement or behavior-change request the user reviewed and approved for submission; the only thing that leaves the user's machine.
 _Avoid_: ticket, issue, telemetry
 
+**Feedback outbox**:
+The local folder under the data root's diagnostics where Chef saves an approved feedback report, byte for byte, when the runtime cannot send it. Nothing in it leaves the machine on its own; it expires like the invocation trace.
+_Avoid_: outbox (unqualified), queue, sent folder
+
 **Feedback intake**:
 The private maintainer-side service that receives feedback reports, issues their IDs and holds them until they expire. Unrelated to receipt intake.
 _Avoid_: intake (unqualified), inbox
