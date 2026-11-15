@@ -68,3 +68,8 @@ After prompt 4, finish in the app: Settings > Connectors > Chef Feedback Spike >
 - Placement shape is `{"custom_header":"X-Chef-Intake-Key"}` (type as key). Spike step 2 failed on it again; fixed in the next commit.
 - No approval prompt and nothing in approval history. Inconclusive for POST: the run exited before any request.
 - Fix verified off-Muse with a fake `authdc` (`CHEF_SPIKE_AUTHDC`): steps 1-3 and 5 pass against httpbin; step 4 fails as expected without Muse's proxy.
+
+### Run 3 (2026-11-14, prompt 2b)
+
+- Steps 1-5 PASS: surrogate issued, header placement, POST with body returned HTTP 200, host saw the swapped key (not the surrogate), body byte-identical.
+- Step 6: no approval prompt, as expected after **Allow always** for `httpbin.org`. Muse approval is per host, not per send.
