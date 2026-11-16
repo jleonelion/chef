@@ -57,7 +57,16 @@ function scanNotes(numbers, report) {
   });
 }
 
-export function renderPreview({ report, numbers }) {
+// Shown while the diagnostics it explains are still in the report.
+function fallbackNote(report, fallback) {
+  if (!fallback || !report.diagnostic_bundle) return [];
+  const missing = fallback.skill ? `runs of ${fallback.skill}` : 'Chef runs';
+  const runs = report.diagnostic_bundle.events.length;
+  const taken = runs === 1 ? 'this is the last run' : `these are the last ${runs} runs`;
+  return [`Diagnostics: no ${missing} in the last hour, so ${taken} of any skill. Ask to drop them if they don't help.`];
+}
+
+export function renderPreview({ report, numbers, notes = {} }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -67,6 +76,7 @@ export function renderPreview({ report, numbers }) {
     '',
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
+    ...fallbackNote(report, notes.diagnostics_fallback),
     ...scanNotes(numbers, report),
   ].join('\n');
 }

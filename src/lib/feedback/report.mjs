@@ -64,7 +64,7 @@ function itemId({ report, numbers }, number) {
   return id;
 }
 
-const changed = (draft, report) => ({ numbers: draft.numbers, report: checked({ ...report, submission_nonce: randomUUID() }) });
+const changed = (draft, report) => ({ ...draft, report: checked({ ...report, submission_nonce: randomUUID() }) });
 
 function withoutItem(report, id) {
   const { parent, key, element } = locate(report, id);
