@@ -28,6 +28,26 @@ _Avoid_: cron job, automation
 A tagged Chef version that the user can be told about and choose to install.
 _Avoid_: build, version bump
 
+**Version**:
+A release's SemVer number `X.Y.Z`, tagged `vX.Y.Z`. Its largest change level sets its kind: a **patch release** bumps Z, a **minor release** bumps Y, a **major release** bumps X.
+_Avoid_: build number, revision
+
+**Change level**:
+The smallest release kind a change can ship in, recorded on its issue as a `semver:` label. **patch**: fixes or rewords existing behavior; no new behavior, setting, flag or schema change. **minor**: adds behavior, a setting, a flag or an additive settings step Chef applies on read; existing data roots, skills and recurring tasks keep working with no action from the user. **major**: a breaking change.
+_Avoid_: severity, priority, size
+
+**Breaking change**:
+A change an existing install cannot take without the user acting: a data-root `SCHEMA_VERSION` bump (its migration waits for the user's confirmation), a skill renamed or removed, or a setting, flag or script mode removed or given a new meaning.
+_Avoid_: big change, major feature
+
+**Release target**:
+The release an issue is planned to ship in: its GitHub milestone, titled with the exact version (`v1.2.1`). An issue has at most one, never smaller than its change level.
+_Avoid_: fix version, sprint, roadmap
+
+**Backlog**:
+Open issues with no release target. Triage, not issue creation, moves an issue out of it.
+_Avoid_: icebox, someday, a "Backlog" milestone
+
 **Invocation event**:
 One allowlisted record of a single Chef script run: what ran, how long, and how it ended. Never holds user content.
 _Avoid_: log line, telemetry event

@@ -7228,7 +7228,7 @@ var facts_v1_default = {
 // plugins/chef/.claude-plugin/plugin.json
 var plugin_default = {
   name: "chef",
-  version: "1.2.0",
+  version: "1.2.1",
   description: "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
   author: { name: "jleonelion" },
   repository: "https://github.com/jleonelion/chef",

@@ -35,7 +35,8 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   setup, to put it elsewhere.
 - `settings.json` in the data root holds your per-user settings: units for shopping
   lists, pantry amounts and the inventory page (and, if you opt in, recipe ingredients), the default
-  recipients for emailed shopping lists, which senders' receipts Chef accepts, and a calendar.
+  recipients for emailed shopping lists, which senders' receipt emails Chef may read from your
+  Gmail, and a calendar.
   All are optional.
   Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
   (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.

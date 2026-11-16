@@ -41,6 +41,14 @@ test('absent: false requires the key to be present', () => {
   assert.throws(() => assertCase(doc, { path: '$.warning', absent: false }), /\$\.warning: expected present/);
 });
 
+test('excludes rejects forbidden text and accepts text without it', () => {
+  assertCase({ content: 'Ask one question.' }, { path: '$.content', excludes: 'second question' });
+  assert.throws(
+    () => assertCase({ content: 'Ask one question, then the second question.' }, { path: '$.content', excludes: 'second question' }),
+    /unexpected "second question"/,
+  );
+});
+
 test('git assertions require an unchanged HEAD and clean tree when requested', () => {
   const expected = { headUnchanged: true, clean: true };
   assertGitState({ beforeHead: 'abc', afterHead: 'abc', status: '' }, expected);

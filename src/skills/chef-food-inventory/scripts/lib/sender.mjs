@@ -1,4 +1,4 @@
-// Trusted-sender gate for forwarded receipts. Only the address decides: a display name is
+// Trusted-sender gate for receipt intake. Only the address decides: a display name is
 // ignored, so "receipts@example.com" <someone@else> is judged as someone@else. From alone is
 // spoofable, so the sender's domain must also be the domain the mail provider authenticated
 // (DKIM signed-by or SPF mailed-by pass), passed as `authenticated`. No evidence: untrusted.
@@ -20,7 +20,7 @@ const isAuthenticated = (address, authenticated) =>
 
 export function checkSender(from, trustedSenders, { authenticated } = {}) {
   if (trustedSenders.length === 0) {
-    return { ok: false, reason: 'receipt forwarding is off: no trusted receipt senders are set (chef-setup can add them)' };
+    return { ok: false, reason: 'receipt intake is off: no trusted receipt senders are set (chef-setup can add them)' };
   }
   const address = senderAddress(from);
   if (!address) return { ok: false, reason: 'the sender is not a single email address' };

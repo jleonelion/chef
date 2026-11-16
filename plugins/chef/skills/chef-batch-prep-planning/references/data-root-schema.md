@@ -115,7 +115,7 @@ Every counted ingredient line resolves to a USDA FoodData Central food and gram 
 | `receipt-ledger.json` | Processed receipts by id, so a receipt is never added twice |
 | `purchases/<date>-<receipt id>.json` | The items each receipt added |
 
-Receipt transcripts are kept as `knowledge/raw/receipts/<date>-<receipt id>.txt`. The `inventory-rollup` page is regenerated from `current.json` on every change and when the `units` setting changes; its amounts follow `units` (display only, rounded up), while `current.json` keeps the stored units. Sender email addresses are never stored.
+Receipt transcripts are kept as `knowledge/raw/receipts/<date>-<receipt id>.txt`. During receipt intake, Chef checks a Gmail message's sender before reading its body. The `inventory-rollup` page is regenerated from `current.json` on every change and when the `units` setting changes; its amounts follow `units` (display only, rounded up), while `current.json` keeps the stored units. Sender email addresses are never stored.
 
 ## Recipe decisions store
 

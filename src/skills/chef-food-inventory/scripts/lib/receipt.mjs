@@ -1,4 +1,4 @@
-// The one receipt path. Text, a photo the model transcribed, or a forwarded email all arrive as a
+// The one receipt path. Text, a photo the model transcribed, or an email found during receipt intake all arrive as a
 // transcript; email first passes the trusted-sender gate. All-or-nothing: any unreadable line
 // refuses the whole receipt.
 import { applyItems } from './apply.mjs';

@@ -18,6 +18,18 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 File issues only into the user's own repo. Never file into `mattpocock/skills` (the repo these skills come from) unless the user owns it. In a fork, `gh` can default to the upstream parent, so before the first `gh issue create` of a session, check the target with `gh repo view --json nameWithOwner` and confirm it with the user if it is not their repo.
 
+## Release targeting
+
+Terms are in `GLOSSARY.md`: **Version**, **Change level**, **Breaking change**, **Release target**, **Backlog**.
+
+- **Change level (always)**: every new issue gets exactly one of `semver:patch`, `semver:minor`, `semver:major`. Unsure between two: pick the larger and say why in the body. A sub-issue's level can be smaller than its parent's, never larger.
+- **Release target (only when known)**: set a milestone only when the user names the release, or the issue is a sub-issue of a parent with one (the child takes the parent's). Otherwise leave it unset and add `needs-triage`; choosing the release is a triage decision. Never target a milestone smaller than the issue's change level: a `semver:minor` issue cannot go in `v1.2.1`.
+- **Set / change / clear**: `gh issue create --milestone v1.3.0 ...`, `gh issue edit <n> --milestone v1.2.1`, `gh issue edit <n> --remove-milestone`. `--milestone` takes the title.
+- **List open milestones**: `gh api repos/<owner>/<repo>/milestones --jq '.[] | {number, title, open_issues, description}'`.
+- **Create a milestone**: titled with the exact version, no other names: `gh api --method POST repos/<owner>/<repo>/milestones -f title=v1.2.1 -f description="<one-line theme>"`.
+- **Release scope**: `gh issue list --milestone v1.3.0 --state all --json number,title,state,labels`.
+- **Backlog**: `gh issue list --state open --search 'no:milestone'`.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.** _(Set to `yes` if this repo treats external PRs as feature requests; `/triage` reads this flag.)_
