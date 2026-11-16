@@ -5,6 +5,13 @@
     "unclassified": { "outcome": "internal-error", "description": "The script threw something no code covers." },
     "not-a-data-root": { "outcome": "validation-error", "description": "The data root is missing or has no schema-version file." },
     "invalid-input": { "outcome": "validation-error", "description": "The script refused its arguments." },
-    "recipe-not-found": { "outcome": "validation-error", "description": "No recipe has the requested slug." }
+    "recipe-not-found": { "outcome": "validation-error", "description": "No recipe has the requested slug." },
+    "action-refused": { "outcome": "validation-error", "description": "A guard refused the action: an untrusted sender, a store Chef can't safely change, a dietary conflict, a missing confirmation." },
+    "record-not-found": { "outcome": "validation-error", "description": "No meal entry, proposal, rule or recipe has the requested id." },
+    "no-plan": { "outcome": "validation-error", "description": "No saved meal plan covers the requested week." },
+    "store-unreadable": { "outcome": "validation-error", "description": "A Chef data file can't be parsed." },
+    "page-fetch-failed": { "outcome": "dependency-unavailable", "description": "The recipe page could not be fetched." },
+    "usda-unavailable": { "outcome": "dependency-unavailable", "description": "The USDA FoodData Central check failed." },
+    "install-check-failed": { "outcome": "dependency-unavailable", "description": "The installed Chef skills failed verify install, on their own or after an update." }
   }
 }

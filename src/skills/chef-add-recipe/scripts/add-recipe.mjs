@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
+import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
 import { today } from '../../../lib/recipes.mjs';
 import { addRecipe } from './lib/add.mjs';
@@ -100,6 +101,7 @@ if (!Object.hasOwn(MODES, mode)) {
   console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(', ')}`);
   process.exit(64);
 }
-const result = await MODES[mode]();
+const failures = { 'fetch-failed': 'page-fetch-failed', 'not-found': 'recipe-not-found' };
+const result = await chefCapture({ root, skill: 'chef-add-recipe', script: 'add-recipe', operation: mode, failures }, () => MODES[mode]());
 console.log(JSON.stringify(result));
 if (['refused', 'invalid-input', 'fetch-failed', 'not-found'].includes(result.status)) process.exitCode = 2;

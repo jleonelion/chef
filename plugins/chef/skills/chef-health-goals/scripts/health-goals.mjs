@@ -75,17 +75,17 @@ var require_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  function visit_(key, node, visitor, path3) {
-    const ctrl = callVisitor(key, node, visitor, path3);
+  function visit_(key, node, visitor, path6) {
+    const ctrl = callVisitor(key, node, visitor, path6);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path3, ctrl);
-      return visit_(key, ctrl, visitor, path3);
+      replaceNode(key, path6, ctrl);
+      return visit_(key, ctrl, visitor, path6);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path3 = Object.freeze(path3.concat(node));
+        path6 = Object.freeze(path6.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = visit_(i, node.items[i], visitor, path3);
+          const ci = visit_(i, node.items[i], visitor, path6);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -96,13 +96,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path3 = Object.freeze(path3.concat(node));
-        const ck = visit_("key", node.key, visitor, path3);
+        path6 = Object.freeze(path6.concat(node));
+        const ck = visit_("key", node.key, visitor, path6);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = visit_("value", node.value, visitor, path3);
+        const cv = visit_("value", node.value, visitor, path6);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -123,17 +123,17 @@ var require_visit = __commonJS((exports) => {
   visitAsync.BREAK = BREAK;
   visitAsync.SKIP = SKIP;
   visitAsync.REMOVE = REMOVE;
-  async function visitAsync_(key, node, visitor, path3) {
-    const ctrl = await callVisitor(key, node, visitor, path3);
+  async function visitAsync_(key, node, visitor, path6) {
+    const ctrl = await callVisitor(key, node, visitor, path6);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path3, ctrl);
-      return visitAsync_(key, ctrl, visitor, path3);
+      replaceNode(key, path6, ctrl);
+      return visitAsync_(key, ctrl, visitor, path6);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path3 = Object.freeze(path3.concat(node));
+        path6 = Object.freeze(path6.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = await visitAsync_(i, node.items[i], visitor, path3);
+          const ci = await visitAsync_(i, node.items[i], visitor, path6);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -144,13 +144,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path3 = Object.freeze(path3.concat(node));
-        const ck = await visitAsync_("key", node.key, visitor, path3);
+        path6 = Object.freeze(path6.concat(node));
+        const ck = await visitAsync_("key", node.key, visitor, path6);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = await visitAsync_("value", node.value, visitor, path3);
+        const cv = await visitAsync_("value", node.value, visitor, path6);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -177,23 +177,23 @@ var require_visit = __commonJS((exports) => {
     }
     return visitor;
   }
-  function callVisitor(key, node, visitor, path3) {
+  function callVisitor(key, node, visitor, path6) {
     if (typeof visitor === "function")
-      return visitor(key, node, path3);
+      return visitor(key, node, path6);
     if (identity.isMap(node))
-      return visitor.Map?.(key, node, path3);
+      return visitor.Map?.(key, node, path6);
     if (identity.isSeq(node))
-      return visitor.Seq?.(key, node, path3);
+      return visitor.Seq?.(key, node, path6);
     if (identity.isPair(node))
-      return visitor.Pair?.(key, node, path3);
+      return visitor.Pair?.(key, node, path6);
     if (identity.isScalar(node))
-      return visitor.Scalar?.(key, node, path3);
+      return visitor.Scalar?.(key, node, path6);
     if (identity.isAlias(node))
-      return visitor.Alias?.(key, node, path3);
+      return visitor.Alias?.(key, node, path6);
     return;
   }
-  function replaceNode(key, path3, node) {
-    const parent = path3[path3.length - 1];
+  function replaceNode(key, path6, node) {
+    const parent = path6[path6.length - 1];
     if (identity.isCollection(parent)) {
       parent.items[key] = node;
     } else if (identity.isPair(parent)) {
@@ -754,10 +754,10 @@ var require_Collection = __commonJS((exports) => {
   var createNode = require_createNode();
   var identity = require_identity();
   var Node = require_Node();
-  function collectionFromPath(schema, path3, value) {
+  function collectionFromPath(schema, path6, value) {
     let v = value;
-    for (let i = path3.length - 1;i >= 0; --i) {
-      const k = path3[i];
+    for (let i = path6.length - 1;i >= 0; --i) {
+      const k = path6[i];
       if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
         const a = [];
         a[k] = v;
@@ -776,7 +776,7 @@ var require_Collection = __commonJS((exports) => {
       sourceObjects: new Map
     });
   }
-  var isEmptyPath = (path3) => path3 == null || typeof path3 === "object" && !!path3[Symbol.iterator]().next().done;
+  var isEmptyPath = (path6) => path6 == null || typeof path6 === "object" && !!path6[Symbol.iterator]().next().done;
 
   class Collection extends Node.NodeBase {
     constructor(type, schema) {
@@ -797,11 +797,11 @@ var require_Collection = __commonJS((exports) => {
         copy.range = this.range.slice();
       return copy;
     }
-    addIn(path3, value) {
-      if (isEmptyPath(path3))
+    addIn(path6, value) {
+      if (isEmptyPath(path6))
         this.add(value);
       else {
-        const [key, ...rest] = path3;
+        const [key, ...rest] = path6;
         const node = this.get(key, true);
         if (identity.isCollection(node))
           node.addIn(rest, value);
@@ -811,8 +811,8 @@ var require_Collection = __commonJS((exports) => {
           throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
       }
     }
-    deleteIn(path3) {
-      const [key, ...rest] = path3;
+    deleteIn(path6) {
+      const [key, ...rest] = path6;
       if (rest.length === 0)
         return this.delete(key);
       const node = this.get(key, true);
@@ -821,8 +821,8 @@ var require_Collection = __commonJS((exports) => {
       else
         throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
     }
-    getIn(path3, keepScalar) {
-      const [key, ...rest] = path3;
+    getIn(path6, keepScalar) {
+      const [key, ...rest] = path6;
       const node = this.get(key, true);
       if (rest.length === 0)
         return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -837,15 +837,15 @@ var require_Collection = __commonJS((exports) => {
         return n == null || allowScalar && identity.isScalar(n) && n.value == null && !n.commentBefore && !n.comment && !n.tag;
       });
     }
-    hasIn(path3) {
-      const [key, ...rest] = path3;
+    hasIn(path6) {
+      const [key, ...rest] = path6;
       if (rest.length === 0)
         return this.has(key);
       const node = this.get(key, true);
       return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
-    setIn(path3, value) {
-      const [key, ...rest] = path3;
+    setIn(path6, value) {
+      const [key, ...rest] = path6;
       if (rest.length === 0) {
         this.set(key, value);
       } else {
@@ -1580,7 +1580,7 @@ var require_log = __commonJS((exports) => {
     if (logLevel === "debug")
       console.log(...messages);
   }
-  function warn(logLevel, warning) {
+  function warn2(logLevel, warning) {
     if (logLevel === "debug" || logLevel === "warn") {
       if (typeof node_process.emitWarning === "function")
         node_process.emitWarning(warning);
@@ -1589,7 +1589,7 @@ var require_log = __commonJS((exports) => {
     }
   }
   exports.debug = debug;
-  exports.warn = warn;
+  exports.warn = warn2;
 });
 
 // node_modules/yaml/dist/schema/yaml-1.1/merge.js
@@ -3238,9 +3238,9 @@ var require_Document = __commonJS((exports) => {
       if (assertCollection(this.contents))
         this.contents.add(value);
     }
-    addIn(path3, value) {
+    addIn(path6, value) {
       if (assertCollection(this.contents))
-        this.contents.addIn(path3, value);
+        this.contents.addIn(path6, value);
     }
     createAlias(node, name) {
       if (!node.anchor) {
@@ -3289,30 +3289,30 @@ var require_Document = __commonJS((exports) => {
     delete(key) {
       return assertCollection(this.contents) ? this.contents.delete(key) : false;
     }
-    deleteIn(path3) {
-      if (Collection.isEmptyPath(path3)) {
+    deleteIn(path6) {
+      if (Collection.isEmptyPath(path6)) {
         if (this.contents == null)
           return false;
         this.contents = null;
         return true;
       }
-      return assertCollection(this.contents) ? this.contents.deleteIn(path3) : false;
+      return assertCollection(this.contents) ? this.contents.deleteIn(path6) : false;
     }
     get(key, keepScalar) {
       return identity.isCollection(this.contents) ? this.contents.get(key, keepScalar) : undefined;
     }
-    getIn(path3, keepScalar) {
-      if (Collection.isEmptyPath(path3))
+    getIn(path6, keepScalar) {
+      if (Collection.isEmptyPath(path6))
         return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-      return identity.isCollection(this.contents) ? this.contents.getIn(path3, keepScalar) : undefined;
+      return identity.isCollection(this.contents) ? this.contents.getIn(path6, keepScalar) : undefined;
     }
     has(key) {
       return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
-    hasIn(path3) {
-      if (Collection.isEmptyPath(path3))
+    hasIn(path6) {
+      if (Collection.isEmptyPath(path6))
         return this.contents !== undefined;
-      return identity.isCollection(this.contents) ? this.contents.hasIn(path3) : false;
+      return identity.isCollection(this.contents) ? this.contents.hasIn(path6) : false;
     }
     set(key, value) {
       if (this.contents == null) {
@@ -3321,13 +3321,13 @@ var require_Document = __commonJS((exports) => {
         this.contents.set(key, value);
       }
     }
-    setIn(path3, value) {
-      if (Collection.isEmptyPath(path3)) {
+    setIn(path6, value) {
+      if (Collection.isEmptyPath(path6)) {
         this.contents = value;
       } else if (this.contents == null) {
-        this.contents = Collection.collectionFromPath(this.schema, Array.from(path3), value);
+        this.contents = Collection.collectionFromPath(this.schema, Array.from(path6), value);
       } else if (assertCollection(this.contents)) {
-        this.contents.setIn(path3, value);
+        this.contents.setIn(path6, value);
       }
     }
     setSchema(version, options = {}) {
@@ -5223,9 +5223,9 @@ var require_cst_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  visit.itemAtPath = (cst, path3) => {
+  visit.itemAtPath = (cst, path6) => {
     let item = cst;
-    for (const [field, index] of path3) {
+    for (const [field, index] of path6) {
       const tok = item?.[field];
       if (tok && "items" in tok) {
         item = tok.items[index];
@@ -5234,23 +5234,23 @@ var require_cst_visit = __commonJS((exports) => {
     }
     return item;
   };
-  visit.parentCollection = (cst, path3) => {
-    const parent = visit.itemAtPath(cst, path3.slice(0, -1));
-    const field = path3[path3.length - 1][0];
+  visit.parentCollection = (cst, path6) => {
+    const parent = visit.itemAtPath(cst, path6.slice(0, -1));
+    const field = path6[path6.length - 1][0];
     const coll = parent?.[field];
     if (coll && "items" in coll)
       return coll;
     throw new Error("Parent collection not found");
   };
-  function _visit(path3, item, visitor) {
-    let ctrl = visitor(item, path3);
+  function _visit(path6, item, visitor) {
+    let ctrl = visitor(item, path6);
     if (typeof ctrl === "symbol")
       return ctrl;
     for (const field of ["key", "value"]) {
       const token = item[field];
       if (token && "items" in token) {
         for (let i = 0;i < token.items.length; ++i) {
-          const ci = _visit(Object.freeze(path3.concat([[field, i]])), token.items[i], visitor);
+          const ci = _visit(Object.freeze(path6.concat([[field, i]])), token.items[i], visitor);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -5261,10 +5261,10 @@ var require_cst_visit = __commonJS((exports) => {
           }
         }
         if (typeof ctrl === "function" && field === "key")
-          ctrl = ctrl(item, path3);
+          ctrl = ctrl(item, path6);
       }
     }
-    return typeof ctrl === "function" ? ctrl(item, path3) : ctrl;
+    return typeof ctrl === "function" ? ctrl(item, path6) : ctrl;
   }
   exports.visit = visit;
 });
@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs2 = this.flowScalar(this.type);
+            const fs6 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs2, sep: [] });
+              map.items.push({ start, key: fs6, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs2);
+              this.stack.push(fs6);
             } else {
-              Object.assign(it, { key: fs2, sep: [] });
+              Object.assign(it, { key: fs6, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs2 = this.flowScalar(this.type);
+            const fs6 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs2, sep: [] });
+              fc.items.push({ start: [], key: fs6, sep: [] });
             else if (it.sep)
-              this.stack.push(fs2);
+              this.stack.push(fs6);
             else
-              Object.assign(it, { key: fs2, sep: [] });
+              Object.assign(it, { key: fs6, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6898,7 +6898,7 @@ var require_public_api = __commonJS((exports) => {
     }
     return doc;
   }
-  function parse(src, reviver, options) {
+  function parse2(src, reviver, options) {
     let _reviver = undefined;
     if (typeof reviver === "function") {
       _reviver = reviver;
@@ -6939,7 +6939,7 @@ var require_public_api = __commonJS((exports) => {
       return value.toString(options);
     return new Document.Document(value, _replacer, options).toString(options);
   }
-  exports.parse = parse;
+  exports.parse = parse2;
   exports.parseAllDocuments = parseAllDocuments;
   exports.parseDocument = parseDocument;
   exports.stringify = stringify;
@@ -7009,6 +7009,15 @@ var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
 // src/runtime/generic.mjs
 var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
+};
 
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
@@ -7126,6 +7135,417 @@ function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
+// src/lib/diagnostics/capture.mjs
+import { randomUUID } from "node:crypto";
+// schemas/feedback/error-codes.v1.json
+var error_codes_v1_default = {
+  registry_version: 1,
+  description: "Error-code registry: every error_code an invocation event may carry, with the outcome it belongs to. Unknown throws are recorded as internal-error + unclassified. Adding an entry is a reviewed change.",
+  codes: {
+    unclassified: { outcome: "internal-error", description: "The script threw something no code covers." },
+    "not-a-data-root": { outcome: "validation-error", description: "The data root is missing or has no schema-version file." },
+    "invalid-input": { outcome: "validation-error", description: "The script refused its arguments." },
+    "recipe-not-found": { outcome: "validation-error", description: "No recipe has the requested slug." },
+    "action-refused": { outcome: "validation-error", description: "A guard refused the action: an untrusted sender, a store Chef can't safely change, a dietary conflict, a missing confirmation." },
+    "record-not-found": { outcome: "validation-error", description: "No meal entry, proposal, rule or recipe has the requested id." },
+    "no-plan": { outcome: "validation-error", description: "No saved meal plan covers the requested week." },
+    "store-unreadable": { outcome: "validation-error", description: "A Chef data file can't be parsed." },
+    "page-fetch-failed": { outcome: "dependency-unavailable", description: "The recipe page could not be fetched." },
+    "usda-unavailable": { outcome: "dependency-unavailable", description: "The USDA FoodData Central check failed." },
+    "install-check-failed": { outcome: "dependency-unavailable", description: "The installed Chef skills failed verify install, on their own or after an update." }
+  }
+};
+// schemas/feedback/facts.v1.json
+var facts_v1_default = {
+  registry_version: 1,
+  description: "Fact registry: the scripts that write invocation events, their operations, and the only facts each may record. A fact is an enum (`values`) or a bounded integer (`minimum`/`maximum`). A script's `status` values are its ok results: the script ran and answered, even when the answer is that a file is unreadable (`settings`, `dietary`). Any other status is a failure that must map to an error code. Adding an entry is a reviewed change.",
+  scripts: {
+    "chef-add-recipe/add-recipe": {
+      operations: ["url", "draft", "enrich", "verify"],
+      facts: {
+        status: { type: "enum", values: ["added", "would-add", "exists", "needs-draft", "enriched", "unchanged", "verified"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-batch-prep-planning/batch-prep": {
+      operations: ["render"],
+      facts: {
+        status: { type: "enum", values: ["rendered"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-food-inventory/inventory": {
+      operations: ["view", "check-sender", "add-receipt", "edit", "deduct", "expiring", "health", "rollup"],
+      facts: {
+        status: { type: "enum", values: ["ok", "trusted", "added", "duplicate", "saved", "deducted", "regenerated", "healthy", "problems"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-health-goals/health-goals": {
+      operations: ["status", "set", "clear", "report"],
+      facts: {
+        status: { type: "enum", values: ["active", "dormant", "saved", "cleared", "report"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-meal-logging/meal-logging": {
+      operations: ["log", "edit", "delete"],
+      facts: {
+        status: { type: "enum", values: ["logged", "unchanged", "edited", "deleted"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-meal-planning/meal-planning": {
+      operations: ["plan", "today"],
+      facts: {
+        status: { type: "enum", values: ["saved", "planned", "no-plan"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-recipe-decisions/recipe-decisions": {
+      operations: ["propose", "decide", "publish", "list", "retire", "restore", "rules", "rule-add", "rule-remove"],
+      facts: {
+        status: { type: "enum", values: ["proposed", "auto-accepted", "auto-rejected", "already-proposed", "already-accepted", "already-rejected", "exists", "decided", "unchanged", "published", "ok", "retired", "restored", "added", "replaced", "removed"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-recipe-search/recipe-search": {
+      operations: ["search", "show"],
+      facts: {
+        results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
+      }
+    },
+    "chef-setup/setup": {
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard"],
+      facts: {
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty"], description: "Top-level result status of an ok run." }
+      }
+    },
+    "chef-shopping-lists/shopping-lists": {
+      operations: ["build"],
+      facts: {
+        status: { type: "enum", values: ["built"], description: "Top-level result status of an ok run." }
+      }
+    }
+  }
+};
+// plugins/chef/.claude-plugin/plugin.json
+var plugin_default = {
+  name: "chef",
+  version: "1.2.1",
+  description: "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
+  author: { name: "jleonelion" },
+  repository: "https://github.com/jleonelion/chef",
+  license: "MIT"
+};
+
+// src/runtime/contract.mjs
+import fs2 from "node:fs";
+var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
+
+// src/lib/schema.mjs
+import fs3 from "node:fs";
+import path3 from "node:path";
+var SCHEMA_VERSION = 1;
+var SCHEMA_FILE = "schema-version.json";
+function readSchemaVersion(root) {
+  const file = path3.join(root, SCHEMA_FILE);
+  if (!fs3.existsSync(file))
+    return null;
+  return JSON.parse(fs3.readFileSync(file, "utf8")).schema_version;
+}
+function storedVersion(root) {
+  try {
+    const version = readSchemaVersion(root);
+    return version === null || Number.isInteger(version) ? { version } : { problem: `${SCHEMA_FILE} has no integer schema_version` };
+  } catch {
+    return { problem: `${SCHEMA_FILE} is not valid JSON` };
+  }
+}
+var UPDATE = 'Ask Chef to "update Chef" before changing anything.';
+function schemaWriteBlocker(root) {
+  const { version, problem } = storedVersion(root);
+  if (problem)
+    return { reason: `${problem}; Chef won't write to this data root. ${UPDATE}` };
+  if (version === null)
+    return { reason: "not a Chef data root; run chef-setup init first" };
+  if (version === SCHEMA_VERSION)
+    return null;
+  const which = version > SCHEMA_VERSION ? "a newer" : "an older";
+  return {
+    reason: `this data root uses ${which} schema (${version}) than this Chef (${SCHEMA_VERSION}). ${UPDATE}`,
+    schema_version: version,
+    expected_schema_version: SCHEMA_VERSION
+  };
+}
+
+// src/lib/settings.mjs
+import fs4 from "node:fs";
+import path4 from "node:path";
+var SETTINGS_FILE = "settings.json";
+var SETTINGS_VERSION = 2;
+var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics"];
+var SETTINGS_MIGRATIONS = {
+  1: (stored) => ({ ...stored, settings_version: 2, diagnostics: { trace: "on" } })
+};
+var IMPERIAL_REGIONS = new Set(["US", "LR", "MM"]);
+var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function unitsForLocale(locale = "") {
+  const region = locale.split(/[-_.@]/)[1]?.toUpperCase();
+  return IMPERIAL_REGIONS.has(region) ? "us" : "metric";
+}
+function defaultSettings({ locale = muse.locale() } = {}) {
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: "on" } };
+}
+function emailListProblem(key, value) {
+  if (!Array.isArray(value))
+    return `${key}: must be a list of email addresses`;
+  const bad = value.find((entry) => typeof entry !== "string" || !EMAIL.test(entry));
+  return bad === undefined ? null : `${key}: ${JSON.stringify(bad)} is not an email address`;
+}
+var isTraceSetting = (value) => value !== null && typeof value === "object" && Object.keys(value).join() === "trace" && ["on", "off"].includes(value.trace);
+var CHECKS = {
+  household_recipients: (value) => emailListProblem("household_recipients", value),
+  trusted_receipt_senders: (value) => emailListProblem("trusted_receipt_senders", value),
+  units: (value) => value === "us" || value === "metric" ? null : 'units: must be "us" or "metric"',
+  diagnostics: (value) => isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}',
+  calendar: (value) => value === null || typeof value === "string" && value.trim() ? null : "calendar: must be a calendar name or null",
+  convert_recipe_units: (value) => typeof value === "boolean" ? null : "convert_recipe_units: must be true or false"
+};
+function validateSettings(values) {
+  return SETTING_KEYS.filter((key) => Object.hasOwn(values, key)).map((key) => CHECKS[key](values[key])).filter(Boolean);
+}
+var warn = (reason) => `settings.json can't be used (${reason}), so Chef is using default settings. Run chef-setup to fix it.`;
+function parse(content) {
+  try {
+    const value = JSON.parse(content);
+    return value !== null && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+function upgraded(stored) {
+  let next = stored;
+  while (Number.isInteger(next?.settings_version) && next.settings_version >= 1 && next.settings_version < SETTINGS_VERSION) {
+    next = SETTINGS_MIGRATIONS[next.settings_version](next);
+  }
+  return next;
+}
+function classify(stored) {
+  if (!stored)
+    return { status: "invalid", reason: "not a JSON object" };
+  const version = stored.settings_version;
+  if (Number.isInteger(version) && version > SETTINGS_VERSION) {
+    return { status: "unknown-version", reason: `written by a newer Chef: version ${version}` };
+  }
+  if (version !== SETTINGS_VERSION)
+    return { status: "invalid", reason: "missing or bad settings_version" };
+  const problems = validateSettings(stored);
+  return problems.length ? { status: "invalid", reason: problems.join("; ") } : { status: "ok" };
+}
+function readSettings(root, { locale } = {}) {
+  const defaults = defaultSettings({ locale });
+  const file = path4.join(root, SETTINGS_FILE);
+  if (!fs4.existsSync(file))
+    return { status: "missing", settings: defaults };
+  const content = fs4.readFileSync(file, "utf8");
+  const stored = upgraded(parse(content));
+  const { status, reason } = classify(stored);
+  if (status !== "ok")
+    return { status, settings: defaults, warning: warn(reason), content };
+  const known = Object.fromEntries(SETTING_KEYS.filter((key) => Object.hasOwn(stored, key)).map((key) => [key, stored[key]]));
+  return { status, settings: { ...defaults, ...known }, stored };
+}
+
+// src/lib/diagnostics/trace.mjs
+import fs5 from "node:fs";
+import path5 from "node:path";
+// schemas/feedback/invocation-trace.v1.json
+var invocation_trace_v1_default = {
+  $schema: "https://json-schema.org/draft/2020-12/schema",
+  $id: "urn:chef:feedback:invocation-trace:v1",
+  title: "Invocation trace",
+  description: "The bounded, local-only sequence of invocation events, oldest first, as `show trace` returns it. Stored as one event per line in <data root>/diagnostics/trace.jsonl, evicting the oldest once any bound is hit: events.maxItems, x-max-bytes (serialized JSONL size) or x-max-age-days. Never submitted as a whole.",
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "schema_version",
+    "events"
+  ],
+  properties: {
+    schema_version: {
+      const: 1
+    },
+    events: {
+      type: "array",
+      maxItems: 200,
+      items: {
+        $ref: "urn:chef:feedback:invocation-event:v1"
+      }
+    }
+  },
+  "x-max-bytes": 262144,
+  "x-max-age-days": 14
+};
+
+// src/lib/diagnostics/trace.mjs
+var DIAGNOSTICS_DIR = "diagnostics";
+var TRACE_FILE = `${DIAGNOSTICS_DIR}/trace.jsonl`;
+var DAY_MS = 24 * 60 * 60 * 1000;
+var TRACE_BOUNDS = { maxEvents: invocation_trace_v1_default.properties.events.maxItems, maxBytes: invocation_trace_v1_default["x-max-bytes"], maxAgeMs: invocation_trace_v1_default["x-max-age-days"] * DAY_MS };
+var PRIVATE_FILE = { mode: 384 };
+var lineOf = (event) => `${JSON.stringify(event)}
+`;
+function ensureDiagnosticsDir(root) {
+  const dir = path5.join(root, DIAGNOSTICS_DIR);
+  fs5.mkdirSync(dir, { recursive: true, mode: 448 });
+  fs5.chmodSync(dir, 448);
+  const ignore = path5.join(dir, ".gitignore");
+  if (!fs5.existsSync(ignore))
+    fs5.writeFileSync(ignore, `*
+`, PRIVATE_FILE);
+  fs5.chmodSync(ignore, 384);
+}
+function storedEvents(file) {
+  let text;
+  try {
+    text = fs5.readFileSync(file, "utf8");
+  } catch {
+    return [];
+  }
+  return text.split(`
+`).filter(Boolean).flatMap((line) => {
+    try {
+      return [JSON.parse(line)];
+    } catch {
+      return [];
+    }
+  });
+}
+function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
+  const fresh = events.filter((event) => now - Date.parse(event.started_at) <= maxAgeMs);
+  const kept = [];
+  let bytes = 0;
+  for (const event of fresh.reverse()) {
+    const size = Buffer.byteLength(lineOf(event));
+    if (kept.length === maxEvents || bytes + size > maxBytes)
+      break;
+    kept.unshift(event);
+    bytes += size;
+  }
+  return kept;
+}
+function writePrivate(file, text) {
+  const temp = `${file}.${process.pid}.tmp`;
+  fs5.writeFileSync(temp, text, PRIVATE_FILE);
+  fs5.chmodSync(temp, 384);
+  fs5.renameSync(temp, file);
+}
+var rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(""));
+function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
+  ensureDiagnosticsDir(root);
+  const file = path5.join(root, TRACE_FILE);
+  const stored = storedEvents(file);
+  const kept = withinBounds([...stored, event], now, bounds);
+  const onlyAppended = kept.length === stored.length + 1 && fs5.existsSync(file);
+  if (onlyAppended)
+    fs5.appendFileSync(file, lineOf(event), PRIVATE_FILE);
+  else
+    rewrite(file, kept);
+}
+
+// src/lib/diagnostics/capture.mjs
+var EVENT_SCHEMA_VERSION = 1;
+function declaredScript(skill, script, operation) {
+  const entry = facts_v1_default.scripts[`${skill}/${script}`];
+  if (!entry)
+    throw new Error(`undeclared script "${skill}/${script}"`);
+  if (!entry.operations.includes(operation))
+    throw new Error(`undeclared operation "${operation}"`);
+  return entry;
+}
+function factProblem(spec, value) {
+  if (spec.type === "integer")
+    return Number.isInteger(value) && value >= spec.minimum && value <= spec.maximum ? null : `must be an integer from ${spec.minimum} to ${spec.maximum}`;
+  return spec.values.includes(value) ? null : `must be one of ${spec.values.join(", ")}`;
+}
+function checkedFacts(declared, facts) {
+  for (const [name, value] of Object.entries(facts)) {
+    if (!Object.hasOwn(declared, name))
+      throw new Error(`undeclared fact "${name}"`);
+    const problem = factProblem(declared[name], value);
+    if (problem)
+      throw new Error(`fact "${name}" ${problem}`);
+  }
+  return { ...facts };
+}
+function checkErrorCode(outcome, code) {
+  if (outcome === "ok") {
+    if (code !== null)
+      throw new Error("ok runs carry no error code");
+    return;
+  }
+  const entry = error_codes_v1_default.codes[code];
+  if (!entry)
+    throw new Error(`undeclared error code "${code}"`);
+  if (entry.outcome !== outcome)
+    throw new Error(`error code "${code}" belongs to ${entry.outcome}, not ${outcome}`);
+}
+function buildEvent({ skill, script, operation, outcome, error_code = null, facts = {}, startedAt, durationMs, adapter = currentRuntime() }) {
+  const declared = declaredScript(skill, script, operation);
+  checkErrorCode(outcome, error_code);
+  return {
+    schema_version: EVENT_SCHEMA_VERSION,
+    invocation_id: randomUUID(),
+    started_at: startedAt.toISOString(),
+    duration_ms: Math.max(0, Math.round(durationMs)),
+    chef_version: plugin_default.version,
+    skill_id: skill,
+    script_id: script,
+    operation,
+    outcome,
+    error_code,
+    runtime: adapter.name,
+    adapter_version: adapter.adapterVersion,
+    facts: checkedFacts(declared.facts, facts)
+  };
+}
+function traceEnabled(root) {
+  try {
+    if (readSchemaVersion(root) === null)
+      return false;
+    const { status, settings } = readSettings(root);
+    return ["ok", "missing"].includes(status) && settings.diagnostics.trace === "on";
+  } catch {
+    return false;
+  }
+}
+function record(context, describe) {
+  if (!traceEnabled(context.root))
+    return;
+  try {
+    appendEvent(context.root, buildEvent({ ...context, ...describe() }), { now: new Date });
+  } catch {}
+}
+var COMMON_FAILURES = { "invalid-input": "invalid-input", refused: "action-refused" };
+function classifyStatus({ skill, script, failures = {} }) {
+  const okStatuses = facts_v1_default.scripts[`${skill}/${script}`]?.facts.status?.values ?? [];
+  const codes = { ...COMMON_FAILURES, ...failures };
+  return ({ status }) => {
+    if (okStatuses.includes(status))
+      return { outcome: "ok", facts: { status } };
+    const code = codes[status];
+    return Object.hasOwn(error_codes_v1_default.codes, code) ? { outcome: error_codes_v1_default.codes[code].outcome, error_code: code } : { outcome: "internal-error", error_code: "unclassified" };
+  };
+}
+async function chefCapture({ root, skill, script, operation, classify: classify2, failures, adapter = currentRuntime() }, run) {
+  const context = { root, skill, script, operation, adapter, startedAt: new Date };
+  const classifyResult = classify2 ?? classifyStatus({ skill, script, failures });
+  const started = performance.now();
+  const elapsed = () => ({ durationMs: performance.now() - started });
+  try {
+    const result = await run();
+    record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
+    return result;
+  } catch (error) {
+    record(context, () => ({ ...elapsed(), outcome: "internal-error", error_code: "unclassified" }));
+    throw error;
+  }
+}
+
 // node_modules/yaml/dist/index.js
 var composer = require_composer();
 var Document = require_Document();
@@ -7181,8 +7601,8 @@ ${body}`;
 }
 
 // src/lib/wiki.mjs
-import fs3 from "node:fs";
-import path4 from "node:path";
+import fs6 from "node:fs";
+import path6 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -7197,42 +7617,6 @@ function commit(cwd, message) {
     configured = git(cwd, ["config", "user.email"]);
   } catch {}
   git(cwd, [...configured ? [] : FALLBACK_IDENTITY, "commit", "-q", "-m", message]);
-}
-
-// src/lib/schema.mjs
-import fs2 from "node:fs";
-import path3 from "node:path";
-var SCHEMA_VERSION = 1;
-var SCHEMA_FILE = "schema-version.json";
-function readSchemaVersion(root) {
-  const file = path3.join(root, SCHEMA_FILE);
-  if (!fs2.existsSync(file))
-    return null;
-  return JSON.parse(fs2.readFileSync(file, "utf8")).schema_version;
-}
-function storedVersion(root) {
-  try {
-    const version = readSchemaVersion(root);
-    return version === null || Number.isInteger(version) ? { version } : { problem: `${SCHEMA_FILE} has no integer schema_version` };
-  } catch {
-    return { problem: `${SCHEMA_FILE} is not valid JSON` };
-  }
-}
-var UPDATE = 'Ask Chef to "update Chef" before changing anything.';
-function schemaWriteBlocker(root) {
-  const { version, problem } = storedVersion(root);
-  if (problem)
-    return { reason: `${problem}; Chef won't write to this data root. ${UPDATE}` };
-  if (version === null)
-    return { reason: "not a Chef data root; run chef-setup init first" };
-  if (version === SCHEMA_VERSION)
-    return null;
-  const which = version > SCHEMA_VERSION ? "a newer" : "an older";
-  return {
-    reason: `this data root uses ${which} schema (${version}) than this Chef (${SCHEMA_VERSION}). ${UPDATE}`,
-    schema_version: version,
-    expected_schema_version: SCHEMA_VERSION
-  };
 }
 
 // src/lib/wiki.mjs
@@ -7252,7 +7636,7 @@ function wikiPath(type, slug) {
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
 function pathUnder(dir, relative, kind) {
-  const normalized = path4.posix.normalize(relative);
+  const normalized = path6.posix.normalize(relative);
   if (!normalized.startsWith(`${dir}/`))
     throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
@@ -7261,7 +7645,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs3.existsSync(path4.join(root, ".git")))
+  if (!fs6.existsSync(path6.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -7272,14 +7656,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs3.existsSync(path4.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs6.existsSync(path6.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
-    const abs = path4.join(root, file.path);
-    fs3.mkdirSync(path4.dirname(abs), { recursive: true });
-    fs3.writeFileSync(abs, file.content);
+    const abs = path6.join(root, file.path);
+    fs6.mkdirSync(path6.dirname(abs), { recursive: true });
+    fs6.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -7301,19 +7685,19 @@ var TRAINING_NOTICE = `Your dietary and health details are saved in your Chef da
 var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
 
 // src/skills/chef-health-goals/scripts/lib/goals.mjs
-import fs5 from "node:fs";
-import path6 from "node:path";
+import fs8 from "node:fs";
+import path8 from "node:path";
 
 // src/lib/fdc.mjs
 var NUTRIENTS = { calories: 1008, protein: 1003, fat: 1004, saturated_fat: 1258, carbs: 1005, fiber: 1079, sugar: 2000, sodium: 1093, cholesterol: 1253 };
 
 // src/lib/notices.mjs
-import fs4 from "node:fs";
-import path5 from "node:path";
+import fs7 from "node:fs";
+import path7 from "node:path";
 var NOTICES_PATH = "data/notices.json";
 function readNotices(root) {
   try {
-    return JSON.parse(fs4.readFileSync(path5.join(root, NOTICES_PATH), "utf8"));
+    return JSON.parse(fs7.readFileSync(path7.join(root, NOTICES_PATH), "utf8"));
   } catch {
     return {};
   }
@@ -7330,12 +7714,12 @@ function noticeToRecord(root, key, date) {
 var GOALS_PATH = "data/health-goals/goals.json";
 var FIELDS = Object.keys(NUTRIENTS);
 function readGoal(root) {
-  const file = path6.join(root, GOALS_PATH);
-  if (!fs5.existsSync(file))
+  const file = path8.join(root, GOALS_PATH);
+  if (!fs8.existsSync(file))
     return { status: "dormant" };
   let stored;
   try {
-    stored = JSON.parse(fs5.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs8.readFileSync(file, "utf8"));
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
@@ -7369,7 +7753,7 @@ function parseTargets({ min = [], max = [] }) {
 }
 var storeFile = (value) => ({ path: GOALS_PATH, content: `${JSON.stringify(value, null, 2)}
 ` });
-function setGoal(root, { goal, targets }, { date, rewrite = false }) {
+function setGoal(root, { goal, targets }, { date, rewrite: rewrite2 = false }) {
   const text = goal?.trim();
   if (!text)
     return { status: "invalid-input", data_root: root, problems: ["give --goal with a short description of the goal"] };
@@ -7377,8 +7761,8 @@ function setGoal(root, { goal, targets }, { date, rewrite = false }) {
   if (refusal)
     return refusal;
   const current = readGoal(root);
-  if (current.status === "unreadable" && !rewrite) {
-    return { status: "refused", data_root: root, reason: current.reason, content: fs5.readFileSync(path6.join(root, GOALS_PATH), "utf8") };
+  if (current.status === "unreadable" && !rewrite2) {
+    return { status: "refused", data_root: root, reason: current.reason, content: fs8.readFileSync(path8.join(root, GOALS_PATH), "utf8") };
   }
   const set = current.status === "active" ? current.set : date;
   const notice = noticeToRecord(root, "training-setting", date);
@@ -7398,8 +7782,8 @@ function clearGoal(root, { date }) {
 }
 
 // src/lib/meal-log.mjs
-import fs6 from "node:fs";
-import path7 from "node:path";
+import fs9 from "node:fs";
+import path9 from "node:path";
 var MEAL_LOG_PATH = "data/meal-log/log.json";
 function mealEntryId(entry) {
   return `${entry.date}-${entry.slot}-${entry.recipe ?? slugify(entry.food ?? "")}`;
@@ -7418,11 +7802,11 @@ function entriesWithIds(entries) {
   });
 }
 function readMealLog(root) {
-  const file = path7.join(root, MEAL_LOG_PATH);
-  if (!fs6.existsSync(file))
+  const file = path9.join(root, MEAL_LOG_PATH);
+  if (!fs9.existsSync(file))
     return { entries: [] };
   try {
-    const log = JSON.parse(fs6.readFileSync(file, "utf8"));
+    const log = JSON.parse(fs9.readFileSync(file, "utf8"));
     if (!Array.isArray(log?.entries))
       throw new Error("no entries list");
     return { entries: entriesWithIds(log.entries) };
@@ -7516,8 +7900,10 @@ var commands = {
   clear: () => clearGoal(root, { date: today() }),
   report: () => isDate(values["week-start"]) ? weeklyReport(root, { weekStart: values["week-start"] }) : invalid(["--week-start must be YYYY-MM-DD"])
 };
-var command = commands[positionals[0]];
-var result = command ? command() : invalid([`supported commands: ${Object.keys(commands).join(", ")}`]);
+var operation = positionals[0];
+var run = () => Object.hasOwn(commands, operation) ? commands[operation]() : invalid([`supported commands: ${Object.keys(commands).join(", ")}`]);
+var failures = { unreadable: "store-unreadable" };
+var result = await chefCapture({ root, skill: "chef-health-goals", script: "health-goals", operation, failures }, run);
 console.log(JSON.stringify(result));
 if (["invalid-input", "refused", "unreadable"].includes(result.status))
   process.exitCode = 2;

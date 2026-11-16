@@ -87,16 +87,34 @@ function record(context, describe) {
   }
 }
 
+// Failures most scripts share; a script's own `failures` add to or override these.
+const COMMON_FAILURES = { 'invalid-input': 'invalid-input', refused: 'action-refused' };
+
+// classify for a result with a top-level `status`: a status the registry lists under the script's
+// `status` fact is an ok run; `failures` maps the rest to error codes. Any status nobody mapped
+// is internal-error + unclassified.
+export function classifyStatus({ skill, script, failures = {} }) {
+  const okStatuses = FACTS.scripts[`${skill}/${script}`]?.facts.status?.values ?? [];
+  const codes = { ...COMMON_FAILURES, ...failures };
+  return ({ status }) => {
+    if (okStatuses.includes(status)) return { outcome: 'ok', facts: { status } };
+    const code = codes[status];
+    return Object.hasOwn(ERROR_CODES.codes, code) ? { outcome: ERROR_CODES.codes[code].outcome, error_code: code } : { outcome: 'internal-error', error_code: 'unclassified' };
+  };
+}
+
 // Runs `run` and records one event. `classify(result)` maps the script's result to
-// { outcome, error_code?, facts? } using only registry entries. A throw is recorded as
-// internal-error + unclassified (never its message) and rethrown.
-export async function chefCapture({ root, skill, script, operation, classify, adapter = currentRuntime() }, run) {
+// { outcome, error_code?, facts? } using only registry entries; without it, the result's status is
+// classified by classifyStatus with `failures`. A throw is recorded as internal-error +
+// unclassified (never its message) and rethrown.
+export async function chefCapture({ root, skill, script, operation, classify, failures, adapter = currentRuntime() }, run) {
   const context = { root, skill, script, operation, adapter, startedAt: new Date() };
+  const classifyResult = classify ?? classifyStatus({ skill, script, failures });
   const started = performance.now();
   const elapsed = () => ({ durationMs: performance.now() - started });
   try {
     const result = await run();
-    record(context, () => ({ ...elapsed(), ...classify(result) }));
+    record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
     return result;
   } catch (error) {
     record(context, () => ({ ...elapsed(), outcome: 'internal-error', error_code: 'unclassified' }));

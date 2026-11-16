@@ -9,7 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
-import { traceEnabled } from '../../../lib/diagnostics/capture.mjs';
+import { chefCapture, traceEnabled } from '../../../lib/diagnostics/capture.mjs';
 import { clearTrace, DAY_MS, readTrace, TRACE_BOUNDS } from '../../../lib/diagnostics/trace.mjs';
 import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
@@ -129,7 +129,11 @@ if (!Object.hasOwn(MODES, mode)) {
   process.exit(64);
 }
 
-const result = await MODES[mode](resolveDataRoot({ flag: values['data-root'] }));
+const root = resolveDataRoot({ flag: values['data-root'] });
+// Showing or clearing the trace records nothing, so a cleared trace stays empty.
+const UNTRACED = ['trace', 'clear-trace'];
+const capture = { root, skill: 'chef-setup', script: 'setup', operation: mode, failures: { failed: 'usda-unavailable', fail: 'install-check-failed' } };
+const result = UNTRACED.includes(mode) ? MODES[mode](root) : await chefCapture(capture, () => MODES[mode](root));
 console.log(JSON.stringify(result));
 if (result.status === 'refused' || result.status === 'invalid-input') process.exitCode = 2;
 if (result.status === 'fail') process.exitCode = 1;
