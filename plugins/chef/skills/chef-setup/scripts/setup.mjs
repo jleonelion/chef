@@ -7101,6 +7101,13 @@ var muse = {
   adapterVersion: 1,
   adapterContractVersion: 1,
   feedback: {
+    destination: { host: new URL(FEEDBACK_URL).host },
+    status({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC))
+        return { ok: false, reason: "not-connected" };
+      const { ok, reason } = fromConnector(PROVIDERS["chef-feedback"], run);
+      return ok ? { ok } : { ok, reason };
+    },
     capabilities({ exists = fs.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC))
         return [];
@@ -8838,6 +8845,14 @@ function checkUpdate({ adapter = muse, skillDir } = {}) {
   }
 }
 
+// src/skills/chef-setup/scripts/lib/check-feedback.mjs
+function checkFeedback(adapter) {
+  if (!adapter.feedback.status)
+    return { status: "failed", reason: "unsupported" };
+  const result2 = adapter.feedback.status();
+  return result2.ok ? { status: "connected" } : { status: "failed", reason: result2.reason };
+}
+
 // src/skills/chef-setup/scripts/lib/check-usda.mjs
 async function checkUsda(fdc) {
   const result2 = await fdc.search("apple", { pageSize: 1 });
@@ -9538,12 +9553,28 @@ function editItem(draft, number, value) {
   return changed(draft, { ...draft.report, [id]: parsed });
 }
 
+// src/lib/feedback/destination.mjs
+function destinationCard(adapter, bytes) {
+  const host = adapter.feedback.destination?.host;
+  if (!host)
+    return null;
+  return [
+    `Where it goes: Chef's feedback service at ${host}. Chef's script sends it directly; nothing is relayed through this chat.`,
+    "Who sees it: the Chef maintainer only.",
+    "Kept: 90 days, then deleted; 30 days after the maintainer closes it, if sooner.",
+    "Identity: no name or account is attached. Contact goes separately, and only if you gave it.",
+    `Size: ${Buffer.byteLength(bytes).toLocaleString("en-US")} bytes, exactly what the numbered lines hold.`
+  ].join(`
+`);
+}
+
 // src/lib/feedback/store.mjs
 import fs19 from "node:fs";
 import path18 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
 var CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
+var RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
 var expired = (file, now) => now - fs19.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
 function pruneFiles(root, relativeDir, now) {
   const dir = path18.join(root, relativeDir);
@@ -9556,7 +9587,7 @@ function pruneFiles(root, relativeDir, now) {
   }
 }
 function pruneOutbox(root, now) {
-  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR])
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR, RECEIPTS_DIR])
     pruneFiles(root, dir, now);
 }
 function writePrivateJson(file, value) {
@@ -9607,6 +9638,16 @@ function savePendingContact(root, pending, { now = new Date } = {}) {
   writePrivateJson(file, pending);
   return file;
 }
+function saveReceipt(root, receipt, { now = new Date } = {}) {
+  if (!reportIdIsSafe(receipt.report_id))
+    throw new Error("invalid report id");
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  const relative = `${RECEIPTS_DIR}/${receipt.report_id}.json`;
+  fs19.mkdirSync(path18.join(root, RECEIPTS_DIR), { recursive: true, mode: 448 });
+  writePrivateJson(path18.join(root, relative), receipt);
+  return relative;
+}
 var reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
 function readPendingContact(root, reportId, { now = new Date } = {}) {
   if (!reportIdIsSafe(reportId))
@@ -9650,17 +9691,21 @@ async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now 
     if (!submission.ok)
       return { status: "failed", reason: submission.reason };
     const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
+    let receiptPath = null;
+    try {
+      receiptPath = saveReceipt(root, receipt, { now });
+    } catch {}
     if (draft.contactChoice) {
       savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });
       deleteDraft(root);
       const contact = await adapter.feedback.submitContact(receipt, draft.contactChoice);
       if (!contact.ok) {
-        return { status: "contact-pending", report_id: receipt.report_id, reason: contact.reason };
+        return { status: "contact-pending", report_id: receipt.report_id, receipt_path: receiptPath, reason: contact.reason };
       }
       deletePendingContact(root, receipt.report_id);
     }
     deleteDraft(root);
-    return { status: "sent", report_id: receipt.report_id };
+    return { status: "sent", report_id: receipt.report_id, receipt_path: receiptPath };
   }
   const saved = saveToOutbox(root, bytes, { nonce, now });
   deleteDraft(root);
@@ -9692,14 +9737,15 @@ function shown(root, draft, adapter) {
   if (canAskContact && !draft.contactChoice) {
     return { status: "contact-question", data_root: root, can_ask_contact: true };
   }
+  const preview = renderPreview(draft);
   return {
     status: "draft",
     data_root: root,
-    preview: renderPreview(draft),
+    preview,
     submission_nonce: draft.report.submission_nonce,
     can_send: sendable,
     can_ask_contact: canAskContact,
-    ...sendable ? {} : { send_notice: SAVE_ONLY }
+    ...sendable ? { destination_card: destinationCard(adapter, bytesFromPreview(preview)) } : { send_notice: SAVE_ONLY }
   };
 }
 var withDraft = (mode) => (root, values, context) => {
@@ -10177,6 +10223,7 @@ var MODES2 = {
   update,
   verify: (root) => verifyInstall(root, { skillsDir: path24.dirname(skillDir), fixture: path24.join(skillDir, "fixture", "data-root") }),
   usda: () => checkUsda(usdaClient()),
+  feedback: () => checkFeedback(currentRuntime()),
   safety: () => ({ status: "ok", screen: SAFETY_SCREEN }),
   dietary,
   "set-dietary": setDietary,

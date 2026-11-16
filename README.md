@@ -80,6 +80,19 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   and settings migrations wait for your confirmation; Chef then verifies the install. Updates
   never delete data-root files.
 
+## Sending feedback from Muse
+
+- Say "report a problem with Chef". Chef drafts a report, shows where it goes, who sees it, how
+  long it is kept and its size, and sends only after you reply "send". Without the connector it
+  saves the approved report in the data root's `diagnostics/outbox/` and sends nothing.
+- To enable sending, say "connect Chef feedback" (`chef-setup`): a custom connector with provider
+  `chef-feedback`, host `chef-feedback-intake.vercel.app`, custom header `X-Chef-Intake-Key`.
+  Enter the install key in Muse's secure entry card, never in chat.
+- A sent report's receipt (id and secret) is saved at 0600 under `diagnostics/receipts/` and
+  never shown in chat.
+- Disconnect only in Muse's Settings > Connectors. The stored key outlives the connector folder
+  under `custom-connectors/`, and uninstalling Chef does not remove it.
+
 ## Safety
 
 - Chef gives general information, not medical advice.

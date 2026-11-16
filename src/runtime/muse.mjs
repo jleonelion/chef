@@ -122,6 +122,13 @@ export const muse = {
   adapterVersion: 1,
   adapterContractVersion: 1,
   feedback: {
+    destination: { host: new URL(FEEDBACK_URL).host },
+    // Whether the Chef feedback connector is usable, and why not: not-connected or wrong-placement.
+    status({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC)) return { ok: false, reason: 'not-connected' };
+      const { ok, reason } = fromConnector(PROVIDERS['chef-feedback'], run);
+      return ok ? { ok } : { ok, reason };
+    },
     capabilities({ exists = fs.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC)) return [];
       const credential = fromConnector(PROVIDERS['chef-feedback'], run);

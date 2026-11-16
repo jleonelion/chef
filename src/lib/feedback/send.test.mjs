@@ -57,3 +57,17 @@ test('drafts and saved reports expire with the trace, after 14 days', async () =
   assert.equal(readDraft(root, { now: later }), null);
   assert.equal(fs.existsSync(path.join(root, saved)), false);
 });
+
+test('a failed receipt write still reports the delivered report as sent and clears the draft', async () => {
+  const root = tempRoot();
+  const current = draft();
+  saveDraft(root, current);
+  const adapter = {
+    ...generic,
+    feedback: { ...generic.feedback, capabilities: () => ['submit.connector'], submit: async () => ({ ok: true, report_id: '../escape', receipt_secret: 'x'.repeat(40) }) },
+  };
+  const result = await sendReport(root, current, { nonce: current.report.submission_nonce, adapter });
+  assert.equal(result.status, 'sent');
+  assert.equal(result.receipt_path, null);
+  assert.equal(readDraft(root), null);
+});

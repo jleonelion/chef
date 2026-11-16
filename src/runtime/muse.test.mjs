@@ -109,6 +109,12 @@ test('feedback capability is available only with the correctly placed Muse conne
   );
 });
 
+test('feedback status says why the connector is unusable', () => {
+  assert.deepEqual(muse.feedback.status({ exists: () => true, run: () => feedbackAuthdcReply() }), { ok: true });
+  assert.deepEqual(muse.feedback.status({ exists: () => true, run: () => 'not json' }), { ok: false, reason: 'not-connected' });
+  assert.deepEqual(muse.feedback.status({ exists: () => true, run: () => feedbackAuthdcReply('query_param:key') }), { ok: false, reason: 'wrong-placement' });
+});
+
 test('feedback submission sends the exact bytes with the connector surrogate and disables redirects', async () => {
   const calls = [];
   const bytes = Buffer.from('{"schema_version":1,"submission_nonce":"fixed"}');

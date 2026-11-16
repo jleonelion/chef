@@ -71,7 +71,7 @@ Confirm what was saved from the `settings` field of the output. If the user skip
    - **Yes:** record each person as in **Dietary ruleset** below.
    - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.
 
-Then offer **Connect USDA nutrition**, then **Recurring tasks**, and finish onboarding with **Verify install**.
+Then offer **Connect USDA nutrition**, then **Connect Chef feedback** (Muse only), then **Recurring tasks**, and finish onboarding with **Verify install**.
 
 ## Connect USDA nutrition
 
@@ -91,6 +91,22 @@ Optional. Chef computes recipe nutrition only from USDA FoodData Central; withou
    - `failed` (exit code 0, since USDA access is optional): act on `reason`. `not-connected`: the connector or variable is missing; repeat step 2. `wrong-placement`: the connector's placement differs from step 2; reconnect it with those details. `rejected`: USDA refused the key; reconnect with the key from USDA's email. `rate-limited` or `unreachable`: try again later.
 
 **Rotate** the key by reconnecting the connector (Muse) or changing the variable, then run `usda` again. **Remove** it by disconnecting the connector in Muse's connector settings or unsetting the variable; Chef then marks new nutrition "not computed".
+
+## Connect Chef feedback
+
+Optional, Muse only; skip it on any other runtime, where approved reports are saved on this machine. Ask: "Do you want to be able to send Chef problem reports to the maintainer from here? Nothing is ever sent without your explicit 'send', and you can skip this." If they decline, move on.
+
+1. Create a custom connector with your connector tools, with exactly these details: provider `chef-feedback`, API host `chef-feedback-intake.vercel.app`, auth scheme custom header, header name `X-Chef-Intake-Key`. Start Muse's secure entry card so the user types the install key there, never in this chat, and have them allow the host when asked.
+2. Check it:
+
+   ```sh
+   node scripts/setup.mjs feedback
+   ```
+
+   - `connected`: tell the user they can now send reports; Muse will ask to allow the host on the first send.
+   - `failed` (exit code 0, since feedback is optional): act on `reason`. `not-connected`: the connector is missing; repeat step 1. `wrong-placement`: the connector's header differs from step 1; reconnect it with those details. `unsupported`: this runtime cannot send feedback.
+
+**Disconnect** only in Muse's Settings > Connectors; deleting the connector folder under `custom-connectors/` does not remove the stored key, which outlives it. **Uninstall Chef** the same way: the key stays until it is disconnected in Settings > Connectors.
 
 ## Recurring tasks
 
@@ -229,12 +245,12 @@ When the user wants to report a problem, ask for something new or ask Chef to be
    `--skill-ids` names the skill the report is about (infer it from the conversation when you can). **Diagnostics** attach to defects only, by default: runs of that skill from the last hour. When there are none, Chef attaches the last 10 runs of any skill and the preview says so. `--diagnostics wide` takes every skill's runs from the last hour, `--diagnostics off` leaves them out, and `--diagnostics on` adds them to an enhancement or behavior change. To widen or drop diagnostics after the preview, run `report-draft` again with the same answers and the new `--diagnostics`.
 
    **Contact.** If the result is `contact-question`, ask once whether the user wants to leave a way for the maintainer to reply or would rather decline. Do not show a preview yet. On an answer, run `report-draft` again with the same report answers and either `--contact "..."` or `--declined`. If contact was already offered, pass it with `--contact` without asking again. Contact is separate from the report and is not pattern-scanned. If the user offers contact on a runtime that cannot take it, the result has `contact_notice`; tell them it was dropped and is not in the report.
-3. **Preview.** Show `preview` exactly as returned, in a code block, every line. Each numbered line is exactly what the report holds; a `= {}` or `= []` line starts a section whose items follow. Lines starting `Not sent`, `Not observed`, `Check item`, `Diagnostics` and `Contact` are notes, not content. If `send_notice` is present, tell the user in plain words that sending isn't supported in this runtime and "send" saves the report on this machine. If the user asks for the raw report, run `report-preview --raw` and show `raw` exactly; contact is never in `raw`.
+3. **Preview.** If `destination_card` is present, show it first, exactly as returned, as plain lines: it says where the report goes, who sees it, how long it is kept, that no identity is attached and its size. Then show `preview` exactly as returned, in a code block, every line. Each numbered line is exactly what the report holds; a `= {}` or `= []` line starts a section whose items follow. Lines starting `Not sent`, `Not observed`, `Check item`, `Diagnostics` and `Contact` are notes, not content. If `send_notice` is present, tell the user in plain words that sending isn't supported in this runtime and "send" saves the report on this machine; on Muse, add that they can connect Chef feedback (see **Connect Chef feedback**) and then send it by drafting the report again. If the user asks for the raw report, run `report-preview --raw` and show `raw` exactly; contact is never in `raw`.
 4. **Change.** The user removes or changes items by number:
    - Remove: `node scripts/setup.mjs report-remove --item 19`. Only optional parts can be removed; required fields can only be edited.
    - Edit: `node scripts/setup.mjs report-edit --item 4 --value "..."` (summary, the class fields, frequency and `skill_ids`, comma-separated).
    Every change returns a new `preview` and `submission_nonce`; show the whole new preview again. On `invalid-input`, show `problems`. For a `Check item` note, point out the item, suggest removing or rewording it, and change it only if the user asks.
-5. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`. `sent`: confirm submission with `report_id`; never show the receipt secret. `contact-pending`: the report was sent but the contact choice is not confirmed; explain that plainly and retry with `node scripts/setup.mjs report-contact-retry --report-id <report_id>`. `failed`: nothing was confirmed sent; show `reason` and let the user decide whether to retry.
+5. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`. `sent`: confirm submission with `report_id`; the receipt (with its secret) is saved at `receipt_path` inside the data root and is never shown in chat. `contact-pending`: the report was sent (receipt at `receipt_path`) but the contact choice is not confirmed; explain that plainly and retry with `node scripts/setup.mjs report-contact-retry --report-id <report_id>`. `failed`: nothing was confirmed sent; show `reason` and let the user decide whether to retry.
    - `saved`: say `notice` in plain words and give `path` (inside the data root). Offer no other way to send it: no email, no GitHub issue, no upload.
    - `refused`: the report changed since that preview; show the current one (`report-preview`) and ask again.
 6. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days.

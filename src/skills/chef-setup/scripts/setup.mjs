@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // chef-setup entry point. Modes: init (create the data root), adopt (clone an existing one),
 // settings (show), set (change), update (install a tagged release), verify (check the install),
-// usda (check the USDA connection), safety (the one safety screen), dietary (show the dietary
+// usda (check the USDA connection), feedback (check the Chef feedback connection), safety (the one safety screen), dietary (show the dietary
 // ruleset), set-dietary (change it), schedule (propose recurring tasks; writes nothing),
 // check-update (is a newer release out; installs nothing), trace (show the local invocation
 // trace), clear-trace (delete it), report-* (draft, preview, change and save a feedback report).
@@ -21,6 +21,8 @@ import { regenerateRollup } from '../../chef-food-inventory/scripts/lib/commit.m
 import { readText, STORE } from '../../chef-food-inventory/scripts/lib/store.mjs';
 import { adoptDataRoot } from './lib/adopt-data-root.mjs';
 import { checkUpdate } from './lib/check-update.mjs';
+import { currentRuntime } from '../../../runtime/contract.mjs';
+import { checkFeedback } from './lib/check-feedback.mjs';
 import { checkUsda } from './lib/check-usda.mjs';
 import { REPORT_FLAGS, reportModes } from './lib/report-modes.mjs';
 import { initDataRoot } from './lib/init-data-root.mjs';
@@ -113,6 +115,7 @@ const MODES = {
   update,
   verify: (root) => verifyInstall(root, { skillsDir: path.dirname(skillDir), fixture: path.join(skillDir, 'fixture', 'data-root') }),
   usda: () => checkUsda(usdaClient()),
+  feedback: () => checkFeedback(currentRuntime()),
   safety: () => ({ status: 'ok', screen: SAFETY_SCREEN }),
   dietary,
   'set-dietary': setDietary,

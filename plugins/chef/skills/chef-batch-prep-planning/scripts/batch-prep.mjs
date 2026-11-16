@@ -28335,6 +28335,13 @@ var muse = {
   adapterVersion: 1,
   adapterContractVersion: 1,
   feedback: {
+    destination: { host: new URL(FEEDBACK_URL).host },
+    status({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC))
+        return { ok: false, reason: "not-connected" };
+      const { ok, reason } = fromConnector(PROVIDERS["chef-feedback"], run);
+      return ok ? { ok } : { ok, reason };
+    },
     capabilities({ exists = fs.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC))
         return [];
