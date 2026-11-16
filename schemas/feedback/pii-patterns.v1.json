@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "text_fields": [
+    "summary",
+    "expected",
+    "actual",
+    "desired_outcome",
+    "current_behavior",
+    "desired_behavior"
+  ],
+  "rules": [
+    {
+      "rule": "email",
+      "pattern": "[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,})",
+      "flags": "",
+      "allow_hosts": [],
+      "allow_host_suffixes": ["example.com", "example.org", "example.net"]
+    },
+    {
+      "rule": "url",
+      "pattern": "\\bhttps?:\\/\\/([^\\s/:\"'<>)]+)",
+      "flags": "i",
+      "allow_hosts": ["example", "schema.org", "json-schema.org"],
+      "allow_host_suffixes": ["example.com", "example.org", "example.net"]
+    },
+    {
+      "rule": "phone",
+      "pattern": "(?:\\+\\d{1,3}[\\s.-]?)?\\(?\\b\\d{3}\\)?[\\s.-]\\d{3}[\\s.-]\\d{4}\\b",
+      "flags": "",
+      "allow_hosts": [],
+      "allow_host_suffixes": []
+    },
+    {
+      "rule": "street address",
+      "pattern": "\\b\\d{1,5}\\s+(?:[A-Z][a-z]+\\s+){1,3}(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Way|Place|Pl)\\b",
+      "flags": "",
+      "allow_hosts": [],
+      "allow_host_suffixes": []
+    },
+    {
+      "rule": "file path",
+      "pattern": "(?:\\/Users\\/|\\/home\\/|[A-Za-z]:\\\\Users\\\\)[^\\s/\\\\\"']+|(?<![^\\s\"'(=`])(?:~|\\/[\\w.-]+)\\/[^\\s\"'<>)]+",
+      "flags": "",
+      "allow_hosts": [],
+      "allow_host_suffixes": []
+    },
+    {
+      "rule": "long digit run",
+      "pattern": "\\d{9,}",
+      "flags": "",
+      "allow_hosts": [],
+      "allow_host_suffixes": []
+    }
+  ]
+}
