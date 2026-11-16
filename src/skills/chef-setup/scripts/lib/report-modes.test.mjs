@@ -5,7 +5,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { generic } from '../../../../runtime/generic.mjs';
 import { bytesFromPreview } from '../../../../lib/feedback/preview.mjs';
-import { CONTACT_RETRY_DIR, RECEIPTS_DIR, readPendingContact, readDraft } from '../../../../lib/feedback/store.mjs';
+import { CONTACT_RETRY_DIR, readPendingContact, readDraft } from '../../../../lib/feedback/store.mjs';
 import { reportModes } from './report-modes.mjs';
 
 const tempRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chef-contact-'));
@@ -88,7 +88,7 @@ test('sending submits the approved report bytes first and contact separately', a
     { contact: 'reply@example.com' },
   ]);
   assert.doesNotMatch(JSON.stringify(result), /receipt-secret|reply@example\.com/);
-  assert.equal(fs.statSync(path.join(root, RECEIPTS_DIR, `${result.report_id}.json`)).mode & 0o777, 0o600);
+  assert.equal(fs.existsSync(path.join(root, 'diagnostics', 'receipts')), false);
 });
 
 test('a contact timeout leaves a private retry record and retrying repeats the same PUT', async () => {
@@ -115,6 +115,7 @@ test('a contact timeout leaves a private retry record and retrying repeats the s
   const retried = await modes['report-contact-retry'](root, { 'report-id': sent.report_id });
   assert.equal(retried.status, 'contact-updated');
   assert.equal(readPendingContact(root, sent.report_id), null);
+  assert.equal(fs.existsSync(path.join(root, 'diagnostics', 'receipts')), false);
   assert.deepEqual(calls.map(([type]) => type), ['submit', 'contact', 'contact']);
   assert.deepEqual(calls[1], calls[2]);
 });

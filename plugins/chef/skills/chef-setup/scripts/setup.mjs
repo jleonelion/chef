@@ -9488,7 +9488,6 @@ import fs19 from "node:fs";
 import path18 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
-var RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
 var CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 var expired = (file, now) => now - fs19.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
 function pruneFiles(root, relativeDir, now) {
@@ -9502,7 +9501,7 @@ function pruneFiles(root, relativeDir, now) {
   }
 }
 function pruneOutbox(root, now) {
-  for (const dir of [OUTBOX_DIR, RECEIPTS_DIR, CONTACT_RETRY_DIR])
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR])
     pruneFiles(root, dir, now);
 }
 function writePrivateJson(file, value) {
@@ -9544,14 +9543,6 @@ function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   const relative = `${OUTBOX_DIR}/${stamp2}-${nonce.slice(0, 8)}.json`;
   writePrivate(path18.join(root, relative), bytes);
   return relative;
-}
-function saveReceipt(root, receipt, { now = new Date } = {}) {
-  ensureDiagnosticsDir(root);
-  pruneOutbox(root, now);
-  const file = path18.join(root, RECEIPTS_DIR, `${receipt.report_id}.json`);
-  fs19.mkdirSync(path18.dirname(file), { recursive: true, mode: 448 });
-  writePrivateJson(file, receipt);
-  return file;
 }
 function savePendingContact(root, pending, { now = new Date } = {}) {
   ensureDiagnosticsDir(root);
@@ -9613,7 +9604,6 @@ async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now 
       }
       deletePendingContact(root, receipt.report_id);
     }
-    saveReceipt(root, receipt, { now });
     deleteDraft(root);
     return { status: "sent", report_id: receipt.report_id };
   }
@@ -9782,7 +9772,6 @@ async function retryContactMode(root, values, { adapter }) {
     const result2 = await adapter.feedback.submitContact({ report_id: pending.report_id, receipt_secret: pending.receipt_secret }, pending.choice);
     if (!result2.ok)
       return { status: "contact-pending", data_root: root, report_id: pending.report_id, reason: result2.reason };
-    saveReceipt(root, { report_id: pending.report_id, receipt_secret: pending.receipt_secret });
     deletePendingContact(root, pending.report_id);
     return { status: "contact-updated", data_root: root, report_id: pending.report_id };
   } catch (error) {

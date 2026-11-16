@@ -1,5 +1,5 @@
 // Local feedback files under the data root's diagnostics/ folder (git-ignored, 0700): the current
-// draft, unsent reports, receipts and pending contact requests. They expire with the invocation
+// draft, unsent reports and pending contact requests. They expire with the invocation
 // trace, checked lazily whenever they are read or written.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -7,7 +7,6 @@ import { DIAGNOSTICS_DIR, ensureDiagnosticsDir, TRACE_BOUNDS, writePrivate } fro
 
 export const DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 export const OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
-export const RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
 export const CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 const expired = (file, now) => now - fs.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
 
@@ -21,7 +20,7 @@ function pruneFiles(root, relativeDir, now) {
 }
 
 function pruneOutbox(root, now) {
-  for (const dir of [OUTBOX_DIR, RECEIPTS_DIR, CONTACT_RETRY_DIR]) pruneFiles(root, dir, now);
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR]) pruneFiles(root, dir, now);
 }
 
 function writePrivateJson(file, value) {
@@ -65,15 +64,6 @@ export function saveToOutbox(root, bytes, { nonce, now = new Date() }) {
   const relative = `${OUTBOX_DIR}/${stamp}-${nonce.slice(0, 8)}.json`;
   writePrivate(path.join(root, relative), bytes);
   return relative;
-}
-
-export function saveReceipt(root, receipt, { now = new Date() } = {}) {
-  ensureDiagnosticsDir(root);
-  pruneOutbox(root, now);
-  const file = path.join(root, RECEIPTS_DIR, `${receipt.report_id}.json`);
-  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
-  writePrivateJson(file, receipt);
-  return file;
 }
 
 export function savePendingContact(root, pending, { now = new Date() } = {}) {

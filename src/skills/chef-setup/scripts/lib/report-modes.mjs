@@ -9,7 +9,7 @@ import { buildBundle, installedSkills, selectAround, selectEvents } from '../../
 import { renderPreview } from '../../../../lib/feedback/preview.mjs';
 import { dropsFocus, editItem, newDraft, removeItem, serialize, SKILL_ID, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
-import { deleteDraft, deletePendingContact, readDraft, readPendingContact, saveDraft, saveReceipt } from '../../../../lib/feedback/store.mjs';
+import { deleteDraft, deletePendingContact, readDraft, readPendingContact, saveDraft } from '../../../../lib/feedback/store.mjs';
 import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
 
 const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'contact'];
@@ -183,7 +183,6 @@ async function retryContactMode(root, values, { adapter }) {
       pending.choice,
     );
     if (!result.ok) return { status: 'contact-pending', data_root: root, report_id: pending.report_id, reason: result.reason };
-    saveReceipt(root, { report_id: pending.report_id, receipt_secret: pending.receipt_secret });
     deletePendingContact(root, pending.report_id);
     return { status: 'contact-updated', data_root: root, report_id: pending.report_id };
   } catch (error) {

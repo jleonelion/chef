@@ -5,7 +5,7 @@
 import { checkAdapter, currentRuntime, hasCapability } from '../../runtime/contract.mjs';
 import { bytesFromPreview, renderPreview } from './preview.mjs';
 import { reportProblems, serialize } from './report.mjs';
-import { deleteDraft, deletePendingContact, savePendingContact, saveReceipt, saveToOutbox } from './store.mjs';
+import { deleteDraft, deletePendingContact, savePendingContact, saveToOutbox } from './store.mjs';
 
 const NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 export const SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
@@ -36,7 +36,6 @@ export async function sendReport(root, draft, { nonce, adapter = currentRuntime(
       }
       deletePendingContact(root, receipt.report_id);
     }
-    saveReceipt(root, receipt, { now });
     deleteDraft(root);
     return { status: 'sent', report_id: receipt.report_id };
   }
