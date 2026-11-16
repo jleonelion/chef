@@ -5,7 +5,7 @@
 import { checkAdapter, currentRuntime, hasCapability } from '../../runtime/contract.mjs';
 import { bytesFromPreview, renderPreview } from './preview.mjs';
 import { reportProblems, serialize } from './report.mjs';
-import { deleteDraft, deletePendingContact, savePendingContact, saveToOutbox } from './store.mjs';
+import { deleteDraft, deletePendingContact, savePendingContact, saveReceipt, saveToOutbox } from './store.mjs';
 
 const NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 export const SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
@@ -27,17 +27,22 @@ export async function sendReport(root, draft, { nonce, adapter = currentRuntime(
     const submission = await adapter.feedback.submit(Buffer.from(bytes));
     if (!submission.ok) return { status: 'failed', reason: submission.reason };
     const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
+    // The report is already delivered, so a failed local receipt write must not lose that state.
+    let receiptPath = null;
+    try {
+      receiptPath = saveReceipt(root, receipt, { now });
+    } catch {}
     if (draft.contactChoice) {
       savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });
       deleteDraft(root);
       const contact = await adapter.feedback.submitContact(receipt, draft.contactChoice);
       if (!contact.ok) {
-        return { status: 'contact-pending', report_id: receipt.report_id, reason: contact.reason };
+        return { status: 'contact-pending', report_id: receipt.report_id, receipt_path: receiptPath, reason: contact.reason };
       }
       deletePendingContact(root, receipt.report_id);
     }
     deleteDraft(root);
-    return { status: 'sent', report_id: receipt.report_id };
+    return { status: 'sent', report_id: receipt.report_id, receipt_path: receiptPath };
   }
   const saved = saveToOutbox(root, bytes, { nonce, now });
   deleteDraft(root);

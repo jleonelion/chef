@@ -6,8 +6,9 @@ import { traceEnabled } from '../../../../lib/diagnostics/capture.mjs';
 import { declineOffer } from '../../../../lib/diagnostics/offers.mjs';
 import { readTrace } from '../../../../lib/diagnostics/trace.mjs';
 import { buildBundle, installedSkills, selectAround, selectEvents } from '../../../../lib/feedback/bundle.mjs';
-import { renderPreview } from '../../../../lib/feedback/preview.mjs';
+import { bytesFromPreview, renderPreview } from '../../../../lib/feedback/preview.mjs';
 import { dropsFocus, editItem, newDraft, removeItem, serialize, SKILL_ID, splitSkillIds } from '../../../../lib/feedback/report.mjs';
+import { destinationCard } from '../../../../lib/feedback/destination.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
 import { deleteDraft, deletePendingContact, readDraft, readPendingContact, saveDraft } from '../../../../lib/feedback/store.mjs';
 import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
@@ -33,14 +34,15 @@ function shown(root, draft, adapter) {
   if (canAskContact && !draft.contactChoice) {
     return { status: 'contact-question', data_root: root, can_ask_contact: true };
   }
+  const preview = renderPreview(draft);
   return {
     status: 'draft',
     data_root: root,
-    preview: renderPreview(draft),
+    preview,
     submission_nonce: draft.report.submission_nonce,
     can_send: sendable,
     can_ask_contact: canAskContact,
-    ...(sendable ? {} : { send_notice: SAVE_ONLY }),
+    ...(sendable ? { destination_card: destinationCard(adapter, bytesFromPreview(preview)) } : { send_notice: SAVE_ONLY }),
   };
 }
 

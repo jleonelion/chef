@@ -26,6 +26,7 @@ function connectedAdapter({ contactResult = { ok: true } } = {}) {
     feedback: {
       ...generic.feedback,
       capabilities: () => ['submit.connector', 'contact.opaque'],
+      destination: { host: 'intake.example.com' },
       submit: async (bytes) => {
         calls.push(['submit', bytes.toString()]);
         return { ok: true, report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret-abcdefghijklmnopqrstuvwxyz0123456789' };
@@ -88,7 +89,36 @@ test('sending submits the approved report bytes first and contact separately', a
     { contact: 'reply@example.com' },
   ]);
   assert.doesNotMatch(JSON.stringify(result), /receipt-secret|reply@example\.com/);
-  assert.equal(fs.existsSync(path.join(root, 'diagnostics', 'receipts')), false);
+  const receipt = path.join(root, result.receipt_path);
+  assert.equal(fs.statSync(receipt).mode & 0o777, 0o600);
+  assert.deepEqual(JSON.parse(fs.readFileSync(receipt, 'utf8')), {
+    report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370',
+    receipt_secret: 'receipt-secret-abcdefghijklmnopqrstuvwxyz0123456789',
+  });
+});
+
+test('a sendable preview comes with a destination card holding the exact byte size', () => {
+  const root = tempRoot();
+  const { adapter } = connectedAdapter();
+  const modes = reportModes({ skillsDir: path.join(root, 'skills'), adapter });
+
+  const draft = modes['report-draft'](root, { ...fields, declined: true });
+
+  const size = Buffer.byteLength(bytesFromPreview(draft.preview)).toLocaleString('en-US');
+  assert.match(draft.destination_card, /intake\.example\.com/);
+  assert.match(draft.destination_card, /90 days/);
+  assert.match(draft.destination_card, /no name or account/i);
+  assert.match(draft.destination_card, new RegExp(`Size: ${size} bytes`));
+});
+
+test('a runtime that cannot send shows no destination card', () => {
+  const root = tempRoot();
+  const modes = reportModes({ skillsDir: path.join(root, 'skills'), adapter: generic });
+
+  const draft = modes['report-draft'](root, fields);
+
+  assert.equal('destination_card' in draft, false);
+  assert.ok(draft.send_notice);
 });
 
 test('a contact timeout leaves a private retry record and retrying repeats the same PUT', async () => {
@@ -115,7 +145,7 @@ test('a contact timeout leaves a private retry record and retrying repeats the s
   const retried = await modes['report-contact-retry'](root, { 'report-id': sent.report_id });
   assert.equal(retried.status, 'contact-updated');
   assert.equal(readPendingContact(root, sent.report_id), null);
-  assert.equal(fs.existsSync(path.join(root, 'diagnostics', 'receipts')), false);
+  assert.equal(fs.existsSync(path.join(root, sent.receipt_path)), true, 'the receipt outlives the contact retry record');
   assert.deepEqual(calls.map(([type]) => type), ['submit', 'contact', 'contact']);
   assert.deepEqual(calls[1], calls[2]);
 });

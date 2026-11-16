@@ -1,5 +1,5 @@
 // Local feedback files under the data root's diagnostics/ folder (git-ignored, 0700): the current
-// draft, unsent reports and pending contact requests. They expire with the invocation
+// draft, unsent reports, receipts of sent reports and pending contact requests. They expire with the invocation
 // trace, checked lazily whenever they are read or written.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import { DIAGNOSTICS_DIR, ensureDiagnosticsDir, TRACE_BOUNDS, writePrivate } fro
 export const DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 export const OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
 export const CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
+export const RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
 const expired = (file, now) => now - fs.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
 
 function pruneFiles(root, relativeDir, now) {
@@ -20,7 +21,7 @@ function pruneFiles(root, relativeDir, now) {
 }
 
 function pruneOutbox(root, now) {
-  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR]) pruneFiles(root, dir, now);
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR, RECEIPTS_DIR]) pruneFiles(root, dir, now);
 }
 
 function writePrivateJson(file, value) {
@@ -73,6 +74,17 @@ export function savePendingContact(root, pending, { now = new Date() } = {}) {
   fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
   writePrivateJson(file, pending);
   return file;
+}
+
+// The receipt (report_id and secret) of a sent report; the secret is never shown in chat.
+export function saveReceipt(root, receipt, { now = new Date() } = {}) {
+  if (!reportIdIsSafe(receipt.report_id)) throw new Error('invalid report id');
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  const relative = `${RECEIPTS_DIR}/${receipt.report_id}.json`;
+  fs.mkdirSync(path.join(root, RECEIPTS_DIR), { recursive: true, mode: 0o700 });
+  writePrivateJson(path.join(root, relative), receipt);
+  return relative;
 }
 
 const reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
