@@ -1330,7 +1330,7 @@
   },
   {
     "id": "food-inventory-untrusted-sender-refused",
-    "description": "A forwarded receipt from a sender not in trusted_receipt_senders is refused and nothing changes, even when the display name looks trusted.",
+    "description": "A receipt email from a sender not in trusted_receipt_senders is refused and nothing changes, even when the display name looks trusted.",
     "seed": [
       {
         "path": "settings.json",
@@ -1388,8 +1388,8 @@
     ]
   },
   {
-    "id": "food-inventory-forwarding-off-refused",
-    "description": "With no trusted senders set, forwarded receipts are refused because forwarding is off.",
+    "id": "food-inventory-receipt-intake-off-refused",
+    "description": "With no trusted senders set, receipt intake refuses an email before reading it.",
     "command": [
       "node",
       "{skills}/chef-food-inventory/scripts/inventory.mjs",
@@ -1406,7 +1406,7 @@
       },
       {
         "path": "$.reason",
-        "includes": "forwarding is off"
+        "includes": "receipt intake is off"
       }
     ]
   },
