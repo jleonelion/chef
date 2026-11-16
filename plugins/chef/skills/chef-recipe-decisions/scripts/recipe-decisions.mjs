@@ -6984,7 +6984,7 @@ var recurring_tasks_default = [
     requires: "household-recipients",
     delivery: true,
     why: "Emails the week's shopping list to your household recipients.",
-    prompt: "Chef shopping list. Run chef-shopping-lists' `build` for the latest saved meal plan and deliver it as its `delivery` block says. If there is no plan, say so in one line and send nothing."
+    prompt: 'Chef shopping list. Run chef-shopping-lists\' `build --upcoming`. If it returns `no-plan`, send no email and post exactly one chat line: "No meal plan for the week of <date>; want me to plan it?" using its `looked_for` date. Otherwise deliver the list as its `delivery` block says.'
   },
   {
     name: "Chef update notice",

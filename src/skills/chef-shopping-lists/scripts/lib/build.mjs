@@ -6,7 +6,7 @@ import { gateRecipe } from '../../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
-import { ingredientLines, listRecipes } from '../../../../lib/recipes.mjs';
+import { ingredientLines, listRecipes, today as localToday } from '../../../../lib/recipes.mjs';
 import { WIKI_DIR, WIKI_FOLDERS } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
 import { combineLines, displayItems, subtractInventory } from './combine.mjs';
@@ -14,10 +14,22 @@ import { combineLines, displayItems, subtractInventory } from './combine.mjs';
 const PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS['meal-plan']}`;
 const WEEK = /^\d{4}-\d{2}-\d{2}$/;
 
-function latestWeek(root) {
+function savedWeeks(root) {
   const dir = path.join(root, PLANS_DIR);
-  const weeks = fs.existsSync(dir) ? fs.readdirSync(dir).map((f) => f.replace(/\.md$/, '')).filter((w) => WEEK.test(w)).sort() : [];
-  return weeks.at(-1) ?? null;
+  return fs.existsSync(dir) ? fs.readdirSync(dir).map((f) => f.replace(/\.md$/, '')).filter((w) => WEEK.test(w)).sort() : [];
+}
+
+const latestWeek = (root) => savedWeeks(root).at(-1) ?? null;
+
+function addDays(date, days) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+
+function upcomingWeek(root, today) {
+  const through = addDays(today, 7);
+  return savedWeeks(root).find((week) => week >= today && week <= through) ?? null;
 }
 
 function readPlan(root, weekStart) {
@@ -46,9 +58,17 @@ function listText(weekStart, { items, unquantified }, dietary) {
 }
 
 // units: the household's 'us' | 'metric'; shapes displayed quantities only.
-export function buildList(root, { weekStart, overrides = [], units }) {
-  const week = weekStart ?? latestWeek(root);
+export function buildList(root, { weekStart, upcoming = false, today = localToday(), overrides = [], units }) {
+  const week = weekStart ?? (upcoming ? upcomingWeek(root, today) : latestWeek(root));
   const plan = week && readPlan(root, week);
+  if (!plan && upcoming) {
+    return {
+      status: 'no-plan',
+      data_root: root,
+      looked_for: addDays(today, 1),
+      reason: 'no saved meal plan starts in the next 7 days; plan meals with chef-meal-planning first',
+    };
+  }
   if (!plan) return { status: 'no-plan', data_root: root, week_start: week, reason: 'no saved meal plan; plan meals with chef-meal-planning first' };
 
   const ruleset = readRuleset(root);

@@ -6983,7 +6983,7 @@ var recurring_tasks_default = [
     requires: "household-recipients",
     delivery: true,
     why: "Emails the week's shopping list to your household recipients.",
-    prompt: "Chef shopping list. Run chef-shopping-lists' `build` for the latest saved meal plan and deliver it as its `delivery` block says. If there is no plan, say so in one line and send nothing."
+    prompt: 'Chef shopping list. Run chef-shopping-lists\' `build --upcoming`. If it returns `no-plan`, send no email and post exactly one chat line: "No meal plan for the week of <date>; want me to plan it?" using its `looked_for` date. Otherwise deliver the list as its `delivery` block says.'
   },
   {
     name: "Chef update notice",
@@ -7955,6 +7955,10 @@ function ingredientLines(body) {
   return section.split(`
 `).map((line) => line.match(/^\s*[-*]\s+(.+)$/)?.[1].trim()).filter(Boolean);
 }
+function today(date = new Date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 // src/lib/dietary-gate.mjs
 var AUTO_FLAGS_COUNT_AS_CHECKED = true;
@@ -8408,10 +8412,19 @@ function displayItems(items, system) {
 // src/skills/chef-shopping-lists/scripts/lib/build.mjs
 var PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS["meal-plan"]}`;
 var WEEK = /^\d{4}-\d{2}-\d{2}$/;
-function latestWeek(root) {
+function savedWeeks(root) {
   const dir = path11.join(root, PLANS_DIR);
-  const weeks = fs11.existsSync(dir) ? fs11.readdirSync(dir).map((f) => f.replace(/\.md$/, "")).filter((w) => WEEK.test(w)).sort() : [];
-  return weeks.at(-1) ?? null;
+  return fs11.existsSync(dir) ? fs11.readdirSync(dir).map((f) => f.replace(/\.md$/, "")).filter((w) => WEEK.test(w)).sort() : [];
+}
+var latestWeek = (root) => savedWeeks(root).at(-1) ?? null;
+function addDays(date, days) {
+  const value = new Date(`${date}T00:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+}
+function upcomingWeek(root, today2) {
+  const through = addDays(today2, 7);
+  return savedWeeks(root).find((week) => week >= today2 && week <= through) ?? null;
 }
 function readPlan(root, weekStart) {
   const rel = `${PLANS_DIR}/${weekStart}.md`;
@@ -8442,9 +8455,17 @@ ${check.join(`
 `) + `
 `;
 }
-function buildList(root, { weekStart, overrides = [], units }) {
-  const week = weekStart ?? latestWeek(root);
+function buildList(root, { weekStart, upcoming = false, today: today2 = today(), overrides = [], units }) {
+  const week = weekStart ?? (upcoming ? upcomingWeek(root, today2) : latestWeek(root));
   const plan = week && readPlan(root, week);
+  if (!plan && upcoming) {
+    return {
+      status: "no-plan",
+      data_root: root,
+      looked_for: addDays(today2, 1),
+      reason: "no saved meal plan starts in the next 7 days; plan meals with chef-meal-planning first"
+    };
+  }
   if (!plan)
     return { status: "no-plan", data_root: root, week_start: week, reason: "no saved meal plan; plan meals with chef-meal-planning first" };
   const ruleset = readRuleset(root);
@@ -8491,7 +8512,7 @@ function deliverList(root, list, { recipients, onMuse = muse.isMuse() }) {
 
 // src/skills/chef-shopping-lists/scripts/shopping-lists.mjs
 var { values, positionals } = parseArgs({
-  options: { "data-root": { type: "string" }, "week-start": { type: "string" }, override: { type: "string", multiple: true } },
+  options: { "data-root": { type: "string" }, "week-start": { type: "string" }, upcoming: { type: "boolean" }, override: { type: "string", multiple: true } },
   allowPositionals: true
 });
 function run(root) {
@@ -8501,10 +8522,12 @@ function run(root) {
   const { overrides, problems } = parseOverrides(values.override, readRuleset(root));
   if (weekStart !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(weekStart))
     problems.push("--week-start must be YYYY-MM-DD");
+  if (weekStart !== undefined && values.upcoming)
+    problems.push("--upcoming and --week-start cannot be used together");
   if (problems.length)
     return { status: "invalid-input", data_root: root, problems };
   const settings = readSettings(root);
-  const list = buildList(root, { weekStart, overrides, units: settings.settings.units });
+  const list = buildList(root, { weekStart, upcoming: values.upcoming, overrides, units: settings.settings.units });
   if (list.status !== "built")
     return list;
   const delivery = deliverList(root, list, { recipients: settings.settings.household_recipients });

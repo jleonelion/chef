@@ -4277,6 +4277,74 @@
     }
   },
   {
+    "id": "chef-shopping-lists-upcoming-does-not-deliver-a-past-plan",
+    "description": "The scheduled shopping-list mode returns no-plan without a delivery payload when every saved plan is in the past.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2000-01-01.md",
+        "content": "---\ntype: meal-plan\ntitle: \"Meal plan: week of 2000-01-01\"\nweek_start: 2000-01-01\nmeals:\n  - { date: 2000-01-01, slug: chickpea-spinach-stew, title: Chickpea Spinach Stew, servings: 4 }\n---\n# Meal plan: week of 2000-01-01\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"household_recipients\":[\"cook@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build",
+      "--upcoming"
+    ],
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "no-plan"
+      },
+      {
+        "path": "$.looked_for",
+        "absent": false
+      },
+      {
+        "path": "$.delivery",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-shopping-lists-rejects-upcoming-with-week-start",
+    "description": "The shopping-list CLI rejects an ambiguous request for both an explicit and upcoming plan.",
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build",
+      "--upcoming",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid-input"
+      },
+      {
+        "path": "$.problems",
+        "includes": "--upcoming and --week-start cannot be used together"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
     "id": "chef-shopping-lists-shows-us-units",
     "description": "With units set to us, the same list shows a fixed US unit ladder rounded up, as decimals; sources keep each recipe's grams.",
     "seed": [
@@ -4552,6 +4620,10 @@
       {
         "path": "$.tasks.[?(@name=='Chef shopping list')].skill",
         "equals": "chef-shopping-lists"
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef shopping list')].prompt",
+        "includes": "build --upcoming"
       }
     ]
   },
