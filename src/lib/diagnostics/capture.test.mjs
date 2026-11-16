@@ -84,9 +84,17 @@ test('a captured run returns its result and appends one event classified from it
   assert.doesNotMatch(fs.readFileSync(path.join(root, TRACE_FILE), 'utf8'), /secret/);
 });
 
-test('a throw is recorded as internal-error + unclassified, without its message, and rethrown', async () => {
+test('a throw is recorded as internal-error + unclassified, without its message, and returned as an internal-error result', async () => {
   const root = dataRoot();
-  await assert.rejects(chefCapture(searchRun(root), () => { throw new Error('boom at /home/someone/recipes'); }), /boom/);
+  let result;
+  try {
+    result = await chefCapture(searchRun(root), () => { throw new Error('boom at /home/someone/recipes'); });
+    assert.equal(process.exitCode, 1);
+  } finally {
+    process.exitCode = 0;
+  }
+  assert.equal(result.status, 'internal-error');
+  assert.doesNotMatch(JSON.stringify(result), /boom|someone/);
   const [event] = traced(root);
   assert.equal(event.outcome, 'internal-error');
   assert.equal(event.error_code, 'unclassified');

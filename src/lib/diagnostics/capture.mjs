@@ -9,6 +9,7 @@ import PLUGIN from '../../../plugins/chef/.claude-plugin/plugin.json' with { typ
 import { currentRuntime } from '../../runtime/contract.mjs';
 import { readSchemaVersion } from '../schema.mjs';
 import { readSettings } from '../settings.mjs';
+import { claimOffer } from './offers.mjs';
 import { appendEvent } from './trace.mjs';
 
 export const EVENT_SCHEMA_VERSION = 1;
@@ -78,14 +79,38 @@ export function traceEnabled(root) {
 }
 
 // Diagnostics never break the skill: an event that cannot be built or written is dropped.
+// Returns the recorded event, or null.
 function record(context, describe) {
-  if (!traceEnabled(context.root)) return;
+  if (!traceEnabled(context.root)) return null;
   try {
-    appendEvent(context.root, buildEvent({ ...context, ...describe() }), { now: new Date() });
+    const event = buildEvent({ ...context, ...describe() });
+    appendEvent(context.root, event, { now: new Date() });
+    return event;
   } catch {
-    // dropped on purpose; registry tests catch undeclared facts and codes
+    return null; // dropped on purpose; registry tests catch undeclared facts and codes
   }
 }
+
+// A recorded internal-error may come with one offer to report it (#78): only with post-error
+// offers on, at most once per skill and error code per hour, never for one the user declined.
+function reportOffer(root, event) {
+  if (event?.outcome !== 'internal-error') return null;
+  try {
+    if (readSettings(root).settings.post_error_offers !== 'on' || !claimOffer(root, { skill: event.skill_id, code: event.error_code })) return null;
+  } catch {
+    return null;
+  }
+  const focus = event.invocation_id;
+  return {
+    skill_id: event.skill_id,
+    error_code: event.error_code,
+    focus,
+    message: `Chef hit an internal error. Offer once, in plain words, to report it. If the user agrees, run chef-setup's \`setup.mjs report-draft --focus ${focus}\` and follow its report flow. If they say no thanks, run chef-setup's \`setup.mjs report-offer-decline --skill ${event.skill_id} --code ${event.error_code}\`. Don't offer again for this error either way.`,
+  };
+}
+
+const withOffer = (result, offer) => (offer ? { ...result, report_offer: offer } : result);
+const INTERNAL_ERROR = { status: 'internal-error', reason: 'Chef hit an unexpected error; details are on stderr.' };
 
 // Failures most scripts share; a script's own `failures` add to or override these.
 const COMMON_FAILURES = { 'invalid-input': 'invalid-input', refused: 'action-refused' };
@@ -106,7 +131,8 @@ export function classifyStatus({ skill, script, failures = {} }) {
 // Runs `run` and records one event. `classify(result)` maps the script's result to
 // { outcome, error_code?, facts? } using only registry entries; without it, the result's status is
 // classified by classifyStatus with `failures`. A throw is recorded as internal-error +
-// unclassified (never its message) and rethrown.
+// unclassified (never its message): its stack goes to stderr, exit code 1, and the script gets an
+// internal-error result to print.
 export async function chefCapture({ root, skill, script, operation, classify, failures, adapter = currentRuntime() }, run) {
   const context = { root, skill, script, operation, adapter, startedAt: new Date() };
   const classifyResult = classify ?? classifyStatus({ skill, script, failures });
@@ -114,10 +140,12 @@ export async function chefCapture({ root, skill, script, operation, classify, fa
   const elapsed = () => ({ durationMs: performance.now() - started });
   try {
     const result = await run();
-    record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
-    return result;
+    const event = record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
+    return withOffer(result, reportOffer(root, event));
   } catch (error) {
-    record(context, () => ({ ...elapsed(), outcome: 'internal-error', error_code: 'unclassified' }));
-    throw error;
+    const event = record(context, () => ({ ...elapsed(), outcome: 'internal-error', error_code: 'unclassified' }));
+    console.error(error);
+    process.exitCode = 1;
+    return withOffer(INTERNAL_ERROR, reportOffer(root, event));
   }
 }

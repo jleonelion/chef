@@ -11,9 +11,9 @@ export const MAX_BYTES = SCHEMA['x-max-bytes'];
 export const CLASS_FIELDS = { defect: ['expected', 'actual', 'frequency'], enhancement: ['desired_outcome'], behavior_change: ['current_behavior', 'desired_behavior'] };
 const FREQUENCIES = SCHEMA.properties.frequency.enum;
 const maxLength = (field) => SCHEMA.$defs[field === 'summary' ? 'short_text' : 'text'].maxLength;
-const SKILL_ID = /^chef-[a-z0-9-]+$/;
+export const SKILL_ID = /^chef-[a-z0-9-]+$/;
 // Optional parts the user may withhold. Required fields can only be edited; evidence only removed.
-const REMOVABLE = [/^skill_ids$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
+const REMOVABLE = [/^skill_ids$/, /^focus_invocation$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
 const EDITABLE = new Set([...TEXT_FIELDS, 'frequency', 'skill_ids']);
 
 export const serialize = (report) => JSON.stringify(report);
@@ -43,7 +43,7 @@ function checked(report) {
   return report;
 }
 
-export function newDraft({ class: kind, trigger = 'user-initiated', summary, skill_ids, bundle, ...fields }) {
+export function newDraft({ class: kind, trigger = 'user-initiated', summary, skill_ids, focus_invocation, bundle, ...fields }) {
   const report = checked({
     schema_version: REPORT_SCHEMA_VERSION,
     class: kind,
@@ -51,6 +51,7 @@ export function newDraft({ class: kind, trigger = 'user-initiated', summary, ski
     summary,
     ...Object.fromEntries((CLASS_FIELDS[kind] ?? []).map((field) => [field, fields[field]])),
     ...(skill_ids?.length ? { skill_ids } : {}),
+    ...(focus_invocation ? { focus_invocation } : {}),
     ...(bundle ? { diagnostic_bundle: bundle } : {}),
     removed_fields: [],
     submission_nonce: randomUUID(),
@@ -72,8 +73,24 @@ function withoutItem(report, id) {
   else delete parent[key];
 }
 
+// True when removing item `number` takes away the failing run a post-error report is about.
+// An unknown number is false here; removeItem reports it.
+export function dropsFocus({ report, numbers }, number) {
+  const focus = report.focus_invocation;
+  const id = Object.keys(numbers).find((key) => numbers[key] === number);
+  return Boolean(focus) && ['focus_invocation', 'diagnostic_bundle', `diagnostic_bundle.events[${focus}]`].includes(id);
+}
+
+// Without its failing run, a post-error report is one the user started.
+function withoutFocus(report) {
+  delete report.focus_invocation;
+  report.trigger = 'user-initiated';
+  if (!report.removed_fields.includes('focus_invocation')) report.removed_fields.push('focus_invocation');
+}
+
 export function removeItem(draft, number) {
   const id = itemId(draft, number);
+  const losesFocus = dropsFocus(draft, number);
   if (!REMOVABLE.some((pattern) => pattern.test(id))) {
     throw new Error(`item ${number} (${id}) cannot be removed${EDITABLE.has(id) ? '; it can be edited' : ''}`);
   }
@@ -82,6 +99,7 @@ export function removeItem(draft, number) {
   // Removing a part also covers anything inside it the user removed earlier.
   const inside = (field) => field.startsWith(`${id}.`) || field.startsWith(`${id}[`);
   report.removed_fields = [...report.removed_fields.filter((field) => !inside(field)), id];
+  if (losesFocus) withoutFocus(report);
   return changed(draft, report);
 }
 

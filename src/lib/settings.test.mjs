@@ -28,6 +28,7 @@ test('defaults cover every key; the invocation trace is on', () => {
     calendar: null,
     convert_recipe_units: false,
     diagnostics: { trace: 'on' },
+    post_error_offers: 'on',
   });
 });
 

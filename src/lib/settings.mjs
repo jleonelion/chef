@@ -6,7 +6,7 @@ import { muse } from '../runtime/muse.mjs';
 
 export const SETTINGS_FILE = 'settings.json';
 export const SETTINGS_VERSION = 2;
-export const SETTING_KEYS = ['household_recipients', 'trusted_receipt_senders', 'units', 'calendar', 'convert_recipe_units', 'diagnostics'];
+export const SETTING_KEYS = ['household_recipients', 'trusted_receipt_senders', 'units', 'calendar', 'convert_recipe_units', 'diagnostics', 'post_error_offers'];
 
 // Step N turns version N into N + 1. readSettings runs pending steps in memory, so a file
 // not yet migrated by "update Chef" reads the same as a migrated one.
@@ -23,7 +23,7 @@ export function unitsForLocale(locale = '') {
 }
 
 export function defaultSettings({ locale = muse.locale() } = {}) {
-  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: 'on' } };
+  return { household_recipients: [], trusted_receipt_senders: [], units: unitsForLocale(locale), calendar: null, convert_recipe_units: false, diagnostics: { trace: 'on' }, post_error_offers: 'on' };
 }
 
 function emailListProblem(key, value) {
@@ -42,6 +42,7 @@ const CHECKS = {
   diagnostics: (value) => (isTraceSetting(value) ? null : 'diagnostics: must be {"trace": "on"} or {"trace": "off"}'),
   calendar: (value) => (value === null || (typeof value === 'string' && value.trim()) ? null : 'calendar: must be a calendar name or null'),
   convert_recipe_units: (value) => (typeof value === 'boolean' ? null : 'convert_recipe_units: must be true or false'),
+  post_error_offers: (value) => (value === 'on' || value === 'off' ? null : 'post_error_offers: must be "on" or "off"'),
 };
 
 // Problems with the known keys present in `values`; other keys are not checked.

@@ -96,6 +96,10 @@ _Avoid_: missing data, null
 A part of a feedback report the user deleted during preview; recorded by name so maintainers know it was withheld rather than never captured.
 _Avoid_: redaction, censored field
 
+**Post-error offer**:
+Chef's one-time question, right after a Chef script hits an internal error, whether the user wants to report it. It is about one error, meaning one skill's error code: Chef asks at most once an hour per error, and "no thanks" ends offers for that error only. It needs the failing run in the invocation trace, so with the trace off there is none.
+_Avoid_: crash prompt, error popup, auto-report
+
 **Runtime**:
 The agent host Chef's skills run inside, such as Muse, Muse Code or Claude Code. A host Chef cannot identify is an unknown runtime, never assumed to be Muse.
 _Avoid_: platform, environment, host app
