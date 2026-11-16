@@ -6,7 +6,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { DELIVERY_TASKS } from '../lib/recurring-tasks.mjs';
-import { unsupported } from './generic.mjs';
 
 const LOCALE_VARS = ['LC_ALL', 'LC_MEASUREMENT', 'LANG'];
 const isUsable = (value) => Boolean(value) && value !== 'C' && value !== 'POSIX' && !value.startsWith('C.');
@@ -17,13 +16,32 @@ const isUsable = (value) => Boolean(value) && value !== 'C' && value !== 'POSIX'
 const AUTHDC = '/opt/hatch/bin/authdc';
 const PROVIDERS = {
   'usda-fdc': { connector: 'custom.usda-fdc', env: 'CHEF_USDA_FDC_KEY', placement: 'query_param:api_key' },
+  'chef-feedback': {
+    connector: 'custom.chef-feedback',
+    placement: { custom_header: 'X-Chef-Intake-Key' },
+  },
 };
+const FEEDBACK_URL = 'https://chef-feedback-intake.vercel.app/v1/reports';
 const ATTACHMENT_INSTRUCTION = 'Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.';
 const runFile = (file, args) => execFileSync(file, args, { encoding: 'utf8', timeout: 10000, stdio: ['ignore', 'pipe', 'ignore'] });
 
 function placementOf(text) {
+  if (typeof text === 'object' && text !== null && typeof text.custom_header === 'string') {
+    return { in: 'header', name: text.custom_header };
+  }
+  if (typeof text !== 'string') return null;
   const [kind, name] = text.split(':');
   return { in: kind === 'query_param' ? 'query' : kind, name };
+}
+
+function placementMatches(actual, expected) {
+  if (typeof expected === 'string') return actual === expected;
+  return (
+    typeof actual === 'object' &&
+    actual !== null &&
+    Object.keys(actual).length === 1 &&
+    actual.custom_header === expected.custom_header
+  );
 }
 
 function fromConnector(spec, run) {
@@ -34,8 +52,31 @@ function fromConnector(spec, run) {
     return { ok: false, reason: 'not-connected' };
   }
   if (typeof entry?.surrogate !== 'string' || !entry.surrogate) return { ok: false, reason: 'not-connected' };
-  if (entry.placement !== spec.placement) return { ok: false, reason: 'wrong-placement' };
-  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: 'connector' };
+  if (!placementMatches(entry.placement, spec.placement)) return { ok: false, reason: 'wrong-placement' };
+  const placement = placementOf(entry.placement);
+  if (!placement) return { ok: false, reason: 'wrong-placement' };
+  return { ok: true, value: entry.surrogate, placement, source: 'connector' };
+}
+
+const isReceipt = (value) =>
+  typeof value === 'object' &&
+  value !== null &&
+  typeof value.report_id === 'string' &&
+  /^[0-9a-f-]{36}$/i.test(value.report_id) &&
+  typeof value.receipt_secret === 'string' &&
+  value.receipt_secret.length >= 32;
+
+function isNetworkError(error) {
+  return error instanceof TypeError || (error instanceof Error && error.name === 'AbortError');
+}
+
+async function feedbackRequest(url, init, fetchImpl) {
+  try {
+    return await fetchImpl(url, { ...init, redirect: 'error' });
+  } catch (error) {
+    if (isNetworkError(error)) return null;
+    throw error;
+  }
 }
 
 const pluginManifest = (repository) => path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json');
@@ -80,10 +121,53 @@ export const muse = {
   name: 'muse',
   adapterVersion: 1,
   adapterContractVersion: 1,
-  // No submit capability until the Chef feedback connector lands; reports are saved locally.
   feedback: {
-    capabilities: () => [],
-    submit: unsupported,
+    capabilities({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC)) return [];
+      const credential = fromConnector(PROVIDERS['chef-feedback'], run);
+      return credential.ok ? ['submit.connector', 'contact.opaque'] : [];
+    },
+    async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential('chef-feedback', { exists, run });
+      if (!credential.ok) return { ok: false, reason: 'unsupported' };
+      const response = await feedbackRequest(
+        FEEDBACK_URL,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', [credential.placement.name]: credential.value },
+          body: bytes,
+        },
+        fetchImpl,
+      );
+      if (!response) return { ok: false, reason: 'unreachable' };
+      if (response.status !== 201) {
+        const reason = { 409: 'nonce-replayed', 413: 'too-large', 422: 'schema-invalid' }[response.status] ?? 'intake-rejected';
+        return { ok: false, reason };
+      }
+      let receipt;
+      try {
+        receipt = await response.json();
+      } catch {
+        return { ok: false, reason: 'invalid-receipt' };
+      }
+      return isReceipt(receipt) ? { ok: true, ...receipt } : { ok: false, reason: 'invalid-receipt' };
+    },
+    async submitContact(receipt, choice, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential('chef-feedback', { exists, run });
+      if (!credential.ok) return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(
+        `${FEEDBACK_URL}/${receipt.report_id}/contact`,
+        {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` },
+          body: JSON.stringify(choice),
+        },
+        fetchImpl,
+      );
+      if (!response) return { ok: false, reason: 'unreachable' };
+      if (response.status === 204) return { ok: true };
+      return { ok: false, reason: response.status === 409 ? 'contact-already-set' : 'contact-rejected' };
+    },
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   // Household delivery: a payload for the user's Gmail connector. Scripts never send email.

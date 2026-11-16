@@ -5,24 +5,48 @@
 import { checkAdapter, currentRuntime, hasCapability } from '../../runtime/contract.mjs';
 import { bytesFromPreview, renderPreview } from './preview.mjs';
 import { reportProblems, serialize } from './report.mjs';
-import { deleteDraft, saveToOutbox } from './store.mjs';
+import { deleteDraft, deletePendingContact, savePendingContact, saveReceipt, saveToOutbox } from './store.mjs';
 
 const NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 export const SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
 export const canSend = (adapter) => hasCapability(adapter, 'submit');
 
-export function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date() }) {
+export async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date() }) {
   checkAdapter(adapter);
   if (nonce !== draft.report.submission_nonce) {
     return { status: 'refused', reason: 'the report changed since that preview; show the current preview and ask again' };
+  }
+  if (hasCapability(adapter, 'contact') && !draft.contactChoice) {
+    return { status: 'contact-question', reason: 'ask whether the reporter wants to provide contact or decline' };
   }
   const bytes = bytesFromPreview(renderPreview(draft));
   if (bytes !== serialize(draft.report)) throw new Error('the preview does not reproduce the report; nothing was sent');
   const problems = reportProblems(draft.report);
   if (problems.length) return { status: 'invalid-input', problems };
-  // No v1 adapter declares submit.*; the Muse connector transport replaces this branch (#80).
-  if (canSend(adapter)) throw new Error('submit transport not implemented');
+  if (canSend(adapter)) {
+    const submission = await adapter.feedback.submit(Buffer.from(bytes));
+    if (!submission.ok) return { status: 'failed', reason: submission.reason };
+    const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
+    if (draft.contactChoice) {
+      savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });
+      deleteDraft(root);
+      const contact = await adapter.feedback.submitContact(receipt, draft.contactChoice);
+      if (!contact.ok) {
+        return { status: 'contact-pending', report_id: receipt.report_id, reason: contact.reason };
+      }
+      deletePendingContact(root, receipt.report_id);
+    }
+    saveReceipt(root, receipt, { now });
+    deleteDraft(root);
+    return { status: 'sent', report_id: receipt.report_id };
+  }
   const saved = saveToOutbox(root, bytes, { nonce, now });
   deleteDraft(root);
-  return { status: 'saved', path: saved, bytes: Buffer.byteLength(bytes), notice: NOT_SENT };
+  return {
+    status: 'saved',
+    path: saved,
+    bytes: Buffer.byteLength(bytes),
+    notice: NOT_SENT,
+    ...(draft.contactChoice && { contact_notice: 'Contact was not sent because this runtime cannot send feedback.' }),
+  };
 }

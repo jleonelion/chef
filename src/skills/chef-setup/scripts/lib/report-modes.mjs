@@ -9,12 +9,13 @@ import { buildBundle, installedSkills, selectAround, selectEvents } from '../../
 import { renderPreview } from '../../../../lib/feedback/preview.mjs';
 import { dropsFocus, editItem, newDraft, removeItem, serialize, SKILL_ID, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
-import { deleteDraft, readDraft, saveDraft } from '../../../../lib/feedback/store.mjs';
+import { deleteDraft, deletePendingContact, readDraft, readPendingContact, saveDraft, saveReceipt } from '../../../../lib/feedback/store.mjs';
 import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
 
 const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'contact'];
 export const REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce', 'focus', 'skill', 'code'].map((flag) => [flag, { type: 'string' }])),
+  ...Object.fromEntries([...STRING_FLAGS, 'skill-ids', 'diagnostics', 'item', 'value', 'nonce', 'focus', 'skill', 'code', 'report-id'].map((flag) => [flag, { type: 'string' }])),
+  declined: { type: 'boolean' },
   raw: { type: 'boolean' },
 };
 
@@ -23,17 +24,22 @@ const invalid = (root, error) => ({ status: 'invalid-input', data_root: root, pr
 
 const DIAGNOSTICS = ['on', 'off', 'wide'];
 const CONTACT_DROPPED = "This runtime can't take contact details, so Chef dropped the contact you gave; it is not in the report.";
+const CONTACT_MAX_CHARS = 500;
 const canTakeContact = (adapter) => adapter.feedback.capabilities().includes('contact.opaque');
 
 function shown(root, draft, adapter) {
   const sendable = canSend(adapter);
+  const canAskContact = canTakeContact(adapter);
+  if (canAskContact && !draft.contactChoice) {
+    return { status: 'contact-question', data_root: root, can_ask_contact: true };
+  }
   return {
     status: 'draft',
     data_root: root,
     preview: renderPreview(draft),
     submission_nonce: draft.report.submission_nonce,
     can_send: sendable,
-    can_ask_contact: canTakeContact(adapter),
+    can_ask_contact: canAskContact,
     ...(sendable ? {} : { send_notice: SAVE_ONLY }),
   };
 }
@@ -101,18 +107,36 @@ function userFields(root, values, context) {
 function draftMode(root, values, context) {
   try {
     const { notes, ...fields } = values.focus === undefined ? userFields(root, values, context) : postErrorFields(root, values, context);
-    // No v1 adapter declares contact.opaque; its transport lands with the Muse submit path (#80).
-    if (values.contact !== undefined && canTakeContact(context.adapter)) throw new Error('contact transport not implemented');
+    if (values.contact !== undefined && values.declined) throw new Error('contact: choose a value or decline, not both');
+    const offersContact = canTakeContact(context.adapter);
+    if (offersContact && values.contact !== undefined) {
+      if (
+        typeof values.contact !== 'string' ||
+        !values.contact.trim() ||
+        [...values.contact].length > CONTACT_MAX_CHARS ||
+        /[\u0000-\u001f\u007f\u2028\u2029]/.test(values.contact)
+      ) {
+        throw new Error(`contact: use plain text of at most ${CONTACT_MAX_CHARS} characters`);
+      }
+    }
     const draft = newDraft(fields);
     if (notes) draft.notes = notes;
+    if (offersContact) {
+      if (values.contact !== undefined) draft.contactChoice = { contact: values.contact };
+      else if (values.declined) draft.contactChoice = { declined: true };
+    }
     saveDraft(root, draft);
-    return { ...shown(root, draft, context.adapter), ...(values.contact !== undefined && { contact_notice: CONTACT_DROPPED }) };
+    return {
+      ...shown(root, draft, context.adapter),
+      ...(!offersContact && values.contact !== undefined && { contact_notice: CONTACT_DROPPED }),
+    };
   } catch (error) {
     return invalid(root, error);
   }
 }
 
 function previewMode(root, draft, values, { adapter }) {
+  if (canTakeContact(adapter) && !draft.contactChoice) return shown(root, draft, adapter);
   return values.raw ? { status: 'draft', data_root: root, raw: serialize(draft.report) } : shown(root, draft, adapter);
 }
 
@@ -145,7 +169,27 @@ function declineMode(root, values) {
   return { status: 'declined', data_root: root, skill_id: values.skill, error_code: values.code };
 }
 
-const sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
+const sendMode = async (root, draft, values, { adapter }) => ({
+  data_root: root,
+  ...await sendReport(root, draft, { nonce: values.nonce, adapter }),
+});
+
+async function retryContactMode(root, values, { adapter }) {
+  try {
+    const pending = readPendingContact(root, values['report-id']);
+    if (!pending) return { status: 'refused', data_root: root, reason: 'there is no pending contact request for that report' };
+    const result = await adapter.feedback.submitContact(
+      { report_id: pending.report_id, receipt_secret: pending.receipt_secret },
+      pending.choice,
+    );
+    if (!result.ok) return { status: 'contact-pending', data_root: root, report_id: pending.report_id, reason: result.reason };
+    saveReceipt(root, { report_id: pending.report_id, receipt_secret: pending.receipt_secret });
+    deletePendingContact(root, pending.report_id);
+    return { status: 'contact-updated', data_root: root, report_id: pending.report_id };
+  } catch (error) {
+    return invalid(root, error);
+  }
+}
 
 const MODES = {
   'report-draft': draftMode,
@@ -153,12 +197,13 @@ const MODES = {
   'report-edit': withDraft(changeMode(editItem)),
   'report-remove': withDraft(removeMode),
   'report-send': withDraft(sendMode),
+  'report-contact-retry': retryContactMode,
   'report-offer-decline': declineMode,
   'report-discard': (root) => ({ status: deleteDraft(root) ? 'discarded' : 'empty', data_root: root }),
 };
 
 // { mode: (root, values) => result } for setup.mjs, bound to this runtime and skills folder.
-export function reportModes({ skillsDir }) {
-  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir });
+export function reportModes({ skillsDir, adapter }) {
+  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(adapter ?? currentRuntime()), skillsDir });
   return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, bound(mode)]));
 }

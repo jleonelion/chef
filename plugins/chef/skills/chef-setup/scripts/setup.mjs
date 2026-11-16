@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
-// node_modules/yaml/dist/nodes/identity.js
+// ../../node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS((exports) => {
   var ALIAS = Symbol.for("yaml.alias");
   var DOC = Symbol.for("yaml.document");
@@ -57,7 +57,7 @@ var require_identity = __commonJS((exports) => {
   exports.isSeq = isSeq;
 });
 
-// node_modules/yaml/dist/visit.js
+// ../../node_modules/yaml/dist/visit.js
 var require_visit = __commonJS((exports) => {
   var identity = require_identity();
   var BREAK = Symbol("break visit");
@@ -212,7 +212,7 @@ var require_visit = __commonJS((exports) => {
   exports.visitAsync = visitAsync;
 });
 
-// node_modules/yaml/dist/doc/directives.js
+// ../../node_modules/yaml/dist/doc/directives.js
 var require_directives = __commonJS((exports) => {
   var identity = require_identity();
   var visit = require_visit();
@@ -364,7 +364,7 @@ var require_directives = __commonJS((exports) => {
   exports.Directives = Directives;
 });
 
-// node_modules/yaml/dist/doc/anchors.js
+// ../../node_modules/yaml/dist/doc/anchors.js
 var require_anchors = __commonJS((exports) => {
   var identity = require_identity();
   var visit = require_visit();
@@ -426,7 +426,7 @@ var require_anchors = __commonJS((exports) => {
   exports.findNewAnchor = findNewAnchor;
 });
 
-// node_modules/yaml/dist/doc/applyReviver.js
+// ../../node_modules/yaml/dist/doc/applyReviver.js
 var require_applyReviver = __commonJS((exports) => {
   function applyReviver(reviver, obj, key, val) {
     if (val && typeof val === "object") {
@@ -473,7 +473,7 @@ var require_applyReviver = __commonJS((exports) => {
   exports.applyReviver = applyReviver;
 });
 
-// node_modules/yaml/dist/nodes/toJS.js
+// ../../node_modules/yaml/dist/nodes/toJS.js
 var require_toJS = __commonJS((exports) => {
   var identity = require_identity();
   function toJS(value, arg, ctx) {
@@ -500,7 +500,7 @@ var require_toJS = __commonJS((exports) => {
   exports.toJS = toJS;
 });
 
-// node_modules/yaml/dist/nodes/Node.js
+// ../../node_modules/yaml/dist/nodes/Node.js
 var require_Node = __commonJS((exports) => {
   var applyReviver = require_applyReviver();
   var identity = require_identity();
@@ -537,7 +537,7 @@ var require_Node = __commonJS((exports) => {
   exports.NodeBase = NodeBase;
 });
 
-// node_modules/yaml/dist/nodes/Alias.js
+// ../../node_modules/yaml/dist/nodes/Alias.js
 var require_Alias = __commonJS((exports) => {
   var anchors = require_anchors();
   var visit = require_visit();
@@ -649,7 +649,7 @@ var require_Alias = __commonJS((exports) => {
   exports.Alias = Alias;
 });
 
-// node_modules/yaml/dist/nodes/Scalar.js
+// ../../node_modules/yaml/dist/nodes/Scalar.js
 var require_Scalar = __commonJS((exports) => {
   var identity = require_identity();
   var Node = require_Node();
@@ -677,7 +677,7 @@ var require_Scalar = __commonJS((exports) => {
   exports.isScalarValue = isScalarValue;
 });
 
-// node_modules/yaml/dist/doc/createNode.js
+// ../../node_modules/yaml/dist/doc/createNode.js
 var require_createNode = __commonJS((exports) => {
   var Alias = require_Alias();
   var identity = require_identity();
@@ -749,7 +749,7 @@ var require_createNode = __commonJS((exports) => {
   exports.createNode = createNode;
 });
 
-// node_modules/yaml/dist/nodes/Collection.js
+// ../../node_modules/yaml/dist/nodes/Collection.js
 var require_Collection = __commonJS((exports) => {
   var createNode = require_createNode();
   var identity = require_identity();
@@ -864,7 +864,7 @@ var require_Collection = __commonJS((exports) => {
   exports.isEmptyPath = isEmptyPath;
 });
 
-// node_modules/yaml/dist/stringify/stringifyComment.js
+// ../../node_modules/yaml/dist/stringify/stringifyComment.js
 var require_stringifyComment = __commonJS((exports) => {
   var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
   function indentComment(comment, indent) {
@@ -881,7 +881,7 @@ var require_stringifyComment = __commonJS((exports) => {
   exports.stringifyComment = stringifyComment;
 });
 
-// node_modules/yaml/dist/stringify/foldFlowLines.js
+// ../../node_modules/yaml/dist/stringify/foldFlowLines.js
 var require_foldFlowLines = __commonJS((exports) => {
   var FOLD_FLOW = "flow";
   var FOLD_BLOCK = "block";
@@ -1018,7 +1018,7 @@ ${indent}${text.slice(fold + 1, end2)}`;
   exports.foldFlowLines = foldFlowLines;
 });
 
-// node_modules/yaml/dist/stringify/stringifyString.js
+// ../../node_modules/yaml/dist/stringify/stringifyString.js
 var require_stringifyString = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var foldFlowLines = require_foldFlowLines();
@@ -1316,7 +1316,7 @@ ${indent}`);
   exports.stringifyString = stringifyString;
 });
 
-// node_modules/yaml/dist/stringify/stringify.js
+// ../../node_modules/yaml/dist/stringify/stringify.js
 var require_stringify = __commonJS((exports) => {
   var anchors = require_anchors();
   var identity = require_identity();
@@ -1437,7 +1437,7 @@ ${ctx.indent}${str}`;
   exports.stringify = stringify;
 });
 
-// node_modules/yaml/dist/stringify/stringifyPair.js
+// ../../node_modules/yaml/dist/stringify/stringifyPair.js
 var require_stringifyPair = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -1573,7 +1573,7 @@ ${ctx.indent}`;
   exports.stringifyPair = stringifyPair;
 });
 
-// node_modules/yaml/dist/log.js
+// ../../node_modules/yaml/dist/log.js
 var require_log = __commonJS((exports) => {
   var node_process = __require("process");
   function debug(logLevel, ...messages) {
@@ -1592,7 +1592,7 @@ var require_log = __commonJS((exports) => {
   exports.warn = warn2;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/merge.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/merge.js
 var require_merge = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -1649,7 +1649,7 @@ var require_merge = __commonJS((exports) => {
   exports.merge = merge;
 });
 
-// node_modules/yaml/dist/nodes/addPairToJSMap.js
+// ../../node_modules/yaml/dist/nodes/addPairToJSMap.js
 var require_addPairToJSMap = __commonJS((exports) => {
   var log = require_log();
   var merge = require_merge();
@@ -1710,7 +1710,7 @@ var require_addPairToJSMap = __commonJS((exports) => {
   exports.addPairToJSMap = addPairToJSMap;
 });
 
-// node_modules/yaml/dist/nodes/Pair.js
+// ../../node_modules/yaml/dist/nodes/Pair.js
 var require_Pair = __commonJS((exports) => {
   var createNode = require_createNode();
   var stringifyPair = require_stringifyPair();
@@ -1748,7 +1748,7 @@ var require_Pair = __commonJS((exports) => {
   exports.createPair = createPair;
 });
 
-// node_modules/yaml/dist/stringify/stringifyCollection.js
+// ../../node_modules/yaml/dist/stringify/stringifyCollection.js
 var require_stringifyCollection = __commonJS((exports) => {
   var identity = require_identity();
   var stringify = require_stringify();
@@ -1900,7 +1900,7 @@ ${indent}${end}`;
   exports.stringifyCollection = stringifyCollection;
 });
 
-// node_modules/yaml/dist/nodes/YAMLMap.js
+// ../../node_modules/yaml/dist/nodes/YAMLMap.js
 var require_YAMLMap = __commonJS((exports) => {
   var stringifyCollection = require_stringifyCollection();
   var addPairToJSMap = require_addPairToJSMap();
@@ -2027,7 +2027,7 @@ var require_YAMLMap = __commonJS((exports) => {
   exports.findPair = findPair;
 });
 
-// node_modules/yaml/dist/schema/common/map.js
+// ../../node_modules/yaml/dist/schema/common/map.js
 var require_map = __commonJS((exports) => {
   var identity = require_identity();
   var YAMLMap = require_YAMLMap();
@@ -2046,7 +2046,7 @@ var require_map = __commonJS((exports) => {
   exports.map = map;
 });
 
-// node_modules/yaml/dist/nodes/YAMLSeq.js
+// ../../node_modules/yaml/dist/nodes/YAMLSeq.js
 var require_YAMLSeq = __commonJS((exports) => {
   var createNode = require_createNode();
   var stringifyCollection = require_stringifyCollection();
@@ -2139,7 +2139,7 @@ var require_YAMLSeq = __commonJS((exports) => {
   exports.YAMLSeq = YAMLSeq;
 });
 
-// node_modules/yaml/dist/schema/common/seq.js
+// ../../node_modules/yaml/dist/schema/common/seq.js
 var require_seq = __commonJS((exports) => {
   var identity = require_identity();
   var YAMLSeq = require_YAMLSeq();
@@ -2158,7 +2158,7 @@ var require_seq = __commonJS((exports) => {
   exports.seq = seq;
 });
 
-// node_modules/yaml/dist/schema/common/string.js
+// ../../node_modules/yaml/dist/schema/common/string.js
 var require_string = __commonJS((exports) => {
   var stringifyString = require_stringifyString();
   var string = {
@@ -2174,7 +2174,7 @@ var require_string = __commonJS((exports) => {
   exports.string = string;
 });
 
-// node_modules/yaml/dist/schema/common/null.js
+// ../../node_modules/yaml/dist/schema/common/null.js
 var require_null = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var nullTag = {
@@ -2189,7 +2189,7 @@ var require_null = __commonJS((exports) => {
   exports.nullTag = nullTag;
 });
 
-// node_modules/yaml/dist/schema/core/bool.js
+// ../../node_modules/yaml/dist/schema/core/bool.js
 var require_bool = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var boolTag = {
@@ -2210,7 +2210,7 @@ var require_bool = __commonJS((exports) => {
   exports.boolTag = boolTag;
 });
 
-// node_modules/yaml/dist/stringify/stringifyNumber.js
+// ../../node_modules/yaml/dist/stringify/stringifyNumber.js
 var require_stringifyNumber = __commonJS((exports) => {
   function stringifyNumber({ format, minFractionDigits, tag, value }) {
     if (typeof value === "bigint")
@@ -2234,7 +2234,7 @@ var require_stringifyNumber = __commonJS((exports) => {
   exports.stringifyNumber = stringifyNumber;
 });
 
-// node_modules/yaml/dist/schema/core/float.js
+// ../../node_modules/yaml/dist/schema/core/float.js
 var require_float = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var stringifyNumber = require_stringifyNumber();
@@ -2277,7 +2277,7 @@ var require_float = __commonJS((exports) => {
   exports.floatNaN = floatNaN;
 });
 
-// node_modules/yaml/dist/schema/core/int.js
+// ../../node_modules/yaml/dist/schema/core/int.js
 var require_int = __commonJS((exports) => {
   var stringifyNumber = require_stringifyNumber();
   var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2319,7 +2319,7 @@ var require_int = __commonJS((exports) => {
   exports.intOct = intOct;
 });
 
-// node_modules/yaml/dist/schema/core/schema.js
+// ../../node_modules/yaml/dist/schema/core/schema.js
 var require_schema = __commonJS((exports) => {
   var map = require_map();
   var _null = require_null();
@@ -2344,7 +2344,7 @@ var require_schema = __commonJS((exports) => {
   exports.schema = schema;
 });
 
-// node_modules/yaml/dist/schema/json/schema.js
+// ../../node_modules/yaml/dist/schema/json/schema.js
 var require_schema2 = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var map = require_map();
@@ -2408,7 +2408,7 @@ var require_schema2 = __commonJS((exports) => {
   exports.schema = schema;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/binary.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/binary.js
 var require_binary = __commonJS((exports) => {
   var node_buffer = __require("buffer");
   var Scalar = require_Scalar();
@@ -2463,7 +2463,7 @@ var require_binary = __commonJS((exports) => {
   exports.binary = binary;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/pairs.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js
 var require_pairs = __commonJS((exports) => {
   var identity = require_identity();
   var Pair = require_Pair();
@@ -2538,7 +2538,7 @@ ${cn.comment}` : item.comment;
   exports.resolvePairs = resolvePairs;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/omap.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/omap.js
 var require_omap = __commonJS((exports) => {
   var identity = require_identity();
   var toJS = require_toJS();
@@ -2610,7 +2610,7 @@ var require_omap = __commonJS((exports) => {
   exports.omap = omap;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/bool.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/bool.js
 var require_bool2 = __commonJS((exports) => {
   var Scalar = require_Scalar();
   function boolStringify({ value, source }, ctx) {
@@ -2639,7 +2639,7 @@ var require_bool2 = __commonJS((exports) => {
   exports.trueTag = trueTag;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/float.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/float.js
 var require_float2 = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var stringifyNumber = require_stringifyNumber();
@@ -2685,7 +2685,7 @@ var require_float2 = __commonJS((exports) => {
   exports.floatNaN = floatNaN;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/int.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/int.js
 var require_int2 = __commonJS((exports) => {
   var stringifyNumber = require_stringifyNumber();
   var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2761,7 +2761,7 @@ var require_int2 = __commonJS((exports) => {
   exports.intOct = intOct;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/set.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/set.js
 var require_set = __commonJS((exports) => {
   var identity = require_identity();
   var Pair = require_Pair();
@@ -2844,7 +2844,7 @@ var require_set = __commonJS((exports) => {
   exports.set = set;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
 var require_timestamp = __commonJS((exports) => {
   var stringifyNumber = require_stringifyNumber();
   function parseSexagesimal(str, asBigInt) {
@@ -2926,7 +2926,7 @@ var require_timestamp = __commonJS((exports) => {
   exports.timestamp = timestamp;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/schema.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/schema.js
 var require_schema3 = __commonJS((exports) => {
   var map = require_map();
   var _null = require_null();
@@ -2967,7 +2967,7 @@ var require_schema3 = __commonJS((exports) => {
   exports.schema = schema;
 });
 
-// node_modules/yaml/dist/schema/tags.js
+// ../../node_modules/yaml/dist/schema/tags.js
 var require_tags = __commonJS((exports) => {
   var map = require_map();
   var _null = require_null();
@@ -3058,7 +3058,7 @@ var require_tags = __commonJS((exports) => {
   exports.getTags = getTags;
 });
 
-// node_modules/yaml/dist/schema/Schema.js
+// ../../node_modules/yaml/dist/schema/Schema.js
 var require_Schema = __commonJS((exports) => {
   var identity = require_identity();
   var map = require_map();
@@ -3088,7 +3088,7 @@ var require_Schema = __commonJS((exports) => {
   exports.Schema = Schema;
 });
 
-// node_modules/yaml/dist/stringify/stringifyDocument.js
+// ../../node_modules/yaml/dist/stringify/stringifyDocument.js
 var require_stringifyDocument = __commonJS((exports) => {
   var identity = require_identity();
   var stringify = require_stringify();
@@ -3168,7 +3168,7 @@ var require_stringifyDocument = __commonJS((exports) => {
   exports.stringifyDocument = stringifyDocument;
 });
 
-// node_modules/yaml/dist/doc/Document.js
+// ../../node_modules/yaml/dist/doc/Document.js
 var require_Document = __commonJS((exports) => {
   var Alias = require_Alias();
   var Collection = require_Collection();
@@ -3403,7 +3403,7 @@ var require_Document = __commonJS((exports) => {
   exports.Document = Document;
 });
 
-// node_modules/yaml/dist/errors.js
+// ../../node_modules/yaml/dist/errors.js
 var require_errors = __commonJS((exports) => {
   class YAMLError extends Error {
     constructor(name, pos, code, message) {
@@ -3468,7 +3468,7 @@ ${pointer}
   exports.prettifyError = prettifyError;
 });
 
-// node_modules/yaml/dist/compose/resolve-props.js
+// ../../node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS((exports) => {
   function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
     let spaceBefore = false;
@@ -3598,7 +3598,7 @@ var require_resolve_props = __commonJS((exports) => {
   exports.resolveProps = resolveProps;
 });
 
-// node_modules/yaml/dist/compose/util-contains-newline.js
+// ../../node_modules/yaml/dist/compose/util-contains-newline.js
 var require_util_contains_newline = __commonJS((exports) => {
   function containsNewline(key) {
     if (!key)
@@ -3638,7 +3638,7 @@ var require_util_contains_newline = __commonJS((exports) => {
   exports.containsNewline = containsNewline;
 });
 
-// node_modules/yaml/dist/compose/util-flow-indent-check.js
+// ../../node_modules/yaml/dist/compose/util-flow-indent-check.js
 var require_util_flow_indent_check = __commonJS((exports) => {
   var utilContainsNewline = require_util_contains_newline();
   function flowIndentCheck(indent, fc, onError) {
@@ -3653,7 +3653,7 @@ var require_util_flow_indent_check = __commonJS((exports) => {
   exports.flowIndentCheck = flowIndentCheck;
 });
 
-// node_modules/yaml/dist/compose/util-map-includes.js
+// ../../node_modules/yaml/dist/compose/util-map-includes.js
 var require_util_map_includes = __commonJS((exports) => {
   var identity = require_identity();
   function mapIncludes(ctx, items, search) {
@@ -3666,7 +3666,7 @@ var require_util_map_includes = __commonJS((exports) => {
   exports.mapIncludes = mapIncludes;
 });
 
-// node_modules/yaml/dist/compose/resolve-block-map.js
+// ../../node_modules/yaml/dist/compose/resolve-block-map.js
 var require_resolve_block_map = __commonJS((exports) => {
   var Pair = require_Pair();
   var YAMLMap = require_YAMLMap();
@@ -3773,7 +3773,7 @@ var require_resolve_block_map = __commonJS((exports) => {
   exports.resolveBlockMap = resolveBlockMap;
 });
 
-// node_modules/yaml/dist/compose/resolve-block-seq.js
+// ../../node_modules/yaml/dist/compose/resolve-block-seq.js
 var require_resolve_block_seq = __commonJS((exports) => {
   var YAMLSeq = require_YAMLSeq();
   var resolveProps = require_resolve_props();
@@ -3821,7 +3821,7 @@ var require_resolve_block_seq = __commonJS((exports) => {
   exports.resolveBlockSeq = resolveBlockSeq;
 });
 
-// node_modules/yaml/dist/compose/resolve-end.js
+// ../../node_modules/yaml/dist/compose/resolve-end.js
 var require_resolve_end = __commonJS((exports) => {
   function resolveEnd(end, offset, reqSpace, onError) {
     let comment = "";
@@ -3861,7 +3861,7 @@ var require_resolve_end = __commonJS((exports) => {
   exports.resolveEnd = resolveEnd;
 });
 
-// node_modules/yaml/dist/compose/resolve-flow-collection.js
+// ../../node_modules/yaml/dist/compose/resolve-flow-collection.js
 var require_resolve_flow_collection = __commonJS((exports) => {
   var identity = require_identity();
   var Pair = require_Pair();
@@ -4052,7 +4052,7 @@ var require_resolve_flow_collection = __commonJS((exports) => {
   exports.resolveFlowCollection = resolveFlowCollection;
 });
 
-// node_modules/yaml/dist/compose/compose-collection.js
+// ../../node_modules/yaml/dist/compose/compose-collection.js
 var require_compose_collection = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -4114,7 +4114,7 @@ var require_compose_collection = __commonJS((exports) => {
   exports.composeCollection = composeCollection;
 });
 
-// node_modules/yaml/dist/compose/resolve-block-scalar.js
+// ../../node_modules/yaml/dist/compose/resolve-block-scalar.js
 var require_resolve_block_scalar = __commonJS((exports) => {
   var Scalar = require_Scalar();
   function resolveBlockScalar(ctx, scalar, onError) {
@@ -4307,7 +4307,7 @@ var require_resolve_block_scalar = __commonJS((exports) => {
   exports.resolveBlockScalar = resolveBlockScalar;
 });
 
-// node_modules/yaml/dist/compose/resolve-flow-scalar.js
+// ../../node_modules/yaml/dist/compose/resolve-flow-scalar.js
 var require_resolve_flow_scalar = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var resolveEnd = require_resolve_end();
@@ -4523,7 +4523,7 @@ var require_resolve_flow_scalar = __commonJS((exports) => {
   exports.resolveFlowScalar = resolveFlowScalar;
 });
 
-// node_modules/yaml/dist/compose/compose-scalar.js
+// ../../node_modules/yaml/dist/compose/compose-scalar.js
 var require_compose_scalar = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -4601,7 +4601,7 @@ var require_compose_scalar = __commonJS((exports) => {
   exports.composeScalar = composeScalar;
 });
 
-// node_modules/yaml/dist/compose/util-empty-scalar-position.js
+// ../../node_modules/yaml/dist/compose/util-empty-scalar-position.js
 var require_util_empty_scalar_position = __commonJS((exports) => {
   function emptyScalarPosition(offset, before, pos) {
     if (before) {
@@ -4628,7 +4628,7 @@ var require_util_empty_scalar_position = __commonJS((exports) => {
   exports.emptyScalarPosition = emptyScalarPosition;
 });
 
-// node_modules/yaml/dist/compose/compose-node.js
+// ../../node_modules/yaml/dist/compose/compose-node.js
 var require_compose_node = __commonJS((exports) => {
   var Alias = require_Alias();
   var identity = require_identity();
@@ -4731,7 +4731,7 @@ var require_compose_node = __commonJS((exports) => {
   exports.composeNode = composeNode;
 });
 
-// node_modules/yaml/dist/compose/compose-doc.js
+// ../../node_modules/yaml/dist/compose/compose-doc.js
 var require_compose_doc = __commonJS((exports) => {
   var Document = require_Document();
   var composeNode = require_compose_node();
@@ -4771,7 +4771,7 @@ var require_compose_doc = __commonJS((exports) => {
   exports.composeDoc = composeDoc;
 });
 
-// node_modules/yaml/dist/compose/composer.js
+// ../../node_modules/yaml/dist/compose/composer.js
 var require_composer = __commonJS((exports) => {
   var node_process = __require("process");
   var directives = require_directives();
@@ -4962,7 +4962,7 @@ ${end.comment}` : end.comment;
   exports.Composer = Composer;
 });
 
-// node_modules/yaml/dist/parse/cst-scalar.js
+// ../../node_modules/yaml/dist/parse/cst-scalar.js
 var require_cst_scalar = __commonJS((exports) => {
   var resolveBlockScalar = require_resolve_block_scalar();
   var resolveFlowScalar = require_resolve_flow_scalar();
@@ -5152,7 +5152,7 @@ var require_cst_scalar = __commonJS((exports) => {
   exports.setScalarValue = setScalarValue;
 });
 
-// node_modules/yaml/dist/parse/cst-stringify.js
+// ../../node_modules/yaml/dist/parse/cst-stringify.js
 var require_cst_stringify = __commonJS((exports) => {
   var stringify = (cst) => ("type" in cst) ? stringifyToken(cst) : stringifyItem(cst);
   function stringifyToken(token) {
@@ -5210,7 +5210,7 @@ var require_cst_stringify = __commonJS((exports) => {
   exports.stringify = stringify;
 });
 
-// node_modules/yaml/dist/parse/cst-visit.js
+// ../../node_modules/yaml/dist/parse/cst-visit.js
 var require_cst_visit = __commonJS((exports) => {
   var BREAK = Symbol("break visit");
   var SKIP = Symbol("skip children");
@@ -5269,7 +5269,7 @@ var require_cst_visit = __commonJS((exports) => {
   exports.visit = visit;
 });
 
-// node_modules/yaml/dist/parse/cst.js
+// ../../node_modules/yaml/dist/parse/cst.js
 var require_cst = __commonJS((exports) => {
   var cstScalar = require_cst_scalar();
   var cstStringify = require_cst_stringify();
@@ -5370,7 +5370,7 @@ var require_cst = __commonJS((exports) => {
   exports.tokenType = tokenType;
 });
 
-// node_modules/yaml/dist/parse/lexer.js
+// ../../node_modules/yaml/dist/parse/lexer.js
 var require_lexer = __commonJS((exports) => {
   var cst = require_cst();
   function isEmpty(ch) {
@@ -5967,7 +5967,7 @@ var require_lexer = __commonJS((exports) => {
   exports.Lexer = Lexer;
 });
 
-// node_modules/yaml/dist/parse/line-counter.js
+// ../../node_modules/yaml/dist/parse/line-counter.js
 var require_line_counter = __commonJS((exports) => {
   class LineCounter {
     constructor() {
@@ -5995,7 +5995,7 @@ var require_line_counter = __commonJS((exports) => {
   exports.LineCounter = LineCounter;
 });
 
-// node_modules/yaml/dist/parse/parser.js
+// ../../node_modules/yaml/dist/parse/parser.js
 var require_parser = __commonJS((exports) => {
   var node_process = __require("process");
   var cst = require_cst();
@@ -6851,7 +6851,7 @@ var require_parser = __commonJS((exports) => {
   exports.Parser = Parser;
 });
 
-// node_modules/yaml/dist/public-api.js
+// ../../node_modules/yaml/dist/public-api.js
 var require_public_api = __commonJS((exports) => {
   var composer = require_composer();
   var Document = require_Document();
@@ -7009,30 +7009,33 @@ var recurring_tasks_default = [
 var RECURRING_TASKS = recurring_tasks_default;
 var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
-// src/runtime/generic.mjs
-var unsupported = async () => ({ ok: false, reason: "unsupported" });
-var generic = {
-  name: "unknown",
-  adapterVersion: 1,
-  adapterContractVersion: 1,
-  feedback: {
-    capabilities: () => [],
-    submit: unsupported
-  }
-};
-
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
 var AUTHDC = "/opt/hatch/bin/authdc";
 var PROVIDERS = {
-  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" },
+  "chef-feedback": {
+    connector: "custom.chef-feedback",
+    placement: { custom_header: "X-Chef-Intake-Key" }
+  }
 };
+var FEEDBACK_URL = "https://chef-feedback-intake.vercel.app/v1/reports";
 var ATTACHMENT_INSTRUCTION = "Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.";
 var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
 function placementOf(text) {
+  if (typeof text === "object" && text !== null && typeof text.custom_header === "string") {
+    return { in: "header", name: text.custom_header };
+  }
+  if (typeof text !== "string")
+    return null;
   const [kind, name] = text.split(":");
   return { in: kind === "query_param" ? "query" : kind, name };
+}
+function placementMatches(actual, expected) {
+  if (typeof expected === "string")
+    return actual === expected;
+  return typeof actual === "object" && actual !== null && Object.keys(actual).length === 1 && actual.custom_header === expected.custom_header;
 }
 function fromConnector(spec, run) {
   let entry;
@@ -7043,9 +7046,25 @@ function fromConnector(spec, run) {
   }
   if (typeof entry?.surrogate !== "string" || !entry.surrogate)
     return { ok: false, reason: "not-connected" };
-  if (entry.placement !== spec.placement)
+  if (!placementMatches(entry.placement, spec.placement))
     return { ok: false, reason: "wrong-placement" };
-  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+  const placement = placementOf(entry.placement);
+  if (!placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement, source: "connector" };
+}
+var isReceipt = (value) => typeof value === "object" && value !== null && typeof value.report_id === "string" && /^[0-9a-f-]{36}$/i.test(value.report_id) && typeof value.receipt_secret === "string" && value.receipt_secret.length >= 32;
+function isNetworkError(error) {
+  return error instanceof TypeError || error instanceof Error && error.name === "AbortError";
+}
+async function feedbackRequest(url, init, fetchImpl) {
+  try {
+    return await fetchImpl(url, { ...init, redirect: "error" });
+  } catch (error) {
+    if (isNetworkError(error))
+      return null;
+    throw error;
+  }
 }
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
@@ -7082,8 +7101,50 @@ var muse = {
   adapterVersion: 1,
   adapterContractVersion: 1,
   feedback: {
-    capabilities: () => [],
-    submit: unsupported
+    capabilities({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC))
+        return [];
+      const credential = fromConnector(PROVIDERS["chef-feedback"], run);
+      return credential.ok ? ["submit.connector", "contact.opaque"] : [];
+    },
+    async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: "unsupported" };
+      const response = await feedbackRequest(FEEDBACK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [credential.placement.name]: credential.value },
+        body: bytes
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status !== 201) {
+        const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
+        return { ok: false, reason };
+      }
+      let receipt;
+      try {
+        receipt = await response.json();
+      } catch {
+        return { ok: false, reason: "invalid-receipt" };
+      }
+      return isReceipt(receipt) ? { ok: true, ...receipt } : { ok: false, reason: "invalid-receipt" };
+    },
+    async submitContact(receipt, choice, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(`${FEEDBACK_URL}/${receipt.report_id}/contact`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` },
+        body: JSON.stringify(choice)
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status === 204)
+        return { ok: true };
+      return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
+    }
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
@@ -7211,9 +7272,9 @@ var facts_v1_default = {
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -7246,6 +7307,18 @@ var capabilities_v1_default = {
     "contact.opaque": { description: "Offer one optional reply channel that feedback intake stores apart from the report." }
   },
   evidence_kinds: {}
+};
+
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
 };
 
 // src/runtime/contract.mjs
@@ -7737,7 +7810,7 @@ function dietaryFlags(lines) {
   return DIETARY_FLAGS.filter((flag) => lower.some((line) => lineHas(RULES[flag], line)));
 }
 
-// node_modules/yaml/dist/index.js
+// ../../node_modules/yaml/dist/index.js
 var composer = require_composer();
 var Document = require_Document();
 var Schema = require_Schema();
@@ -9054,7 +9127,7 @@ function fallbackNote(report, fallback) {
   const taken = runs === 1 ? "this is the last run" : `these are the last ${runs} runs`;
   return [`Diagnostics: no ${missing} in the last hour, so ${taken} of any skill. Ask to drop them if they don't help.`];
 }
-function renderPreview({ report, numbers, notes = {} }) {
+function renderPreview({ report, numbers, notes = {}, contactChoice }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -9065,7 +9138,8 @@ function renderPreview({ report, numbers, notes = {} }) {
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
     ...fallbackNote(report, notes.diagnostics_fallback),
-    ...scanNotes(numbers, report)
+    ...scanNotes(numbers, report),
+    ...contactChoice ? [`Contact: ${contactChoice.contact ?? "declined"}`] : []
   ].join(`
 `);
 }
@@ -9414,9 +9488,11 @@ import fs19 from "node:fs";
 import path18 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
+var RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
+var CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 var expired = (file, now) => now - fs19.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
-function pruneOutbox(root, now) {
-  const dir = path18.join(root, OUTBOX_DIR);
+function pruneFiles(root, relativeDir, now) {
+  const dir = path18.join(root, relativeDir);
   if (!fs19.existsSync(dir))
     return;
   for (const name of fs19.readdirSync(dir)) {
@@ -9424,6 +9500,14 @@ function pruneOutbox(root, now) {
     if (expired(file, now))
       fs19.rmSync(file);
   }
+}
+function pruneOutbox(root, now) {
+  for (const dir of [OUTBOX_DIR, RECEIPTS_DIR, CONTACT_RETRY_DIR])
+    pruneFiles(root, dir, now);
+}
+function writePrivateJson(file, value) {
+  writePrivate(file, `${JSON.stringify(value)}
+`);
 }
 function saveDraft(root, draft) {
   ensureDiagnosticsDir(root);
@@ -9461,15 +9545,53 @@ function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   writePrivate(path18.join(root, relative), bytes);
   return relative;
 }
+function saveReceipt(root, receipt, { now = new Date } = {}) {
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  const file = path18.join(root, RECEIPTS_DIR, `${receipt.report_id}.json`);
+  fs19.mkdirSync(path18.dirname(file), { recursive: true, mode: 448 });
+  writePrivateJson(file, receipt);
+  return file;
+}
+function savePendingContact(root, pending, { now = new Date } = {}) {
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  const file = path18.join(root, CONTACT_RETRY_DIR, `${pending.report_id}.json`);
+  fs19.mkdirSync(path18.dirname(file), { recursive: true, mode: 448 });
+  writePrivateJson(file, pending);
+  return file;
+}
+var reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
+function readPendingContact(root, reportId, { now = new Date } = {}) {
+  if (!reportIdIsSafe(reportId))
+    throw new Error("invalid report id");
+  pruneOutbox(root, now);
+  const file = path18.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs19.existsSync(file))
+    return null;
+  return JSON.parse(fs19.readFileSync(file, "utf8"));
+}
+function deletePendingContact(root, reportId) {
+  if (!reportIdIsSafe(reportId))
+    throw new Error("invalid report id");
+  const file = path18.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs19.existsSync(file))
+    return false;
+  fs19.rmSync(file);
+  return true;
+}
 
 // src/lib/feedback/send.mjs
 var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
 var canSend = (adapter) => hasCapability(adapter, "submit");
-function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
+async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
   checkAdapter(adapter);
   if (nonce !== draft.report.submission_nonce) {
     return { status: "refused", reason: "the report changed since that preview; show the current preview and ask again" };
+  }
+  if (hasCapability(adapter, "contact") && !draft.contactChoice) {
+    return { status: "contact-question", reason: "ask whether the reporter wants to provide contact or decline" };
   }
   const bytes = bytesFromPreview(renderPreview(draft));
   if (bytes !== serialize(draft.report))
@@ -9477,33 +9599,61 @@ function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new 
   const problems = reportProblems(draft.report);
   if (problems.length)
     return { status: "invalid-input", problems };
-  if (canSend(adapter))
-    throw new Error("submit transport not implemented");
+  if (canSend(adapter)) {
+    const submission = await adapter.feedback.submit(Buffer.from(bytes));
+    if (!submission.ok)
+      return { status: "failed", reason: submission.reason };
+    const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
+    if (draft.contactChoice) {
+      savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });
+      deleteDraft(root);
+      const contact = await adapter.feedback.submitContact(receipt, draft.contactChoice);
+      if (!contact.ok) {
+        return { status: "contact-pending", report_id: receipt.report_id, reason: contact.reason };
+      }
+      deletePendingContact(root, receipt.report_id);
+    }
+    saveReceipt(root, receipt, { now });
+    deleteDraft(root);
+    return { status: "sent", report_id: receipt.report_id };
+  }
   const saved = saveToOutbox(root, bytes, { nonce, now });
   deleteDraft(root);
-  return { status: "saved", path: saved, bytes: Buffer.byteLength(bytes), notice: NOT_SENT };
+  return {
+    status: "saved",
+    path: saved,
+    bytes: Buffer.byteLength(bytes),
+    notice: NOT_SENT,
+    ...draft.contactChoice && { contact_notice: "Contact was not sent because this runtime cannot send feedback." }
+  };
 }
 
 // src/skills/chef-setup/scripts/lib/report-modes.mjs
 var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "contact"];
 var REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "skill", "code"].map((flag) => [flag, { type: "string" }])),
+  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "skill", "code", "report-id"].map((flag) => [flag, { type: "string" }])),
+  declined: { type: "boolean" },
   raw: { type: "boolean" }
 };
 var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
 var invalid = (root, error) => ({ status: "invalid-input", data_root: root, problems: error.problems ?? [error.message] });
 var DIAGNOSTICS = ["on", "off", "wide"];
 var CONTACT_DROPPED = "This runtime can't take contact details, so Chef dropped the contact you gave; it is not in the report.";
+var CONTACT_MAX_CHARS = 500;
 var canTakeContact = (adapter) => adapter.feedback.capabilities().includes("contact.opaque");
 function shown(root, draft, adapter) {
   const sendable = canSend(adapter);
+  const canAskContact = canTakeContact(adapter);
+  if (canAskContact && !draft.contactChoice) {
+    return { status: "contact-question", data_root: root, can_ask_contact: true };
+  }
   return {
     status: "draft",
     data_root: root,
     preview: renderPreview(draft),
     submission_nonce: draft.report.submission_nonce,
     can_send: sendable,
-    can_ask_contact: canTakeContact(adapter),
+    can_ask_contact: canAskContact,
     ...sendable ? {} : { send_notice: SAVE_ONLY }
   };
 }
@@ -9564,18 +9714,35 @@ function userFields(root, values, context) {
 function draftMode(root, values, context) {
   try {
     const { notes, ...fields } = values.focus === undefined ? userFields(root, values, context) : postErrorFields(root, values, context);
-    if (values.contact !== undefined && canTakeContact(context.adapter))
-      throw new Error("contact transport not implemented");
+    if (values.contact !== undefined && values.declined)
+      throw new Error("contact: choose a value or decline, not both");
+    const offersContact = canTakeContact(context.adapter);
+    if (offersContact && values.contact !== undefined) {
+      if (typeof values.contact !== "string" || !values.contact.trim() || [...values.contact].length > CONTACT_MAX_CHARS || /[\u0000-\u001f\u007f\u2028\u2029]/.test(values.contact)) {
+        throw new Error(`contact: use plain text of at most ${CONTACT_MAX_CHARS} characters`);
+      }
+    }
     const draft = newDraft(fields);
     if (notes)
       draft.notes = notes;
+    if (offersContact) {
+      if (values.contact !== undefined)
+        draft.contactChoice = { contact: values.contact };
+      else if (values.declined)
+        draft.contactChoice = { declined: true };
+    }
     saveDraft(root, draft);
-    return { ...shown(root, draft, context.adapter), ...values.contact !== undefined && { contact_notice: CONTACT_DROPPED } };
+    return {
+      ...shown(root, draft, context.adapter),
+      ...!offersContact && values.contact !== undefined && { contact_notice: CONTACT_DROPPED }
+    };
   } catch (error) {
     return invalid(root, error);
   }
 }
 function previewMode(root, draft, values, { adapter }) {
+  if (canTakeContact(adapter) && !draft.contactChoice)
+    return shown(root, draft, adapter);
   return values.raw ? { status: "draft", data_root: root, raw: serialize(draft.report) } : shown(root, draft, adapter);
 }
 var changeMode = (change) => (root, draft, values, { adapter }) => {
@@ -9603,18 +9770,37 @@ function declineMode(root, values) {
   declineOffer(root, { skill: values.skill, code: values.code });
   return { status: "declined", data_root: root, skill_id: values.skill, error_code: values.code };
 }
-var sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
+var sendMode = async (root, draft, values, { adapter }) => ({
+  data_root: root,
+  ...await sendReport(root, draft, { nonce: values.nonce, adapter })
+});
+async function retryContactMode(root, values, { adapter }) {
+  try {
+    const pending = readPendingContact(root, values["report-id"]);
+    if (!pending)
+      return { status: "refused", data_root: root, reason: "there is no pending contact request for that report" };
+    const result2 = await adapter.feedback.submitContact({ report_id: pending.report_id, receipt_secret: pending.receipt_secret }, pending.choice);
+    if (!result2.ok)
+      return { status: "contact-pending", data_root: root, report_id: pending.report_id, reason: result2.reason };
+    saveReceipt(root, { report_id: pending.report_id, receipt_secret: pending.receipt_secret });
+    deletePendingContact(root, pending.report_id);
+    return { status: "contact-updated", data_root: root, report_id: pending.report_id };
+  } catch (error) {
+    return invalid(root, error);
+  }
+}
 var MODES = {
   "report-draft": draftMode,
   "report-preview": withDraft(previewMode),
   "report-edit": withDraft(changeMode(editItem)),
   "report-remove": withDraft(removeMode),
   "report-send": withDraft(sendMode),
+  "report-contact-retry": retryContactMode,
   "report-offer-decline": declineMode,
   "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root })
 };
-function reportModes({ skillsDir }) {
-  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir });
+function reportModes({ skillsDir, adapter }) {
+  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(adapter ?? currentRuntime()), skillsDir });
   return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, bound(mode)]));
 }
 

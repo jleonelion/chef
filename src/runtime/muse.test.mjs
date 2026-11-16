@@ -89,6 +89,70 @@ test('on Muse, an unregistered connector or unreadable reply means no key', () =
   assert.deepEqual(muse.credential('usda-fdc', { exists: () => true, run: () => authdcReply('header:X-Api-Key') }), { ok: false, reason: 'wrong-placement' });
 });
 
+const feedbackAuthdcReply = (placement = { custom_header: 'X-Chef-Intake-Key' }) =>
+  JSON.stringify({ credentials: [{ surrogate: 'hsurr:feedback', placement }] });
+
+test('feedback capability is available only with the correctly placed Muse connector', () => {
+  const connected = { exists: () => true, run: () => feedbackAuthdcReply() };
+  const disconnected = { exists: () => true, run: () => 'not json' };
+
+  assert.deepEqual(muse.feedback.capabilities(connected), ['submit.connector', 'contact.opaque']);
+  assert.deepEqual(muse.feedback.capabilities(disconnected), []);
+  assert.deepEqual(
+    muse.credential('chef-feedback', { ...connected }),
+    {
+      ok: true,
+      value: 'hsurr:feedback',
+      placement: { in: 'header', name: 'X-Chef-Intake-Key' },
+      source: 'connector',
+    },
+  );
+});
+
+test('feedback submission sends the exact bytes with the connector surrogate and disables redirects', async () => {
+  const calls = [];
+  const bytes = Buffer.from('{"schema_version":1,"submission_nonce":"fixed"}');
+  const result = await muse.feedback.submit(bytes, {
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async (url, init) => {
+      calls.push([url, init]);
+      return { ok: true, status: 201, json: async () => ({ report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret-abcdefghijklmnopqrstuvwxyz0123456789' }) };
+    },
+  });
+
+  assert.deepEqual(result, {
+    ok: true,
+    report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370',
+    receipt_secret: 'receipt-secret-abcdefghijklmnopqrstuvwxyz0123456789',
+  });
+  assert.equal(calls[0][0], 'https://chef-feedback-intake.vercel.app/v1/reports');
+  assert.equal(calls[0][1].method, 'POST');
+  assert.equal(calls[0][1].redirect, 'error');
+  assert.equal(calls[0][1].headers['X-Chef-Intake-Key'], 'hsurr:feedback');
+  assert.deepEqual(calls[0][1].body, bytes);
+});
+
+test('contact is sent only in a separate receipt-authorized idempotent PUT', async () => {
+  const calls = [];
+  const receipt = { report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret' };
+  const result = await muse.feedback.submitContact(receipt, { declined: true }, {
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async (url, init) => {
+      calls.push([url, init]);
+      return { ok: true, status: 204 };
+    },
+  });
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls[0][0], `https://chef-feedback-intake.vercel.app/v1/reports/${receipt.report_id}/contact`);
+  assert.equal(calls[0][1].method, 'PUT');
+  assert.equal(calls[0][1].redirect, 'error');
+  assert.equal(calls[0][1].headers.Authorization, 'Bearer receipt-secret');
+  assert.equal(calls[0][1].body, '{"declined":true}');
+});
+
 test('off Muse, the USDA credential comes from CHEF_USDA_FDC_KEY', () => {
   const offMuse = { exists: () => false, run: () => assert.fail('authdc must not run off Muse') };
   assert.deepEqual(muse.credential('usda-fdc', { ...offMuse, env: { CHEF_USDA_FDC_KEY: ' k123 ' } }), { ok: true, value: 'k123', placement: USDA_QUERY, source: 'env' });
