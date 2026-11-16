@@ -2,11 +2,10 @@
 // repo (reproduction cases, seeds). Findings carry the line and rule, never the matched text, so
 // a CI log can't leak what it caught.
 // Reserved example domains (RFC 2606) count as synthetic; schema vocabularies are public, not personal.
-import { readFileSync } from 'node:fs';
+import definition from '../../schemas/feedback/pii-patterns.v1.json' with { type: 'json' };
 
-const { rules: definitions } = JSON.parse(
-  readFileSync(new URL('../../schemas/feedback/pii-patterns.v1.json', import.meta.url), 'utf8'),
-);
+export const PII_TEXT_FIELDS = definition.text_fields;
+const { rules: definitions } = definition;
 const RULES = definitions.map(({ rule, pattern, flags, allow_hosts, allow_host_suffixes }) => ({
   rule,
   pattern: new RegExp(pattern, `${flags}g`),

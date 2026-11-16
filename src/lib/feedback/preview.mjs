@@ -2,11 +2,10 @@
 // in payload order. It is lossless, so the bytes Chef sends are parsed back from the preview the
 // user approved. Lines without a number are notes (removed, not observed, scan matches) and are
 // never part of the payload.
-import { scanPii } from '../pii-scan.mjs';
+import { PII_TEXT_FIELDS, scanPii } from '../pii-scan.mjs';
 
 // Parts shown item by item; everything else is one line holding its whole value.
 const CONTAINERS = new Set(['diagnostic_bundle', 'diagnostic_bundle.environment', 'diagnostic_bundle.events']);
-export const TEXT_FIELDS = ['summary', 'expected', 'actual', 'desired_outcome', 'current_behavior', 'desired_behavior'];
 const ITEM_LINE = /^\[\s*\d+\] (\S+) = (.*)$/;
 const GAPS = {
   pre_launch_unobserved: 'what happened before a Chef script started',
@@ -49,7 +48,7 @@ function itemLine(numbers, { id, value }) {
 }
 
 function scanNotes(numbers, report) {
-  return TEXT_FIELDS.filter((field) => typeof report[field] === 'string').flatMap((field) => {
+  return PII_TEXT_FIELDS.filter((field) => typeof report[field] === 'string').flatMap((field) => {
     const rules = [...new Set(scanPii(report[field]).map((finding) => finding.rule))];
     if (!rules.length) return [];
     const what = rules.map((rule) => RULE_NAMES[rule] ?? rule).join(', ');

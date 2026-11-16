@@ -8969,25 +8969,81 @@ function jsEngine() {
     return { name: "bun", version: process.versions.bun };
   return { name: "node", version: process.versions.node };
 }
+// schemas/feedback/pii-patterns.v1.json
+var pii_patterns_v1_default = {
+  version: 1,
+  text_fields: [
+    "summary",
+    "expected",
+    "actual",
+    "desired_outcome",
+    "current_behavior",
+    "desired_behavior"
+  ],
+  rules: [
+    {
+      rule: "email",
+      pattern: "[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)*\\.[A-Za-z]{2,})",
+      flags: "",
+      allow_hosts: [],
+      allow_host_suffixes: ["example.com", "example.org", "example.net"]
+    },
+    {
+      rule: "url",
+      pattern: `\\bhttps?:\\/\\/([^\\s/:"'<>)]+)`,
+      flags: "i",
+      allow_hosts: ["example", "schema.org", "json-schema.org"],
+      allow_host_suffixes: ["example.com", "example.org", "example.net"]
+    },
+    {
+      rule: "phone",
+      pattern: "(?:\\+\\d{1,3}[\\s.-]?)?\\(?\\b\\d{3}\\)?[\\s.-]\\d{3}[\\s.-]\\d{4}\\b",
+      flags: "",
+      allow_hosts: [],
+      allow_host_suffixes: []
+    },
+    {
+      rule: "street address",
+      pattern: "\\b\\d{1,5}\\s+(?:[A-Z][a-z]+\\s+){1,3}(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Way|Place|Pl)\\b",
+      flags: "",
+      allow_hosts: [],
+      allow_host_suffixes: []
+    },
+    {
+      rule: "file path",
+      pattern: `(?:\\/Users\\/|\\/home\\/|[A-Za-z]:\\\\Users\\\\)[^\\s/\\\\"']+|(?<![^\\s"'(=\`])(?:~|\\/[\\w.-]+)\\/[^\\s"'<>)]+`,
+      flags: "",
+      allow_hosts: [],
+      allow_host_suffixes: []
+    },
+    {
+      rule: "long digit run",
+      pattern: "\\d{9,}",
+      flags: "",
+      allow_hosts: [],
+      allow_host_suffixes: []
+    }
+  ]
+};
 
 // src/lib/pii-scan.mjs
-var RESERVED_HOST = /(^|\.)example(\.(com|org|net))?$/i;
-var PUBLIC_HOST = /^(json-)?schema\.org$/i;
-var RULES2 = [
-  { rule: "email", pattern: /[A-Za-z0-9._%+-]+@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,})/g, allowed: (m) => RESERVED_HOST.test(m[1]) },
-  { rule: "url", pattern: /\bhttps?:\/\/([^\s/:"'<>)]+)/gi, allowed: (m) => RESERVED_HOST.test(m[1]) || PUBLIC_HOST.test(m[1]) },
-  { rule: "phone", pattern: /(?:\+\d{1,3}[\s.-]?)?\(?\b\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}\b/g },
-  { rule: "street address", pattern: /\b\d{1,5}\s+(?:[A-Z][a-z]+\s+){1,3}(?:Street|St|Avenue|Ave|Road|Rd|Lane|Ln|Drive|Dr|Boulevard|Blvd|Court|Ct|Way|Place|Pl)\b/g },
-  { rule: "file path", pattern: /(?:\/Users\/|\/home\/|[A-Za-z]:\\Users\\)[^\s/\\"']+|(?<![^\s"'(=`])(?:~|\/[\w.-]+)\/[^\s"'<>)]+/g },
-  { rule: "long digit run", pattern: /\d{9,}/g }
-];
+var PII_TEXT_FIELDS = pii_patterns_v1_default.text_fields;
+var { rules: definitions } = pii_patterns_v1_default;
+var RULES2 = definitions.map(({ rule, pattern, flags, allow_hosts, allow_host_suffixes }) => ({
+  rule,
+  pattern: new RegExp(pattern, `${flags}g`),
+  isAllowed(match) {
+    const host = match[1]?.toLowerCase();
+    return allow_hosts.includes(host) || allow_host_suffixes.some((suffix2) => host === suffix2 || host?.endsWith(`.${suffix2}`));
+  }
+}));
 function scanPii(text) {
   const findings = [];
   text.split(`
 `).forEach((line, i) => {
-    for (const { rule, pattern, allowed } of RULES2) {
+    for (const { rule, pattern, isAllowed } of RULES2) {
       for (const match of line.matchAll(pattern)) {
-        if (!allowed?.(match))
+        if (!isAllowed(match))
           findings.push({ line: i + 1, rule });
       }
     }
@@ -8997,7 +9053,6 @@ function scanPii(text) {
 
 // src/lib/feedback/preview.mjs
 var CONTAINERS = new Set(["diagnostic_bundle", "diagnostic_bundle.environment", "diagnostic_bundle.events"]);
-var TEXT_FIELDS = ["summary", "expected", "actual", "desired_outcome", "current_behavior", "desired_behavior"];
 var ITEM_LINE = /^\[\s*\d+\] (\S+) = (.*)$/;
 var GAPS = {
   pre_launch_unobserved: "what happened before a Chef script started",
@@ -9038,7 +9093,7 @@ function itemLine2(numbers, { id, value }) {
   return `[${String(numbers[id]).padStart(2)}] ${id} = ${JSON.stringify(value)}`;
 }
 function scanNotes(numbers, report) {
-  return TEXT_FIELDS.filter((field) => typeof report[field] === "string").flatMap((field) => {
+  return PII_TEXT_FIELDS.filter((field) => typeof report[field] === "string").flatMap((field) => {
     const rules = [...new Set(scanPii(report[field]).map((finding) => finding.rule))];
     if (!rules.length)
       return [];
@@ -9316,7 +9371,7 @@ var FREQUENCIES = feedback_report_v1_default.properties.frequency.enum;
 var maxLength = (field) => feedback_report_v1_default.$defs[field === "summary" ? "short_text" : "text"].maxLength;
 var SKILL_ID = /^chef-[a-z0-9-]+$/;
 var REMOVABLE = [/^skill_ids$/, /^focus_invocation$/, /^diagnostic_bundle$/, /^diagnostic_bundle\.environment\.(skills|js_engine|os_family)$/, /^diagnostic_bundle\.events\[inv-\d+\]$/];
-var EDITABLE = new Set([...TEXT_FIELDS, "frequency", "skill_ids"]);
+var EDITABLE = new Set([...PII_TEXT_FIELDS, "frequency", "skill_ids"]);
 var serialize = (report) => JSON.stringify(report);
 var splitSkillIds = (raw = "") => raw.split(",").map((id) => id.trim()).filter(Boolean);
 function textProblem(field, value) {

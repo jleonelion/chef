@@ -4,7 +4,8 @@
 // new submission_nonce, so a preview the user saw before the change can never be sent.
 import { randomUUID } from 'node:crypto';
 import SCHEMA from '../../../schemas/feedback/feedback-report.v1.json' with { type: 'json' };
-import { itemsOf, locate, TEXT_FIELDS } from './preview.mjs';
+import { PII_TEXT_FIELDS as TEXT_FIELDS } from '../pii-scan.mjs';
+import { itemsOf, locate } from './preview.mjs';
 
 export const REPORT_SCHEMA_VERSION = 1;
 export const MAX_BYTES = SCHEMA['x-max-bytes'];
