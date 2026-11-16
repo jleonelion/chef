@@ -11,9 +11,12 @@ Build the list from a meal plan saved by `chef-meal-planning`, minus what invent
 
 ```sh
 node scripts/shopping-lists.mjs build --week-start 2026-01-19
+node scripts/shopping-lists.mjs build --upcoming
 ```
 
-Without `--week-start`, the latest saved plan is used. On `no-plan`, offer to plan meals with `chef-meal-planning`.
+`--upcoming` uses the earliest saved plan that starts between today and seven days from today, in the user's timezone. If none exists, it returns `no-plan` with `looked_for` set to tomorrow and no `delivery`; say "No meal plan for the week of <looked_for>; want me to plan it?" and send no email. `--upcoming` cannot be combined with `--week-start`.
+
+Without either flag, the latest saved plan is used. The result and shopping-list heading show its `week_start`. On `no-plan`, offer to plan meals with `chef-meal-planning`.
 
 The result has:
 
