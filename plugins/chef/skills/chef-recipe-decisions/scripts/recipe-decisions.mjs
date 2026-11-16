@@ -7008,30 +7008,33 @@ var recurring_tasks_default = [
 var RECURRING_TASKS = recurring_tasks_default;
 var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
-// src/runtime/generic.mjs
-var unsupported = async () => ({ ok: false, reason: "unsupported" });
-var generic = {
-  name: "unknown",
-  adapterVersion: 1,
-  adapterContractVersion: 1,
-  feedback: {
-    capabilities: () => [],
-    submit: unsupported
-  }
-};
-
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
 var AUTHDC = "/opt/hatch/bin/authdc";
 var PROVIDERS = {
-  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" },
+  "chef-feedback": {
+    connector: "custom.chef-feedback",
+    placement: { custom_header: "X-Chef-Intake-Key" }
+  }
 };
+var FEEDBACK_URL = "https://chef-feedback-intake.vercel.app/v1/reports";
 var ATTACHMENT_INSTRUCTION = "Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.";
 var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
 function placementOf(text) {
+  if (typeof text === "object" && text !== null && typeof text.custom_header === "string") {
+    return { in: "header", name: text.custom_header };
+  }
+  if (typeof text !== "string")
+    return null;
   const [kind, name] = text.split(":");
   return { in: kind === "query_param" ? "query" : kind, name };
+}
+function placementMatches(actual, expected) {
+  if (typeof expected === "string")
+    return actual === expected;
+  return typeof actual === "object" && actual !== null && Object.keys(actual).length === 1 && actual.custom_header === expected.custom_header;
 }
 function fromConnector(spec, run) {
   let entry;
@@ -7042,9 +7045,25 @@ function fromConnector(spec, run) {
   }
   if (typeof entry?.surrogate !== "string" || !entry.surrogate)
     return { ok: false, reason: "not-connected" };
-  if (entry.placement !== spec.placement)
+  if (!placementMatches(entry.placement, spec.placement))
     return { ok: false, reason: "wrong-placement" };
-  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+  const placement = placementOf(entry.placement);
+  if (!placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement, source: "connector" };
+}
+var isReceipt = (value) => typeof value === "object" && value !== null && typeof value.report_id === "string" && /^[0-9a-f-]{36}$/i.test(value.report_id) && typeof value.receipt_secret === "string" && value.receipt_secret.length >= 32;
+function isNetworkError(error) {
+  return error instanceof TypeError || error instanceof Error && error.name === "AbortError";
+}
+async function feedbackRequest(url, init, fetchImpl) {
+  try {
+    return await fetchImpl(url, { ...init, redirect: "error" });
+  } catch (error) {
+    if (isNetworkError(error))
+      return null;
+    throw error;
+  }
 }
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
@@ -7081,8 +7100,50 @@ var muse = {
   adapterVersion: 1,
   adapterContractVersion: 1,
   feedback: {
-    capabilities: () => [],
-    submit: unsupported
+    capabilities({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC))
+        return [];
+      const credential = fromConnector(PROVIDERS["chef-feedback"], run);
+      return credential.ok ? ["submit.connector", "contact.opaque"] : [];
+    },
+    async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: "unsupported" };
+      const response = await feedbackRequest(FEEDBACK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [credential.placement.name]: credential.value },
+        body: bytes
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status !== 201) {
+        const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
+        return { ok: false, reason };
+      }
+      let receipt;
+      try {
+        receipt = await response.json();
+      } catch {
+        return { ok: false, reason: "invalid-receipt" };
+      }
+      return isReceipt(receipt) ? { ok: true, ...receipt } : { ok: false, reason: "invalid-receipt" };
+    },
+    async submitContact(receipt, choice, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(`${FEEDBACK_URL}/${receipt.report_id}/contact`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` },
+        body: JSON.stringify(choice)
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status === 204)
+        return { ok: true };
+      return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
+    }
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
@@ -7210,9 +7271,9 @@ var facts_v1_default = {
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -7235,6 +7296,19 @@ var plugin_default = {
 
 // src/runtime/contract.mjs
 import fs2 from "node:fs";
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
+};
+
+// src/runtime/contract.mjs
 var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
 
 // src/lib/schema.mjs

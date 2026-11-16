@@ -66,7 +66,7 @@ function fallbackNote(report, fallback) {
   return [`Diagnostics: no ${missing} in the last hour, so ${taken} of any skill. Ask to drop them if they don't help.`];
 }
 
-export function renderPreview({ report, numbers, notes = {} }) {
+export function renderPreview({ report, numbers, notes = {}, contactChoice }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -78,6 +78,7 @@ export function renderPreview({ report, numbers, notes = {} }) {
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
     ...fallbackNote(report, notes.diagnostics_fallback),
     ...scanNotes(numbers, report),
+    ...(contactChoice ? [`Contact: ${contactChoice.contact ?? 'declined'}`] : []),
   ].join('\n');
 }
 

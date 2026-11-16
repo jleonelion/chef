@@ -1,21 +1,30 @@
-// Local feedback files under the data root's diagnostics/ folder (git-ignored, 0700): the one
-// report draft in progress and the feedback outbox of approved reports this runtime could not send.
-// Both expire like the invocation trace, checked lazily whenever they are read or written.
+// Local feedback files under the data root's diagnostics/ folder (git-ignored, 0700): the current
+// draft, unsent reports and pending contact requests. They expire with the invocation
+// trace, checked lazily whenever they are read or written.
 import fs from 'node:fs';
 import path from 'node:path';
 import { DIAGNOSTICS_DIR, ensureDiagnosticsDir, TRACE_BOUNDS, writePrivate } from '../diagnostics/trace.mjs';
 
 export const DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 export const OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
+export const CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 const expired = (file, now) => now - fs.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
 
-function pruneOutbox(root, now) {
-  const dir = path.join(root, OUTBOX_DIR);
+function pruneFiles(root, relativeDir, now) {
+  const dir = path.join(root, relativeDir);
   if (!fs.existsSync(dir)) return;
   for (const name of fs.readdirSync(dir)) {
     const file = path.join(dir, name);
     if (expired(file, now)) fs.rmSync(file);
   }
+}
+
+function pruneOutbox(root, now) {
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR]) pruneFiles(root, dir, now);
+}
+
+function writePrivateJson(file, value) {
+  writePrivate(file, `${JSON.stringify(value)}\n`);
 }
 
 export function saveDraft(root, draft) {
@@ -55,4 +64,31 @@ export function saveToOutbox(root, bytes, { nonce, now = new Date() }) {
   const relative = `${OUTBOX_DIR}/${stamp}-${nonce.slice(0, 8)}.json`;
   writePrivate(path.join(root, relative), bytes);
   return relative;
+}
+
+export function savePendingContact(root, pending, { now = new Date() } = {}) {
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  const file = path.join(root, CONTACT_RETRY_DIR, `${pending.report_id}.json`);
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 });
+  writePrivateJson(file, pending);
+  return file;
+}
+
+const reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
+
+export function readPendingContact(root, reportId, { now = new Date() } = {}) {
+  if (!reportIdIsSafe(reportId)) throw new Error('invalid report id');
+  pruneOutbox(root, now);
+  const file = path.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs.existsSync(file)) return null;
+  return JSON.parse(fs.readFileSync(file, 'utf8'));
+}
+
+export function deletePendingContact(root, reportId) {
+  if (!reportIdIsSafe(reportId)) throw new Error('invalid report id');
+  const file = path.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs.existsSync(file)) return false;
+  fs.rmSync(file);
+  return true;
 }

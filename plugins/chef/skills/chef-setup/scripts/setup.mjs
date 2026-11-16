@@ -7009,30 +7009,33 @@ var recurring_tasks_default = [
 var RECURRING_TASKS = recurring_tasks_default;
 var DELIVERY_TASKS = RECURRING_TASKS.filter((task) => task.delivery);
 
-// src/runtime/generic.mjs
-var unsupported = async () => ({ ok: false, reason: "unsupported" });
-var generic = {
-  name: "unknown",
-  adapterVersion: 1,
-  adapterContractVersion: 1,
-  feedback: {
-    capabilities: () => [],
-    submit: unsupported
-  }
-};
-
 // src/runtime/muse.mjs
 var LOCALE_VARS = ["LC_ALL", "LC_MEASUREMENT", "LANG"];
 var isUsable = (value) => Boolean(value) && value !== "C" && value !== "POSIX" && !value.startsWith("C.");
 var AUTHDC = "/opt/hatch/bin/authdc";
 var PROVIDERS = {
-  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" }
+  "usda-fdc": { connector: "custom.usda-fdc", env: "CHEF_USDA_FDC_KEY", placement: "query_param:api_key" },
+  "chef-feedback": {
+    connector: "custom.chef-feedback",
+    placement: { custom_header: "X-Chef-Intake-Key" }
+  }
 };
+var FEEDBACK_URL = "https://chef-feedback-intake.vercel.app/v1/reports";
 var ATTACHMENT_INSTRUCTION = "Send this PDF as a downloadable attachment in this chat; do not return only the filesystem path or add it to Library.";
 var runFile = (file, args) => execFileSync(file, args, { encoding: "utf8", timeout: 1e4, stdio: ["ignore", "pipe", "ignore"] });
 function placementOf(text) {
+  if (typeof text === "object" && text !== null && typeof text.custom_header === "string") {
+    return { in: "header", name: text.custom_header };
+  }
+  if (typeof text !== "string")
+    return null;
   const [kind, name] = text.split(":");
   return { in: kind === "query_param" ? "query" : kind, name };
+}
+function placementMatches(actual, expected) {
+  if (typeof expected === "string")
+    return actual === expected;
+  return typeof actual === "object" && actual !== null && Object.keys(actual).length === 1 && actual.custom_header === expected.custom_header;
 }
 function fromConnector(spec, run) {
   let entry;
@@ -7043,9 +7046,25 @@ function fromConnector(spec, run) {
   }
   if (typeof entry?.surrogate !== "string" || !entry.surrogate)
     return { ok: false, reason: "not-connected" };
-  if (entry.placement !== spec.placement)
+  if (!placementMatches(entry.placement, spec.placement))
     return { ok: false, reason: "wrong-placement" };
-  return { ok: true, value: entry.surrogate, placement: placementOf(spec.placement), source: "connector" };
+  const placement = placementOf(entry.placement);
+  if (!placement)
+    return { ok: false, reason: "wrong-placement" };
+  return { ok: true, value: entry.surrogate, placement, source: "connector" };
+}
+var isReceipt = (value) => typeof value === "object" && value !== null && typeof value.report_id === "string" && /^[0-9a-f-]{36}$/i.test(value.report_id) && typeof value.receipt_secret === "string" && value.receipt_secret.length >= 32;
+function isNetworkError(error) {
+  return error instanceof TypeError || error instanceof Error && error.name === "AbortError";
+}
+async function feedbackRequest(url, init, fetchImpl) {
+  try {
+    return await fetchImpl(url, { ...init, redirect: "error" });
+  } catch (error) {
+    if (isNetworkError(error))
+      return null;
+    throw error;
+  }
 }
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
@@ -7082,8 +7101,50 @@ var muse = {
   adapterVersion: 1,
   adapterContractVersion: 1,
   feedback: {
-    capabilities: () => [],
-    submit: unsupported
+    capabilities({ exists = fs.existsSync, run = runFile } = {}) {
+      if (!exists(AUTHDC))
+        return [];
+      const credential = fromConnector(PROVIDERS["chef-feedback"], run);
+      return credential.ok ? ["submit.connector", "contact.opaque"] : [];
+    },
+    async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: "unsupported" };
+      const response = await feedbackRequest(FEEDBACK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", [credential.placement.name]: credential.value },
+        body: bytes
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status !== 201) {
+        const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
+        return { ok: false, reason };
+      }
+      let receipt;
+      try {
+        receipt = await response.json();
+      } catch {
+        return { ok: false, reason: "invalid-receipt" };
+      }
+      return isReceipt(receipt) ? { ok: true, ...receipt } : { ok: false, reason: "invalid-receipt" };
+    },
+    async submitContact(receipt, choice, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(`${FEEDBACK_URL}/${receipt.report_id}/contact`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` },
+        body: JSON.stringify(choice)
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status === 204)
+        return { ok: true };
+      return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
+    }
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
@@ -7211,9 +7272,9 @@ var facts_v1_default = {
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -7246,6 +7307,18 @@ var capabilities_v1_default = {
     "contact.opaque": { description: "Offer one optional reply channel that feedback intake stores apart from the report." }
   },
   evidence_kinds: {}
+};
+
+// src/runtime/generic.mjs
+var unsupported = async () => ({ ok: false, reason: "unsupported" });
+var generic = {
+  name: "unknown",
+  adapterVersion: 1,
+  adapterContractVersion: 1,
+  feedback: {
+    capabilities: () => [],
+    submit: unsupported
+  }
 };
 
 // src/runtime/contract.mjs
@@ -9054,7 +9127,7 @@ function fallbackNote(report, fallback) {
   const taken = runs === 1 ? "this is the last run" : `these are the last ${runs} runs`;
   return [`Diagnostics: no ${missing} in the last hour, so ${taken} of any skill. Ask to drop them if they don't help.`];
 }
-function renderPreview({ report, numbers, notes = {} }) {
+function renderPreview({ report, numbers, notes = {}, contactChoice }) {
   const gaps = report.diagnostic_bundle?.evidence_gaps ?? [];
   return [
     `Chef feedback report (${report.class}, ${report.trigger}). Nothing has been sent.`,
@@ -9065,7 +9138,8 @@ function renderPreview({ report, numbers, notes = {} }) {
     ...report.removed_fields.map((field) => `Not sent (you removed): ${field}`),
     ...gaps.map((gap) => `Not observed: ${GAPS[gap]} (${gap})`),
     ...fallbackNote(report, notes.diagnostics_fallback),
-    ...scanNotes(numbers, report)
+    ...scanNotes(numbers, report),
+    ...contactChoice ? [`Contact: ${contactChoice.contact ?? "declined"}`] : []
   ].join(`
 `);
 }
@@ -9414,9 +9488,10 @@ import fs19 from "node:fs";
 import path18 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
+var CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 var expired = (file, now) => now - fs19.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
-function pruneOutbox(root, now) {
-  const dir = path18.join(root, OUTBOX_DIR);
+function pruneFiles(root, relativeDir, now) {
+  const dir = path18.join(root, relativeDir);
   if (!fs19.existsSync(dir))
     return;
   for (const name of fs19.readdirSync(dir)) {
@@ -9424,6 +9499,14 @@ function pruneOutbox(root, now) {
     if (expired(file, now))
       fs19.rmSync(file);
   }
+}
+function pruneOutbox(root, now) {
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR])
+    pruneFiles(root, dir, now);
+}
+function writePrivateJson(file, value) {
+  writePrivate(file, `${JSON.stringify(value)}
+`);
 }
 function saveDraft(root, draft) {
   ensureDiagnosticsDir(root);
@@ -9461,15 +9544,45 @@ function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   writePrivate(path18.join(root, relative), bytes);
   return relative;
 }
+function savePendingContact(root, pending, { now = new Date } = {}) {
+  ensureDiagnosticsDir(root);
+  pruneOutbox(root, now);
+  const file = path18.join(root, CONTACT_RETRY_DIR, `${pending.report_id}.json`);
+  fs19.mkdirSync(path18.dirname(file), { recursive: true, mode: 448 });
+  writePrivateJson(file, pending);
+  return file;
+}
+var reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
+function readPendingContact(root, reportId, { now = new Date } = {}) {
+  if (!reportIdIsSafe(reportId))
+    throw new Error("invalid report id");
+  pruneOutbox(root, now);
+  const file = path18.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs19.existsSync(file))
+    return null;
+  return JSON.parse(fs19.readFileSync(file, "utf8"));
+}
+function deletePendingContact(root, reportId) {
+  if (!reportIdIsSafe(reportId))
+    throw new Error("invalid report id");
+  const file = path18.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs19.existsSync(file))
+    return false;
+  fs19.rmSync(file);
+  return true;
+}
 
 // src/lib/feedback/send.mjs
 var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
 var canSend = (adapter) => hasCapability(adapter, "submit");
-function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
+async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
   checkAdapter(adapter);
   if (nonce !== draft.report.submission_nonce) {
     return { status: "refused", reason: "the report changed since that preview; show the current preview and ask again" };
+  }
+  if (hasCapability(adapter, "contact") && !draft.contactChoice) {
+    return { status: "contact-question", reason: "ask whether the reporter wants to provide contact or decline" };
   }
   const bytes = bytesFromPreview(renderPreview(draft));
   if (bytes !== serialize(draft.report))
@@ -9477,33 +9590,60 @@ function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new 
   const problems = reportProblems(draft.report);
   if (problems.length)
     return { status: "invalid-input", problems };
-  if (canSend(adapter))
-    throw new Error("submit transport not implemented");
+  if (canSend(adapter)) {
+    const submission = await adapter.feedback.submit(Buffer.from(bytes));
+    if (!submission.ok)
+      return { status: "failed", reason: submission.reason };
+    const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
+    if (draft.contactChoice) {
+      savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });
+      deleteDraft(root);
+      const contact = await adapter.feedback.submitContact(receipt, draft.contactChoice);
+      if (!contact.ok) {
+        return { status: "contact-pending", report_id: receipt.report_id, reason: contact.reason };
+      }
+      deletePendingContact(root, receipt.report_id);
+    }
+    deleteDraft(root);
+    return { status: "sent", report_id: receipt.report_id };
+  }
   const saved = saveToOutbox(root, bytes, { nonce, now });
   deleteDraft(root);
-  return { status: "saved", path: saved, bytes: Buffer.byteLength(bytes), notice: NOT_SENT };
+  return {
+    status: "saved",
+    path: saved,
+    bytes: Buffer.byteLength(bytes),
+    notice: NOT_SENT,
+    ...draft.contactChoice && { contact_notice: "Contact was not sent because this runtime cannot send feedback." }
+  };
 }
 
 // src/skills/chef-setup/scripts/lib/report-modes.mjs
 var STRING_FLAGS = ["class", "summary", "expected", "actual", "frequency", "desired-outcome", "current-behavior", "desired-behavior", "contact"];
 var REPORT_FLAGS = {
-  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "skill", "code"].map((flag) => [flag, { type: "string" }])),
+  ...Object.fromEntries([...STRING_FLAGS, "skill-ids", "diagnostics", "item", "value", "nonce", "focus", "skill", "code", "report-id"].map((flag) => [flag, { type: "string" }])),
+  declined: { type: "boolean" },
   raw: { type: "boolean" }
 };
 var NO_DRAFT = { status: "refused", reason: "there is no report draft; start one with report-draft" };
 var invalid = (root, error) => ({ status: "invalid-input", data_root: root, problems: error.problems ?? [error.message] });
 var DIAGNOSTICS = ["on", "off", "wide"];
 var CONTACT_DROPPED = "This runtime can't take contact details, so Chef dropped the contact you gave; it is not in the report.";
+var CONTACT_MAX_CHARS = 500;
 var canTakeContact = (adapter) => adapter.feedback.capabilities().includes("contact.opaque");
 function shown(root, draft, adapter) {
   const sendable = canSend(adapter);
+  const canAskContact = canTakeContact(adapter);
+  if (canAskContact && !draft.contactChoice) {
+    return { status: "contact-question", data_root: root, can_ask_contact: true };
+  }
   return {
     status: "draft",
     data_root: root,
     preview: renderPreview(draft),
     submission_nonce: draft.report.submission_nonce,
     can_send: sendable,
-    can_ask_contact: canTakeContact(adapter),
+    can_ask_contact: canAskContact,
     ...sendable ? {} : { send_notice: SAVE_ONLY }
   };
 }
@@ -9564,18 +9704,35 @@ function userFields(root, values, context) {
 function draftMode(root, values, context) {
   try {
     const { notes, ...fields } = values.focus === undefined ? userFields(root, values, context) : postErrorFields(root, values, context);
-    if (values.contact !== undefined && canTakeContact(context.adapter))
-      throw new Error("contact transport not implemented");
+    if (values.contact !== undefined && values.declined)
+      throw new Error("contact: choose a value or decline, not both");
+    const offersContact = canTakeContact(context.adapter);
+    if (offersContact && values.contact !== undefined) {
+      if (typeof values.contact !== "string" || !values.contact.trim() || [...values.contact].length > CONTACT_MAX_CHARS || /[\u0000-\u001f\u007f\u2028\u2029]/.test(values.contact)) {
+        throw new Error(`contact: use plain text of at most ${CONTACT_MAX_CHARS} characters`);
+      }
+    }
     const draft = newDraft(fields);
     if (notes)
       draft.notes = notes;
+    if (offersContact) {
+      if (values.contact !== undefined)
+        draft.contactChoice = { contact: values.contact };
+      else if (values.declined)
+        draft.contactChoice = { declined: true };
+    }
     saveDraft(root, draft);
-    return { ...shown(root, draft, context.adapter), ...values.contact !== undefined && { contact_notice: CONTACT_DROPPED } };
+    return {
+      ...shown(root, draft, context.adapter),
+      ...!offersContact && values.contact !== undefined && { contact_notice: CONTACT_DROPPED }
+    };
   } catch (error) {
     return invalid(root, error);
   }
 }
 function previewMode(root, draft, values, { adapter }) {
+  if (canTakeContact(adapter) && !draft.contactChoice)
+    return shown(root, draft, adapter);
   return values.raw ? { status: "draft", data_root: root, raw: serialize(draft.report) } : shown(root, draft, adapter);
 }
 var changeMode = (change) => (root, draft, values, { adapter }) => {
@@ -9603,18 +9760,36 @@ function declineMode(root, values) {
   declineOffer(root, { skill: values.skill, code: values.code });
   return { status: "declined", data_root: root, skill_id: values.skill, error_code: values.code };
 }
-var sendMode = (root, draft, values, { adapter }) => ({ data_root: root, ...sendReport(root, draft, { nonce: values.nonce, adapter }) });
+var sendMode = async (root, draft, values, { adapter }) => ({
+  data_root: root,
+  ...await sendReport(root, draft, { nonce: values.nonce, adapter })
+});
+async function retryContactMode(root, values, { adapter }) {
+  try {
+    const pending = readPendingContact(root, values["report-id"]);
+    if (!pending)
+      return { status: "refused", data_root: root, reason: "there is no pending contact request for that report" };
+    const result2 = await adapter.feedback.submitContact({ report_id: pending.report_id, receipt_secret: pending.receipt_secret }, pending.choice);
+    if (!result2.ok)
+      return { status: "contact-pending", data_root: root, report_id: pending.report_id, reason: result2.reason };
+    deletePendingContact(root, pending.report_id);
+    return { status: "contact-updated", data_root: root, report_id: pending.report_id };
+  } catch (error) {
+    return invalid(root, error);
+  }
+}
 var MODES = {
   "report-draft": draftMode,
   "report-preview": withDraft(previewMode),
   "report-edit": withDraft(changeMode(editItem)),
   "report-remove": withDraft(removeMode),
   "report-send": withDraft(sendMode),
+  "report-contact-retry": retryContactMode,
   "report-offer-decline": declineMode,
   "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root })
 };
-function reportModes({ skillsDir }) {
-  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(currentRuntime()), skillsDir });
+function reportModes({ skillsDir, adapter }) {
+  const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(adapter ?? currentRuntime()), skillsDir });
   return Object.fromEntries(Object.entries(MODES).map(([name, mode]) => [name, bound(mode)]));
 }
 
