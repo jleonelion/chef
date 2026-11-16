@@ -41,7 +41,7 @@ test('the same receipt twice is a duplicate and changes nothing', () => {
   assert.equal(git(root, ['rev-parse', 'HEAD']), head);
 });
 
-test('a forwarded email from an untrusted sender is refused before anything is read or written', () => {
+test('a receipt email from an untrusted sender is refused before anything is read or written', () => {
   const root = dataRoot();
   const result = addReceipt(root, { ...base, source: 'email', from: 'Market <orders@example.com>', trustedSenders: ['receipts@example.com'] });
   assert.equal(result.status, 'refused');
@@ -60,7 +60,7 @@ test('a trusted From without matching authentication (spoofed) is refused and no
   assert.equal(fs.existsSync(path.join(root, STORE.inventory)), false);
 });
 
-test('a forwarded email from a trusted, authenticated sender is accepted and the sender is not stored', () => {
+test('a receipt email from a trusted, authenticated sender is accepted and the sender is not stored', () => {
   const root = dataRoot();
   const result = addReceipt(root, { ...base, source: 'email', from: 'Market <Receipts@Example.com>', authenticated: 'example.com', id: '<abc@example.com>', trustedSenders: ['receipts@example.com'] });
   assert.equal(result.status, 'added');

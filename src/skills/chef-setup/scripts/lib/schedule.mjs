@@ -10,7 +10,7 @@ const CONDITIONS = {
   always: () => null,
   'health-goal': ({ goal }) => (goal ? null : 'no health goal is active'),
   'household-recipients': ({ settings }) => (settings.household_recipients.length ? null : 'no household recipients are set'),
-  'receipt-senders': ({ settings }) => (settings.trusted_receipt_senders.length ? null : 'receipt forwarding is off'),
+  'receipt-senders': ({ settings }) => (settings.trusted_receipt_senders.length ? null : 'receipt intake is off'),
 };
 
 const offer = ({ name, skill, cadence, prompt, why }) => ({ name, skill, cadence, prompt, why });

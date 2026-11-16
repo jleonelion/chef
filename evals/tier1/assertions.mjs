@@ -43,6 +43,10 @@ export function assertCase(evaluation, assertion) {
     assert(typeof actual === 'string' || Array.isArray(actual), `${assertion.path}: includes target is not a string or array`);
     assert(actual.includes(assertion.includes), `${assertion.path}: missing ${JSON.stringify(assertion.includes)}`);
   }
+  if (Object.hasOwn(assertion, 'excludes')) {
+    assert(typeof actual === 'string' || Array.isArray(actual), `${assertion.path}: excludes target is not a string or array`);
+    assert(!actual.includes(assertion.excludes), `${assertion.path}: unexpected ${JSON.stringify(assertion.excludes)}`);
+  }
   if (Object.hasOwn(assertion, 'min')) {
     assert(Number(actual) >= assertion.min, `${assertion.path}: expected >= ${assertion.min}, got ${actual}`);
   }

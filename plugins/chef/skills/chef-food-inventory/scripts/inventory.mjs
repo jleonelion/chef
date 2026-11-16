@@ -7225,7 +7225,7 @@ var facts_v1_default = {
 // plugins/chef/.claude-plugin/plugin.json
 var plugin_default = {
   name: "chef",
-  version: "1.2.0",
+  version: "1.2.1",
   description: "Recipes, meal planning, shopping lists and pantry inventory, kept in one local data root.",
   author: { name: "jleonelion" },
   repository: "https://github.com/jleonelion/chef",
@@ -8455,7 +8455,7 @@ function senderAddress(from) {
 var isAuthenticated = (address, authenticated) => typeof authenticated === "string" && authenticated.trim().toLowerCase() === address.split("@")[1];
 function checkSender(from, trustedSenders, { authenticated } = {}) {
   if (trustedSenders.length === 0) {
-    return { ok: false, reason: "receipt forwarding is off: no trusted receipt senders are set (chef-setup can add them)" };
+    return { ok: false, reason: "receipt intake is off: no trusted receipt senders are set (chef-setup can add them)" };
   }
   const address = senderAddress(from);
   if (!address)
