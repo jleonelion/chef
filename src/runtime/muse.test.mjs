@@ -139,6 +139,22 @@ test('feedback submission sends the exact bytes with the connector surrogate and
   assert.deepEqual(calls[0][1].body, bytes);
 });
 
+test('a closed intake maps to intake-closed with the maintainer message only when it is one plain line', async () => {
+  const submitWith = (status, json) => muse.feedback.submit(Buffer.from('{}'), {
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async () => ({ ok: false, status, json }),
+  });
+  const closed = (body) => submitWith(503, async () => body);
+
+  assert.deepEqual(await closed({ reason: 'intake-closed', message: ' Paused for a privacy check. ' }), { ok: false, reason: 'intake-closed', message: 'Paused for a privacy check.' });
+  assert.deepEqual(await closed({ reason: 'intake-closed' }), { ok: false, reason: 'intake-closed' });
+  assert.deepEqual(await closed({ reason: 'intake-closed', message: 'two\nlines' }), { ok: false, reason: 'intake-closed' });
+  assert.deepEqual(await closed({ reason: 'intake-closed', message: 'x'.repeat(201) }), { ok: false, reason: 'intake-closed' });
+  assert.deepEqual(await closed({ reason: 'overloaded' }), { ok: false, reason: 'intake-rejected' });
+  assert.deepEqual(await submitWith(503, async () => { throw new SyntaxError('not json'); }), { ok: false, reason: 'intake-rejected' });
+});
+
 test('contact is sent only in a separate receipt-authorized idempotent PUT', async () => {
   const calls = [];
   const receipt = { report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret' };
