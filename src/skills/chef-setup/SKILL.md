@@ -252,7 +252,17 @@ When the user wants to report a problem, ask for something new or ask Chef to be
    - Remove: `node scripts/setup.mjs report-remove --item 19`. Only optional parts can be removed; required fields can only be edited.
    - Edit: `node scripts/setup.mjs report-edit --item 4 --value "..."` (summary, the class fields, frequency and `skill_ids`, comma-separated).
    Every change returns a new `preview` and `submission_nonce`; show the whole new preview again. On `invalid-input`, show `problems`. For a `Check item` note, point out the item, suggest removing or rewording it, and change it only if the user asks.
-5. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`. `sent`: confirm submission with `report_id`; the receipt (with its secret) is saved at `receipt_path` inside the data root and is never shown in chat. `contact-pending`: the report was sent (receipt at `receipt_path`) but the contact choice is not confirmed; explain that plainly and retry with `node scripts/setup.mjs report-contact-retry --report-id <report_id>`. `failed`: nothing was confirmed sent; show `reason` and let the user decide whether to retry.
+5. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good", "sounds good", "yes"), ask again and do not run `report-send`. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`. `sent`: confirm submission with `report_id`; the receipt (with its secret) is saved at `receipt_path` inside the data root and is never shown in chat. `contact-pending`: the report was sent (receipt at `receipt_path`) but the contact choice is not confirmed; explain that plainly and retry with `node scripts/setup.mjs report-contact-retry --report-id <report_id>`. `failed`: nothing was sent; say `message` in plain words (the table below) and let the user decide. Never remove, shorten or edit report content yourself to make it fit; only change it when the user names items.
+
+     | `reason` | Say |
+     | --- | --- |
+     | `missing-install-key` | Chef couldn't prove this install to feedback intake; reconnect the Chef feedback connector. |
+     | `rate-limited` | Intake is getting too many reports; try again later. |
+     | `too-large` | The report is too large; ask which diagnostics items to remove by number. |
+     | `schema-invalid` | Intake couldn't accept the format; edit or remove items by number, or update Chef. |
+     | `nonce-replayed` | Intake already has this report; check saved receipts before resending. |
+     | `intake-rejected` | Intake turned the report down; try again later. |
+     | `unreachable` | Chef couldn't reach intake; check the connection and try again. |
    - `saved`: say `notice` in plain words and give `path` (inside the data root). Offer no other way to send it: no email, no GitHub issue, no upload.
    - `closed` (reason `intake-closed`): the maintainer has closed Chef feedback for now. Say in plain words that feedback is closed for now, nothing was sent and the approved report is kept on this machine at `path`. If `message` is present, add "The maintainer says: " and `message` as given. Never retry on your own; only when the user later asks to send it again, run the same `report-send --nonce`. Offer no other way to send it.
    - `refused`: the report changed since that preview; show the current one (`report-preview`) and ask again.

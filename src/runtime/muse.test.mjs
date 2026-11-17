@@ -155,6 +155,16 @@ test('a closed intake maps to intake-closed with the maintainer message only whe
   assert.deepEqual(await submitWith(503, async () => { throw new SyntaxError('not json'); }), { ok: false, reason: 'intake-rejected' });
 });
 
+test('intake rejection statuses map to distinct reasons', async () => {
+  const submitWith = (status) => muse.feedback.submit(Buffer.from('{}'), {
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async () => ({ ok: false, status }),
+  });
+  const expected = { 401: 'missing-install-key', 409: 'nonce-replayed', 413: 'too-large', 422: 'schema-invalid', 429: 'rate-limited', 500: 'intake-rejected' };
+  for (const [status, reason] of Object.entries(expected)) assert.deepEqual(await submitWith(Number(status)), { ok: false, reason });
+});
+
 test('contact is sent only in a separate receipt-authorized idempotent PUT', async () => {
   const calls = [];
   const receipt = { report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret' };

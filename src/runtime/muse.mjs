@@ -165,7 +165,7 @@ export const muse = {
       const closed = response.status === 503 && await closedIntake(response);
       if (closed) return closed;
       if (response.status !== 201) {
-        const reason = { 409: 'nonce-replayed', 413: 'too-large', 422: 'schema-invalid' }[response.status] ?? 'intake-rejected';
+        const reason = { 401: 'missing-install-key', 409: 'nonce-replayed', 413: 'too-large', 422: 'schema-invalid', 429: 'rate-limited' }[response.status] ?? 'intake-rejected';
         return { ok: false, reason };
       }
       let receipt;

@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import { generic } from '../../runtime/generic.mjs';
 import { bytesFromPreview, renderPreview } from './preview.mjs';
 import { newDraft, removeItem } from './report.mjs';
-import { sendReport } from './send.mjs';
+import { REJECTION_MESSAGES, sendReport } from './send.mjs';
 import { OUTBOX_DIR, readDraft, saveDraft } from './store.mjs';
 
 const tempRoot = () => fs.mkdtempSync(path.join(os.tmpdir(), 'chef-feedback-'));
@@ -110,4 +110,18 @@ test('a closed intake keeps the approved bytes in the outbox and the draft, and 
   reply = { ok: true, report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'x'.repeat(40) };
   assert.equal((await send()).status, 'sent', 'once intake reopens, the user can send it');
   assert.equal(sent.length, 3);
+});
+
+test('every intake rejection gets a plain message, is in SKILL.md, and leaves the report untouched', async () => {
+  const skill = fs.readFileSync(new URL('../../skills/chef-setup/SKILL.md', import.meta.url), 'utf8');
+  for (const reason of Object.keys(REJECTION_MESSAGES)) {
+    const root = tempRoot();
+    const current = draft();
+    saveDraft(root, current);
+    const adapter = { ...generic, feedback: { ...generic.feedback, capabilities: () => ['submit.connector'], submit: async () => ({ ok: false, reason }) } };
+    const result = await sendReport(root, current, { nonce: current.report.submission_nonce, adapter });
+    assert.deepEqual(result, { status: 'failed', reason, message: REJECTION_MESSAGES[reason] });
+    assert.deepEqual(readDraft(root).report, current.report, `${reason}: the draft is not trimmed`);
+    assert.ok(skill.includes(`| \`${reason}\` |`), `${reason} is in the SKILL.md table`);
+  }
 });
