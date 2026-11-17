@@ -46,6 +46,15 @@ item maps to its source paths.
 - [ ] Asking for a prep plan for a saved week sends the PDF as a downloadable chat attachment, with one page per recipe. (`src/runtime/muse.mjs`, `src/skills/chef-batch-prep-planning/SKILL.md`)
 - [ ] The attachment downloads and prints from phone and desktop browsers; titles, steps and checkboxes fit each page. (`src/skills/chef-batch-prep-planning/scripts/lib/render.mjs`)
 
+## Feedback and diagnostics
+
+- [ ] After updating an install that ran an earlier release, the first Chef run shows the trace notice once, verbatim; no later run, in any skill, shows it again. (`src/lib/diagnostics/trace-notice.mjs`, `src/lib/diagnostics/capture.mjs`, `src/skills/chef-setup/SKILL.md`)
+- [ ] An internal error in a skill script gets one offer to report it; "no thanks" ends offers for that error, and accepting shows a defect preview focused on the failing run. (`src/lib/diagnostics/capture.mjs`, `src/lib/diagnostics/offers.mjs`, `src/skills/chef-setup/SKILL.md`)
+- [ ] With Chef feedback connected, the preview comes with the destination card; "send" asks for Muse's host approval on the first send, returns a `report_id`, and the receipt is saved under `diagnostics/receipts/` and never shown in chat. (`src/lib/feedback/destination.mjs`, `src/lib/feedback/send.mjs`, `src/runtime/muse.mjs`, `src/skills/chef-setup/SKILL.md`)
+- [ ] Asking to delete a sent report lists receipts (date, class, `report_id`), asks once, deletes it and removes the local receipt; a second delete says it expired or was deleted. (`src/runtime/muse.mjs`, `src/lib/feedback/store.mjs`, `src/skills/chef-setup/SKILL.md`)
+- [ ] With intake closed by the maintainer, "send" explains the reason in plain words, keeps the approved report in `diagnostics/outbox/` and does not retry on its own. (`src/lib/feedback/send.mjs`, `src/runtime/muse.mjs`, `src/skills/chef-setup/SKILL.md`)
+- [ ] With the Chef feedback connector disconnected, "send" saves the approved report in `diagnostics/outbox/`, says nothing was sent and offers no other way to send it. (`src/lib/feedback/send.mjs`, `src/lib/feedback/store.mjs`, `src/skills/chef-setup/SKILL.md`)
+
 ## Release steps
 
 - [x] Fixture recipe bodies passed copyright review (2026-11-08 audit: clean). (`fixtures/data-root/knowledge/wiki/recipes`, `fixtures/schema-v1/knowledge/wiki/recipes`)
