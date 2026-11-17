@@ -226,6 +226,8 @@ Chef keeps an **invocation trace** of its script runs (in plain words, a short l
 - **Clear trace** ("delete Chef's log"): run `node scripts/setup.mjs clear-trace`. `cleared`: say the trace is deleted from this machine. `empty`: say there was nothing to delete. Nothing is sent anywhere either way.
 - **Turn tracing off or on**: `node scripts/setup.mjs set --trace off` (or `on`). Turning it off stops capture and deletes the trace right away.
 
+When any chef- script's result has `trace_notice`, show its `text` once, exactly as given, with your answer. It comes once per machine, on the first run with the trace on.
+
 ## Report a problem
 
 When the user wants to report a problem, ask for something new or ask Chef to behave differently, build a **feedback report** with them. Nothing leaves the machine without their explicit "send". Muse can send when its Chef feedback connector is connected; other runtimes save an approved report on this machine.
