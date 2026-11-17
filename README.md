@@ -80,19 +80,38 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
   and settings migrations wait for your confirmation; Chef then verifies the install. Updates
   never delete data-root files.
 
-## Sending feedback from Muse
+## Feedback and diagnostics
 
-- Say "report a problem with Chef". Chef drafts a report, shows where it goes, who sees it, how
-  long it is kept and its size, and sends only after you reply "send". Without the connector it
-  saves the approved report in the data root's `diagnostics/outbox/` and sends nothing.
-- To enable sending, say "connect Chef feedback" (`chef-setup`): a custom connector with provider
-  `chef-feedback`, host `chef-feedback-intake.vercel.app`, custom header `X-Chef-Intake-Key`.
-  Enter the install key in Muse's secure entry card, never in chat.
-- A sent report's receipt (id and secret) is saved at 0600 under `diagnostics/receipts/` for 90
-  days and never shown in chat. Say "delete a report I sent" to pick one by date, class and id;
-  after one confirmation Chef deletes it from feedback intake and removes the receipt.
-- Disconnect only in Muse's Settings > Connectors. The stored key outlives the connector folder
-  under `custom-connectors/`, and uninstalling Chef does not remove it.
+Chef never sends anything on its own. Only a report you approve leaves your machine. Details
+are in [docs/feedback-privacy.md](docs/feedback-privacy.md).
+
+- **Local log.** Chef keeps a short technical log on this machine of its own script runs, the
+  invocation trace: which script ran, how long it took and how it ended. It never records what
+  you ask, recipes, or household, health or dietary details. It holds at most 200 runs, 256 KiB
+  and 14 days, in the data root's git-ignored `diagnostics/` folder. It has been on by default
+  since v1.2.0; v1.3.0 extends it from recipe search to all 10 skills and tells you about it
+  once on each machine. Say "show Chef's log" or "clear Chef's log", or turn it off (which also
+  deletes it) with "turn off Chef's log" (`chef-setup set --trace off`).
+- **Report a problem.** Say "report a problem with Chef". Chef drafts a report with you, shows
+  every line numbered so you can edit or remove any of them, and sends only after you reply
+  "send". On Muse it first shows where the report goes, who sees it, how long it is kept and its
+  size, and Muse asks you to allow the host on the first send.
+- **After an internal error**, Chef offers once to report it: at most once an hour for each
+  skill's error, and "no thanks" ends offers for that error. Turn offers off with "stop offering
+  to report errors" (`chef-setup set --post-error-offers off`). Offers need the log.
+- **Sending from Muse.** Say "connect Chef feedback" (`chef-setup`): a custom connector with
+  provider `chef-feedback`, host `chef-feedback-intake.vercel.app`, custom header
+  `X-Chef-Intake-Key`. Enter the install key in Muse's secure entry card, never in chat. Without
+  the connector, or on a runtime that cannot send such as Claude Code, "send" saves the approved
+  report in the data root's `diagnostics/outbox/` and sends nothing.
+- **Feedback closed.** If the maintainer closes feedback intake, "send" sends nothing: Chef says
+  so, keeps the approved report in `diagnostics/outbox/` and does not retry by itself.
+- **Receipts and delete.** A sent report's receipt (id and secret) is saved at 0600 under
+  `diagnostics/receipts/` for 90 days, as long as intake can hold the report, and never shown in
+  chat. Say "delete a report I sent" to pick one by date, class and id; after one confirmation
+  Chef deletes it from feedback intake and removes the receipt.
+- **Turn sending off** only in Muse's Settings > Connectors. The stored key outlives the
+  connector folder under `custom-connectors/`, and uninstalling Chef does not remove it.
 
 ## Safety
 

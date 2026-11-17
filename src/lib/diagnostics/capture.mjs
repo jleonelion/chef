@@ -10,6 +10,7 @@ import { currentRuntime } from '../../runtime/contract.mjs';
 import { readSchemaVersion } from '../schema.mjs';
 import { readSettings } from '../settings.mjs';
 import { claimOffer } from './offers.mjs';
+import { takeTraceNotice } from './trace-notice.mjs';
 import { appendEvent } from './trace.mjs';
 
 export const EVENT_SCHEMA_VERSION = 1;
@@ -110,6 +111,7 @@ function reportOffer(root, event) {
 }
 
 const withOffer = (result, offer) => (offer ? { ...result, report_offer: offer } : result);
+const withNotice = (result, notice) => (notice ? { ...result, trace_notice: notice } : result);
 const INTERNAL_ERROR = { status: 'internal-error', reason: 'Chef hit an unexpected error; details are on stderr.' };
 
 // Failures most scripts share; a script's own `failures` add to or override these.
@@ -134,6 +136,7 @@ export function classifyStatus({ skill, script, failures = {} }) {
 // unclassified (never its message): its stack goes to stderr, exit code 1, and the script gets an
 // internal-error result to print.
 export async function chefCapture({ root, skill, script, operation, classify, failures, adapter = currentRuntime() }, run) {
+  const notice = takeTraceNotice(root, { traceOn: traceEnabled(root) });
   const context = { root, skill, script, operation, adapter, startedAt: new Date() };
   const classifyResult = classify ?? classifyStatus({ skill, script, failures });
   const started = performance.now();
@@ -141,11 +144,11 @@ export async function chefCapture({ root, skill, script, operation, classify, fa
   try {
     const result = await run();
     const event = record(context, () => ({ ...elapsed(), ...classifyResult(result) }));
-    return withOffer(result, reportOffer(root, event));
+    return withNotice(withOffer(result, reportOffer(root, event)), notice);
   } catch (error) {
     const event = record(context, () => ({ ...elapsed(), outcome: 'internal-error', error_code: 'unclassified' }));
     console.error(error);
     process.exitCode = 1;
-    return withOffer(INTERNAL_ERROR, reportOffer(root, event));
+    return withNotice(withOffer(INTERNAL_ERROR, reportOffer(root, event)), notice);
   }
 }
