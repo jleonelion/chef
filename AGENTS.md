@@ -14,4 +14,6 @@ Single-context: root `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
 
 ### Releases and release targeting
 
-Issues carry a `semver:` change level and, once triaged, a milestone named for the exact release (`v1.2.1`). Terms in `GLOSSARY.md`; commands in `docs/agents/issue-tracker.md` under **Release targeting**; release steps in `RELEASE-CHECKLIST.md`.
+Plan releases, assess issues before closing, and triage feedback using
+`docs/release-planning.md`. Terms are in `GLOSSARY.md`, issue commands in
+`docs/agents/issue-tracker.md`, and release gates in `RELEASE-CHECKLIST.md`.

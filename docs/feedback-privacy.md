@@ -74,6 +74,10 @@ first send.
   if sooner. Contact is deleted when the report is closed. Backups roll over within 7 days.
 - **No identity**: rate limits use the install key and a coarse IP prefix, held in memory for
   24 hours and never stored with a report.
+- **Public issues**: a maintainer may write a non-identifying synopsis and link to the
+  authenticated private report in a public GitHub issue. The issue excludes report text,
+  receipt secrets, personal details and the reporter's identity. The private link stops
+  working when the report is deleted.
 - **Closed intake**: the maintainer can close intake. While it is closed, intake stores nothing
   and answers 503 with reason `intake-closed` and an optional short message. Chef says "Chef
   feedback is closed for now, so nothing was sent. Chef kept the approved report on this machine

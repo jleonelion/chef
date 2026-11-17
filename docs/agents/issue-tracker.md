@@ -22,8 +22,9 @@ File issues only into the user's own repo. Never file into `mattpocock/skills` (
 
 Terms are in `GLOSSARY.md`: **Version**, **Change level**, **Breaking change**, **Release target**, **Backlog**.
 
-- **Change level (always)**: every new issue gets exactly one of `semver:patch`, `semver:minor`, `semver:major`. Unsure between two: pick the larger and say why in the body. A sub-issue's level can be smaller than its parent's, never larger.
-- **Release target (only when known)**: set a milestone only when the user names the release, or the issue is a sub-issue of a parent with one (the child takes the parent's). Otherwise leave it unset and add `needs-triage`; choosing the release is a triage decision. Never target a milestone smaller than the issue's change level: a `semver:minor` issue cannot go in `v1.2.1`.
+- **Change level**: an issue that needs a Chef release gets exactly one of `semver:patch`, `semver:minor`, `semver:major`. Work needing no Chef release has none. When impact is unclear, record the missing evidence and leave the target unset. A labeled sub-issue's level can be smaller than its labeled parent's, never larger.
+- **Release target (only when known)**: propose a milestone only when the release is known. A sub-issue can inherit its parent's target if appropriate. Otherwise leave it unset and add `needs-triage`; choosing the release is a triage decision. Never target a milestone smaller than the issue's change level: a `semver:minor` issue cannot go in `v1.2.1`. The maintainer approves label and milestone changes before an agent applies them.
+- **Before closing**: assess the implemented change, record the outcome and resolve uncertainty before closing. See [release planning](../release-planning.md).
 - **Set / change / clear**: `gh issue create --milestone v1.3.0 ...`, `gh issue edit <n> --milestone v1.2.1`, `gh issue edit <n> --remove-milestone`. `--milestone` takes the title.
 - **List open milestones**: `gh api repos/<owner>/<repo>/milestones --jq '.[] | {number, title, open_issues, description}'`.
 - **Create a milestone**: titled with the exact version, no other names: `gh api --method POST repos/<owner>/<repo>/milestones -f title=v1.2.1 -f description="<one-line theme>"`.
