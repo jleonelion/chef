@@ -4,7 +4,7 @@
 // usda (check the USDA connection), feedback (check the Chef feedback connection), safety (the one safety screen), dietary (show the dietary
 // ruleset), set-dietary (change it), schedule (propose recurring tasks; writes nothing),
 // check-update (is a newer release out; installs nothing), trace (show the local invocation
-// trace), clear-trace (delete it), report-* (draft, preview, change and save a feedback report).
+// trace), clear-trace (delete it), report-* (draft, preview, change and send a feedback report, or delete a sent one).
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';

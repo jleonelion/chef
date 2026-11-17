@@ -7124,7 +7124,7 @@ var muse = {
       if (!exists(AUTHDC))
         return [];
       const credential = fromConnector(PROVIDERS["chef-feedback"], run);
-      return credential.ok ? ["submit.connector", "contact.opaque"] : [];
+      return credential.ok ? ["submit.connector", "contact.opaque", "delete.receipt"] : [];
     },
     async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
@@ -7166,6 +7166,20 @@ var muse = {
       if (response.status === 204)
         return { ok: true };
       return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
+    },
+    async deleteReport(receipt, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(`${FEEDBACK_URL}/${receipt.report_id}`, {
+        method: "DELETE",
+        headers: { [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` }
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status === 204)
+        return { ok: true };
+      return { ok: false, reason: response.status === 404 ? "not-found" : "intake-rejected" };
     }
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
@@ -7327,7 +7341,8 @@ var generic = {
   adapterContractVersion: 1,
   feedback: {
     capabilities: () => [],
-    submit: unsupported
+    submit: unsupported,
+    deleteReport: unsupported
   }
 };
 
