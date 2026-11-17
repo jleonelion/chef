@@ -88,8 +88,9 @@ jleonelion/chef." Muse copies the skills and runs `chef-setup`.
 - To enable sending, say "connect Chef feedback" (`chef-setup`): a custom connector with provider
   `chef-feedback`, host `chef-feedback-intake.vercel.app`, custom header `X-Chef-Intake-Key`.
   Enter the install key in Muse's secure entry card, never in chat.
-- A sent report's receipt (id and secret) is saved at 0600 under `diagnostics/receipts/` and
-  never shown in chat.
+- A sent report's receipt (id and secret) is saved at 0600 under `diagnostics/receipts/` for 90
+  days and never shown in chat. Say "delete a report I sent" to pick one by date, class and id;
+  after one confirmation Chef deletes it from feedback intake and removes the receipt.
 - Disconnect only in Muse's Settings > Connectors. The stored key outlives the connector folder
   under `custom-connectors/`, and uninstalling Chef does not remove it.
 

@@ -30,7 +30,7 @@ export async function sendReport(root, draft, { nonce, adapter = currentRuntime(
     // The report is already delivered, so a failed local receipt write must not lose that state.
     let receiptPath = null;
     try {
-      receiptPath = saveReceipt(root, receipt, { now });
+      receiptPath = saveReceipt(root, { ...receipt, class: draft.report.class, sent_at: now.toISOString() }, { now });
     } catch {}
     if (draft.contactChoice) {
       savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });

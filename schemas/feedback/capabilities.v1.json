@@ -4,7 +4,8 @@
   "capabilities": {
     "submit.connector": { "description": "Send an approved feedback report to feedback intake through an installed, authorized runtime connector." },
     "submit.direct": { "description": "Send an approved feedback report to feedback intake directly, without a connector." },
-    "contact.opaque": { "description": "Offer one optional reply channel that feedback intake stores apart from the report." }
+    "contact.opaque": { "description": "Offer one optional reply channel that feedback intake stores apart from the report." },
+    "delete.receipt": { "description": "Delete a sent feedback report from feedback intake by its feedback receipt, through the same connector that sent it." }
   },
   "evidence_kinds": {}
 }

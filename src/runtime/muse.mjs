@@ -132,7 +132,7 @@ export const muse = {
     capabilities({ exists = fs.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC)) return [];
       const credential = fromConnector(PROVIDERS['chef-feedback'], run);
-      return credential.ok ? ['submit.connector', 'contact.opaque'] : [];
+      return credential.ok ? ['submit.connector', 'contact.opaque', 'delete.receipt'] : [];
     },
     async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential('chef-feedback', { exists, run });
@@ -174,6 +174,23 @@ export const muse = {
       if (!response) return { ok: false, reason: 'unreachable' };
       if (response.status === 204) return { ok: true };
       return { ok: false, reason: response.status === 409 ? 'contact-already-set' : 'contact-rejected' };
+    },
+    // Receipt-gated hard delete. Intake answers 404 not-found alike for expired, deleted or
+    // wrong-receipt reports, so `not-found` means the report is gone either way.
+    async deleteReport(receipt, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential('chef-feedback', { exists, run });
+      if (!credential.ok) return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(
+        `${FEEDBACK_URL}/${receipt.report_id}`,
+        {
+          method: 'DELETE',
+          headers: { [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` },
+        },
+        fetchImpl,
+      );
+      if (!response) return { ok: false, reason: 'unreachable' };
+      if (response.status === 204) return { ok: true };
+      return { ok: false, reason: response.status === 404 ? 'not-found' : 'intake-rejected' };
     },
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),

@@ -1,5 +1,5 @@
 // chef-setup feedback report modes: report-draft, report-preview, report-edit, report-remove,
-// report-send and report-discard. One draft at a time lives under diagnostics/; every mode that
+// report-send, report-discard and report-delete (of a sent report). One draft at a time lives under diagnostics/; every mode that
 // changes it returns the full new preview and its submission_nonce, which report-send requires.
 import ERROR_CODES from '../../../../../schemas/feedback/error-codes.v1.json' with { type: 'json' };
 import { traceEnabled } from '../../../../lib/diagnostics/capture.mjs';
@@ -10,8 +10,17 @@ import { bytesFromPreview, renderPreview } from '../../../../lib/feedback/previe
 import { dropsFocus, editItem, newDraft, removeItem, serialize, SKILL_ID, splitSkillIds } from '../../../../lib/feedback/report.mjs';
 import { destinationCard } from '../../../../lib/feedback/destination.mjs';
 import { canSend, SAVE_ONLY, sendReport } from '../../../../lib/feedback/send.mjs';
-import { deleteDraft, deletePendingContact, readDraft, readPendingContact, saveDraft } from '../../../../lib/feedback/store.mjs';
-import { checkAdapter, currentRuntime } from '../../../../runtime/contract.mjs';
+import {
+  deleteDraft,
+  deletePendingContact,
+  deleteReceipt,
+  listReceipts,
+  readDraft,
+  readPendingContact,
+  readReceipt,
+  saveDraft,
+} from '../../../../lib/feedback/store.mjs';
+import { checkAdapter, currentRuntime, hasCapability } from '../../../../runtime/contract.mjs';
 
 const STRING_FLAGS = ['class', 'summary', 'expected', 'actual', 'frequency', 'desired-outcome', 'current-behavior', 'desired-behavior', 'contact'];
 export const REPORT_FLAGS = {
@@ -192,6 +201,35 @@ async function retryContactMode(root, values, { adapter }) {
   }
 }
 
+const DELETE_NEEDS_CONNECTOR = "Deleting a sent report needs Muse's Chef feedback connector, which this runtime doesn't have connected, so nothing was deleted.";
+const DELETE_WARNING = 'This permanently deletes the report, with any contact and replies, from feedback intake. It cannot be undone. Ask the user to confirm first.';
+const GONE = 'That report has expired or was already deleted, so there was nothing left to delete. Chef removed its local receipt.';
+
+// Without --report-id: the sent reports to pick from. With it: confirmation first, then the
+// receipt-gated delete. The receipt secret never appears in a result.
+async function deleteMode(root, values, { adapter }) {
+  if (!hasCapability(adapter, 'delete')) return { status: 'unsupported', data_root: root, reason: DELETE_NEEDS_CONNECTOR };
+  try {
+    if (values['report-id'] === undefined) {
+      const receipts = listReceipts(root);
+      return receipts.length ? { status: 'choose', data_root: root, receipts } : { status: 'empty', data_root: root };
+    }
+    const receipt = readReceipt(root, values['report-id']);
+    if (!receipt) return { status: 'refused', data_root: root, reason: 'there is no receipt for that report on this machine' };
+    const { report_id } = receipt;
+    if (!values.confirm) {
+      return { status: 'confirmation-required', data_root: root, report: { report_id, class: receipt.class, sent_at: receipt.sent_at }, warning: DELETE_WARNING };
+    }
+    const result = await adapter.feedback.deleteReport({ report_id, receipt_secret: receipt.receipt_secret });
+    if (!result.ok && result.reason !== 'not-found') return { status: 'failed', data_root: root, report_id, reason: result.reason };
+    deleteReceipt(root, report_id);
+    deletePendingContact(root, report_id);
+    return result.ok ? { status: 'deleted', data_root: root, report_id } : { status: 'expired-or-deleted', data_root: root, report_id, notice: GONE };
+  } catch (error) {
+    return invalid(root, error);
+  }
+}
+
 const MODES = {
   'report-draft': draftMode,
   'report-preview': withDraft(previewMode),
@@ -201,6 +239,7 @@ const MODES = {
   'report-contact-retry': retryContactMode,
   'report-offer-decline': declineMode,
   'report-discard': (root) => ({ status: deleteDraft(root) ? 'discarded' : 'empty', data_root: root }),
+  'report-delete': deleteMode,
 };
 
 // { mode: (root, values) => result } for setup.mjs, bound to this runtime and skills folder.

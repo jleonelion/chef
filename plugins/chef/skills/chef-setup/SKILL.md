@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong), asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch, a USDA connection hint or a `report_offer` after an internal error.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong) or delete a report they sent, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch, a USDA connection hint or a `report_offer` after an internal error.
 ---
 
 # Chef setup
@@ -253,7 +253,16 @@ When the user wants to report a problem, ask for something new or ask Chef to be
 5. **Send.** Only a reply of "send", "submit" or "send it" to the latest preview counts; for anything vaguer ("ok", "looks good"), ask again. Then run `node scripts/setup.mjs report-send --nonce <submission_nonce of that preview>`. `sent`: confirm submission with `report_id`; the receipt (with its secret) is saved at `receipt_path` inside the data root and is never shown in chat. `contact-pending`: the report was sent (receipt at `receipt_path`) but the contact choice is not confirmed; explain that plainly and retry with `node scripts/setup.mjs report-contact-retry --report-id <report_id>`. `failed`: nothing was confirmed sent; show `reason` and let the user decide whether to retry.
    - `saved`: say `notice` in plain words and give `path` (inside the data root). Offer no other way to send it: no email, no GitHub issue, no upload.
    - `refused`: the report changed since that preview; show the current one (`report-preview`) and ask again.
-6. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days.
+6. **Cancel.** `node scripts/setup.mjs report-discard` deletes the draft. Drafts and saved reports are deleted after 14 days; receipts of sent reports are kept 90 days, as long as feedback intake can keep the report.
+
+### Delete a sent report
+
+When the user wants to delete a report they sent, run `node scripts/setup.mjs report-delete`. Never show a receipt secret or report content.
+
+- `choose`: list `receipts` as date (`sent_at`), class and `report_id`, newest first; if there is more than one, ask which. `empty`: there are no sent reports on this machine to delete.
+- Then `node scripts/setup.mjs report-delete --report-id <report_id>` returns `confirmation-required` with `warning`: say it in plain words and ask once. Only on a clear yes, repeat it with `--confirm`.
+- `deleted`: the report and everything attached to it are gone from feedback intake, and Chef removed the local receipt. `expired-or-deleted`: say `notice` plainly (the report expired or was already deleted); the receipt is removed. `failed`: nothing was deleted; show `reason`, the receipt is kept and the user can retry. `refused`: there is no receipt for that report here.
+- `unsupported`: say `reason` in plain words: deleting needs the Chef feedback connector in Muse (see **Connect Chef feedback**).
 
 ### After an internal error
 
