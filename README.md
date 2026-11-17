@@ -105,8 +105,8 @@ are in [docs/feedback-privacy.md](docs/feedback-privacy.md).
   the connector, or on a runtime that cannot send such as Claude Code, "send" saves the approved
   report in the data root's `diagnostics/outbox/` and sends nothing.
 - **Receipts.** A sent report's receipt (id and secret) is saved at 0600 under
-  `diagnostics/receipts/` and never shown in chat. With it you can ask Chef to delete a report
-  you sent.
+  `diagnostics/receipts/` and never shown in chat, and kept 90 days. With it you can ask Chef
+  to delete a report you sent for as long as intake holds it.
 - **Turn sending off** only in Muse's Settings > Connectors. The stored key outlives the
   connector folder under `custom-connectors/`, and uninstalling Chef does not remove it.
 
