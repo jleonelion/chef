@@ -32,9 +32,9 @@ changed, the update offers to re-create that task with the same name and time.
 - **Optional contact.** On Muse, Chef asks once whether you want to leave a contact for the
   maintainer to reply, or decline. Contact is shown in the preview, never part of the report and
   deleted when the report is closed. (#110)
-- **Delete a sent report.** Ask Chef to delete a report you sent. One confirmation, then intake
-  hard-deletes it and Chef removes its receipt. An expired or already deleted report is reported
-  as such. (#81)
+- **Delete a sent report.** Ask Chef to delete a report you sent, for as long as intake holds
+  it: receipts are kept 90 days. One confirmation, then intake hard-deletes it and Chef removes
+  its receipt. An expired or already deleted report is reported as such. (#81)
 - **Intake can be closed.** If the maintainer closes feedback intake, Chef says why in plain
   words, keeps your approved report in the outbox and never retries on its own. (#86)
 - **Maintainer triage.** Reports are worked from a triage queue with status and plain-text
