@@ -7066,6 +7066,19 @@ async function feedbackRequest(url, init, fetchImpl) {
     throw error;
   }
 }
+async function closedIntake(response) {
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  if (body?.reason !== "intake-closed")
+    return null;
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const plain = message && message.length <= 200 && !/[\u0000-\u001f\u007f]/.test(message);
+  return { ok: false, reason: "intake-closed", ...plain ? { message } : {} };
+}
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
   for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
@@ -7125,6 +7138,9 @@ var muse = {
       }, fetchImpl);
       if (!response)
         return { ok: false, reason: "unreachable" };
+      const closed = response.status === 503 && await closedIntake(response);
+      if (closed)
+        return closed;
       if (response.status !== 201) {
         const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
         return { ok: false, reason };
@@ -9625,8 +9641,12 @@ function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
   fs19.mkdirSync(path18.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
+  const suffix2 = `-${nonce.slice(0, 8)}.json`;
+  const existing = fs19.readdirSync(path18.join(root, OUTBOX_DIR)).find((name) => name.endsWith(suffix2));
+  if (existing)
+    return `${OUTBOX_DIR}/${existing}`;
   const stamp2 = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
-  const relative = `${OUTBOX_DIR}/${stamp2}-${nonce.slice(0, 8)}.json`;
+  const relative = `${OUTBOX_DIR}/${stamp2}${suffix2}`;
   writePrivate(path18.join(root, relative), bytes);
   return relative;
 }
@@ -9671,6 +9691,7 @@ function deletePendingContact(root, reportId) {
 // src/lib/feedback/send.mjs
 var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
+var CLOSED = "Chef feedback is closed for now, so nothing was sent. Chef kept the approved report on this machine and will not try again by itself.";
 var canSend = (adapter) => hasCapability(adapter, "submit");
 async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
   checkAdapter(adapter);
@@ -9688,6 +9709,15 @@ async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now 
     return { status: "invalid-input", problems };
   if (canSend(adapter)) {
     const submission = await adapter.feedback.submit(Buffer.from(bytes));
+    if (submission.reason === "intake-closed") {
+      return {
+        status: "closed",
+        reason: submission.reason,
+        notice: CLOSED,
+        ...submission.message && { message: submission.message },
+        path: saveToOutbox(root, bytes, { nonce, now })
+      };
+    }
     if (!submission.ok)
       return { status: "failed", reason: submission.reason };
     const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
