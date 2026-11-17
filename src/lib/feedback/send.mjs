@@ -1,7 +1,9 @@
 // Sending an approved feedback report. The bytes are parsed back from the preview the user saw
 // and approved (identified by its submission_nonce), so nothing is added or re-derived after
 // approval. Until a runtime adapter declares a submit capability, approved bytes are saved to
-// the feedback outbox and nothing leaves the machine. No other egress is ever tried.
+// the feedback outbox and nothing leaves the machine. No other egress is ever tried. When the
+// maintainer has closed intake, the approved bytes go to the outbox too and the draft stays, so
+// only the user can ask to send again; Chef never retries by itself.
 import { checkAdapter, currentRuntime, hasCapability } from '../../runtime/contract.mjs';
 import { bytesFromPreview, renderPreview } from './preview.mjs';
 import { reportProblems, serialize } from './report.mjs';
@@ -9,6 +11,7 @@ import { deleteDraft, deletePendingContact, savePendingContact, saveReceipt, sav
 
 const NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 export const SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
+const CLOSED = 'Chef feedback is closed for now, so nothing was sent. Chef kept the approved report on this machine and will not try again by itself.';
 export const canSend = (adapter) => hasCapability(adapter, 'submit');
 
 export async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date() }) {
@@ -25,12 +28,21 @@ export async function sendReport(root, draft, { nonce, adapter = currentRuntime(
   if (problems.length) return { status: 'invalid-input', problems };
   if (canSend(adapter)) {
     const submission = await adapter.feedback.submit(Buffer.from(bytes));
+    if (submission.reason === 'intake-closed') {
+      return {
+        status: 'closed',
+        reason: submission.reason,
+        notice: CLOSED,
+        ...(submission.message && { message: submission.message }),
+        path: saveToOutbox(root, bytes, { nonce, now }),
+      };
+    }
     if (!submission.ok) return { status: 'failed', reason: submission.reason };
     const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
     // The report is already delivered, so a failed local receipt write must not lose that state.
     let receiptPath = null;
     try {
-      receiptPath = saveReceipt(root, receipt, { now });
+      receiptPath = saveReceipt(root, { ...receipt, class: draft.report.class, sent_at: now.toISOString() }, { now });
     } catch {}
     if (draft.contactChoice) {
       savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });

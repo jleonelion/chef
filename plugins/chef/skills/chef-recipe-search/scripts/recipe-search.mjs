@@ -7064,6 +7064,19 @@ async function feedbackRequest(url, init, fetchImpl) {
     throw error;
   }
 }
+async function closedIntake(response) {
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  if (body?.reason !== "intake-closed")
+    return null;
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const plain = message && message.length <= 200 && !/[\u0000-\u001f\u007f]/.test(message);
+  return { ok: false, reason: "intake-closed", ...plain ? { message } : {} };
+}
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
   for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
@@ -7110,7 +7123,7 @@ var muse = {
       if (!exists(AUTHDC))
         return [];
       const credential = fromConnector(PROVIDERS["chef-feedback"], run);
-      return credential.ok ? ["submit.connector", "contact.opaque"] : [];
+      return credential.ok ? ["submit.connector", "contact.opaque", "delete.receipt"] : [];
     },
     async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
@@ -7123,6 +7136,9 @@ var muse = {
       }, fetchImpl);
       if (!response)
         return { ok: false, reason: "unreachable" };
+      const closed = response.status === 503 && await closedIntake(response);
+      if (closed)
+        return closed;
       if (response.status !== 201) {
         const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
         return { ok: false, reason };
@@ -7149,6 +7165,20 @@ var muse = {
       if (response.status === 204)
         return { ok: true };
       return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
+    },
+    async deleteReport(receipt, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(`${FEEDBACK_URL}/${receipt.report_id}`, {
+        method: "DELETE",
+        headers: { [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` }
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status === 204)
+        return { ok: true };
+      return { ok: false, reason: response.status === 404 ? "not-found" : "intake-rejected" };
     }
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
@@ -7310,7 +7340,8 @@ var generic = {
   adapterContractVersion: 1,
   feedback: {
     capabilities: () => [],
-    submit: unsupported
+    submit: unsupported,
+    deleteReport: unsupported
   }
 };
 

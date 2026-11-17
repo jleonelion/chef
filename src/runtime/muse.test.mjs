@@ -96,7 +96,7 @@ test('feedback capability is available only with the correctly placed Muse conne
   const connected = { exists: () => true, run: () => feedbackAuthdcReply() };
   const disconnected = { exists: () => true, run: () => 'not json' };
 
-  assert.deepEqual(muse.feedback.capabilities(connected), ['submit.connector', 'contact.opaque']);
+  assert.deepEqual(muse.feedback.capabilities(connected), ['submit.connector', 'contact.opaque', 'delete.receipt']);
   assert.deepEqual(muse.feedback.capabilities(disconnected), []);
   assert.deepEqual(
     muse.credential('chef-feedback', { ...connected }),
@@ -139,6 +139,22 @@ test('feedback submission sends the exact bytes with the connector surrogate and
   assert.deepEqual(calls[0][1].body, bytes);
 });
 
+test('a closed intake maps to intake-closed with the maintainer message only when it is one plain line', async () => {
+  const submitWith = (status, json) => muse.feedback.submit(Buffer.from('{}'), {
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async () => ({ ok: false, status, json }),
+  });
+  const closed = (body) => submitWith(503, async () => body);
+
+  assert.deepEqual(await closed({ reason: 'intake-closed', message: ' Paused for a privacy check. ' }), { ok: false, reason: 'intake-closed', message: 'Paused for a privacy check.' });
+  assert.deepEqual(await closed({ reason: 'intake-closed' }), { ok: false, reason: 'intake-closed' });
+  assert.deepEqual(await closed({ reason: 'intake-closed', message: 'two\nlines' }), { ok: false, reason: 'intake-closed' });
+  assert.deepEqual(await closed({ reason: 'intake-closed', message: 'x'.repeat(201) }), { ok: false, reason: 'intake-closed' });
+  assert.deepEqual(await closed({ reason: 'overloaded' }), { ok: false, reason: 'intake-rejected' });
+  assert.deepEqual(await submitWith(503, async () => { throw new SyntaxError('not json'); }), { ok: false, reason: 'intake-rejected' });
+});
+
 test('contact is sent only in a separate receipt-authorized idempotent PUT', async () => {
   const calls = [];
   const receipt = { report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret' };
@@ -157,6 +173,32 @@ test('contact is sent only in a separate receipt-authorized idempotent PUT', asy
   assert.equal(calls[0][1].redirect, 'error');
   assert.equal(calls[0][1].headers.Authorization, 'Bearer receipt-secret');
   assert.equal(calls[0][1].body, '{"declined":true}');
+});
+
+test('delete is a receipt-authorized DELETE through the connector with redirects disabled', async () => {
+  const calls = [];
+  const receipt = { report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret' };
+  const answering = (status) => ({
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async (url, init) => {
+      calls.push([url, init]);
+      return { ok: status < 300, status };
+    },
+  });
+
+  assert.deepEqual(await muse.feedback.deleteReport(receipt, answering(204)), { ok: true });
+  assert.deepEqual(await muse.feedback.deleteReport(receipt, answering(404)), { ok: false, reason: 'not-found' });
+  assert.deepEqual(await muse.feedback.deleteReport(receipt, answering(500)), { ok: false, reason: 'intake-rejected' });
+  assert.deepEqual(
+    await muse.feedback.deleteReport(receipt, { exists: () => true, run: () => 'not json', fetchImpl: async () => assert.fail('no request') }),
+    { ok: false, reason: 'not-connected' },
+  );
+  assert.equal(calls[0][0], `https://chef-feedback-intake.vercel.app/v1/reports/${receipt.report_id}`);
+  assert.equal(calls[0][1].method, 'DELETE');
+  assert.equal(calls[0][1].redirect, 'error');
+  assert.equal(calls[0][1].headers.Authorization, 'Bearer receipt-secret');
+  assert.equal(calls[0][1].headers['X-Chef-Intake-Key'], 'hsurr:feedback');
 });
 
 test('off Muse, the USDA credential comes from CHEF_USDA_FDC_KEY', () => {

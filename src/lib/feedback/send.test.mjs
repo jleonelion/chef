@@ -71,3 +71,43 @@ test('a failed receipt write still reports the delivered report as sent and clea
   assert.equal(result.receipt_path, null);
   assert.equal(readDraft(root), null);
 });
+
+test('a closed intake keeps the approved bytes in the outbox and the draft, and never retries by itself', async () => {
+  const root = tempRoot();
+  const current = draft();
+  saveDraft(root, current);
+  const sent = [];
+  let reply = { ok: false, reason: 'intake-closed', message: 'Paused for a privacy check.' };
+  const adapter = {
+    ...generic,
+    feedback: {
+      ...generic.feedback,
+      capabilities: () => ['submit.connector'],
+      submit: async (bytes) => {
+        sent.push(bytes.toString());
+        return reply;
+      },
+    },
+  };
+  const send = () => sendReport(root, readDraft(root), { nonce: current.report.submission_nonce, adapter });
+
+  const result = await send();
+  assert.equal(result.status, 'closed');
+  assert.equal(result.reason, 'intake-closed');
+  assert.equal(result.message, 'Paused for a privacy check.');
+  assert.match(result.notice, /closed for now, so nothing was sent.*kept the approved report.*will not try again by itself/);
+  assert.equal(sent.length, 1, 'one attempt, no automatic retry');
+  const file = path.join(root, result.path);
+  assert.equal(result.path.startsWith(`${OUTBOX_DIR}/`), true);
+  assert.equal(fs.readFileSync(file, 'utf8'), sent[0]);
+  assert.equal(fs.readFileSync(file, 'utf8'), bytesFromPreview(renderPreview(current)));
+  assert.equal(mode(file), 0o600);
+  assert.notEqual(readDraft(root), null, 'the draft stays for a user-initiated retry');
+
+  assert.equal((await send()).path, result.path, 'a second attempt keeps one copy');
+  assert.equal(fs.readdirSync(path.join(root, OUTBOX_DIR)).length, 1);
+
+  reply = { ok: true, report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'x'.repeat(40) };
+  assert.equal((await send()).status, 'sent', 'once intake reopens, the user can send it');
+  assert.equal(sent.length, 3);
+});

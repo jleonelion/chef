@@ -19,13 +19,13 @@ const fields = {
   diagnostics: 'off',
 };
 
-function connectedAdapter({ contactResult = { ok: true } } = {}) {
+function connectedAdapter({ contactResult = { ok: true }, deleteResult = { ok: true } } = {}) {
   const calls = [];
   const adapter = {
     ...generic,
     feedback: {
       ...generic.feedback,
-      capabilities: () => ['submit.connector', 'contact.opaque'],
+      capabilities: () => ['submit.connector', 'contact.opaque', 'delete.receipt'],
       destination: { host: 'intake.example.com' },
       submit: async (bytes) => {
         calls.push(['submit', bytes.toString()]);
@@ -34,6 +34,10 @@ function connectedAdapter({ contactResult = { ok: true } } = {}) {
       submitContact: async (receipt, choice) => {
         calls.push(['contact', receipt.report_id, receipt.receipt_secret, choice]);
         return contactResult;
+      },
+      deleteReport: async (receipt) => {
+        calls.push(['delete', receipt.report_id, receipt.receipt_secret]);
+        return deleteResult;
       },
     },
   };
@@ -91,10 +95,14 @@ test('sending submits the approved report bytes first and contact separately', a
   assert.doesNotMatch(JSON.stringify(result), /receipt-secret|reply@example\.com/);
   const receipt = path.join(root, result.receipt_path);
   assert.equal(fs.statSync(receipt).mode & 0o777, 0o600);
-  assert.deepEqual(JSON.parse(fs.readFileSync(receipt, 'utf8')), {
+  const saved = JSON.parse(fs.readFileSync(receipt, 'utf8'));
+  assert.deepEqual(saved, {
     report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370',
     receipt_secret: 'receipt-secret-abcdefghijklmnopqrstuvwxyz0123456789',
+    class: 'defect',
+    sent_at: saved.sent_at,
   });
+  assert.ok(!Number.isNaN(Date.parse(saved.sent_at)));
 });
 
 test('a sendable preview comes with a destination card holding the exact byte size', () => {
@@ -159,4 +167,70 @@ test('contact is capped, single-line plain text, and cannot be sent with two cho
   assert.equal(modes['report-draft'](root, { ...fields, contact: 'reply\n@example.com' }).status, 'invalid-input');
   assert.equal(modes['report-draft'](root, { ...fields, contact: 'reply@example.com', declined: true }).status, 'invalid-input');
   assert.equal(modes['report-draft'](root, { ...fields, contact: '🍎'.repeat(300) }).status, 'draft');
+});
+
+const SECRET = /receipt-secret/;
+
+async function sentReport(adapter) {
+  const root = tempRoot();
+  const modes = reportModes({ skillsDir: path.join(root, 'skills'), adapter });
+  const draft = modes['report-draft'](root, { ...fields, declined: true });
+  const sent = await modes['report-send'](root, { nonce: draft.submission_nonce });
+  return { root, modes, sent };
+}
+
+test('deleting a sent report lists receipts without content, confirms once, then removes the receipt', async () => {
+  const { adapter, calls } = connectedAdapter();
+  const { root, modes, sent } = await sentReport(adapter);
+
+  const list = await modes['report-delete'](root, {});
+  assert.equal(list.status, 'choose');
+  assert.deepEqual(Object.keys(list.receipts[0]).sort(), ['class', 'report_id', 'sent_at']);
+  assert.equal(list.receipts[0].class, 'defect');
+  assert.doesNotMatch(JSON.stringify(list), /Search finds nothing|receipt-secret/);
+
+  const ask = await modes['report-delete'](root, { 'report-id': sent.report_id });
+  assert.equal(ask.status, 'confirmation-required');
+  assert.ok(ask.warning);
+  assert.equal(calls.some(([type]) => type === 'delete'), false, 'nothing is deleted before confirmation');
+
+  const deleted = await modes['report-delete'](root, { 'report-id': sent.report_id, confirm: true });
+  assert.deepEqual(deleted, { status: 'deleted', data_root: root, report_id: sent.report_id });
+  assert.deepEqual(calls.at(-1), ['delete', sent.report_id, 'receipt-secret-abcdefghijklmnopqrstuvwxyz0123456789']);
+  assert.equal(fs.existsSync(path.join(root, sent.receipt_path)), false);
+  for (const result of [list, ask, deleted]) assert.doesNotMatch(JSON.stringify(result), SECRET);
+  assert.equal((await modes['report-delete'](root, {})).status, 'empty');
+});
+
+test('a report intake no longer has is shown as expired or deleted and its receipt is removed', async () => {
+  const { adapter } = connectedAdapter({ deleteResult: { ok: false, reason: 'not-found' } });
+  const { root, modes, sent } = await sentReport(adapter);
+
+  const gone = await modes['report-delete'](root, { 'report-id': sent.report_id, confirm: true });
+
+  assert.equal(gone.status, 'expired-or-deleted');
+  assert.match(gone.notice, /expired or was already deleted/);
+  assert.equal(fs.existsSync(path.join(root, sent.receipt_path)), false);
+});
+
+test('a failed delete keeps the receipt so the user can retry', async () => {
+  const { adapter } = connectedAdapter({ deleteResult: { ok: false, reason: 'unreachable' } });
+  const { root, modes, sent } = await sentReport(adapter);
+
+  const failed = await modes['report-delete'](root, { 'report-id': sent.report_id, confirm: true });
+
+  assert.deepEqual(failed, { status: 'failed', data_root: root, report_id: sent.report_id, reason: 'unreachable' });
+  assert.equal(fs.existsSync(path.join(root, sent.receipt_path)), true);
+});
+
+test('delete refuses an unknown or unsafe report id and explains when the runtime cannot delete', async () => {
+  const { adapter } = connectedAdapter();
+  const root = tempRoot();
+  const modes = reportModes({ skillsDir: path.join(root, 'skills'), adapter });
+
+  assert.equal((await modes['report-delete'](root, { 'report-id': 'a0d56f28-88d4-45f2-8ab0-3993ac31d370' })).status, 'refused');
+  assert.equal((await modes['report-delete'](root, { 'report-id': '../escape' })).status, 'invalid-input');
+  const offMuse = await reportModes({ skillsDir: path.join(root, 'skills'), adapter: generic })['report-delete'](root, {});
+  assert.equal(offMuse.status, 'unsupported');
+  assert.match(offMuse.reason, /Chef feedback connector/);
 });

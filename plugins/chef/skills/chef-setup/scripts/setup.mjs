@@ -7066,6 +7066,19 @@ async function feedbackRequest(url, init, fetchImpl) {
     throw error;
   }
 }
+async function closedIntake(response) {
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  if (body?.reason !== "intake-closed")
+    return null;
+  const message = typeof body.message === "string" ? body.message.trim() : "";
+  const plain = message && message.length <= 200 && !/[\u0000-\u001f\u007f]/.test(message);
+  return { ok: false, reason: "intake-closed", ...plain ? { message } : {} };
+}
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
   for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
@@ -7112,7 +7125,7 @@ var muse = {
       if (!exists(AUTHDC))
         return [];
       const credential = fromConnector(PROVIDERS["chef-feedback"], run);
-      return credential.ok ? ["submit.connector", "contact.opaque"] : [];
+      return credential.ok ? ["submit.connector", "contact.opaque", "delete.receipt"] : [];
     },
     async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
@@ -7125,6 +7138,9 @@ var muse = {
       }, fetchImpl);
       if (!response)
         return { ok: false, reason: "unreachable" };
+      const closed = response.status === 503 && await closedIntake(response);
+      if (closed)
+        return closed;
       if (response.status !== 201) {
         const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
         return { ok: false, reason };
@@ -7151,6 +7167,20 @@ var muse = {
       if (response.status === 204)
         return { ok: true };
       return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
+    },
+    async deleteReport(receipt, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+      const credential = muse.credential("chef-feedback", { exists, run });
+      if (!credential.ok)
+        return { ok: false, reason: credential.reason };
+      const response = await feedbackRequest(`${FEEDBACK_URL}/${receipt.report_id}`, {
+        method: "DELETE",
+        headers: { [credential.placement.name]: credential.value, Authorization: `Bearer ${receipt.receipt_secret}` }
+      }, fetchImpl);
+      if (!response)
+        return { ok: false, reason: "unreachable" };
+      if (response.status === 204)
+        return { ok: true };
+      return { ok: false, reason: response.status === 404 ? "not-found" : "intake-rejected" };
     }
   },
   isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
@@ -7311,7 +7341,8 @@ var capabilities_v1_default = {
   capabilities: {
     "submit.connector": { description: "Send an approved feedback report to feedback intake through an installed, authorized runtime connector." },
     "submit.direct": { description: "Send an approved feedback report to feedback intake directly, without a connector." },
-    "contact.opaque": { description: "Offer one optional reply channel that feedback intake stores apart from the report." }
+    "contact.opaque": { description: "Offer one optional reply channel that feedback intake stores apart from the report." },
+    "delete.receipt": { description: "Delete a sent feedback report from feedback intake by its feedback receipt, through the same connector that sent it." }
   },
   evidence_kinds: {}
 };
@@ -7324,7 +7355,8 @@ var generic = {
   adapterContractVersion: 1,
   feedback: {
     capabilities: () => [],
-    submit: unsupported
+    submit: unsupported,
+    deleteReport: unsupported
   }
 };
 
@@ -9620,20 +9652,22 @@ var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
 var CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 var RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
-var expired = (file, now) => now - fs20.statSync(file).mtimeMs > TRACE_BOUNDS.maxAgeMs;
-function pruneFiles(root, relativeDir, now) {
+var RECEIPT_MAX_AGE_MS = 90 * DAY_MS;
+var expired = (file, now, maxAgeMs = TRACE_BOUNDS.maxAgeMs) => now - fs20.statSync(file).mtimeMs > maxAgeMs;
+function pruneFiles(root, relativeDir, now, maxAgeMs) {
   const dir = path19.join(root, relativeDir);
   if (!fs20.existsSync(dir))
     return;
   for (const name of fs20.readdirSync(dir)) {
     const file = path19.join(dir, name);
-    if (expired(file, now))
+    if (expired(file, now, maxAgeMs))
       fs20.rmSync(file);
   }
 }
 function pruneOutbox(root, now) {
-  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR, RECEIPTS_DIR])
-    pruneFiles(root, dir, now);
+  for (const dir of [OUTBOX_DIR, CONTACT_RETRY_DIR])
+    pruneFiles(root, dir, now, TRACE_BOUNDS.maxAgeMs);
+  pruneFiles(root, RECEIPTS_DIR, now, RECEIPT_MAX_AGE_MS);
 }
 function writePrivateJson(file, value) {
   writePrivate(file, `${JSON.stringify(value)}
@@ -9670,8 +9704,12 @@ function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
   fs20.mkdirSync(path19.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
+  const suffix2 = `-${nonce.slice(0, 8)}.json`;
+  const existing = fs20.readdirSync(path19.join(root, OUTBOX_DIR)).find((name) => name.endsWith(suffix2));
+  if (existing)
+    return `${OUTBOX_DIR}/${existing}`;
   const stamp2 = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
-  const relative = `${OUTBOX_DIR}/${stamp2}-${nonce.slice(0, 8)}.json`;
+  const relative = `${OUTBOX_DIR}/${stamp2}${suffix2}`;
   writePrivate(path19.join(root, relative), bytes);
   return relative;
 }
@@ -9684,8 +9722,7 @@ function savePendingContact(root, pending, { now = new Date } = {}) {
   return file;
 }
 function saveReceipt(root, receipt, { now = new Date } = {}) {
-  if (!reportIdIsSafe(receipt.report_id))
-    throw new Error("invalid report id");
+  receiptFile(root, receipt.report_id);
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
   const relative = `${RECEIPTS_DIR}/${receipt.report_id}.json`;
@@ -9694,6 +9731,40 @@ function saveReceipt(root, receipt, { now = new Date } = {}) {
   return relative;
 }
 var reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
+var receiptFile = (root, reportId) => {
+  if (!reportIdIsSafe(reportId))
+    throw new Error("invalid report id");
+  return path19.join(root, RECEIPTS_DIR, `${reportId}.json`);
+};
+function parseReceipt(file) {
+  return { class: null, sent_at: fs20.statSync(file).mtime.toISOString(), ...JSON.parse(fs20.readFileSync(file, "utf8")) };
+}
+function readReceipt(root, reportId, { now = new Date } = {}) {
+  const file = receiptFile(root, reportId);
+  pruneOutbox(root, now);
+  return fs20.existsSync(file) ? parseReceipt(file) : null;
+}
+function listReceipts(root, { now = new Date } = {}) {
+  pruneOutbox(root, now);
+  const dir = path19.join(root, RECEIPTS_DIR);
+  if (!fs20.existsSync(dir))
+    return [];
+  return fs20.readdirSync(dir).map((name) => name.replace(/\.json$/, "")).filter(reportIdIsSafe).flatMap((reportId) => {
+    try {
+      const { report_id, class: reportClass, sent_at } = parseReceipt(receiptFile(root, reportId));
+      return [{ report_id, class: reportClass, sent_at }];
+    } catch {
+      return [];
+    }
+  }).sort((a, b) => b.sent_at.localeCompare(a.sent_at));
+}
+function deleteReceipt(root, reportId) {
+  const file = receiptFile(root, reportId);
+  if (!fs20.existsSync(file))
+    return false;
+  fs20.rmSync(file);
+  return true;
+}
 function readPendingContact(root, reportId, { now = new Date } = {}) {
   if (!reportIdIsSafe(reportId))
     throw new Error("invalid report id");
@@ -9716,6 +9787,7 @@ function deletePendingContact(root, reportId) {
 // src/lib/feedback/send.mjs
 var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
+var CLOSED = "Chef feedback is closed for now, so nothing was sent. Chef kept the approved report on this machine and will not try again by itself.";
 var canSend = (adapter) => hasCapability(adapter, "submit");
 async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
   checkAdapter(adapter);
@@ -9733,12 +9805,21 @@ async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now 
     return { status: "invalid-input", problems };
   if (canSend(adapter)) {
     const submission = await adapter.feedback.submit(Buffer.from(bytes));
+    if (submission.reason === "intake-closed") {
+      return {
+        status: "closed",
+        reason: submission.reason,
+        notice: CLOSED,
+        ...submission.message && { message: submission.message },
+        path: saveToOutbox(root, bytes, { nonce, now })
+      };
+    }
     if (!submission.ok)
       return { status: "failed", reason: submission.reason };
     const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
     let receiptPath = null;
     try {
-      receiptPath = saveReceipt(root, receipt, { now });
+      receiptPath = saveReceipt(root, { ...receipt, class: draft.report.class, sent_at: now.toISOString() }, { now });
     } catch {}
     if (draft.contactChoice) {
       savePendingContact(root, { ...receipt, choice: draft.contactChoice }, { now });
@@ -9924,6 +10005,34 @@ async function retryContactMode(root, values, { adapter }) {
     return invalid(root, error);
   }
 }
+var DELETE_NEEDS_CONNECTOR = "Deleting a sent report needs Muse's Chef feedback connector, which this runtime doesn't have connected, so nothing was deleted.";
+var DELETE_WARNING = "This permanently deletes the report, with any contact and replies, from feedback intake. It cannot be undone. Ask the user to confirm first.";
+var GONE = "That report has expired or was already deleted, so there was nothing left to delete. Chef removed its local receipt.";
+async function deleteMode(root, values, { adapter }) {
+  if (!hasCapability(adapter, "delete"))
+    return { status: "unsupported", data_root: root, reason: DELETE_NEEDS_CONNECTOR };
+  try {
+    if (values["report-id"] === undefined) {
+      const receipts = listReceipts(root);
+      return receipts.length ? { status: "choose", data_root: root, receipts } : { status: "empty", data_root: root };
+    }
+    const receipt = readReceipt(root, values["report-id"]);
+    if (!receipt)
+      return { status: "refused", data_root: root, reason: "there is no receipt for that report on this machine" };
+    const { report_id } = receipt;
+    if (!values.confirm) {
+      return { status: "confirmation-required", data_root: root, report: { report_id, class: receipt.class, sent_at: receipt.sent_at }, warning: DELETE_WARNING };
+    }
+    const result2 = await adapter.feedback.deleteReport({ report_id, receipt_secret: receipt.receipt_secret });
+    if (!result2.ok && result2.reason !== "not-found")
+      return { status: "failed", data_root: root, report_id, reason: result2.reason };
+    deleteReceipt(root, report_id);
+    deletePendingContact(root, report_id);
+    return result2.ok ? { status: "deleted", data_root: root, report_id } : { status: "expired-or-deleted", data_root: root, report_id, notice: GONE };
+  } catch (error) {
+    return invalid(root, error);
+  }
+}
 var MODES = {
   "report-draft": draftMode,
   "report-preview": withDraft(previewMode),
@@ -9932,7 +10041,8 @@ var MODES = {
   "report-send": withDraft(sendMode),
   "report-contact-retry": retryContactMode,
   "report-offer-decline": declineMode,
-  "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root })
+  "report-discard": (root) => ({ status: deleteDraft(root) ? "discarded" : "empty", data_root: root }),
+  "report-delete": deleteMode
 };
 function reportModes({ skillsDir, adapter }) {
   const bound = (mode) => (root, values) => mode(root, values, { adapter: checkAdapter(adapter ?? currentRuntime()), skillsDir });

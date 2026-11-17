@@ -11,5 +11,6 @@ export const generic = {
   feedback: {
     capabilities: () => [],
     submit: unsupported,
+    deleteReport: unsupported,
   },
 };

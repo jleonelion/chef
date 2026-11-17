@@ -54,7 +54,7 @@ include it.
 | `trace.jsonl` | the invocation trace | at most 200 runs, 256 KiB and 14 days; the oldest drop off on the next read or write |
 | `report-draft.json` | the report being built | 14 days, or until sent, saved or discarded |
 | `outbox/` | approved reports Chef saved instead of sending | 14 days |
-| `receipts/` | `report_id` and receipt secret of each sent report | 90 days, intake's longest retention, or until the report is deleted |
+| `receipts/` | `report_id` and receipt secret of each sent report | 14 days |
 | `contact-retry/` | a sent report's contact choice still to be confirmed | 14 days, or until confirmed |
 | `offers.json` | when Chef last offered to report each error, and the ones you declined | until cleared |
 | `notices.json` | one-time notices shown on this machine | until deleted |
@@ -85,8 +85,7 @@ Security problems do not belong in a report: use GitHub private vulnerability re
 
 When intake accepts a report it returns a `report_id` and a one-time receipt secret; intake keeps
 only a hash of the secret. Chef saves both under `diagnostics/receipts/` (0600) and never shows
-the secret in chat. Receipts are kept 90 days, so you can delete a sent report for as long as
-intake holds it.
+the secret in chat.
 
 To delete a report you sent, ask Chef. You pick it from a short list (date, class, `report_id`),
 confirm once, and Chef sends a receipt-authorized delete through the connector. Intake
