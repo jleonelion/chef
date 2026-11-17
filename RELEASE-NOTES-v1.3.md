@@ -32,11 +32,14 @@ changed, the update offers to re-create that task with the same name and time.
 - **Optional contact.** On Muse, Chef asks once whether you want to leave a contact for the
   maintainer to reply, or decline. Contact is shown in the preview, never part of the report and
   deleted when the report is closed. (#110)
-- **Delete a sent report.** Ask Chef to delete a report you sent, for as long as intake holds
-  it: receipts are kept 90 days. One confirmation, then intake hard-deletes it and Chef removes
-  its receipt. An expired or already deleted report is reported as such. (#81)
-- **Intake can be closed.** If the maintainer closes feedback intake, Chef says why in plain
-  words, keeps your approved report in the outbox and never retries on its own. (#86)
+- **Delete a sent report.** On Muse, ask Chef to delete a report you sent (`chef-setup
+  report-delete`): pick it by send date, class and id, confirm once, and intake hard-deletes it
+  and Chef removes its receipt. Receipts now record class and send date and are kept 90 days, so
+  this works for as long as intake holds the report. An expired or already deleted report is
+  reported as such; a failed delete keeps the receipt for a retry. (#81)
+- **Intake can be closed.** If the maintainer closes feedback intake, "send" sends nothing: Chef
+  says feedback is closed for now, adds the maintainer's short reason if given, saves the
+  approved report in `diagnostics/outbox/`, keeps the draft and never retries on its own. (#86)
 - **Maintainer triage.** Reports are worked from a triage queue with status and plain-text
   replies. Pattern-scan matches and contact are masked by default; each reveal is logged. The
   client and intake share one pattern definition. (#82, #83)

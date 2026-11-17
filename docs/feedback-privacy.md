@@ -53,8 +53,8 @@ include it.
 |---|---|---|
 | `trace.jsonl` | the invocation trace | at most 200 runs, 256 KiB and 14 days; the oldest drop off on the next read or write |
 | `report-draft.json` | the report being built | 14 days, or until sent, saved or discarded |
-| `outbox/` | approved reports Chef saved instead of sending | 14 days |
-| `receipts/` | `report_id` and receipt secret of each sent report | 90 days, intake's longest retention, or until the report is deleted |
+| `outbox/` | approved reports Chef saved instead of sending (no connector, or intake closed) | 14 days |
+| `receipts/` | `report_id`, receipt secret, class and send date of each sent report | 90 days, intake's longest retention, or until the report is deleted |
 | `contact-retry/` | a sent report's contact choice still to be confirmed | 14 days, or until confirmed |
 | `offers.json` | when Chef last offered to report each error, and the ones you declined | until cleared |
 | `notices.json` | one-time notices shown on this machine | until deleted |
@@ -75,8 +75,11 @@ first send.
 - **No identity**: rate limits use the install key and a coarse IP prefix, held in memory for
   24 hours and never stored with a report.
 - **Closed intake**: the maintainer can close intake. While it is closed, intake stores nothing
-  and says why; Chef shows the reason in plain words, keeps the approved report in
-  `diagnostics/outbox/` and never retries on its own. You can retry later yourself.
+  and answers 503 with reason `intake-closed` and an optional short message. Chef says "Chef
+  feedback is closed for now, so nothing was sent. Chef kept the approved report on this machine
+  and will not try again by itself.", adds "The maintainer says: " and the message if there is
+  one, saves the approved bytes in `diagnostics/outbox/` (0600) and keeps the draft. Chef never
+  retries on its own; ask to send it again later and it resends the same report.
 
 Security problems do not belong in a report: use GitHub private vulnerability reporting on
 `jleonelion/chef`.
@@ -84,14 +87,17 @@ Security problems do not belong in a report: use GitHub private vulnerability re
 ## Receipts and deleting a sent report
 
 When intake accepts a report it returns a `report_id` and a one-time receipt secret; intake keeps
-only a hash of the secret. Chef saves both under `diagnostics/receipts/` (0600) and never shows
-the secret in chat. Receipts are kept 90 days, so you can delete a sent report for as long as
+only a hash of the secret. Chef saves both, with the report's class and send date, under
+`diagnostics/receipts/` (0600) and never shows the secret in chat. Receipts are kept 90 days, so you can delete a sent report for as long as
 intake holds it.
 
-To delete a report you sent, ask Chef. You pick it from a short list (date, class, `report_id`),
-confirm once, and Chef sends a receipt-authorized delete through the connector. Intake
-hard-deletes the report with its contact, replies and links at once, and Chef removes the
-receipt. If the report already expired or was deleted, Chef says so and removes the receipt.
+To delete a report you sent, ask Chef (`chef-setup report-delete`). You pick it from a list of
+your receipts (send date, class, `report_id`, newest first), confirm once (`--report-id`, then
+`--confirm`), and Chef sends a receipt-authorized delete through the connector. Intake
+hard-deletes the report with its contact and replies at once, and Chef removes the receipt. If
+the report already expired or was deleted, Chef says so and removes the receipt. If the delete
+fails, nothing is deleted and the receipt is kept so you can retry. Deleting needs the Chef
+feedback connector on Muse; elsewhere Chef says so and deletes nothing.
 
 A lost or expired receipt cannot be recovered; the report then expires on intake's schedule.
 
