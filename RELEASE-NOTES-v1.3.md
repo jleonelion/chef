@@ -60,3 +60,7 @@ intake keeps reports 90 days at most, or 30 days after the maintainer closes the
 name or account. The local log, drafts, outbox and receipts stay in the data root's git-ignored
 `diagnostics/` folder. Turn the log off with `chef-setup set --trace off`, which also deletes it,
 and turn sending off by disconnecting Chef feedback in Muse's Settings > Connectors.
+
+## Release verification
+
+CI (unit tests, tier1 evals, repro lint, migrations, build drift, bundle smoke, hygiene) is green on the tagged commit. The send path was verified live on a Muse VM with a synthetic data root during v1.3.0-alpha.2 (#80). The agentic suite was not run for this release, so no agentic result is attached.
