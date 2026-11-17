@@ -33,7 +33,7 @@ A release's SemVer number `X.Y.Z`, tagged `vX.Y.Z`. Its largest change level set
 _Avoid_: build number, revision
 
 **Change level**:
-The smallest release kind a change can ship in, recorded on its issue as a `semver:` label. **patch**: fixes or rewords existing behavior; no new behavior, setting, flag or schema change. **minor**: adds behavior, a setting, a flag or an additive settings step Chef applies on read; existing data roots, skills and recurring tasks keep working with no action from the user. **major**: a breaking change.
+The smallest Chef release kind a change can ship in, recorded on its issue as a `semver:` label. **patch**: fixes or rewords existing behavior; no new behavior, setting, flag or schema change. **minor**: adds behavior, a setting, a flag or an additive settings step Chef applies on read; existing data roots, skills and recurring tasks keep working with no action from the user. **major**: a breaking change.
 _Avoid_: severity, priority, size
 
 **Breaking change**:
@@ -41,7 +41,7 @@ A change an existing install cannot take without the user acting: a data-root `S
 _Avoid_: big change, major feature
 
 **Release target**:
-The release an issue is planned to ship in: its GitHub milestone, titled with the exact version (`v1.2.1`). An issue has at most one, never smaller than its change level.
+The release an issue is planned to ship in or support: its GitHub milestone, titled with the exact version (`v1.2.1`). An issue has at most one, never smaller than its change level.
 _Avoid_: fix version, sprint, roadmap
 
 **Backlog**:
@@ -81,7 +81,7 @@ A maintainer-written scenario with synthetic data that reproduces what a feedbac
 _Avoid_: fixture copy, test from report
 
 **Sanitized issue**:
-A public GitHub issue a maintainer writes about what a feedback report describes; holds none of the report's content and identifies neither the report nor its reporter.
+A public GitHub issue a maintainer writes about what a feedback report describes; may link to the private report and contain a non-identifying synopsis, but not report text or the reporter's identity.
 _Avoid_: exported report, issue from report
 
 **Overlap review**:

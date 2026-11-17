@@ -26,5 +26,5 @@ Triage also settles when an issue ships (terms in `GLOSSARY.md`, commands in `is
 
 When triaging an issue:
 
-1. Check or set its change level. Every open issue has exactly one `semver:` label.
-2. Choose a release target (an open milestone at least as large as the change level), or leave it in the backlog. Only the maintainer picks the release; an agent proposes one and waits.
+1. Assess its change level. Work that needs a Chef release has exactly one `semver:` label; work that needs no Chef release has none.
+2. Propose a release target (an open milestone at least as large as the change level), or leave it in the backlog. The maintainer approves label and target changes before an agent applies them. See [release planning](../release-planning.md).

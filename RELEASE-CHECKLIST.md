@@ -58,7 +58,7 @@ item maps to its source paths.
 ## Release steps
 
 - [x] Fixture recipe bodies passed copyright review (2026-11-08 audit: clean). (`fixtures/data-root/knowledge/wiki/recipes`, `fixtures/schema-v1/knowledge/wiki/recipes`)
-- [ ] The `vX.Y.Z` milestone has no open issues: close each leftover or move it to a later milestone. `X.Y.Z` is the next version for the largest `semver:` label among its closed issues. (`docs/agents/issue-tracker.md`, `GLOSSARY.md`)
+- [ ] The `vX.Y.Z` milestone has no open issues: assess completed work before closing, or propose moving unfinished work to a later milestone. Compare the exact release commit with the previous tag; its changes determine the minimum version, cross-checked against issue assessments and `semver:` labels. Intake-only prerequisites do not set the Chef version. Resolve discrepancies before tagging. (`docs/release-planning.md`, `GLOSSARY.md`)
 - [ ] CI is green on the exact commit to tag. (`.github/workflows/ci.yml`)
 - [ ] `bun run agentic --known-failures --reps 5`: each `known_failure` row still fails at least one of 5 reps (else its fix landed: drop the marker). Repro rows without a marker are fixed and pass 3/3 in the full run below. (`evals/repro/README.md`, `evals/agentic/rows.json`)
 - [ ] `bun run agentic` passes every row 3/3 with the current default model; attach `evals/agentic/results/agentic-<commit>.json` to the release. (`evals/agentic/run.mjs`, `evals/agentic/rows.json`)
