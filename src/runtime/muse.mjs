@@ -79,6 +79,21 @@ async function feedbackRequest(url, init, fetchImpl) {
   }
 }
 
+// 503 intake-closed: the maintainer closed intake. `message` is their short plain-words reason,
+// kept only when it is one line of at most 200 characters.
+async function closedIntake(response) {
+  let body;
+  try {
+    body = await response.json();
+  } catch {
+    return null;
+  }
+  if (body?.reason !== 'intake-closed') return null;
+  const message = typeof body.message === 'string' ? body.message.trim() : '';
+  const plain = message && message.length <= 200 && !/[\u0000-\u001f\u007f]/.test(message);
+  return { ok: false, reason: 'intake-closed', ...(plain ? { message } : {}) };
+}
+
 const pluginManifest = (repository) => path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json');
 
 function findPluginRepository(skillDir) {
@@ -147,6 +162,8 @@ export const muse = {
         fetchImpl,
       );
       if (!response) return { ok: false, reason: 'unreachable' };
+      const closed = response.status === 503 && await closedIntake(response);
+      if (closed) return closed;
       if (response.status !== 201) {
         const reason = { 409: 'nonce-replayed', 413: 'too-large', 422: 'schema-invalid' }[response.status] ?? 'intake-rejected';
         return { ok: false, reason };

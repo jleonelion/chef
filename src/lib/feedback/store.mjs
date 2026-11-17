@@ -59,13 +59,17 @@ export function deleteDraft(root) {
   return true;
 }
 
-// Writes the approved bytes unchanged; returns the data-root-relative path.
+// Writes the approved bytes unchanged; returns the data-root-relative path. A report already in
+// the outbox (same nonce, so the same bytes) is kept as it is, so repeated attempts save one copy.
 export function saveToOutbox(root, bytes, { nonce, now = new Date() }) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
   fs.mkdirSync(path.join(root, OUTBOX_DIR), { recursive: true, mode: 0o700 });
+  const suffix = `-${nonce.slice(0, 8)}.json`;
+  const existing = fs.readdirSync(path.join(root, OUTBOX_DIR)).find((name) => name.endsWith(suffix));
+  if (existing) return `${OUTBOX_DIR}/${existing}`;
   const stamp = now.toISOString().replace(/[-:]|\.\d{3}/g, '');
-  const relative = `${OUTBOX_DIR}/${stamp}-${nonce.slice(0, 8)}.json`;
+  const relative = `${OUTBOX_DIR}/${stamp}${suffix}`;
   writePrivate(path.join(root, relative), bytes);
   return relative;
 }
