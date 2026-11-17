@@ -132,6 +132,18 @@ _Avoid_: meal type, course, slot (alone)
 A planned meal eaten from servings cooked at an earlier planned meal, so the dish is cooked and shopped for once.
 _Avoid_: repeat, reheat
 
+**Household member**:
+A named person in the household. Dietary rules and health goals belong to a member; a member eats one serving of a planned meal unless the plan says otherwise.
+_Avoid_: user, person, diner
+
+**Eaters**:
+The household members who eat a planned meal. All members unless the planned meal names fewer.
+_Avoid_: attendees, guests
+
+**Unattributed servings**:
+The servings of a planned meal beyond one per eater, such as guests or seconds. They count toward the household's totals and shopping but belong to no household member, so never count toward a member's targets.
+_Avoid_: extra servings, guest servings
+
 **Free-text food**:
 What is eaten, written as text with no saved recipe: a meal out, takeaway or a simple food. Logged and planned meals can both hold it. Chef does not shop for it, prep it, gate it or estimate its nutrition.
 _Avoid_: custom meal, other
