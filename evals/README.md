@@ -14,7 +14,7 @@
 
 Launcher contract: `name`, `launcherVersion`, `project(transcript)`, `detect()` (binary and version, throws "not installed"), `prepare({ pluginDir, workdir, env })` (installs the built skills the way that harness discovers them, isolated per rep, never touching the user's config; returns `{ skillsDir, env, runTurn }`), `runTurn({ prompt, session, resume, model, timeoutMs })` (returns `{ out, err, ext }`, the raw transcript written to the log dir). Same capability set everywhere: shell, file read/write/edit, skills, no MCP.
 
-Result files are `chef-agentic` format 2 and carry `harness: {name, launcherVersion, cliVersion}` and `models`. Compare harnesses by row, never by cost.
+Result files are `chef-agentic` format 2 and carry the harness identity, models, dataset and fixture hashes, row selection, and per-rep skills and errors. The runner gives each summary a unique name under `agentic/archive/`; raw logs stay ignored under `agentic/results/logs/`. Commit release-gate summaries whether they pass or fail. Verify one against the relevant tree and requested gate with `bun run agentic:verify <result>`, passing the run's selection and repetition options. Compare harnesses by row, never by cost.
 
 Local smoke (not CI): `bun run agentic:smoke --harness <name>` installs the skills the way the launcher does and runs tier1 against that dir. Re-record a Projector fixture from a real turn's log, trimming skill outputs and replacing temp paths and ids; never commit a raw log.
 
