@@ -37,7 +37,7 @@ Otherwise, follow `delivery.mode`:
 
 - `chat`: no household recipients are set. Show `text` in chat. Nothing was written or sent.
 - `email`: send `delivery.subject` and `delivery.body` to `delivery.to` through the user's Gmail connector, following `delivery.instruction`. The script sends nothing. Show the list in chat too.
-- `file`: off Muse, the list was written to `delivery.path` in the data root. Show the list and report the path.
+- `file`: this runtime has no email delivery, so the list was written to `delivery.path` in the data root. Show the list and report the path.
 
 Change the default household recipients only with `chef-setup`.
 
