@@ -165,6 +165,17 @@ test('intake rejection statuses map to distinct reasons', async () => {
   for (const [status, reason] of Object.entries(expected)) assert.deepEqual(await submitWith(Number(status)), { ok: false, reason });
 });
 
+test('422 unsupported-schema-version is its own reason; other 422 bodies stay schema-invalid', async () => {
+  const submitWith = (body) => muse.feedback.submit(Buffer.from('{}'), {
+    exists: () => true,
+    run: () => feedbackAuthdcReply(),
+    fetchImpl: async () => ({ ok: false, status: 422, json: async () => body() }),
+  });
+  assert.deepEqual(await submitWith(() => ({ reason: 'unsupported-schema-version' })), { ok: false, reason: 'unsupported-schema-version' });
+  assert.deepEqual(await submitWith(() => ({ reason: 'schema-invalid' })), { ok: false, reason: 'schema-invalid' });
+  assert.deepEqual(await submitWith(() => { throw new SyntaxError('not json'); }), { ok: false, reason: 'schema-invalid' });
+});
+
 test('contact is sent only in a separate receipt-authorized idempotent PUT', async () => {
   const calls = [];
   const receipt = { report_id: 'a0d56f28-88d4-45f2-8ab0-3993ac31d370', receipt_secret: 'receipt-secret' };

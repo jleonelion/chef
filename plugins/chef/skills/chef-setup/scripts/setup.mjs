@@ -7079,6 +7079,14 @@ async function closedIntake(response) {
   const plain = message && message.length <= 200 && !/[\u0000-\u001f\u007f]/.test(message);
   return { ok: false, reason: "intake-closed", ...plain ? { message } : {} };
 }
+async function unprocessableReason(response) {
+  try {
+    const body = await response.json();
+    return body?.reason === "unsupported-schema-version" ? body.reason : "schema-invalid";
+  } catch {
+    return "schema-invalid";
+  }
+}
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
   for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
@@ -7142,7 +7150,9 @@ var muse = {
       if (closed)
         return closed;
       if (response.status !== 201) {
-        const reason = { 401: "missing-install-key", 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid", 429: "rate-limited" }[response.status] ?? "intake-rejected";
+        if (response.status === 422)
+          return { ok: false, reason: await unprocessableReason(response) };
+        const reason = { 401: "missing-install-key", 409: "nonce-replayed", 413: "too-large", 429: "rate-limited" }[response.status] ?? "intake-rejected";
         return { ok: false, reason };
       }
       let receipt;
@@ -9793,6 +9803,7 @@ var REJECTION_MESSAGES = {
   "rate-limited": "Feedback intake is getting too many reports right now, so nothing was sent. Try again later.",
   "too-large": "The report is too large for feedback intake, so nothing was sent. Tell me which diagnostics items to remove by number and I will show the new preview.",
   "schema-invalid": "Feedback intake could not accept the report format, so nothing was sent. Chef did not change the report; you can edit or remove items by number, or try again after updating Chef.",
+  "unsupported-schema-version": "Feedback intake no longer accepts reports from this version of Chef, so nothing was sent. Update Chef, then ask to send again; Chef kept the approved report as it was.",
   "nonce-replayed": "Feedback intake already has this report, so nothing new was sent. Check your saved receipts before sending it again.",
   "intake-rejected": "Feedback intake turned the report down, so nothing was sent. You can try again later.",
   unreachable: "Chef couldn't reach feedback intake, so nothing was sent. Check the connection and try again."

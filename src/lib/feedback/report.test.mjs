@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { test } from 'node:test';
 import { generic } from '../../runtime/generic.mjs';
 import { feedbackReportProblems } from '../diagnostics/test-schemas.mjs';
@@ -139,4 +140,12 @@ test('an oversized payload is refused at the schema byte limit', () => {
   assert.ok(Buffer.byteLength(JSON.stringify(big)) > 65536);
   assert.match(feedbackReportProblems(big).join('\n'), /over 65536/);
   assert.throws(() => newDraft({ class: 'defect', summary: 's', expected: 'e', actual: 'a', frequency: 'once', bundle: big.diagnostic_bundle }), /over 65536 bytes/);
+});
+
+// Frozen sample reports per schema version: the intake service tests its acceptance against these.
+test('every frozen fixtures/feedback-report/schema-v<n> sample is valid against its schema', () => {
+  const root = new URL('../../../fixtures/feedback-report/', import.meta.url);
+  const samples = fs.readdirSync(root).flatMap((dir) => fs.readdirSync(new URL(`${dir}/`, root)).map((name) => new URL(`${dir}/${name}`, root)));
+  assert.ok(samples.length > 0);
+  for (const sample of samples) assert.deepEqual(feedbackReportProblems(JSON.parse(fs.readFileSync(sample, 'utf8'))), [], sample.pathname);
 });

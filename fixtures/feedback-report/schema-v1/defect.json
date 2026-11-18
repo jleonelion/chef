@@ -1,0 +1,1 @@
+{"schema_version":1,"class":"defect","trigger":"user-initiated","summary":"Meal plan skipped Tuesday","expected":"A dinner for every day","actual":"Tuesday was empty","frequency":"once","removed_fields":[],"submission_nonce":"6f1d3c52-0a7e-4c1b-9d2e-5b8a4f0c9e11"}

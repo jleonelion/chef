@@ -10,6 +10,10 @@ shipped. Never edit them. `bun run migrations` migrates each to the current sche
 tier1 against it. A PR that bumps `SCHEMA_VERSION` adds the migration step in
 `src/lib/migrations.mjs` and freezes `fixtures/schema-v<new>/` from `data-root/`.
 
+`feedback-report/schema-v<n>/` hold valid sample feedback reports for report schema version `<n>`.
+Never edit them; a schema version that ships adds its own folder. The feedback intake service
+vendors them to test that it accepts every supported version.
+
 `usda/fdc-samples.json` holds real USDA FoodData Central API replies (public domain), captured
 with USDA's public `DEMO_KEY` and trimmed to the fields Chef reads. Unit tests serve them in
 place of the live API. Brand names in USDA food descriptions are USDA's data, not people.
