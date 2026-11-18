@@ -14,10 +14,10 @@
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { today } from '../../src/lib/recipes.mjs';
+import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, checkFiles, checkResponse, checkSkills, readStream } from './report.mjs';
 
@@ -27,19 +27,10 @@ const TURN_TIMEOUT_MS = 10 * 60 * 1000;
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
 function prepare(row) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-agentic-${row.id}-`));
-  const dataRoot = path.join(tmp, 'data-root');
-  fs.cpSync(path.join(repo, 'fixtures', 'data-root'), dataRoot, { recursive: true });
-  for (const file of row.seed ?? []) {
-    fs.mkdirSync(path.dirname(path.join(dataRoot, file.path)), { recursive: true });
-    fs.writeFileSync(path.join(dataRoot, file.path), file.content);
-  }
-  git(dataRoot, 'init', '-q', '-b', 'main');
-  git(dataRoot, 'add', '-A');
-  git(dataRoot, '-c', 'user.name=agentic', '-c', 'user.email=agentic@example.com', 'commit', '-q', '-m', 'fixture');
+  const { tmp, dataRoot } = prepareSandbox({ prefix: 'chef-agentic', id: row.id, fixture: path.join(repo, 'fixtures', 'data-root'), author: 'agentic', seed: row.seed });
   const plugin = path.join(tmp, 'plugin');
   fs.cpSync(path.join(repo, 'plugins', 'chef'), plugin, { recursive: true });
-  const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, CHEF_USDA_FDC_KEY: '' };
+  const env = sandboxEnv(dataRoot, { CHEF_USDA_FDC_KEY: '' });
   const expand = (text) => text.replaceAll('{skills}', path.join(plugin, 'skills')).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp).replaceAll('{today}', today());
   return { tmp, dataRoot, plugin, env, expand };
 }
