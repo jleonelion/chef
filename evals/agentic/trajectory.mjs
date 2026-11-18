@@ -1,5 +1,5 @@
-// Trajectory: the runtime-neutral record of one agent turn (see GLOSSARY). Claude Code and Codex
-// projectors exist; Copilot's lands next, then this shape is final.
+// Trajectory: the runtime-neutral record of one agent turn (see GLOSSARY). Claude Code, Codex and
+// Copilot projectors exist, so the shape is final.
 //
 //   {
 //     response:   string,                                // the turn's final reply
@@ -7,8 +7,8 @@
 //     toolCalls:  [{ name, command?, path? }],           // every tool call, Skill calls included
 //     scriptRuns: [{ script, args }],                    // Chef scripts run via Bash; script is skill-relative, e.g. "scripts/recipe-search.mjs"
 //     error:      string | null,                         // why the turn is not a usable record; never an empty-but-valid response
-//     model?:     string,                                // absent when the runtime does not report it (Codex)
-//     cost_usd?:  number,                                // absent when the runtime does not report it (Codex)
+//     model?:     string,                                // absent when the runtime does not report it (Codex; Copilot reports no cost)
+//     cost_usd?:  number,                                // absent when the runtime does not report it (Codex; Copilot reports no cost)
 //   }
 //
 // Each runtime has a projector that turns its raw transcript into a Trajectory. Checks and the
@@ -127,3 +127,42 @@ export function projectCodex(text) {
 
 // A shell command that mentions skills/<name>/SKILL.md (cat, sed, head ...) loads that skill.
 const SKILL_READ = /\bskills\/([\w-]+)\/SKILL\.md/g;
+
+// Copilot: one `copilot -p --output-format json` transcript → Trajectory. Tool calls come from the
+// non-delta `assistant.message` events (`skill` carries the skill name, `bash` a command, file tools
+// a `path`); the final `result` event carries the exit code and only premium-request usage, so no
+// cost. A bad line, a missing `result`, or a nonzero `exitCode` sets `error`.
+export function projectCopilot(text) {
+  const events = [];
+  let error = null;
+  for (const [index, line] of text.split('\n').entries()) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line);
+      if (event === null || typeof event !== 'object' || Array.isArray(event)) throw new Error('not an object');
+      events.push(event);
+    } catch {
+      error ??= `transcript line ${index + 1} is not valid JSON`;
+    }
+  }
+  const messages = events.filter((event) => event.type === 'assistant.message').map((event) => event.data ?? {});
+  const toolCalls = messages
+    .flatMap((message) => message.toolRequests ?? [])
+    .map(({ name, arguments: input }) => ({
+      name: String(name),
+      ...(typeof input?.command === 'string' && { command: input.command }),
+      ...(typeof input?.path === 'string' && { path: input.path }),
+    }));
+  const skillCalls = messages.flatMap((message) => message.toolRequests ?? []).filter((call) => call.name === 'skill');
+  const result = events.find((event) => event.type === 'result');
+  if (!result) error ??= 'transcript has no result event';
+  else if (result.exitCode !== 0) error ??= `turn ended in error: exit code ${result.exitCode}`;
+  return {
+    response: String(messages.filter((message) => message.content).at(-1)?.content ?? ''),
+    skills: skillCalls.map((call) => String(call.arguments?.skill ?? '').replace(/^[^:]*:/, '')),
+    toolCalls,
+    scriptRuns: toolCalls.flatMap((call) => (call.name === 'bash' ? scriptsRunBy(call.command ?? '') : [])),
+    error,
+    model: messages.find((message) => message.model)?.model,
+  };
+}

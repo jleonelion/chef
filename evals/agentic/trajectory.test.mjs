@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { projectClaude, projectCodex, scriptsRunBy } from './trajectory.mjs';
+import { projectClaude, projectCodex, projectCopilot, scriptsRunBy } from './trajectory.mjs';
 
 const fixture = (name) => fs.readFileSync(path.join(import.meta.dirname, 'testdata', name), 'utf8');
 const stream = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
@@ -85,4 +85,22 @@ test('Codex: failures and truncated transcripts set error', () => {
   assert.match(projectCodex(lines({ type: 'turn.started' })).error, /no turn.completed/);
   assert.match(projectCodex(lines({ type: 'turn.failed', error: { message: 'rate limited' } })).error, /rate limited/);
   assert.match(projectCodex('not json').error, /not valid JSON/);
+});
+
+// Copilot fixture: a real `copilot -p --output-format json` turn, reduced to its assistant.message and result events.
+test('projects a recorded Copilot turn', () => {
+  const trajectory = projectCopilot(fixture('copilot-skill-firing.jsonl'));
+  assert.equal(trajectory.error, null);
+  assert.equal(trajectory.model, 'claude-sonnet-5.5');
+  assert.deepEqual(trajectory.skills, ['chef-meal-logging']);
+  assert.deepEqual(trajectory.toolCalls.map((call) => call.name), ['skill', 'bash']);
+  assert.match(trajectory.response, /no meal plan covers 2026-01-20/);
+  assert.equal(trajectory.cost_usd, undefined);
+});
+
+test('Copilot: a failed or truncated transcript sets error', () => {
+  const lines = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
+  assert.match(projectCopilot(lines({ type: 'assistant.message', data: {} })).error, /no result event/);
+  assert.match(projectCopilot(lines({ type: 'result', exitCode: 1 })).error, /exit code 1/);
+  assert.match(projectCopilot('not json').error, /not valid JSON/);
 });
