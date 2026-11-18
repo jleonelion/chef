@@ -144,6 +144,15 @@ every rep; failing rows get fixed or dropped, never retried. The result file
 (`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version and per-row pass
 counts) is attached to the release. `--rows <id,id>`, `--known-failures`, `--reps`, `--model` and `--out` narrow a run.
 
+Checks never read a raw transcript. A runtime's projector turns each turn into a Trajectory
+(`{response, skills, toolCalls, scriptRuns, error}`, documented in `evals/agentic/trajectory.mjs`;
+provisional until a second runtime exists). A transcript with an unparseable line or no `result`
+event gets an `error`, so the rep fails instead of reading as an empty reply. A row may add
+`scripts: {required, forbidden, max}` (skill-relative paths such as `scripts/meal-logging.mjs`; `max`
+caps calls per path), checked over all turns of a rep; the should-not-act rows list their mutating
+scripts under `forbidden`. Projector tests use trimmed recordings in `evals/agentic/testdata/`
+(re-record steps are in `trajectory.test.mjs`).
+
 Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
 synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per
 released schema version (see `fixtures/README.md`). CI fails if the built output differs from a fresh build.

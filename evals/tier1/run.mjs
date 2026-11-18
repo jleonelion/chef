@@ -18,31 +18,14 @@
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { commitAll, prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from './assertions.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, '..', '..');
-// A real data root is a git repo; skills commit every write. `seed` paths starting with ../
-// land beside the data root (inputs such as receipt transcripts) and are not committed.
-function commitFixture(dataRoot) {
-  const git = (...args) => execFileSync('git', args, { cwd: dataRoot, stdio: 'ignore' });
-  git('init', '-q', '-b', 'main');
-  git('add', '-A');
-  git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'fixture');
-}
-
-function writeSeed(dataRoot, files) {
-  for (const file of files ?? []) {
-    const abs = path.join(dataRoot, file.path);
-    fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, file.content);
-  }
-}
-
 function prepareUpdateInstall(tmp, sourceSkills) {
   const skillsDir = path.join(tmp, 'custom-skills');
   const repository = path.join(tmp, 'chef-release');
@@ -57,11 +40,7 @@ function prepareUpdateInstall(tmp, sourceSkills) {
   fs.writeFileSync(path.join(skillsDir, 'chef_dropped', 'old.txt'), 'removed by update\n');
   fs.mkdirSync(path.join(repository, 'plugins', 'chef', '.claude-plugin'));
   fs.writeFileSync(path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), '{"name":"chef","version":"0.1.0"}\n');
-  const git = (...args) => execFileSync('git', args, { cwd: repository, stdio: 'ignore' });
-  git('init', '-q', '-b', 'main');
-  git('add', '-A');
-  git('-c', 'user.name=tier1', '-c', 'user.email=tier1@example.com', 'commit', '-q', '-m', 'release');
-  git('tag', 'v0.1.0');
+  const git = commitAll(repository, { author: 'tier1', message: 'release', tag: 'v0.1.0' });
   // A bare origin has no plugins/ folder, so Muse discovery still finds exactly one Chef repository.
   git('clone', '-q', '--bare', '.', path.join(tmp, 'chef-origin.git'));
   git('remote', 'add', 'origin', path.join(tmp, 'chef-origin.git'));
@@ -69,13 +48,7 @@ function prepareUpdateInstall(tmp, sourceSkills) {
 }
 
 function prepare(testCase, fixture, sourceSkills) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `chef-tier1-${testCase.id}-`));
-  const dataRoot = path.join(tmp, 'data-root');
-  const useFixture = (testCase.fixture ?? 'data-root') === 'data-root';
-  if (useFixture) fs.cpSync(fixture, dataRoot, { recursive: true });
-  writeSeed(dataRoot, testCase.seed);
-  if (useFixture) commitFixture(dataRoot);
-  writeSeed(dataRoot, testCase.afterCommitSeed);
+  const { tmp, dataRoot } = prepareSandbox({ prefix: 'chef-tier1', id: testCase.id, fixture, author: 'tier1', seed: testCase.seed, afterCommitSeed: testCase.afterCommitSeed, useFixture: (testCase.fixture ?? 'data-root') === 'data-root' });
   const caseSkills = testCase.updateInstall ? prepareUpdateInstall(tmp, sourceSkills) : sourceSkills;
   return { tmp, dataRoot, caseSkills };
 }
@@ -108,7 +81,7 @@ async function runCase(testCase, skillsDir, fixture, { skipPdfFiles = false } = 
       const result = spawnSync(cmd, args, {
         cwd: tmp,
         // A fixed US locale keeps unit-dependent output (default `units`) stable; cases may override.
-        env: { ...process.env, LANG: 'en_US.UTF-8', LC_ALL: '', LC_MEASUREMENT: '', CHEF_DATA_ROOT: dataRoot, ...testCase.env },
+        env: sandboxEnv(dataRoot, { LANG: 'en_US.UTF-8', LC_ALL: '', LC_MEASUREMENT: '', ...testCase.env }),
         encoding: 'utf8',
         timeout: 30000,
         ...(step.stdin !== undefined && { input: typeof step.stdin === 'string' ? step.stdin : JSON.stringify(step.stdin) }),

@@ -38,6 +38,12 @@ test('typo\'d row key fails', () => {
   assert.match(lint({ tier1: [tier1({ expectStatus: 2 })] }).join('\n'), /expectStatus/);
 });
 
+test('agentic scripts accepts skill-relative paths only', () => {
+  assert.deepEqual(lint({ agentic: [agentic({ scripts: { required: ['scripts/setup.mjs'], forbidden: ['scripts/x.mjs'], max: { 'scripts/setup.mjs': 1 } } })] }), []);
+  assert.ok(lint({ agentic: [agentic({ scripts: { forbidden: ['setup.mjs'] } })] }).length > 0);
+  assert.match(lint({ agentic: [agentic({ scripts: { forbiden: [] } })] }).join('\n'), /forbiden/);
+});
+
 test('duplicate ids fail', () => {
   assert.match(lint({ tier1: [tier1(), tier1()] }).join('\n'), /duplicate id/);
 });

@@ -23,6 +23,15 @@
         "properties": { "path": { "type": "string", "minLength": 1 }, "content": {} }
       }
     },
+    "scripts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": { "$ref": "#/$defs/scriptPaths" },
+        "forbidden": { "$ref": "#/$defs/scriptPaths" },
+        "max": { "type": "object", "propertyNames": { "pattern": "^scripts/[^/]+$" }, "additionalProperties": { "type": "integer", "minimum": 0 } }
+      }
+    },
     "setup": { "$ref": "#/$defs/steps" },
     "after": { "$ref": "#/$defs/steps" },
     "files": {
@@ -50,6 +59,7 @@
   },
   "$defs": {
     "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$", "maxLength": 100 },
+    "scriptPaths": { "type": "array", "items": { "type": "string", "pattern": "^scripts/[^/]+$" } },
     "skillNames": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
     "assertions": { "type": "array", "items": { "$ref": "assertion.v1.json" } },
     "steps": {

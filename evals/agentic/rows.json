@@ -297,6 +297,7 @@
       "I had 1 serving of the chickpea spinach stew, cooked at home."
     ],
     "skills": ["chef-meal-logging"],
+    "scripts": { "forbidden": ["scripts/meal-logging.mjs"] },
     "files": [{ "path": "data/meal-log/log.json", "absent": true }],
     "git": { "headUnchanged": true, "clean": true }
   },
@@ -314,6 +315,7 @@
       "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: lemon garlic pasta every night. I confirm this schedule; save it without asking me again."
     ],
     "skills": ["chef-meal-planning"],
+    "scripts": { "forbidden": ["scripts/meal-planning.mjs"] },
     "files": [
       { "path": "knowledge/wiki/meal-plans", "count": 0 },
       {

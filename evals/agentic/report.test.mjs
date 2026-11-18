@@ -3,29 +3,23 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { aggregate, checkFiles, checkResponse, checkSkills, readStream } from './report.mjs';
-
-const stream = [
-  { type: 'system', subtype: 'init', model: 'claude-test-1', session_id: 's1' },
-  { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'chef:chef-add-recipe' } }] } },
-  { type: 'assistant', message: { content: [{ type: 'text', text: 'ok' }, { type: 'tool_use', name: 'Bash', input: { command: 'ls' } }] } },
-  { type: 'result', subtype: 'success', result: 'Final reply', total_cost_usd: 0.25, is_error: false },
-]
-  .map((event) => JSON.stringify(event))
-  .join('\n');
-
-test('readStream reports the model, skills fired and cost of one turn', () => {
-  assert.deepEqual(readStream(`${stream}\nnot json\n`), { model: 'claude-test-1', skills: ['chef-add-recipe'], response: 'Final reply', cost_usd: 0.25, error: false });
-});
-
-test('readStream marks a turn with no result event as an error', () => {
-  assert.equal(readStream('').error, true);
-});
+import { aggregate, checkFiles, checkResponse, assertScriptPaths, checkScripts, checkSkills } from './report.mjs';
 
 test('checkSkills requires every expected skill and forbids listed ones', () => {
   checkSkills(['chef-recipe-search', 'chef-add-recipe'], { skills: ['chef-add-recipe'], forbidSkills: ['chef-meal-planning'] });
   assert.throws(() => checkSkills(['chef-recipe-search'], { skills: ['chef-add-recipe'] }), /chef-add-recipe did not fire/);
   assert.throws(() => checkSkills(['chef-meal-planning'], { forbidSkills: ['chef-meal-planning'] }), /chef-meal-planning fired/);
+});
+
+test('checkScripts enforces required, forbidden and max script runs', () => {
+  const runs = [{ script: 'scripts/a.mjs', args: [] }, { script: 'scripts/a.mjs', args: ['x'] }, { script: 'scripts/b.mjs', args: [] }];
+  checkScripts(runs, { required: ['scripts/a.mjs'], forbidden: ['scripts/c.mjs'], max: { 'scripts/a.mjs': 2 } });
+  checkScripts([], undefined);
+  assert.throws(() => checkScripts(runs, { required: ['scripts/c.mjs'] }), /scripts\/c.mjs did not run \(ran: scripts\/a.mjs, scripts\/b.mjs\)/);
+  assert.throws(() => checkScripts(runs, { forbidden: ['scripts/a.mjs'] }), /scripts\/a.mjs ran 2 time/);
+  assert.throws(() => checkScripts(runs, { max: { 'scripts/a.mjs': 1 } }), /ran 2 times, max 1/);
+  assertScriptPaths({ required: ['scripts/a.mjs'], max: { 'scripts/b.mjs': 1 } });
+  assert.throws(() => assertScriptPaths({ forbidden: ['a.mjs'] }), /skill-relative path/);
 });
 
 test('checkResponse applies content assertions to the final reply', () => {

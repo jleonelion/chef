@@ -1,41 +1,28 @@
-// Pure parts of the agentic suite: read one headless Claude Code turn, check a rep's data root,
+// Pure parts of the agentic suite: check a rep's Trajectory data and data root,
 // and aggregate reps into the release result. Deterministic checks only; no LLM judging.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertCase } from '../tier1/assertions.mjs';
 
-function events(text) {
-  return text.split('\n').flatMap((line) => {
-    try {
-      return [JSON.parse(line)];
-    } catch {
-      return [];
-    }
-  });
-}
-
-// One `claude -p --output-format stream-json` turn → model, chef skills fired, cost, error.
-export function readStream(text) {
-  const all = events(text);
-  const result = all.find((event) => event.type === 'result');
-  const skills = all
-    .filter((event) => event.type === 'assistant')
-    .flatMap((event) => event.message?.content ?? [])
-    .filter((block) => block.type === 'tool_use' && block.name === 'Skill')
-    .map((block) => String(block.input?.skill ?? '').replace(/^[^:]*:/, ''));
-  return {
-    model: all.find((event) => event.type === 'system' && event.subtype === 'init')?.model,
-    skills,
-    response: result?.result ?? '',
-    cost_usd: result?.total_cost_usd ?? 0,
-    error: !result || result.is_error === true,
-  };
-}
-
 export function checkSkills(fired, { skills = [], forbidSkills = [] }) {
   for (const skill of skills) assert(fired.includes(skill), `${skill} did not fire (fired: ${fired.join(', ') || 'none'})`);
   for (const skill of forbidSkills) assert(!fired.includes(skill), `${skill} fired`);
+}
+
+// scriptRuns: [{script, args}] over every turn of a rep. `required` and `forbidden` list
+// skill-relative paths (scripts/<name>), `max` caps calls per path.
+export function assertScriptPaths({ required = [], forbidden = [], max = {} } = {}) {
+  for (const script of [...required, ...forbidden, ...Object.keys(max)]) assert(/^scripts\/[^/]+$/.test(script), `script must be a skill-relative path like scripts/<name>: ${script}`);
+}
+
+export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {} } = {}) {
+  const counts = new Map();
+  for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
+  const ran = [...counts.keys()].join(', ') || 'none';
+  for (const script of required) assert(counts.has(script), `${script} did not run (ran: ${ran})`);
+  for (const script of forbidden) assert(!counts.has(script), `${script} ran ${counts.get(script)} time(s)`);
+  for (const [script, limit] of Object.entries(max)) assert((counts.get(script) ?? 0) <= limit, `${script} ran ${counts.get(script)} times, max ${limit}`);
 }
 
 export function checkResponse(response, assertions = []) {
