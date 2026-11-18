@@ -130,7 +130,7 @@ Requires Node 20+ and Bun.
 |---|---|
 | `bun run build` | Bundle `src/skills/*` into `plugins/chef/skills/*` (commit the result) |
 | `bun run check` | Skill-format lint, unit tests, eval dataset lint, tier1 evals, reproduction-case lint, migration regression |
-| `bun run evals:lint` | Lint `evals/tier1/cases.json` and `evals/agentic/rows.json` (JSON Schema in `schemas/evals/`, unique kebab-case ids, real skill names) |
+| `bun run evals:lint` | Lint `evals/tier1/cases.json` and `evals/agentic/rows.json` (JSON Schema in `schemas/evals/`, `<skill>-<scenario>` ids, real skill names; see `evals/README.md`) |
 | `bun run repro` | Lint reproduction cases in `evals/repro/` (schema, test links, `known_failure` age, PII scan); see its README |
 | `bun run smoke` | Run tier1 against a copy of the built skills outside the repo |
 | `bun run hygiene` | Public-hygiene scan; set `CHEF_HYGIENE_DENY` to the deny-list patterns |
