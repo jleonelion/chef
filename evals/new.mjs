@@ -2,7 +2,8 @@
 // Scaffolds a lint-clean eval row: tier1 -> evals/tier1/cases/<skill>.json, agentic -> evals/agentic/rows.json.
 // The id is <skill>-<slug>. --from-repro <case_id> links the row to evals/repro/<case_id>.json and
 // marks it known_failure (see evals/repro/README.md). Fill in the TODOs, then run `bun run evals:lint`.
-//   node evals/new.mjs <tier1|agentic> <skill> <slug> [--from-repro <case_id>]
+//   node evals/new.mjs <tier1|agentic> <skill> <slug> [--topic <topic>] [--from-repro <case_id>]
+// A skill split into cases/<skill>.<topic>.json files needs --topic.
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
@@ -30,8 +31,13 @@ const skeletons = {
   }),
 };
 
-const target = (root, suite, skill) =>
-  suite === 'tier1' ? path.join(root, 'evals', 'tier1', 'cases', `${skill}.json`) : path.join(root, 'evals', 'agentic', 'rows.json');
+function target(root, suite, skill, topic) {
+  if (suite === 'agentic') return path.join(root, 'evals', 'agentic', 'rows.json');
+  const dir = path.join(root, 'evals', 'tier1', 'cases');
+  const topics = fs.existsSync(dir) ? fs.readdirSync(dir).flatMap((name) => name.match(new RegExp(`^${skill}\\.(.+)\\.json$`))?.[1] ?? []) : [];
+  if (topics.length && !topic) throw new Error(`${skill} is split by topic; pass --topic (${topics.join(', ')})`);
+  return path.join(dir, `${skill}${topic ? `.${topic}` : ''}.json`);
+}
 
 // Appends one row without reformatting the rest of the file.
 function appendRow(file, row) {
@@ -43,7 +49,7 @@ function appendRow(file, row) {
 }
 
 // Returns {file, id}; throws on bad input or an id that already exists.
-export function scaffold({ root = repoRoot, suite, skill, slug, fromRepro }) {
+export function scaffold({ root = repoRoot, suite, skill, slug, topic, fromRepro }) {
   if (!skeletons[suite]) throw new Error(`suite must be tier1 or agentic, got ${suite}`);
   if (!fs.existsSync(path.join(root, 'src', 'skills', skill ?? ''))) throw new Error(`unknown skill ${skill}; use a folder name from src/skills`);
   if (!KEBAB.test(slug ?? '')) throw new Error(`slug must be lowercase kebab-case, got ${slug}`);
@@ -51,21 +57,21 @@ export function scaffold({ root = repoRoot, suite, skill, slug, fromRepro }) {
   const dataset = suite === 'tier1' ? path.join(root, 'evals', 'tier1', 'cases') : path.join(root, 'evals', 'agentic', 'rows.json');
   if (fs.existsSync(dataset) && loadCases(dataset).some((row) => row.id === id)) throw new Error(`${suite} id ${id} already exists`);
   if (fromRepro !== undefined && !fs.existsSync(path.join(root, 'evals', 'repro', `${fromRepro}.json`))) throw new Error(`repro case ${fromRepro} not found in evals/repro`);
+  const file = target(root, suite, skill, topic);
   const row = skeletons[suite](id, skill);
   if (fromRepro !== undefined) Object.assign(row, { repro: fromRepro, known_failure: fromRepro });
-  const file = target(root, suite, skill);
   appendRow(file, row);
   return { file, id };
 }
 
 if (import.meta.main ?? process.argv[1] === import.meta.filename) {
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'from-repro': { type: 'string' } } });
+  const { values, positionals } = parseArgs({ allowPositionals: true, options: { 'from-repro': { type: 'string' }, topic: { type: 'string' } } });
   const [suite, skill, slug] = positionals;
   try {
-    const { file, id } = scaffold({ suite, skill, slug, fromRepro: values['from-repro'] });
+    const { file, id } = scaffold({ suite, skill, slug, topic: values.topic, fromRepro: values['from-repro'] });
     console.log(`added ${id} to ${path.relative(repoRoot, file)}; fill in the TODOs, then run bun run evals:lint`);
   } catch (error) {
-    console.error(`error: ${error.message}\nusage: bun run evals:new <tier1|agentic> <skill> <slug> [--from-repro <case_id>]`);
+    console.error(`error: ${error.message}\nusage: bun run evals:new <tier1|agentic> <skill> <slug> [--topic <topic>] [--from-repro <case_id>]`);
     process.exit(1);
   }
 }

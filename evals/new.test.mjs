@@ -53,6 +53,15 @@ test('--from-repro adds the repro link and known_failure marker', () => {
   assert.throws(() => scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'bug2', fromRepro: 'missing' }), /not found/);
 });
 
+test('a topic-split skill needs --topic', () => {
+  const root = sandboxRoot();
+  scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'a', topic: 'settings' });
+  assert.throws(() => scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'b' }), /--topic \(settings\)/);
+  const { file } = scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'b', topic: 'settings' });
+  assert.equal(path.basename(file), 'chef-setup.settings.json');
+  assert.deepEqual(lintRoot(root), []);
+});
+
 test('refuses an existing id, unknown skill, bad slug and bad suite', () => {
   const root = sandboxRoot();
   scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'dup' });

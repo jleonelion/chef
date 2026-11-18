@@ -26,7 +26,7 @@ Move multi-line text out of the JSON. A seed entry takes `seedFile` instead of `
 
 Every tier1 case needs `git` (`{headUnchanged, clean}` checked after the command). Use `git: false` with a short `gitReason` only when the case cannot be checked, e.g. `fixture: "none"` has no data root. A case whose command commits its own writes takes `{clean: true}`.
 
-New rows: `bun run evals:new <tier1|agentic> <skill> <slug> [--from-repro <case_id>]` appends a skeleton with id `<skill>-<slug>` to the right file and refuses an id that exists. `--from-repro` also sets `repro` and `known_failure` to the case id (the case file must exist in `repro/`). Fill in the TODOs, then run `bun run evals:lint`. For `chef-setup`, move the new row into the matching topic file.
+New rows: `bun run evals:new <tier1|agentic> <skill> <slug> [--topic <topic>] [--from-repro <case_id>]` appends a skeleton with id `<skill>-<slug>` to the right file and refuses an id that exists. `--from-repro` also sets `repro` and `known_failure` to the case id (the case file must exist in `repro/`). Fill in the TODOs, then run `bun run evals:lint`. `--topic` picks the file for a topic-split skill (`chef-setup`: `settings`, `dietary`, `maintenance`) and is required there.
 
 ## Shared sandbox
 
