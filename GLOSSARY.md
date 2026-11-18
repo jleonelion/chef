@@ -61,7 +61,7 @@ The runtime-neutral record of one agent turn as an eval observed it: the reply, 
 _Avoid_: trace, transcript, harness output
 
 **Projector**:
-The per-runtime code that turns one raw transcript into a Trajectory. Claude Code and Codex projectors exist.
+The per-runtime code that turns one raw transcript into a Trajectory. One each for Claude Code, Codex and Copilot.
 _Avoid_: adapter, reader
 
 **Harness launcher**:
