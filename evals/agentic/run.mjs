@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Agentic suite: headless Claude Code (`claude -p`, projected into a Trajectory; see trajectory.mjs)
+// Agentic suite: a headless agent harness (see harnesses/, projected into a Trajectory; see trajectory.mjs)
 // with the built plugin, one fresh copy of the synthetic fixture data root per rep, deterministic checks only (skills fired, files written or
 // not, script output, git state). Every row must pass every rep; nothing is retried.
-// Local only: it spends real Claude usage, so it never runs in CI. Rows are in rows.json:
+// Local only: it spends real harness usage, so it never runs in CI. Rows are in rows.json:
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
 //   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts;
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
@@ -11,8 +11,8 @@
 //   Turns, commands and stdin expand {skills}, {data_root} and {tmp}; rows must not depend on the wall-clock date (the lint rejects {today}).
 //   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
 //   a rep, and fails once every rep passes. --known-failures runs only rows with that marker.
-//   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--model <id>] [--concurrency 4] [--out <file>]
-import { execFileSync, spawn, spawnSync } from 'node:child_process';
+//   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--harness claude] [--model <id>] [--concurrency 4] [--out <file>]
+import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,20 +20,19 @@ import { parseArgs } from 'node:util';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
-import { projectClaude } from './trajectory.mjs';
+import { loadHarness } from './harnesses/index.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const TURN_TIMEOUT_MS = 10 * 60 * 1000;
 
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 
-function prepare(row) {
+function prepare(row, harness) {
   const { tmp, dataRoot } = prepareSandbox({ prefix: 'chef-agentic', id: row.id, fixture: path.join(repo, 'fixtures', 'data-root'), author: 'agentic', seed: row.seed });
-  const plugin = path.join(tmp, 'plugin');
-  fs.cpSync(path.join(repo, 'plugins', 'chef'), plugin, { recursive: true });
-  const env = sandboxEnv(dataRoot, { CHEF_USDA_FDC_KEY: '' });
-  const expand = (text) => text.replaceAll('{skills}', path.join(plugin, 'skills')).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp);
-  return { tmp, dataRoot, plugin, env, expand };
+  const launcher = harness.prepare({ pluginDir: path.join(repo, 'plugins', 'chef'), workdir: tmp, env: sandboxEnv(dataRoot, { CHEF_USDA_FDC_KEY: '' }) });
+  const { env, skillsDir } = launcher;
+  const expand = (text) => text.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp);
+  return { tmp, dataRoot, env, expand, runTurn: launcher.runTurn };
 }
 
 function script(rep, step) {
@@ -44,41 +43,22 @@ function script(rep, step) {
   return JSON.parse(result.stdout);
 }
 
-function claude(rep, prompt, { session, resume, model }) {
-  const args = ['-p', rep.expand(prompt), '--output-format', 'stream-json', '--verbose', '--plugin-dir', rep.plugin];
-  args.push('--strict-mcp-config', '--setting-sources', 'project', '--permission-mode', 'dontAsk');
-  args.push('--allowedTools', 'Bash Read Write Edit Glob Grep Skill');
-  args.push(...(resume ? ['--resume', session] : ['--session-id', session]), ...(model ? ['--model', model] : []));
-  return new Promise((resolve) => {
-    const child = spawn('claude', args, { cwd: rep.tmp, env: rep.env, stdio: ['ignore', 'pipe', 'pipe'] });
-    let out = '';
-    let err = '';
-    child.stdout.on('data', (chunk) => (out += chunk));
-    child.stderr.on('data', (chunk) => (err += chunk));
-    const timer = setTimeout(() => child.kill('SIGTERM'), TURN_TIMEOUT_MS);
-    child.on('close', () => {
-      clearTimeout(timer);
-      resolve({ out, err });
-    });
-  });
-}
-
-async function runRep(row, number, { model, logDir }) {
-  const rep = prepare(row);
+async function runRep(row, number, { harness, model, logDir }) {
+  const rep = prepare(row, harness);
   const run = { row: row.id, rep: number, pass: false, cost_usd: 0, skills: [], scriptRuns: [] };
   try {
     for (const step of row.setup ?? []) script(rep, step);
     const beforeHead = git(rep.dataRoot, 'rev-parse', 'HEAD');
     const session = randomUUID();
     for (const [index, prompt] of row.turns.entries()) {
-      const { out: stream, err } = await claude(rep, prompt, { session, resume: index > 0, model });
-      fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.jsonl`), stream);
+      const { out: stream, err, ext } = await rep.runTurn({ prompt: rep.expand(prompt), session, resume: index > 0, model, timeoutMs: TURN_TIMEOUT_MS });
+      fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.${ext}`), stream);
       if (err) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), err);
-      const turn = projectClaude(stream);
+      const turn = harness.project(stream);
       Object.assign(run, { model: run.model ?? turn.model, cost_usd: run.cost_usd + turn.cost_usd });
       run.skills.push(...turn.skills);
       run.scriptRuns.push(...turn.scriptRuns);
-      if (turn.error) throw new Error(`turn ${index + 1} unusable: ${turn.error} (see ${row.id}-${number}-${index + 1}.jsonl)`);
+      if (turn.error) throw new Error(`turn ${index + 1} unusable: ${turn.error} (see ${row.id}-${number}-${index + 1}.${ext})`);
       checkResponse(turn.response, row.responses?.[index]);
     }
     checkSkills(run.skills, row);
@@ -109,14 +89,15 @@ async function pool(jobs, size) {
   return results;
 }
 
-function meta() {
+function meta(harness) {
+  const cli = harness.detect();
   const plugin = JSON.parse(fs.readFileSync(path.join(repo, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), 'utf8'));
   return {
     date: new Date().toISOString(),
     commit: git(repo, 'rev-parse', 'HEAD'),
     commit_dirty: git(repo, 'status', '--porcelain', '--', 'plugins', 'evals/agentic', 'fixtures') !== '',
     plugin_version: plugin.version,
-    claude_code_version: execFileSync('claude', ['--version'], { encoding: 'utf8' }).trim(),
+    harness: { name: harness.name, launcherVersion: harness.launcherVersion, cliVersion: cli.version },
   };
 }
 
@@ -125,6 +106,7 @@ const { values } = parseArgs({
     reps: { type: 'string', default: '3' },
     rows: { type: 'string' },
     'known-failures': { type: 'boolean' },
+    harness: { type: 'string', default: 'claude' },
     model: { type: 'string' },
     concurrency: { type: 'string', default: '4' },
     out: { type: 'string' },
@@ -136,11 +118,12 @@ const rows = allRows
   .filter((row) => !values.rows || values.rows.split(',').includes(row.id))
   .filter((row) => !values['known-failures'] || row.known_failure);
 for (const row of allRows) assertScriptPaths(row.scripts);
-const info = meta();
+const harness = loadHarness(values.harness);
+const info = meta(harness);
 const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'results', `agentic-${info.commit.slice(0, 12)}.json`));
 const logDir = path.join(path.dirname(out), 'logs', path.basename(out, '.json'));
 fs.mkdirSync(logDir, { recursive: true });
-const jobs = rows.flatMap((row) => Array.from({ length: reps }, (_, index) => () => runRep(row, index + 1, { model: values.model, logDir })));
+const jobs = rows.flatMap((row) => Array.from({ length: reps }, (_, index) => () => runRep(row, index + 1, { harness, model: values.model, logDir })));
 const runs = await pool(jobs, Number(values.concurrency));
 const result = aggregate({ meta: info, reps, rows, runs });
 fs.writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);

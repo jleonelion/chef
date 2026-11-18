@@ -7,6 +7,18 @@
 | `repro/`, `migration-regression.mjs` | `bun run repro`, `bun run migrations` | See `repro/README.md`. |
 
 `bun run evals:lint` checks the tier1 and agentic datasets against `schemas/evals/` and runs in CI.
+
+## Harness launchers (agentic)
+
+`bun run agentic --harness claude` (default; codex and copilot land later). The runner is harness-neutral; each runtime has a launcher in `evals/agentic/harnesses/<name>.mjs` plus a Projector (raw transcript to Trajectory, `trajectory.mjs`).
+
+Launcher contract: `name`, `launcherVersion`, `project(transcript)`, `detect()` (binary and version, throws "not installed"), `prepare({ pluginDir, workdir, env })` (installs the built skills the way that harness discovers them, isolated per rep, never touching the user's config; returns `{ skillsDir, env, runTurn }`), `runTurn({ prompt, session, resume, model, timeoutMs })` (returns `{ out, err, ext }`, the raw transcript written to the log dir). Same capability set everywhere: shell, file read/write/edit, skills, no MCP.
+
+Result files are `chef-agentic` format 2 and carry `harness: {name, launcherVersion, cliVersion}` and `models`. Compare harnesses by row, never by cost.
+
+| Harness | Skill loading | Unattended flags | Isolation |
+|---|---|---|---|
+| claude | `--plugin-dir` on a per-rep copy of the plugin | `--permission-mode dontAsk --allowedTools 'Bash Read Write Edit Glob Grep Skill'`, `--strict-mcp-config`, `--setting-sources project` | per-rep plugin copy and sandbox env |
 Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes`, `excludes`, `min`),
 duplicate ids, unknown skill names and badly shaped ids all fail it.
 
