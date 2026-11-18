@@ -5,6 +5,7 @@
 // fixture data root for "verify install".
 import fs from 'node:fs';
 import path from 'node:path';
+import { assertNoEvaluationEvidence } from './lib/package-boundary.mjs';
 
 const repo = path.resolve(import.meta.dir, '..');
 const srcSkills = path.join(repo, 'src', 'skills');
@@ -37,4 +38,5 @@ async function buildSkill(name) {
 fs.rmSync(outSkills, { recursive: true, force: true });
 for (const name of fs.readdirSync(srcSkills).sort()) await buildSkill(name);
 fs.cpSync(path.join(repo, 'fixtures', 'data-root'), path.join(outSkills, 'chef-setup', 'fixture', 'data-root'), { recursive: true });
+assertNoEvaluationEvidence(path.join(repo, 'plugins', 'chef'));
 console.log(`built ${fs.readdirSync(outSkills).length} skill(s) into ${path.relative(repo, outSkills)}`);

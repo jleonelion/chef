@@ -69,6 +69,9 @@ export function aggregate({ meta, reps, rows, runs }) {
       pass: row.known_failure ? passes < reps : passes === reps,
       ...(row.known_failure && { known_failure: row.known_failure }),
       failures: mine.filter((run) => !run.pass).map(({ rep, error }) => ({ rep, error })),
+      runs: mine
+        .sort((a, b) => a.rep - b.rep)
+        .map((run) => ({ rep: run.rep, pass: run.pass, skills: [...new Set(run.skills ?? [])].sort(), error: run.error ?? null })),
     };
   });
   return {

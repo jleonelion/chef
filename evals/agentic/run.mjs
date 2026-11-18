@@ -22,6 +22,8 @@ import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
 import { loadHarness } from './harnesses/index.mjs';
+import { currentProvenance, resultFilename } from './provenance.mjs';
+import { validateResult } from './result-schema.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const TURN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -91,15 +93,15 @@ async function pool(jobs, size) {
   return results;
 }
 
-function meta(harness) {
+function meta(harness, rows, totalRows) {
   const cli = harness.detect();
-  const plugin = JSON.parse(fs.readFileSync(path.join(repo, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), 'utf8'));
   return {
     date: new Date().toISOString(),
-    commit: git(repo, 'rev-parse', 'HEAD'),
-    commit_dirty: git(repo, 'status', '--porcelain', '--', 'plugins', 'evals/agentic', 'fixtures') !== '',
-    plugin_version: plugin.version,
+    ...currentProvenance(repo),
     harness: { name: harness.name, launcherVersion: harness.launcherVersion, cliVersion: cli.version },
+    selected_rows: rows.map((row) => row.id),
+    rows_selected: rows.length,
+    rows_total: totalRows,
   };
 }
 
@@ -116,19 +118,28 @@ const { values } = parseArgs({
 });
 const reps = Number(values.reps);
 const allRows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
+const requestedRows = values.rows?.split(',');
+if (requestedRows) {
+  const unknown = requestedRows.filter((id) => !allRows.some((row) => row.id === id));
+  if (unknown.length) throw new Error(`unknown row id(s): ${unknown.join(', ')}`);
+}
 const rows = allRows
-  .filter((row) => !values.rows || values.rows.split(',').includes(row.id))
+  .filter((row) => !requestedRows || requestedRows.includes(row.id))
   .filter((row) => !values['known-failures'] || row.known_failure);
 for (const row of allRows) assertScriptPaths(row.scripts);
 const harness = loadHarness(values.harness);
-const info = meta(harness);
-const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'results', `agentic-${info.commit.slice(0, 12)}.json`));
-const logDir = path.join(path.dirname(out), 'logs', path.basename(out, '.json'));
+const info = meta(harness, rows, allRows.length);
+const filename = resultFilename({ harness: harness.name, commit: info.commit, date: new Date(info.date) });
+const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'archive', filename));
+const logDir = path.join(repo, 'evals', 'agentic', 'results', 'logs', path.basename(out, '.json'));
 fs.mkdirSync(logDir, { recursive: true });
 const jobs = rows.flatMap((row) => Array.from({ length: reps }, (_, index) => () => runRep(row, index + 1, { harness, model: values.model, logDir })));
 const runs = await pool(jobs, Number(values.concurrency));
 const result = aggregate({ meta: info, reps, rows, runs });
-fs.writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`);
+const schemaErrors = validateResult(result);
+if (schemaErrors.length) throw new Error(`result failed schema validation:\n${schemaErrors.join('\n')}`);
+fs.mkdirSync(path.dirname(out), { recursive: true });
+fs.writeFileSync(out, `${JSON.stringify(result, null, 2)}\n`, { flag: 'wx' });
 for (const row of result.rows) console.log(`${row.pass ? 'pass' : 'FAIL'} ${row.passes} ${row.id}${row.known_failure ? ` (known_failure ${row.known_failure})` : ''}`);
 console.log(`Agentic suite ${result.passed ? 'passed' : 'FAILED'} (model ${result.models.join(', ') || 'unknown'}, $${result.cost_usd}). Result: ${path.relative(repo, out)}`);
 process.exitCode = result.passed ? 0 : 1;
