@@ -64,6 +64,10 @@ _Avoid_: trace, transcript, harness output
 The per-runtime code that turns one raw transcript into a Trajectory. Only the Claude projector exists.
 _Avoid_: adapter, reader
 
+**Harness launcher**:
+The per-runtime code that makes an agentic eval run one turn in a headless agent runtime: it installs the built skills the way that runtime finds them, isolated from the user's own config, runs the prompt, and returns the raw transcript for the Projector. One per runtime (Claude Code, Codex, Copilot).
+_Avoid_: adapter, driver, runner
+
 **Diagnostic bundle**:
 A snapshot of selected invocation events and coarse environment facts, built when the user makes a feedback report. Exists only inside one.
 _Avoid_: attachment, dump, logs
