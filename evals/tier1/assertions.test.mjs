@@ -49,6 +49,15 @@ test('excludes rejects forbidden text and accepts text without it', () => {
   );
 });
 
+test('an assertion with no recognised check key throws', () => {
+  assert.throws(() => assertCase(doc, { path: '$.one', includs: 'x' }), /no recognised check/);
+  assert.throws(() => assertCase(doc, { path: '$.one' }), /no recognised check/);
+});
+
+test('excludes on a missing target throws instead of passing', () => {
+  assert.throws(() => assertCase(doc, { path: '$.missing', excludes: 'x' }), /not a string or array/);
+});
+
 test('git assertions require an unchanged HEAD and clean tree when requested', () => {
   const expected = { headUnchanged: true, clean: true };
   assertGitState({ beforeHead: 'abc', afterHead: 'abc', status: '' }, expected);

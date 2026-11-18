@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jleonelion/chef/schemas/evals/assertion.v1.json",
+  "title": "Chef eval assertion v1",
+  "description": "One {path, check} assertion run by assertCase (evals/tier1/assertions.mjs). Needs at least one recognised check key.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path"],
+  "anyOf": [{ "required": ["equals"] }, { "required": ["absent"] }, { "required": ["includes"] }, { "required": ["excludes"] }, { "required": ["min"] }],
+  "properties": {
+    "path": { "type": "string", "pattern": "^\\$" },
+    "equals": {},
+    "absent": { "type": "boolean" },
+    "includes": {},
+    "excludes": {},
+    "min": { "type": "number" }
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jleonelion/chef/schemas/evals/tier1-case.v1.json",
+  "title": "Chef tier1 eval case v1",
+  "description": "One case in evals/tier1/cases.json. Keys are those read by evals/tier1/run.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "description", "command", "parse", "assertions"],
+  "properties": {
+    "id": { "$ref": "#/$defs/id" },
+    "description": { "type": "string", "minLength": 1 },
+    "fixture": { "enum": ["none", "data-root"] },
+    "command": { "$ref": "#/$defs/command" },
+    "parse": { "$ref": "#/$defs/parse" },
+    "assertions": { "$ref": "#/$defs/assertions" },
+    "stdin": {},
+    "expectedStatus": { "type": "integer", "minimum": 0 },
+    "env": { "type": "object", "additionalProperties": { "type": "string" } },
+    "seed": { "$ref": "#/$defs/seed" },
+    "afterCommitSeed": { "$ref": "#/$defs/seed" },
+    "updateInstall": { "type": "boolean" },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command"],
+        "properties": {
+          "command": { "$ref": "#/$defs/command" },
+          "parse": { "$ref": "#/$defs/parse" },
+          "assertions": { "$ref": "#/$defs/assertions" },
+          "stdin": {},
+          "expectedStatus": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "assertions"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "parse": { "enum": ["text", "json", "pdf"] },
+          "assertions": { "$ref": "#/$defs/assertions" }
+        }
+      }
+    },
+    "git": { "$ref": "#/$defs/git" },
+    "repro": { "$ref": "#/$defs/id" },
+    "known_failure": { "$ref": "#/$defs/id" }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$", "maxLength": 100 },
+    "command": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "parse": { "enum": ["json", "stdout"] },
+    "assertions": { "type": "array", "items": { "$ref": "assertion.v1.json" } },
+    "seed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "content"],
+        "properties": { "path": { "type": "string", "minLength": 1 }, "content": {} }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "headUnchanged": { "type": "boolean" }, "clean": { "type": "boolean" } }
+    }
+  }
+}

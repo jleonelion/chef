@@ -6,6 +6,10 @@
 | `agentic/` | `bun run agentic` | Harness behavior: a headless agent with the plugin fires the right skills and writes the right files. Local only (spends real usage). |
 | `repro/`, `migration-regression.mjs` | `bun run repro`, `bun run migrations` | See `repro/README.md`. |
 
+`bun run evals:lint` checks the tier1 and agentic datasets against `schemas/evals/` and runs in CI.
+Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes`, `excludes`, `min`),
+duplicate ids, unknown skill names and badly shaped ids all fail it.
+
 ## Tier1 is the cross-harness baseline
 
 Tier1 runs `node <skills>/.../x.mjs` against a copy of `fixtures/data-root` with `CHEF_DATA_ROOT` set. It never starts Claude, so any harness can reuse it.
@@ -17,3 +21,20 @@ Tier1 runs `node <skills>/.../x.mjs` against a copy of `fixtures/data-root` with
 ## Shared sandbox
 
 `lib/sandbox.mjs` builds every rep sandbox for both suites: fixture copy, `seed`, git commit, `afterCommitSeed`, and the `CHEF_DATA_ROOT` env. Add sandbox setup there, not in a suite runner.
+
+## Naming ids
+
+Every row or case id is `<skill>-<scenario>`:
+
+- lowercase kebab-case, at least two segments, unique within its dataset
+- `<skill>` is the full name of a skill the item evaluates, as in `src/skills` (`chef-recipe-search`, not `recipe-search`)
+- `<scenario>` says what is being checked (`chef-food-inventory-untrusted-sender-refused`)
+
+Which skill counts as evaluated:
+
+- tier1: a skill named in the `{skills}/<skill>/` paths of the case's `command` or `steps`. If several, prefix with the one under test; do not prefix with a feature name such as `dietary-gate`.
+- agentic: one of the row's `skills`.
+
+The lint rejects an id that does not start with one of those skills, so grep `chef-<skill>-` finds every item covering a skill.
+Ids are referenced by `repro`, `known_failure` and result files, so renaming one means updating those too.
+New datasets should follow the same rule and add a schema under `schemas/evals/`.

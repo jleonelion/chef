@@ -1,6 +1,6 @@
 [
   {
-    "id": "setup-receipt-intake",
+    "id": "chef-setup-receipt-intake",
     "flow": "core",
     "description": "Onboarding says Chef checks the user's Gmail for grocery receipts and asks for trusted senders only after consent (#40).",
     "turns": [
@@ -21,7 +21,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
-    "id": "setup-household-recipients",
+    "id": "chef-setup-household-recipients",
     "flow": "core",
     "description": "Onboarding explains that household recipients are defaults for an approved shopping-list recurring task, not a restriction on one-off delivery (#39).",
     "turns": [
@@ -41,7 +41,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
-    "id": "add-recipe",
+    "id": "chef-add-recipe-pasted-text",
     "flow": "core",
     "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",
     "turns": [
@@ -68,7 +68,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "plan-week",
+    "id": "chef-meal-planning-plan-week",
     "flow": "core",
     "description": "A confirmed schedule from saved recipes is saved as the week's meal plan with its nutrition rollup.",
     "turns": [
@@ -94,7 +94,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "receipt-to-inventory",
+    "id": "chef-food-inventory-receipt-to-inventory",
     "flow": "core",
     "description": "A grocery receipt handed over as text adds a purchase, its transcript and inventory items, and the inventory check stays healthy.",
     "seed": [
@@ -120,7 +120,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "batch-prep-pdf",
+    "id": "chef-batch-prep-planning-pdf",
     "flow": "core",
     "description": "A prep plan for a week with a saved meal plan is rendered as the week's PDF under the data root.",
     "setup": [
@@ -144,7 +144,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "health-goal-check-in",
+    "id": "chef-health-goals-check-in",
     "flow": "core",
     "description": "A goal with user-stated targets is saved to the one goals store, and the one-time training notice is recorded.",
     "turns": [
@@ -162,7 +162,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "recipe-decision-accept-publish",
+    "id": "chef-recipe-decisions-accept-publish",
     "flow": "core",
     "description": "Chef proposes a recipe, records the user's yes as a decision, publishes it, and search finds it (ADR-0019).",
     "turns": [
@@ -191,7 +191,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "recipe-decision-rejected-not-reproposed",
+    "id": "chef-recipe-decisions-rejected-not-reproposed",
     "flow": "core",
     "description": "A recipe the user already turned down is not proposed again: the decision store, recipe book and git history are unchanged.",
     "seed": [
@@ -222,7 +222,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
-    "id": "log-planned-dinner",
+    "id": "chef-meal-logging-planned-dinner",
     "flow": "core",
     "description": "\"I ate my planned dinner\" pre-fills the entry from that date's planned meal; after the cooked answer and a yes, the log holds one matching entry (#48).",
     "setup": [
@@ -253,7 +253,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "log-day-from-plan",
+    "id": "chef-meal-logging-day-from-plan",
     "flow": "core",
     "description": "\"Log today from the plan\" with breakfast, lunch and dinner planned gives one confirmation, with a cooked answer per meal, and three log entries (#48).",
     "setup": [
@@ -289,7 +289,7 @@
     "git": { "clean": true }
   },
   {
-    "id": "log-from-plan-no-plan",
+    "id": "chef-meal-logging-from-plan-no-plan",
     "flow": "should-not-act",
     "description": "Logging from the plan for a date with no plan falls back to manual logging, and nothing is logged before the user confirms the proposed entry (#48).",
     "turns": [
@@ -302,7 +302,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
-    "id": "dietary-should-not-act",
+    "id": "chef-meal-planning-dietary-should-not-act",
     "flow": "should-not-act",
     "description": "Asked to plan a recipe the dietary gate leaves out (unchecked flags under a dairy hard constraint), Chef saves no plan and changes nothing.",
     "seed": [

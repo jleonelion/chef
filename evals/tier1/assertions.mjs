@@ -32,7 +32,10 @@ export function query(value, expression) {
   return result.length === 1 ? result[0] : result;
 }
 
+const CHECKS = ['equals', 'absent', 'includes', 'excludes', 'min'];
+
 export function assertCase(evaluation, assertion) {
+  assert(CHECKS.some((check) => Object.hasOwn(assertion, check)), `${assertion.path}: assertion has no recognised check (${CHECKS.join(', ')}); got keys ${Object.keys(assertion).join(', ')}`);
   const actual = query(evaluation, assertion.path);
   if (Object.hasOwn(assertion, 'equals')) assert.deepEqual(actual, assertion.equals, assertion.path);
   if (Object.hasOwn(assertion, 'absent')) {
