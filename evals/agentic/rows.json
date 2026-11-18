@@ -261,7 +261,7 @@
     "grounding": { "recipes": ["chickpea-spinach-stew", "lemon-garlic-pasta"] },
     "setup": [
       {
-        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-20"],
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
         "stdin": [
           { "date": "2026-01-20", "slot": "breakfast", "recipe": "chickpea-spinach-stew", "servings": 1 },
           { "date": "2026-01-20", "slot": "lunch", "recipe": "lemon-garlic-pasta", "servings": 1 },
