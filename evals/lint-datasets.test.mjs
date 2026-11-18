@@ -69,3 +69,7 @@ test('unknown skills fail in skills, forbidSkills and commands', () => {
 test('updateInstall underscore dir names resolve to real skills', () => {
   assert.deepEqual(lint({ tier1: [tier1({ command: ['node', '{skills}/chef_setup/scripts/setup.mjs'] })] }), []);
 });
+
+test('{today} in an agentic row fails', () => {
+  assert.match(lint({ agentic: [agentic({ turns: ['Log {today}'] })] })[0], /wall-clock/);
+});

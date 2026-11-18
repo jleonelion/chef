@@ -8,7 +8,7 @@
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
 //   scripts ({required, forbidden, max}: skill-relative paths like scripts/<name>, max is a per-path
 //   call cap, checked over all turns of a rep), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
-//   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
+//   Turns, commands and stdin expand {skills}, {data_root} and {tmp}; rows must not depend on the wall-clock date (the lint rejects {today}).
 //   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
 //   a rep, and fails once every rep passes. --known-failures runs only rows with that marker.
 //   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--model <id>] [--concurrency 4] [--out <file>]
@@ -17,7 +17,6 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
-import { today } from '../../src/lib/recipes.mjs';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
@@ -33,7 +32,7 @@ function prepare(row) {
   const plugin = path.join(tmp, 'plugin');
   fs.cpSync(path.join(repo, 'plugins', 'chef'), plugin, { recursive: true });
   const env = sandboxEnv(dataRoot, { CHEF_USDA_FDC_KEY: '' });
-  const expand = (text) => text.replaceAll('{skills}', path.join(plugin, 'skills')).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp).replaceAll('{today}', today());
+  const expand = (text) => text.replaceAll('{skills}', path.join(plugin, 'skills')).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp);
   return { tmp, dataRoot, plugin, env, expand };
 }
 
