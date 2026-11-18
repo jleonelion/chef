@@ -1,0 +1,665 @@
+[
+  {
+    "id": "chef-meal-planning-saves-safe-week-with-rollup",
+    "description": "A weekly plan of seven confirmed dinners saves them with one nutrition rollup, reports the flagged recipe as excluded, considers inventory, and emits no calendar payload when calendar is unset.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/profile.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-safe-week-with-rollup/profile.md"
+      },
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-safe-week-with-rollup/dietary-ruleset.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-safe-week-with-rollup/chickpea-spinach-stew.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-safe-week-with-rollup/lemon-garlic-pasta.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/retired-rice.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-safe-week-with-rollup/retired-rice.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.meals.length",
+        "equals": 7
+      },
+      {
+        "path": "$.meals[*].slug",
+        "equals": [
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew",
+          "chickpea-spinach-stew"
+        ]
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.nutrition.status",
+        "equals": "complete"
+      },
+      {
+        "path": "$.nutrition.totals.calories",
+        "equals": 6300
+      },
+      {
+        "path": "$.inventory.items_considered",
+        "equals": 5
+      },
+      {
+        "path": "$.dietary.footer",
+        "includes": "always check labels"
+      },
+      {
+        "path": "$.calendar",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition:\n  status: complete"
+          },
+          {
+            "path": "$.content",
+            "includes": "items_considered: 5"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    },
+    "stdin": [
+      {
+        "date": "2026-01-19",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-20",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-21",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-22",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-23",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-24",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-25",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      }
+    ]
+  },
+  {
+    "id": "chef-meal-planning-emits-calendar-payload-only-when-configured",
+    "description": "A configured calendar produces a runtime payload, while the saved plan retains an incomplete nutrition rollup and the never-asked dietary nudge.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"calendar\":\"Household meals\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-26"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.calendar.calendar",
+        "equals": "Household meals"
+      },
+      {
+        "path": "$.calendar.action",
+        "equals": "create-events"
+      },
+      {
+        "path": "$.calendar.events.length",
+        "equals": 7
+      },
+      {
+        "path": "$.calendar.instruction",
+        "includes": "does not call a calendar API"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "equals": "No dietary constraints recorded. Tell me about any allergies or foods someone must never eat."
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      },
+      {
+        "path": "$.nutrition.status",
+        "equals": "incomplete"
+      },
+      {
+        "path": "$.calendar.events[0]",
+        "equals": {
+          "date": "2026-01-26",
+          "slot": "dinner",
+          "title": "Chickpea Spinach Stew",
+          "recipe_slug": "chickpea-spinach-stew"
+        }
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-26.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition:\n  status: incomplete"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    },
+    "stdin": [
+      {
+        "date": "2026-01-26",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-27",
+        "slot": "dinner",
+        "recipe": "lemon-garlic-pasta"
+      },
+      {
+        "date": "2026-01-28",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-29",
+        "slot": "dinner",
+        "recipe": "lemon-garlic-pasta"
+      },
+      {
+        "date": "2026-01-30",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-31",
+        "slot": "dinner",
+        "recipe": "lemon-garlic-pasta"
+      },
+      {
+        "date": "2026-02-01",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      }
+    ]
+  },
+  {
+    "id": "chef-meal-planning-saves-breakfast-lunch-dinner-week",
+    "description": "The case that motivated per-meal plans: a week with breakfast, lunch and dinner on some days and only dinner on another, all from saved recipes, saves every planned meal with its slot; today lists a three-meal day in slot order.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/profile.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-breakfast-lunch-dinner-week/profile.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/overnight-oats.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-breakfast-lunch-dinner-week/overnight-oats.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lentil-salad.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-breakfast-lunch-dinner-week/lentil-salad.md"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+          "plan",
+          "--week-start",
+          "2026-01-19"
+        ],
+        "stdin": [
+          {
+            "date": "2026-01-19",
+            "slot": "breakfast",
+            "recipe": "overnight-oats"
+          },
+          {
+            "date": "2026-01-19",
+            "slot": "lunch",
+            "recipe": "lentil-salad"
+          },
+          {
+            "date": "2026-01-19",
+            "slot": "dinner",
+            "recipe": "chickpea-spinach-stew"
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "dinner",
+            "recipe": "lemon-garlic-pasta",
+            "note": "dinner at home before the game"
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "lunch",
+            "recipe": "chickpea-spinach-stew",
+            "servings": 1
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "breakfast",
+            "recipe": "overnight-oats"
+          },
+          {
+            "date": "2026-01-22",
+            "slot": "dinner",
+            "recipe": "chickpea-spinach-stew"
+          }
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "saved"
+          },
+          {
+            "path": "$.meals.length",
+            "equals": 7
+          },
+          {
+            "path": "$.meals[*].slot",
+            "equals": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "breakfast",
+              "lunch",
+              "dinner",
+              "dinner"
+            ]
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "today",
+      "--date",
+      "2026-01-20"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "planned"
+      },
+      {
+        "path": "$.meals",
+        "equals": [
+          {
+            "date": "2026-01-20",
+            "slot": "breakfast",
+            "slug": "overnight-oats",
+            "title": "Overnight Oats",
+            "servings": 3
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "lunch",
+            "slug": "chickpea-spinach-stew",
+            "title": "Chickpea Spinach Stew",
+            "servings": 1
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "dinner",
+            "slug": "lemon-garlic-pasta",
+            "title": "Lemon Garlic Pasta",
+            "servings": 3,
+            "note": "dinner at home before the game"
+          }
+        ]
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "slot: breakfast"
+          },
+          {
+            "path": "$.content",
+            "includes": "| 2026-01-22 | dinner | Chickpea Spinach Stew | 3 |"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-rejects-unreadable-stdin-without-writing",
+    "description": "Planned meals on stdin that are not JSON return invalid-input and save nothing.",
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "stdin": "[{date: 2026-01-19}",
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid-input"
+      },
+      {
+        "path": "$.problems",
+        "equals": [
+          "stdin: must be a JSON list of planned meals"
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-refuses-gated-chosen-recipe-without-writing",
+    "description": "A planned recipe in any meal slot still passes the dietary gate; a conflict refuses the plan with reasons and leaves git unchanged.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-refuses-gated-chosen-recipe-without-writing/dietary-ruleset.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-refuses-gated-chosen-recipe-without-writing/lemon-garlic-pasta.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-02-02"
+    ],
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.refused_choices[0].slug",
+        "equals": "lemon-garlic-pasta"
+      },
+      {
+        "path": "$.refused_choices[0].reasons.[0].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.refused_choices[0].slot",
+        "equals": "lunch"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "stdin": [
+      {
+        "date": "2026-02-03",
+        "slot": "lunch",
+        "recipe": "lemon-garlic-pasta"
+      }
+    ]
+  },
+  {
+    "id": "chef-meal-planning-today-reads-meals-and-dietary-footer-without-writing",
+    "description": "The read-only today view reads a v1 one-per-day plan as dinners and returns the applicable saved dietary footer while leaving the data root unchanged.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-today-reads-meals-and-dietary-footer-without-writing/2026-01-19.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "today",
+      "--date",
+      "2026-01-21"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "planned"
+      },
+      {
+        "path": "$.date",
+        "equals": "2026-01-21"
+      },
+      {
+        "path": "$.meal_plan",
+        "equals": "knowledge/wiki/meal-plans/2026-01-19.md"
+      },
+      {
+        "path": "$.meals",
+        "equals": [
+          {
+            "date": "2026-01-21",
+            "slot": "dinner",
+            "slug": "lemon-garlic-pasta",
+            "title": "Lemon Garlic Pasta",
+            "servings": 2
+          }
+        ]
+      },
+      {
+        "path": "$.dietary.footer",
+        "equals": "Always check labels for allergens."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-today-reports-no-plan-without-writing",
+    "description": "The read-only today view exits successfully with one clear message when no saved plan covers the date, and writes nothing.",
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "today",
+      "--date",
+      "2026-02-14"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "no-plan"
+      },
+      {
+        "path": "$.message",
+        "equals": "No meal plan covers 2026-02-14."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-no-goal-no-health-suggestions",
+    "description": "With no goal declared, a saved meal plan carries no health suggestions.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew"
+      ]
+    },
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.health_suggestions",
+        "absent": true
+      }
+    ],
+    "stdin": [
+      {
+        "date": "2026-01-19",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-20",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-goal-adds-advisory-suggestions",
+    "description": "With a goal declared, a saved plan gets health suggestions with the footer; fixture recipes have no computed nutrition, so Chef says it cannot compare rather than estimating.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew"
+      ]
+    },
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"Lower sodium\",\"targets\":{\"sodium\":{\"max\":2300},\"protein\":{\"min\":90}},\"set\":\"2026-01-10\",\"updated\":\"2026-01-10\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+      "plan",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.health_suggestions.status",
+        "equals": "unavailable"
+      },
+      {
+        "path": "$.health_suggestions.footer",
+        "equals": "Chef gives general information, not medical advice."
+      }
+    ],
+    "stdin": [
+      {
+        "date": "2026-01-19",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      },
+      {
+        "date": "2026-01-20",
+        "slot": "dinner",
+        "recipe": "chickpea-spinach-stew"
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  }
+]

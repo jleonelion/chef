@@ -4,7 +4,7 @@
 // not, script output, git state). Every row must pass every rep; nothing is retried.
 // Local only: it spends real harness usage, so it never runs in CI. Rows are in rows.json:
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
-//   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts;
+//   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts, each a string or {turnFile: evals/agentic/inputs/...};
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
 //   scripts ({required, forbidden, max}: skill-relative paths like scripts/<name>, max is a per-path
 //   call cap, checked over all turns of a rep), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { readInput } from '../lib/load-cases.mjs';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
@@ -50,7 +51,8 @@ async function runRep(row, number, { harness, model, logDir }) {
     for (const step of row.setup ?? []) script(rep, step);
     const beforeHead = git(rep.dataRoot, 'rev-parse', 'HEAD');
     const session = randomUUID();
-    for (const [index, prompt] of row.turns.entries()) {
+    for (const [index, entry] of row.turns.entries()) {
+      const prompt = typeof entry === 'string' ? entry : readInput(entry.turnFile).toString('utf8');
       const { out: stream, err, ext } = await rep.runTurn({ prompt: rep.expand(prompt), session, resume: index > 0, model, timeoutMs: TURN_TIMEOUT_MS });
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.${ext}`), stream);
       if (err) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), err);

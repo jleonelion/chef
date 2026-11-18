@@ -9,6 +9,7 @@ const tier1 = (over = {}) => ({
   command: ['node', '{skills}/chef-setup/scripts/setup.mjs'],
   parse: 'json',
   assertions: [{ path: '$.status', equals: 'ok' }],
+  git: { clean: true },
   ...over,
 });
 const agentic = (over = {}) => ({
@@ -68,6 +69,23 @@ test('unknown skills fail in skills, forbidSkills and commands', () => {
 
 test('updateInstall underscore dir names resolve to real skills', () => {
   assert.deepEqual(lint({ tier1: [tier1({ command: ['node', '{skills}/chef_setup/scripts/setup.mjs'] })] }), []);
+});
+
+test('tier1 git is required; git: false needs a reason', () => {
+  const { git, ...noGit } = tier1();
+  assert.match(lint({ tier1: [noGit] }).join('\n'), /git/);
+  assert.ok(lint({ tier1: [tier1({ git: false })] }).length > 0);
+  assert.deepEqual(lint({ tier1: [tier1({ git: false, gitReason: 'no data root' })] }), []);
+  assert.ok(lint({ tier1: [tier1({ gitReason: 'stray' })] }).length > 0);
+});
+
+test('seedFile and turnFile must be under evals/*/inputs/ and exist', () => {
+  const seeded = tier1({ seed: [{ path: 'a.md', seedFile: 'evals/tier1/inputs/x/a.md' }] });
+  assert.deepEqual(lint({ tier1: [seeded] }), []);
+  const missing = lintDatasets({ suites: { tier1: [seeded], agentic: [agentic({ turns: [{ turnFile: 'evals/agentic/inputs/x/t.txt' }] })] }, skillNames, exists: () => false });
+  assert.equal(missing.filter((e) => /input file not found/.test(e)).length, 2);
+  assert.ok(lint({ tier1: [tier1({ seed: [{ path: 'a.md', seedFile: '../secrets.md' }] })] }).length > 0);
+  assert.ok(lint({ tier1: [tier1({ seed: [{ path: 'a.md', content: 'x', seedFile: 'evals/tier1/inputs/a.md' }] })] }).length > 0);
 });
 
 test('{today} in an agentic row fails', () => {

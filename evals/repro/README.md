@@ -12,7 +12,7 @@ minted for the reports behind it, never a `report_id`. `bun run repro` lints eve
 
 | `target` | `scenario.test` |
 |---|---|
-| `deterministic-test` | `tier1:<row id>` (`evals/tier1/cases.json`) or `conformance:<id>` (adapter conformance suite, not built yet) |
+| `deterministic-test` | `tier1:<row id>` (`evals/tier1/cases/`) or `conformance:<id>` (adapter conformance suite, not built yet) |
 | `agentic-eval` | `agentic:<row id>` (`evals/agentic/rows.json`) |
 | `docs` | `docs:<repo path>`; no regression check, kept for provenance and counting |
 | `none` | no test: a reproduced won't-fix, or a Muse-only manual reproduction recorded in `steps` |

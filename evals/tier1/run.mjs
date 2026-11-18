@@ -9,18 +9,20 @@
 // `min` (number >=), `absent` (true: key missing; false: key present). See assertions.mjs.
 // File targets parse as `text` (default), `json`, or `pdf` ({valid, pages, title, text[]}; see pdf.mjs).
 // `--skip-pdf-files` skips pdf targets: pdf.mjs needs pdf-lib from node_modules, which bundle smoke has none of.
-// `git` optionally checks that HEAD is unchanged and/or the data-root worktree is clean.
+// `git` (required) checks that HEAD is unchanged and/or the data-root worktree is clean; `git: false`
+// opts out and needs a `gitReason`. A seed entry takes `content` or `seedFile` (evals/tier1/inputs/...).
 // `repro: <case_id>` links a row to its reproduction case in evals/repro/ (see its README).
 // `known_failure: <case_id>` marks a row expected to fail until its fix lands: a failure is reported
 // and does not fail the run; an unexpected pass does.
-//   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>] [--cases <cases.json>]
-//   (defaults: plugins/chef/skills, fixtures/data-root, evals/tier1/cases.json)
+//   node evals/tier1/run.mjs [--skills-dir <dir>] [--fixture <data root>] [--cases <file or dir>]
+//   (defaults: plugins/chef/skills, fixtures/data-root, evals/tier1/cases/)
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { loadCases } from '../lib/load-cases.mjs';
 import { commitAll, prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from './assertions.mjs';
 
@@ -123,7 +125,7 @@ const { values } = parseArgs({
 });
 const skillsDir = path.resolve(values['skills-dir'] ?? path.join(repo, 'plugins', 'chef', 'skills'));
 const fixture = path.resolve(values.fixture ?? path.join(repo, 'fixtures', 'data-root'));
-const cases = JSON.parse(fs.readFileSync(path.resolve(values.cases ?? path.join(here, 'cases.json')), 'utf8'));
+const cases = loadCases(path.resolve(values.cases ?? path.join(here, 'cases')));
 const knownFailures = [];
 for (const testCase of cases) {
   const options = { skipPdfFiles: values['skip-pdf-files'] };

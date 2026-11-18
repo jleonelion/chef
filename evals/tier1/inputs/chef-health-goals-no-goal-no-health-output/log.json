@@ -1,0 +1,78 @@
+{
+  "entries": [
+    {
+      "id": "2026-01-19-lunch-lentil-salad",
+      "date": "2026-01-19",
+      "slot": "lunch",
+      "recipe": null,
+      "food": "lentil-salad",
+      "servings": 1,
+      "cooked": false,
+      "nutrition": {
+        "calories": 550,
+        "protein": 35,
+        "fat": 20,
+        "saturated_fat": 5,
+        "carbs": 80,
+        "fiber": 8,
+        "sugar": 10,
+        "sodium": 800,
+        "cholesterol": 30
+      },
+      "logged_at": "2026-01-19T19:00:00Z"
+    },
+    {
+      "id": "2026-01-19-dinner-lemon-garlic-pasta",
+      "date": "2026-01-19",
+      "slot": "dinner",
+      "recipe": null,
+      "food": "lemon-garlic-pasta",
+      "servings": 1,
+      "cooked": false,
+      "nutrition": {
+        "calories": 700,
+        "protein": 25,
+        "fat": 20,
+        "saturated_fat": 5,
+        "carbs": 80,
+        "fiber": 8,
+        "sugar": 10,
+        "sodium": 1300,
+        "cholesterol": 30
+      },
+      "logged_at": "2026-01-19T19:00:00Z"
+    },
+    {
+      "id": "2026-01-20-dinner-takeout-ramen",
+      "date": "2026-01-20",
+      "slot": "dinner",
+      "recipe": null,
+      "food": "takeout-ramen",
+      "servings": 1,
+      "cooked": false,
+      "nutrition": {
+        "calories": 900,
+        "protein": 30,
+        "fat": 20,
+        "saturated_fat": 5,
+        "carbs": 80,
+        "fiber": 8,
+        "sugar": 10,
+        "sodium": 3100,
+        "cholesterol": 30
+      },
+      "logged_at": "2026-01-20T19:00:00Z"
+    },
+    {
+      "id": "2026-01-21-dinner-chickpea-spinach-stew",
+      "date": "2026-01-21",
+      "slot": "dinner",
+      "recipe": null,
+      "food": "chickpea-spinach-stew",
+      "servings": 1,
+      "cooked": false,
+      "nutrition": null,
+      "logged_at": "2026-01-21T19:00:00Z"
+    }
+  ]
+}

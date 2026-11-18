@@ -3,6 +3,7 @@
 // Missing v1 skills fail only in release mode: plugin version >= 1.0.0 or --release.
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadCases } from '../evals/lib/load-cases.mjs';
 import { hasHomePath, isRelease, missingSkills, rosterErrors, skillErrors, tier1CoverageErrors, V1_SKILLS } from './lib/skill-format.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
@@ -27,7 +28,7 @@ const { version } = JSON.parse(fs.readFileSync(path.join(repo, 'plugins', 'chef'
 const release = isRelease(version, process.argv.includes('--release'));
 const names = [...new Set([...list(roots.src), ...list(roots.built)])];
 errors.push(...rosterErrors(names, release));
-const tier1Cases = JSON.parse(fs.readFileSync(path.join(repo, 'evals', 'tier1', 'cases.json'), 'utf8'));
+const tier1Cases = loadCases(path.join(repo, 'evals', 'tier1', 'cases'));
 errors.push(...tier1CoverageErrors(tier1Cases));
 const missing = missingSkills(names);
 console.log(`${V1_SKILLS.length - missing.length}/${V1_SKILLS.length} v1 skills present${missing.length ? `; missing: ${missing.join(', ')}` : ''}`);

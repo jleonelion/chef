@@ -1,0 +1,624 @@
+[
+  {
+    "id": "chef-add-recipe-url-then-search-finds-it",
+    "description": "Adding a recipe page with schema.org data writes a v1 wiki page; chef-recipe-search then finds it by ingredient, cuisine and time.",
+    "seed": [
+      {
+        "path": "page.html",
+        "content": "<html><head><script type=\"application/ld+json\">{\"@context\":\"https://schema.org\",\"@type\":\"Recipe\",\"name\":\"Miso Mushroom Noodles\",\"recipeYield\":\"2 servings\",\"prepTime\":\"PT10M\",\"cookTime\":\"PT15M\",\"recipeCuisine\":\"Japanese\",\"keywords\":\"noodles, weeknight\",\"recipeIngredient\":[\"200 g udon noodles\",\"150 g shiitake mushrooms\",\"1 tbsp white miso\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Cook the noodles.\"},{\"@type\":\"HowToStep\",\"text\":\"Fry the mushrooms, stir in the miso and toss with the noodles.\"}]}</script></head><body><p>Synthetic test page.</p></body></html>"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "url",
+          "--url",
+          "https://example.com/miso-noodles",
+          "--html",
+          "{data_root}/page.html"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "mushroom",
+      "--cuisine",
+      "japanese",
+      "--max-minutes",
+      "30"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "miso-mushroom-noodles"
+      },
+      {
+        "path": "$.recipes[0].total_minutes",
+        "equals": 25
+      },
+      {
+        "path": "$.recipes[0].servings",
+        "equals": 2
+      },
+      {
+        "path": "$.recipes[0].dietary_flags",
+        "equals": [
+          "contains-gluten",
+          "contains-soy",
+          "contains-wheat"
+        ]
+      },
+      {
+        "path": "$.missing_data",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/miso-mushroom-noodles.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "type: recipe"
+          },
+          {
+            "path": "$.content",
+            "includes": "source_url: https://example.com/miso-noodles"
+          },
+          {
+            "path": "$.content",
+            "includes": "- knowledge/raw/recipes/"
+          },
+          {
+            "path": "$.content",
+            "includes": "- 150 g shiitake mushrooms"
+          },
+          {
+            "path": "$.content",
+            "includes": "2. Fry the mushrooms"
+          }
+        ]
+      }
+    ],
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-draft-then-show",
+    "description": "A recipe drafted from pasted text is saved with its raw source and chef-recipe-search show returns it.",
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Toasted Oat Porridge\", \"servings\": 1, \"cook_minutes\": 10, \"ingredients\": [\"50 g rolled oats\", \"200 ml milk\"], \"steps\": [\"Toast the oats.\", \"Simmer in the milk.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Toasted oat porridge for one. Synthetic test source.\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "draft",
+          "--kind",
+          "text",
+          "--source",
+          "{data_root}/pasted.txt",
+          "--draft",
+          "{data_root}/draft.json"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "toasted-oat-porridge"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.frontmatter.source_kind",
+        "equals": "text"
+      },
+      {
+        "path": "$.frontmatter.source_url",
+        "absent": true
+      },
+      {
+        "path": "$.body",
+        "includes": "- 50 g rolled oats"
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-duplicate-reports-existing",
+    "description": "Adding a recipe whose title matches a saved recipe changes nothing and reports the existing page.",
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Lemon Garlic Pasta\", \"ingredients\": [\"spaghetti\"], \"steps\": [\"Cook.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Synthetic duplicate.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "exists"
+      },
+      {
+        "path": "$.matched",
+        "equals": "slug"
+      },
+      {
+        "path": "$.path",
+        "equals": "knowledge/wiki/recipes/lemon-garlic-pasta.md"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- 200 g spaghetti"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-page-without-recipe-data-needs-draft",
+    "description": "A page with no schema.org recipe data returns needs-draft with the page text and writes nothing.",
+    "seed": [
+      {
+        "path": "page.html",
+        "content": "<html><body><h1>Bean Salad</h1><p>Mix the beans.</p></body></html>"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "url",
+      "--url",
+      "https://example.com/bean-salad",
+      "--html",
+      "{data_root}/page.html"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "needs-draft"
+      },
+      {
+        "path": "$.page_text",
+        "includes": "Mix the beans."
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-refuses-schema-mismatch",
+    "description": "chef-add-recipe refuses to write when the data root's schema version differs and points to update Chef.",
+    "seed": [
+      {
+        "path": "schema-version.json",
+        "content": "{\"schema_version\":2}\n"
+      },
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Toasted Oat Porridge\", \"servings\": 1, \"cook_minutes\": 10, \"ingredients\": [\"50 g rolled oats\", \"200 ml milk\"], \"steps\": [\"Toast the oats.\", \"Simmer in the milk.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Synthetic.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "update Chef"
+      }
+    ]
+  },
+  {
+    "id": "chef-add-recipe-enriches-without-usda-key",
+    "description": "A saved recipe is enriched straight away: allergen flags from the ingredient wording, and with no USDA key nutrition is \"not computed\" with a chef-setup hint and no numbers.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "draft.json",
+        "content": "{\"title\":\"Buttermilk Pancakes\",\"servings\":4,\"ingredients\":[\"2 cups all-purpose flour\",\"2 large eggs\",\"2 cups buttermilk\",\"1 pinch salt\"],\"steps\":[\"Whisk.\",\"Cook on a griddle.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Buttermilk pancakes. Synthetic test source.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "added"
+      },
+      {
+        "path": "$.enrichment.dietary_flags",
+        "equals": [
+          "contains-dairy",
+          "contains-egg",
+          "contains-gluten",
+          "contains-wheat"
+        ]
+      },
+      {
+        "path": "$.enrichment.nutrition",
+        "equals": "not-computed"
+      },
+      {
+        "path": "$.enrichment.reason",
+        "equals": "not-connected"
+      },
+      {
+        "path": "$.hint",
+        "includes": "chef-setup"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/buttermilk-pancakes.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition_status: not-computed"
+          },
+          {
+            "path": "$.content",
+            "includes": "- contains-egg"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-re-enrich-saved-recipe",
+    "description": "Re-enrich is an entry point: a saved recipe with no flags gets them, and nutrition is never filled in without USDA.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "enrich",
+      "--slug",
+      "lemon-garlic-pasta"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "enriched"
+      },
+      {
+        "path": "$.recipes[0].dietary_flags",
+        "equals": [
+          "contains-dairy",
+          "contains-gluten",
+          "contains-wheat"
+        ]
+      },
+      {
+        "path": "$.recipes[0].nutrition",
+        "equals": "not-computed"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition_status: not-computed"
+          },
+          {
+            "path": "$.content",
+            "includes": "- contains-wheat"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-nutrition-excludes-garnish-and-reads-citrus",
+    "description": "Seasoning, garnish and optional lines no longer block complete nutrition and are listed as excluded; \"Juice of 1 lemon\" counts USDA's 48 g per-lemon juice yield. USDA replies come from the data root cache, so no network is used.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": "tier1-not-a-real-key",
+      "CHEF_FDC_CACHE": "1"
+    },
+    "seed": [
+      {
+        "path": "cache/fdc/food/169736.json",
+        "content": "{\"fdcId\": 169736, \"description\": \"Pasta, dry, enriched\", \"dataType\": \"SR Legacy\", \"foodPortions\": [{\"amount\": 1, \"modifier\": \"cup shells\", \"gramWeight\": 64}, {\"amount\": 2, \"modifier\": \"oz\", \"gramWeight\": 57}, {\"amount\": 1, \"modifier\": \"cup rotini\", \"gramWeight\": 96}, {\"amount\": 1, \"modifier\": \"cup elbows\", \"gramWeight\": 122}, {\"amount\": 1, \"modifier\": \"cup spaghetti\", \"gramWeight\": 91}, {\"amount\": 1, \"modifier\": \"cup penne\", \"gramWeight\": 95}, {\"amount\": 1, \"modifier\": \"cup farfalle\", \"gramWeight\": 81}, {\"amount\": 1, \"modifier\": \"cup lasagna\", \"gramWeight\": 90}], \"foodNutrients\": [{\"nutrient\": {\"id\": 1008}, \"amount\": 371}, {\"nutrient\": {\"id\": 1003}, \"amount\": 13.04}, {\"nutrient\": {\"id\": 1004}, \"amount\": 1.51}, {\"nutrient\": {\"id\": 1005}, \"amount\": 74.67}, {\"nutrient\": {\"id\": 1079}, \"amount\": 3.2}, {\"nutrient\": {\"id\": 2000}, \"amount\": 2.67}, {\"nutrient\": {\"id\": 1093}, \"amount\": 6}, {\"nutrient\": {\"id\": 1258}, \"amount\": 0.277}, {\"nutrient\": {\"id\": 1253}, \"amount\": 0}]}"
+      },
+      {
+        "path": "cache/fdc/food/167747.json",
+        "content": "{\"fdcId\": 167747, \"description\": \"Lemon juice, raw\", \"dataType\": \"SR Legacy\", \"foodPortions\": [{\"amount\": 1.0, \"modifier\": \"wedge yields\", \"gramWeight\": 5.9}, {\"amount\": 1.0, \"modifier\": \"lemon yields\", \"gramWeight\": 48.0}, {\"amount\": 1.0, \"modifier\": \"cup\", \"gramWeight\": 244.0}, {\"amount\": 1.0, \"modifier\": \"fl oz\", \"gramWeight\": 30.5}], \"foodNutrients\": [{\"nutrient\": {\"id\": 1008}, \"amount\": 22.0}, {\"nutrient\": {\"id\": 1003}, \"amount\": 0.35}, {\"nutrient\": {\"id\": 1004}, \"amount\": 0.24}, {\"nutrient\": {\"id\": 1005}, \"amount\": 6.9}, {\"nutrient\": {\"id\": 1079}, \"amount\": 0.3}, {\"nutrient\": {\"id\": 2000}, \"amount\": 2.52}, {\"nutrient\": {\"id\": 1093}, \"amount\": 1.0}, {\"nutrient\": {\"id\": 1258}, \"amount\": 0.04}, {\"nutrient\": {\"id\": 1253}, \"amount\": 0.0}]}"
+      },
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Lemon Spaghetti\", \"servings\": 2, \"ingredients\": [\"200 g spaghetti\", \"Juice of 1 lemon\", \"salt and pepper\", \"parsley, for garnish\", \"1/4 cup toasted pine nuts (optional)\"], \"steps\": [\"Boil the spaghetti.\", \"Toss with lemon.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Lemon spaghetti. Synthetic test source.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "added"
+      },
+      {
+        "path": "$.enrichment.nutrition",
+        "equals": "complete"
+      },
+      {
+        "path": "$.enrichment.missing",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/lemon-spaghetti.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "nutrition_status: complete"
+          },
+          {
+            "path": "$.content",
+            "includes": "calories: 376"
+          },
+          {
+            "path": "$.content",
+            "includes": "Juice of 1 lemon: Lemon juice, raw (FDC 167747), 48 g"
+          },
+          {
+            "path": "$.content",
+            "includes": "salt and pepper: excluded: seasoning"
+          },
+          {
+            "path": "$.content",
+            "includes": "parsley, for garnish: excluded: garnish"
+          },
+          {
+            "path": "$.content",
+            "includes": "1/4 cup toasted pine nuts (optional): excluded: optional"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-nutrition-rolls-up-sub-recipe",
+    "description": "A recipe that links a complete sub-recipe by slug counts its stored per-serving nutrition, scaled by the amount used against the sub-recipe's yield, and takes its dietary flags; the sub-recipe's ingredients are never copied.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": "tier1-not-a-real-key",
+      "CHEF_FDC_CACHE": "1"
+    },
+    "seed": [
+      {
+        "path": "cache/fdc/food/169736.json",
+        "content": "{\"fdcId\": 169736, \"description\": \"Pasta, dry, enriched\", \"dataType\": \"SR Legacy\", \"foodPortions\": [{\"amount\": 1, \"modifier\": \"cup shells\", \"gramWeight\": 64}, {\"amount\": 2, \"modifier\": \"oz\", \"gramWeight\": 57}, {\"amount\": 1, \"modifier\": \"cup rotini\", \"gramWeight\": 96}, {\"amount\": 1, \"modifier\": \"cup elbows\", \"gramWeight\": 122}, {\"amount\": 1, \"modifier\": \"cup spaghetti\", \"gramWeight\": 91}, {\"amount\": 1, \"modifier\": \"cup penne\", \"gramWeight\": 95}, {\"amount\": 1, \"modifier\": \"cup farfalle\", \"gramWeight\": 81}, {\"amount\": 1, \"modifier\": \"cup lasagna\", \"gramWeight\": 90}], \"foodNutrients\": [{\"nutrient\": {\"id\": 1008}, \"amount\": 371}, {\"nutrient\": {\"id\": 1003}, \"amount\": 13.04}, {\"nutrient\": {\"id\": 1004}, \"amount\": 1.51}, {\"nutrient\": {\"id\": 1005}, \"amount\": 74.67}, {\"nutrient\": {\"id\": 1079}, \"amount\": 3.2}, {\"nutrient\": {\"id\": 2000}, \"amount\": 2.67}, {\"nutrient\": {\"id\": 1093}, \"amount\": 6}, {\"nutrient\": {\"id\": 1258}, \"amount\": 0.277}, {\"nutrient\": {\"id\": 1253}, \"amount\": 0}]}"
+      },
+      {
+        "path": "knowledge/wiki/recipes/basil-pesto.md",
+        "seedFile": "evals/tier1/inputs/chef-add-recipe-nutrition-rolls-up-sub-recipe/basil-pesto.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/pesto-spaghetti.md",
+        "seedFile": "evals/tier1/inputs/chef-add-recipe-nutrition-rolls-up-sub-recipe/pesto-spaghetti.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "enrich",
+      "--slug",
+      "pesto-spaghetti"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "enriched"
+      },
+      {
+        "path": "$.recipes[0].nutrition",
+        "equals": "complete"
+      },
+      {
+        "path": "$.recipes[0].dietary_flags",
+        "equals": [
+          "contains-dairy",
+          "contains-gluten",
+          "contains-tree-nuts",
+          "contains-wheat"
+        ]
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/pesto-spaghetti.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "calories: 571"
+          },
+          {
+            "path": "$.content",
+            "includes": "1/2 cup [[basil-pesto]]: sub-recipe basil-pesto, 2 servings"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-add-recipe-dry-run-keeps-amounts-with-conversion-on",
+    "description": "add-recipe always shows amounts as written, even with convert_recipe_units on.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\",\"convert_recipe_units\":true}\n"
+      },
+      {
+        "path": "draft.json",
+        "content": "{\"title\": \"Milk Toast\", \"ingredients\": [\"1 cup milk\", \"2 slices bread\"], \"steps\": [\"Bake at 350°F.\"]}"
+      },
+      {
+        "path": "pasted.txt",
+        "content": "Milk toast. Synthetic test source.\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+      "draft",
+      "--kind",
+      "text",
+      "--source",
+      "{data_root}/pasted.txt",
+      "--draft",
+      "{data_root}/draft.json",
+      "--dry-run"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "would-add"
+      },
+      {
+        "path": "$.body",
+        "includes": "- 1 cup milk\n"
+      },
+      {
+        "path": "$.body",
+        "includes": "Bake at 350°F.\n"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  }
+]

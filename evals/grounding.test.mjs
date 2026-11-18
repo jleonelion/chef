@@ -5,12 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { buildCatalog, groundingErrors } from './lib/grounding.mjs';
+import { loadCases } from './lib/load-cases.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
 const fixture = path.join(repo, 'fixtures', 'data-root');
 const datasets = {
-  agentic: JSON.parse(fs.readFileSync(path.join(repo, 'evals', 'agentic', 'rows.json'), 'utf8')),
-  tier1: JSON.parse(fs.readFileSync(path.join(repo, 'evals', 'tier1', 'cases.json'), 'utf8')),
+  agentic: loadCases(path.join(repo, 'evals', 'agentic', 'rows.json')),
+  tier1: loadCases(path.join(repo, 'evals', 'tier1', 'cases')),
 };
 
 test('every row and case is grounded in the fixture', () => {

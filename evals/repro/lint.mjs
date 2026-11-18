@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Lints reproduction cases (evals/repro/*.json) against their tier1 and agentic rows, and runs the
 // PII pattern scan over cases, seeds and fixtures/. Exits 1 on any error. See README.md.
-//   node evals/repro/lint.mjs [--repro-dir <dir>] [--tier1 <cases.json>] [--agentic <rows.json>] [--today YYYY-MM-DD]
+//   node evals/repro/lint.mjs [--repro-dir <dir>] [--tier1 <file or dir>] [--agentic <rows.json>] [--today YYYY-MM-DD]
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { scanPii } from '../../src/lib/pii-scan.mjs';
+import { loadCases } from '../lib/load-cases.mjs';
 import { lintRepro } from './repro.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
@@ -24,11 +25,11 @@ const cases = fs
     return { file, data: JSON.parse(text), text };
   });
 const suites = {
-  tier1: readJson(path.resolve(values.tier1 ?? path.join(repo, 'evals', 'tier1', 'cases.json'))),
+  tier1: loadCases(path.resolve(values.tier1 ?? path.join(repo, 'evals', 'tier1', 'cases'))),
   agentic: readJson(path.resolve(values.agentic ?? path.join(repo, 'evals', 'agentic', 'rows.json'))),
 };
 const today = values.today ?? new Date().toISOString().slice(0, 10);
-const errors = lintRepro({ cases, suites, today, exists: (p) => fs.existsSync(path.join(repo, p)) });
+const errors = lintRepro({ cases, suites, today, exists: (p) => fs.existsSync(path.join(repo, p)), readText: (p) => (fs.existsSync(path.join(repo, p)) ? fs.readFileSync(path.join(repo, p), 'utf8') : undefined) });
 
 const fixtures = path.join(repo, 'fixtures');
 for (const file of fs.readdirSync(fixtures, { recursive: true }).map((f) => path.join(fixtures, f))) {

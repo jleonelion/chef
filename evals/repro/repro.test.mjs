@@ -17,12 +17,13 @@ const validCase = () => ({
   reviewers: { maintainer: 'chef-maintainer', overlap_review: 'pass' },
 });
 
-const lint = ({ file, cases = [validCase()], tier1 = [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }], agentic = [], today = '2026-11-15', exists = () => true } = {}) =>
+const lint = ({ file, cases = [validCase()], tier1 = [{ id: 'settings-units-ignored', repro: 'settings-units-ignored' }], agentic = [], today = '2026-11-15', exists = () => true, readText } = {}) =>
   lintRepro({
     cases: cases.map((data) => ({ file: file ?? `${data.case_id}.json`, data, text: JSON.stringify(data, null, 2) })),
     suites: { tier1, agentic },
     today,
     exists,
+    readText,
   });
 
 test('a valid case linked both ways passes', () => {
@@ -99,4 +100,9 @@ test('personal details in a case or a seed fail without echoing the match', () =
   assert.deepEqual(lint({ tier1: seeded }), ['tier1 row settings-units-ignored: seed settings.json line 1: phone']);
   const agenticSeed = [{ id: 'plan-week', afterCommitSeed: [{ path: '/home/sam/notes.md', content: 'ok' }] }];
   assert.deepEqual(lint({ agentic: agenticSeed }), ['agentic row plan-week: seed path: file path']);
+});
+
+test('personal details in a seedFile fail', () => {
+  const seeded = [{ id: 'settings-units-ignored', repro: 'settings-units-ignored', seed: [{ path: 'settings.json', seedFile: 'evals/tier1/inputs/x/settings.json' }] }];
+  assert.deepEqual(lint({ tier1: seeded, readText: () => '{"phone": "415-555-0134"}' }), ['tier1 row settings-units-ignored: seed settings.json line 1: phone']);
 });
