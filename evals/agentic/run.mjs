@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Agentic suite: headless Claude Code (`claude -p`) with the built plugin, one fresh copy of the
-// synthetic fixture data root per rep, deterministic checks only (skills fired, files written or
+// Agentic suite: headless Claude Code (`claude -p`, projected into a Trajectory; see trajectory.mjs)
+// with the built plugin, one fresh copy of the synthetic fixture data root per rep, deterministic checks only (skills fired, files written or
 // not, script output, git state). Every row must pass every rep; nothing is retried.
 // Local only: it spends real Claude usage, so it never runs in CI. Rows are in rows.json:
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
 //   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts;
-//   later turns resume the session), responses (assertions against each turn's final reply), skills, files
+//   later turns resume the session), responses (assertions against each turn's final reply), skills,
+//   scripts ({required, forbidden, max}: skill-relative paths like scripts/<name>.mjs, max is a per-path call cap,
+//   checked over all turns of a rep), files
 //   (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
 //   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
@@ -19,7 +21,8 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { today } from '../../src/lib/recipes.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, checkFiles, checkResponse, checkSkills, readStream } from './report.mjs';
+import { aggregate, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
+import { projectClaude } from './trajectory.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const TURN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -61,7 +64,7 @@ function claude(rep, prompt, { session, resume, model }) {
     const child = spawn('claude', args, { cwd: rep.tmp, env: rep.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
     child.stdout.on('data', (chunk) => (out += chunk));
-    child.stderr.on('data', (chunk) => (out += chunk));
+    child.stderr.resume();
     const timer = setTimeout(() => child.kill('SIGTERM'), TURN_TIMEOUT_MS);
     child.on('close', () => {
       clearTimeout(timer);
@@ -72,7 +75,7 @@ function claude(rep, prompt, { session, resume, model }) {
 
 async function runRep(row, number, { model, logDir }) {
   const rep = prepare(row);
-  const run = { row: row.id, rep: number, pass: false, cost_usd: 0, skills: [] };
+  const run = { row: row.id, rep: number, pass: false, cost_usd: 0, skills: [], scriptRuns: [] };
   try {
     for (const step of row.setup ?? []) script(rep, step);
     const beforeHead = git(rep.dataRoot, 'rev-parse', 'HEAD');
@@ -80,13 +83,15 @@ async function runRep(row, number, { model, logDir }) {
     for (const [index, prompt] of row.turns.entries()) {
       const stream = await claude(rep, prompt, { session, resume: index > 0, model });
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.jsonl`), stream);
-      const turn = readStream(stream);
+      const turn = projectClaude(stream);
       Object.assign(run, { model: run.model ?? turn.model, cost_usd: run.cost_usd + turn.cost_usd });
       run.skills.push(...turn.skills);
-      if (turn.error) throw new Error(`turn ${index + 1} did not finish (see ${row.id}-${number}-${index + 1}.jsonl)`);
+      run.scriptRuns.push(...turn.scriptRuns);
+      if (turn.error) throw new Error(`turn ${index + 1} unusable: ${turn.error} (see ${row.id}-${number}-${index + 1}.jsonl)`);
       checkResponse(turn.response, row.responses?.[index]);
     }
     checkSkills(run.skills, row);
+    checkScripts(run.scriptRuns, row.scripts);
     checkFiles(rep.dataRoot, row.files);
     assertGitState({ beforeHead, afterHead: git(rep.dataRoot, 'rev-parse', 'HEAD'), status: git(rep.dataRoot, 'status', '--porcelain') }, row.git ?? {});
     for (const step of row.after ?? []) {
