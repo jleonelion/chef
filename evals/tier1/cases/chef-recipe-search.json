@@ -257,6 +257,12 @@
   {
     "id": "chef-recipe-search-dietary-gate-verified-by-user-keeps-recipe",
     "description": "The user's dated verification makes an unchecked recipe usable for that constraint, permanently; a recipe that shows a conflict cannot be verified.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "knowledge/wiki/household/dietary-ruleset.md",

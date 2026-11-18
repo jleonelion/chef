@@ -227,6 +227,11 @@
   {
     "id": "chef-recipe-decisions-retired-recipe-leaves-search",
     "description": "A retired recipe keeps its page but leaves recipe search; search reports how many it hid.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
@@ -276,6 +281,11 @@
   {
     "id": "chef-recipe-decisions-restore-returns-recipe",
     "description": "Retirement is reversible: a restored recipe is back in search.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [

@@ -366,6 +366,11 @@
   {
     "id": "chef-add-recipe-re-enrich-saved-recipe",
     "description": "Re-enrich is an entry point: a saved recipe with no flags gets them, and nutrition is never filled in without USDA.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "env": {
       "CHEF_USDA_FDC_KEY": ""
     },

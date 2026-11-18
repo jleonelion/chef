@@ -73,7 +73,7 @@ export function aggregate({ meta, reps, rows, runs }) {
   });
   return {
     suite: 'chef-agentic',
-    format: 1,
+    format: 2,
     ...meta,
     models: [...new Set(runs.map((run) => run.model).filter(Boolean))],
     reps,

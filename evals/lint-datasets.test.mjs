@@ -87,3 +87,7 @@ test('seedFile and turnFile must be under evals/*/inputs/ and exist', () => {
   assert.ok(lint({ tier1: [tier1({ seed: [{ path: 'a.md', seedFile: '../secrets.md' }] })] }).length > 0);
   assert.ok(lint({ tier1: [tier1({ seed: [{ path: 'a.md', content: 'x', seedFile: 'evals/tier1/inputs/a.md' }] })] }).length > 0);
 });
+
+test('{today} in an agentic row fails', () => {
+  assert.match(lint({ agentic: [agentic({ turns: ['Log {today}'] })] })[0], /wall-clock/);
+});

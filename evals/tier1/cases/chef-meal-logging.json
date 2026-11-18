@@ -2,6 +2,11 @@
   {
     "id": "chef-meal-logging-cooked-meal-deducts-inventory-once",
     "description": "Logging a cooked saved recipe stores one entry and deducts its scaled ingredients; logging the same entry again changes neither the log nor inventory.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
@@ -99,6 +104,11 @@
   {
     "id": "chef-meal-logging-edit-keeps-inventory-unchanged",
     "description": "Editing a cooked meal changes only its log entry, preserves its stable ID, and directs the user to chef-food-inventory for the earlier deduction.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "data/food-inventory/current.json",
@@ -187,6 +197,11 @@
   {
     "id": "chef-meal-logging-delete-keeps-inventory-unchanged",
     "description": "Deleting a cooked meal changes only the log, leaves its earlier deduction untouched, and directs the user to chef-food-inventory for correction.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "data/food-inventory/current.json",

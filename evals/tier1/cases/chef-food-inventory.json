@@ -354,6 +354,11 @@
   {
     "id": "chef-food-inventory-cook-deduction-is-idempotent",
     "description": "A cook event scales and converts recipe quantities, and retrying its deduction id changes inventory only once.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [

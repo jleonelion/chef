@@ -137,6 +137,12 @@
   {
     "id": "chef-meal-planning-emits-calendar-payload-only-when-configured",
     "description": "A configured calendar produces a runtime payload, while the saved plan retains an incomplete nutrition rollup and the never-asked dietary nudge.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "settings.json",
@@ -249,6 +255,12 @@
   {
     "id": "chef-meal-planning-saves-breakfast-lunch-dinner-week",
     "description": "The case that motivated per-meal plans: a week with breakfast, lunch and dinner on some days and only dinner on another, all from saved recipes, saves every planned meal with its slot; today lists a three-meal day in slot order.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "knowledge/wiki/household/profile.md",
@@ -559,6 +571,11 @@
   {
     "id": "chef-meal-planning-no-goal-no-health-suggestions",
     "description": "With no goal declared, a saved meal plan carries no health suggestions.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew"
+      ]
+    },
     "command": [
       "node",
       "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
@@ -596,6 +613,11 @@
   {
     "id": "chef-meal-planning-goal-adds-advisory-suggestions",
     "description": "With a goal declared, a saved plan gets health suggestions with the footer; fixture recipes have no computed nutrition, so Chef says it cannot compare rather than estimating.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew"
+      ]
+    },
     "seed": [
       {
         "path": "data/health-goals/goals.json",
