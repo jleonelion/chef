@@ -38,7 +38,8 @@ const inputFiles = (row) => [...(row.seed ?? []).map((file) => file.seedFile), .
 
 // A flip pair is exactly two rows with identical turns; they may differ only in seed/setup.
 function pairErrors(rows) {
-  const groups = Map.groupBy(rows.filter((row) => row?.pair), (row) => row.pair);
+  const groups = new Map();
+  for (const row of rows.filter((r) => r?.pair)) groups.set(row.pair, [...(groups.get(row.pair) ?? []), row]);
   return [...groups].flatMap(([pair, members]) => {
     if (members.length !== 2) return [`agentic pair ${pair}: needs exactly 2 rows, found ${members.length}`];
     return JSON.stringify(members[0].turns) === JSON.stringify(members[1].turns) ? [] : [`agentic pair ${pair}: rows ${members[0].id} and ${members[1].id} must have identical turns`];
