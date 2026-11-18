@@ -16,7 +16,8 @@
     "migrations": "node evals/migration-regression.mjs",
     "smoke": "node scripts/bundle-smoke.mjs",
     "hygiene": "node scripts/hygiene.mjs",
-    "agentic": "node evals/agentic/run.mjs"
+    "agentic": "node evals/agentic/run.mjs",
+    "agentic:smoke": "node evals/agentic/smoke.mjs"
   },
   "engines": {
     "node": ">=20"
