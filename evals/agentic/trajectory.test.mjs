@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { projectClaude, scriptRuns } from './trajectory.mjs';
+import { projectClaude, scriptsRunBy } from './trajectory.mjs';
 
 const fixture = (name) => fs.readFileSync(path.join(import.meta.dirname, 'testdata', name), 'utf8');
 const stream = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
@@ -61,11 +61,11 @@ test('a missing result event or an error result sets an error', () => {
   assert.match(projectClaude(stream({ ...result, is_error: true, result: 'boom' })).error, /turn ended in error: boom/);
 });
 
-test('scriptRuns finds only skill-relative script references with their arguments', () => {
-  assert.deepEqual(scriptRuns('cd skills/x && node scripts/a.mjs one "two words" 2>&1 | head'), [{ script: 'scripts/a.mjs', args: ['one', 'two words'] }]);
-  assert.deepEqual(scriptRuns('echo \'{"a":1}\' | node /abs/scripts/b.mjs plan --week-start 2026-01-19; node scripts/c.mjs'), [
+test('scriptsRunBy finds only skill-relative script references with their arguments', () => {
+  assert.deepEqual(scriptsRunBy('cd skills/x && node scripts/a.mjs one "two words" 2>&1 | head'), [{ script: 'scripts/a.mjs', args: ['one', 'two words'] }]);
+  assert.deepEqual(scriptsRunBy('echo \'{"a":1}\' | node /abs/scripts/b.mjs plan --week-start 2026-01-19; node scripts/c.mjs'), [
     { script: 'scripts/b.mjs', args: ['plan', '--week-start', '2026-01-19'] },
     { script: 'scripts/c.mjs', args: [] },
   ]);
-  assert.deepEqual(scriptRuns('ls scripts && node scripts/*.mjs today && cat my-scripts/x.mjs'), []);
+  assert.deepEqual(scriptsRunBy('ls scripts && node scripts/*.mjs today && cat my-scripts/x.mjs && cat scripts/d.mjs && grep x scripts/e.mjs'), []);
 });

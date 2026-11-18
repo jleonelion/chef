@@ -12,10 +12,13 @@ export function checkSkills(fired, { skills = [], forbidSkills = [] }) {
 
 // scriptRuns: [{script, args}] over every turn of a rep. `required` and `forbidden` list
 // skill-relative paths (scripts/<name>), `max` caps calls per path.
+export function assertScriptPaths({ required = [], forbidden = [], max = {} } = {}) {
+  for (const script of [...required, ...forbidden, ...Object.keys(max)]) assert(/^scripts\/[^/]+$/.test(script), `script must be a skill-relative path like scripts/<name>: ${script}`);
+}
+
 export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {} } = {}) {
   const counts = new Map();
   for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
-  for (const script of [...required, ...forbidden, ...Object.keys(max)]) assert(/^scripts\/[^/]+$/.test(script), `script must be a skill-relative path like scripts/<name>: ${script}`);
   const ran = [...counts.keys()].join(', ') || 'none';
   for (const script of required) assert(counts.has(script), `${script} did not run (ran: ${ran})`);
   for (const script of forbidden) assert(!counts.has(script), `${script} ran ${counts.get(script)} time(s)`);

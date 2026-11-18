@@ -6,9 +6,8 @@
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
 //   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts;
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
-//   scripts ({required, forbidden, max}: skill-relative paths like scripts/<name>.mjs, max is a per-path call cap,
-//   checked over all turns of a rep), files
-//   (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
+//   scripts ({required, forbidden, max}: skill-relative paths like scripts/<name>, max is a per-path
+//   call cap, checked over all turns of a rep), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root}, {tmp} and {today} (local YYYY-MM-DD).
 //   repro / known_failure (see evals/repro/README.md): a known_failure row passes while it still fails
 //   a rep, and fails once every rep passes. --known-failures runs only rows with that marker.
@@ -21,7 +20,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { today } from '../../src/lib/recipes.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
+import { aggregate, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
 import { projectClaude } from './trajectory.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
@@ -63,12 +62,13 @@ function claude(rep, prompt, { session, resume, model }) {
   return new Promise((resolve) => {
     const child = spawn('claude', args, { cwd: rep.tmp, env: rep.env, stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '';
+    let err = '';
     child.stdout.on('data', (chunk) => (out += chunk));
-    child.stderr.resume();
+    child.stderr.on('data', (chunk) => (err += chunk));
     const timer = setTimeout(() => child.kill('SIGTERM'), TURN_TIMEOUT_MS);
     child.on('close', () => {
       clearTimeout(timer);
-      resolve(out);
+      resolve({ out, err });
     });
   });
 }
@@ -81,8 +81,9 @@ async function runRep(row, number, { model, logDir }) {
     const beforeHead = git(rep.dataRoot, 'rev-parse', 'HEAD');
     const session = randomUUID();
     for (const [index, prompt] of row.turns.entries()) {
-      const stream = await claude(rep, prompt, { session, resume: index > 0, model });
+      const { out: stream, err } = await claude(rep, prompt, { session, resume: index > 0, model });
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.jsonl`), stream);
+      if (err) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), err);
       const turn = projectClaude(stream);
       Object.assign(run, { model: run.model ?? turn.model, cost_usd: run.cost_usd + turn.cost_usd });
       run.skills.push(...turn.skills);
@@ -144,6 +145,7 @@ const allRows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.
 const rows = allRows
   .filter((row) => !values.rows || values.rows.split(',').includes(row.id))
   .filter((row) => !values['known-failures'] || row.known_failure);
+for (const row of allRows) assertScriptPaths(row.scripts);
 const info = meta();
 const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'results', `agentic-${info.commit.slice(0, 12)}.json`));
 const logDir = path.join(path.dirname(out), 'logs', path.basename(out, '.json'));

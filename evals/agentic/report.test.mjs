@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { aggregate, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
+import { aggregate, checkFiles, checkResponse, assertScriptPaths, checkScripts, checkSkills } from './report.mjs';
 
 test('checkSkills requires every expected skill and forbids listed ones', () => {
   checkSkills(['chef-recipe-search', 'chef-add-recipe'], { skills: ['chef-add-recipe'], forbidSkills: ['chef-meal-planning'] });
@@ -18,7 +18,8 @@ test('checkScripts enforces required, forbidden and max script runs', () => {
   assert.throws(() => checkScripts(runs, { required: ['scripts/c.mjs'] }), /scripts\/c.mjs did not run \(ran: scripts\/a.mjs, scripts\/b.mjs\)/);
   assert.throws(() => checkScripts(runs, { forbidden: ['scripts/a.mjs'] }), /scripts\/a.mjs ran 2 time/);
   assert.throws(() => checkScripts(runs, { max: { 'scripts/a.mjs': 1 } }), /ran 2 times, max 1/);
-  assert.throws(() => checkScripts(runs, { forbidden: ['a.mjs'] }), /skill-relative path/);
+  assertScriptPaths({ required: ['scripts/a.mjs'], max: { 'scripts/b.mjs': 1 } });
+  assert.throws(() => assertScriptPaths({ forbidden: ['a.mjs'] }), /skill-relative path/);
 });
 
 test('checkResponse applies content assertions to the final reply', () => {

@@ -36,27 +36,28 @@ export function projectClaude(text) {
     .flatMap((event) => event.message.content)
     .filter((block) => block?.type === 'tool_use');
   const toolCalls = blocks.map(({ name, input }) => ({
-      name: String(name),
-      ...(typeof input?.command === 'string' && { command: input.command }),
-      ...(typeof (input?.file_path ?? input?.path) === 'string' && { path: input.file_path ?? input.path }),
-    }));
+    name: String(name),
+    ...(typeof input?.command === 'string' && { command: input.command }),
+    ...(typeof (input?.file_path ?? input?.path) === 'string' && { path: input.file_path ?? input.path }),
+  }));
   if (!result) error ??= 'transcript has no result event';
   else if (result.is_error === true) error ??= `turn ended in error: ${String(result.result ?? 'no detail').slice(0, 200)}`;
   return {
     response: typeof result?.result === 'string' ? result.result : '',
     skills: blocks.filter((block) => block.name === 'Skill').map((block) => String(block.input?.skill ?? '').replace(/^[^:]*:/, '')),
     toolCalls,
-    scriptRuns: toolCalls.flatMap((call) => (call.name === 'Bash' ? scriptRuns(call.command ?? '') : [])),
+    scriptRuns: toolCalls.flatMap((call) => (call.name === 'Bash' ? scriptsRunBy(call.command ?? '') : [])),
     error,
     model: events.find((event) => event.type === 'system' && event.subtype === 'init')?.model,
     cost_usd: result?.total_cost_usd ?? 0,
   };
 }
 
-const SCRIPT = /(?<![\w./-])(?:[^\s"'|;&<>]*\/)?(scripts\/[\w-]+\.(?:mjs|js|sh|py))(?![\w.-])/g;
+// An interpreter running the script; reading it (cat, grep, ls) is not a run.
+const SCRIPT = /\b(?:node|bun|bash|sh|python3?)\s+(?:[^\s"'|;&<>]*\/)?(scripts\/[\w-]+\.(?:mjs|js|sh|py))(?![\w.-])/g;
 
 // Every `scripts/<name>` a shell command runs, with the arguments up to the next shell operator.
-export function scriptRuns(command) {
+export function scriptsRunBy(command) {
   return [...command.matchAll(SCRIPT)].map((match) => ({
     script: match[1],
     args: shellWords(command.slice(match.index + match[0].length)),
