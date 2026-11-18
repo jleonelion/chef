@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { test } from 'node:test';
-import { projectClaude, scriptsRunBy } from './trajectory.mjs';
+import { projectClaude, projectCodex, scriptsRunBy } from './trajectory.mjs';
 
 const fixture = (name) => fs.readFileSync(path.join(import.meta.dirname, 'testdata', name), 'utf8');
 const stream = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
@@ -68,4 +68,21 @@ test('scriptsRunBy finds only skill-relative script references with their argume
     { script: 'scripts/c.mjs', args: [] },
   ]);
   assert.deepEqual(scriptsRunBy('ls scripts && node scripts/*.mjs today && cat my-scripts/x.mjs && cat scripts/d.mjs && grep x scripts/e.mjs'), []);
+});
+
+// Codex fixture: a real `codex exec --json` turn (chef-meal-logging-from-plan prompt), outputs trimmed.
+test('projects a recorded Codex turn', () => {
+  const trajectory = projectCodex(fixture('codex-skill-firing.jsonl'));
+  assert.equal(trajectory.error, null);
+  assert.deepEqual(trajectory.skills, ['chef-meal-logging', 'chef-meal-planning']);
+  assert.deepEqual(trajectory.scriptRuns, [{ script: 'scripts/meal-planning.mjs', args: ['today', '--date', '2026-01-20'] }]);
+  assert.match(trajectory.response, /no saved meal plan/);
+  assert.equal(trajectory.model, undefined);
+});
+
+test('Codex: failures and truncated transcripts set error', () => {
+  const lines = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
+  assert.match(projectCodex(lines({ type: 'turn.started' })).error, /no turn.completed/);
+  assert.match(projectCodex(lines({ type: 'turn.failed', error: { message: 'rate limited' } })).error, /rate limited/);
+  assert.match(projectCodex('not json').error, /not valid JSON/);
 });

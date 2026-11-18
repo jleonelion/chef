@@ -1,5 +1,5 @@
-// Trajectory: the runtime-neutral record of one agent turn (see GLOSSARY). PROVISIONAL until a
-// second runtime exists; shaped by Claude Code alone so far.
+// Trajectory: the runtime-neutral record of one agent turn (see GLOSSARY). Claude Code and Codex
+// projectors exist; Copilot's lands next, then this shape is final.
 //
 //   {
 //     response:   string,                                // the turn's final reply
@@ -7,8 +7,8 @@
 //     toolCalls:  [{ name, command?, path? }],           // every tool call, Skill calls included
 //     scriptRuns: [{ script, args }],                    // Chef scripts run via Bash; script is skill-relative, e.g. "scripts/recipe-search.mjs"
 //     error:      string | null,                         // why the turn is not a usable record; never an empty-but-valid response
-//     model?:     string,
-//     cost_usd?:  number,
+//     model?:     string,                                // absent when the runtime does not report it (Codex)
+//     cost_usd?:  number,                                // absent when the runtime does not report it (Codex)
 //   }
 //
 // Each runtime has a projector that turns its raw transcript into a Trajectory. Checks and the
@@ -89,3 +89,41 @@ function shellWords(text) {
   if (word !== null) words.push(word);
   return words;
 }
+
+// Codex: one `codex exec --json` transcript → Trajectory. Codex has no skill tool: a skill fires
+// when a shell command reads its SKILL.md. The transcript carries no model or cost. A line that fails
+// to parse, a `turn.failed`/`error` event, or a missing `turn.completed` sets `error`.
+export function projectCodex(text) {
+  const events = [];
+  let error = null;
+  for (const [index, line] of text.split('\n').entries()) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line);
+      if (event === null || typeof event !== 'object' || Array.isArray(event)) throw new Error('not an object');
+      events.push(event);
+    } catch {
+      error ??= `transcript line ${index + 1} is not valid JSON`;
+    }
+  }
+  const items = events.filter((event) => event.type === 'item.completed' && event.item).map((event) => event.item);
+  const toolCalls = items.flatMap((item) => {
+    if (item.type === 'command_execution') return [{ name: 'shell', command: String(item.command ?? '') }];
+    if (item.type === 'file_change') return (item.changes ?? []).map((change) => ({ name: 'file_change', path: String(change.path) }));
+    return [];
+  });
+  const failure = events.find((event) => event.type === 'turn.failed' || event.type === 'error');
+  if (failure) error ??= `turn ended in error: ${String(failure.error?.message ?? failure.message ?? 'no detail').slice(0, 200)}`;
+  else if (!events.some((event) => event.type === 'turn.completed')) error ??= 'transcript has no turn.completed event';
+  const messages = items.filter((item) => item.type === 'agent_message');
+  return {
+    response: String(messages.at(-1)?.text ?? ''),
+    skills: toolCalls.flatMap((call) => [...(call.command ?? '').matchAll(SKILL_READ)].map((match) => match[1])),
+    toolCalls,
+    scriptRuns: toolCalls.flatMap((call) => (call.name === 'shell' ? scriptsRunBy(call.command) : [])),
+    error,
+  };
+}
+
+// A shell command that mentions skills/<name>/SKILL.md (cat, sed, head ...) loads that skill.
+const SKILL_READ = /\bskills\/([\w-]+)\/SKILL\.md/g;

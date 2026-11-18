@@ -1,6 +1,7 @@
 import * as claude from './claude.mjs';
+import * as codex from './codex.mjs';
 
-const harnesses = { claude };
+const harnesses = { claude, codex };
 
 export function loadHarness(name) {
   const harness = harnesses[name];

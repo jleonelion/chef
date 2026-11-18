@@ -57,7 +57,7 @@ async function runRep(row, number, { harness, model, logDir }) {
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.${ext}`), stream);
       if (err) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), err);
       const turn = harness.project(stream);
-      Object.assign(run, { model: run.model ?? turn.model, cost_usd: run.cost_usd + turn.cost_usd });
+      Object.assign(run, { model: run.model ?? turn.model ?? model ?? 'harness default', cost_usd: run.cost_usd + (turn.cost_usd ?? 0) });
       run.skills.push(...turn.skills);
       run.scriptRuns.push(...turn.scriptRuns);
       if (turn.error) throw new Error(`turn ${index + 1} unusable: ${turn.error} (see ${row.id}-${number}-${index + 1}.${ext})`);
