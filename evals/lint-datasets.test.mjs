@@ -12,7 +12,7 @@ const tier1 = (over = {}) => ({
   ...over,
 });
 const agentic = (over = {}) => ({
-  id: 'setup-ok',
+  id: 'chef-setup-ok',
   flow: 'core',
   description: 'd',
   turns: ['hi'],
@@ -42,9 +42,15 @@ test('duplicate ids fail', () => {
   assert.match(lint({ tier1: [tier1(), tier1()] }).join('\n'), /duplicate id/);
 });
 
-test('ids must be kebab-case with a skill/scenario shape', () => {
+test('ids must be kebab-case', () => {
   assert.ok(lint({ tier1: [tier1({ id: 'Chef_Setup' })] }).length > 0);
   assert.ok(lint({ agentic: [agentic({ id: 'setup' })] }).length > 0);
+});
+
+test('ids must start with a skill the row evaluates', () => {
+  assert.match(lint({ tier1: [tier1({ id: 'dietary-gate-x' })] }).join('\n'), /id must start with an evaluated skill \(chef-setup\)/);
+  assert.match(lint({ agentic: [agentic({ id: 'setup-ok' })] }).join('\n'), /id must start with an evaluated skill/);
+  assert.deepEqual(lint({ tier1: [tier1({ id: 'chef-add-recipe-x', steps: [{ command: ['node', '{skills}/chef-add-recipe/x.mjs'] }] })] }), []);
 });
 
 test('unknown skills fail in skills, forbidSkills and commands', () => {

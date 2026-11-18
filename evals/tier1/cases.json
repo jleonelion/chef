@@ -1261,7 +1261,7 @@
     ]
   },
   {
-    "id": "food-inventory-receipt-text-yields-items",
+    "id": "chef-food-inventory-receipt-text-yields-items",
     "description": "Receipt text becomes inventory items: a new item is placed by name, a targeted item is added to, and the rollup page is regenerated.",
     "seed": [
       {
@@ -1329,7 +1329,7 @@
     ]
   },
   {
-    "id": "food-inventory-untrusted-sender-refused",
+    "id": "chef-food-inventory-untrusted-sender-refused",
     "description": "A receipt email from a sender not in trusted_receipt_senders is refused and nothing changes, even when the display name looks trusted.",
     "seed": [
       {
@@ -1388,7 +1388,7 @@
     ]
   },
   {
-    "id": "food-inventory-receipt-intake-off-refused",
+    "id": "chef-food-inventory-receipt-intake-off-refused",
     "description": "With no trusted senders set, receipt intake refuses an email before reading it.",
     "command": [
       "node",
@@ -1411,7 +1411,7 @@
     ]
   },
   {
-    "id": "food-inventory-trusted-sender-accepted",
+    "id": "chef-food-inventory-trusted-sender-accepted",
     "description": "A trusted sender whose domain the mail provider authenticated passes the gate case-insensitively.",
     "seed": [
       {
@@ -1437,7 +1437,7 @@
     ]
   },
   {
-    "id": "food-inventory-rollup-matches-store",
+    "id": "chef-food-inventory-rollup-matches-store",
     "description": "The health check finds the fixture store valid, matching its audit log and ledger, and the rollup page matching the store.",
     "command": [
       "node",
@@ -1471,7 +1471,7 @@
     ]
   },
   {
-    "id": "food-inventory-health-detects-edited-rollup",
+    "id": "chef-food-inventory-health-detects-edited-rollup",
     "description": "A hand-edited rollup page no longer matches the store and the health check says so.",
     "seed": [
       {
@@ -1499,7 +1499,7 @@
     ]
   },
   {
-    "id": "food-inventory-expiring-soonest-first",
+    "id": "chef-food-inventory-expiring-soonest-first",
     "description": "Expiration tracking lists stocked items expiring within the window, soonest first, and expired items separately.",
     "command": [
       "node",
@@ -1535,7 +1535,7 @@
     ]
   },
   {
-    "id": "food-inventory-cook-deduction-is-idempotent",
+    "id": "chef-food-inventory-cook-deduction-is-idempotent",
     "description": "A cook event scales and converts recipe quantities, and retrying its deduction id changes inventory only once.",
     "steps": [
       {
@@ -1610,7 +1610,7 @@
     ]
   },
   {
-    "id": "food-inventory-cook-deduction-reports-count-unit-mismatch",
+    "id": "chef-food-inventory-cook-deduction-reports-count-unit-mismatch",
     "description": "A cook event reports a bunch-vs-each mismatch and leaves inventory unchanged.",
     "seed": [
       {
@@ -2099,7 +2099,7 @@
     ]
   },
   {
-    "id": "dietary-gate-excludes-flagged-recipe",
+    "id": "chef-recipe-search-dietary-gate-excludes-flagged-recipe",
     "description": "A recipe flagged contains-X is left out for a member with hard constraint X, even when its wording no longer shows X, and listed with the reason. Plans carry the guarantee line as the check-labels footer.",
     "seed": [
       {
@@ -2155,7 +2155,7 @@
     ]
   },
   {
-    "id": "dietary-gate-excludes-ingredient-text-match",
+    "id": "chef-recipe-search-dietary-gate-excludes-ingredient-text-match",
     "description": "Ingredient wording excludes a recipe even when its stored flags are empty (stale), and a constraint outside the flag set is matched on ingredient text with a stated caveat.",
     "seed": [
       {
@@ -2197,7 +2197,7 @@
     ]
   },
   {
-    "id": "dietary-gate-excludes-unchecked-recipe",
+    "id": "chef-recipe-search-dietary-gate-excludes-unchecked-recipe",
     "description": "A recipe whose dietary flags were never checked is left out for a flag-set hard constraint (fail closed), with the reason.",
     "seed": [
       {
@@ -2227,7 +2227,7 @@
     ]
   },
   {
-    "id": "dietary-gate-verified-by-user-keeps-recipe",
+    "id": "chef-recipe-search-dietary-gate-verified-by-user-keeps-recipe",
     "description": "The user's dated verification makes an unchecked recipe usable for that constraint, permanently; a recipe that shows a conflict cannot be verified.",
     "seed": [
       {
@@ -2302,7 +2302,7 @@
     ]
   },
   {
-    "id": "dietary-gate-override-one-plan-not-stored",
+    "id": "chef-recipe-search-dietary-gate-override-one-plan-not-stored",
     "description": "The declaring member's override lets a conflicting recipe into one search, marked as overridden; the next search without it excludes the recipe again and the ruleset is unchanged.",
     "env": {
       "CHEF_USDA_FDC_KEY": ""
@@ -2365,7 +2365,7 @@
     ]
   },
   {
-    "id": "dietary-gate-override-applies-to-that-search",
+    "id": "chef-recipe-search-dietary-gate-override-applies-to-that-search",
     "description": "With an override for the declaring member, the flagged recipe is returned and marked dietary_override; an override for a constraint nobody declared is rejected.",
     "env": {
       "CHEF_USDA_FDC_KEY": ""
@@ -2429,7 +2429,7 @@
     ]
   },
   {
-    "id": "dietary-nudge-while-never-asked",
+    "id": "chef-recipe-search-dietary-nudge-while-never-asked",
     "description": "With no dietary ruleset (never asked), output carries the one-line nudge and no check-labels footer, and nothing is excluded.",
     "command": [
       "node",
@@ -2457,7 +2457,7 @@
     ]
   },
   {
-    "id": "dietary-no-nudge-once-none-declared",
+    "id": "chef-recipe-search-dietary-no-nudge-once-none-declared",
     "description": "Answering \"no\" to the allergy question records none declared: the nudge stops, no footer is added and no training notice is shown.",
     "steps": [
       {
@@ -2619,7 +2619,7 @@
     ]
   },
   {
-    "id": "dietary-gate-free-text-allergen-maps-to-flag",
+    "id": "chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag",
     "description": "Hard constraints written as free text (\"peanut allergy\", \"sesame seeds\", \"shellfish allergy\") map to their contains-* flags: flagged recipes are excluded even when the ingredient wording does not match, never downgraded to text-only.",
     "seed": [
       {
@@ -2710,7 +2710,7 @@
     ]
   },
   {
-    "id": "dietary-gate-peanut-allergy-excludes-peanut-butter-text",
+    "id": "chef-recipe-search-dietary-gate-peanut-allergy-excludes-peanut-butter-text",
     "description": "A member who declared \"peanut allergy\" in free text: a recipe with peanut butter in its ingredients and no peanut flag is excluded on the ingredient text.",
     "seed": [
       {
@@ -4760,7 +4760,7 @@
     }
   },
   {
-    "id": "food-inventory-spoofed-trusted-sender-refused",
+    "id": "chef-food-inventory-spoofed-trusted-sender-refused",
     "description": "A receipt email whose From is a trusted sender but whose domain was not authenticated (spoofed From) is refused, and nothing is written.",
     "seed": [
       {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Lints the eval datasets (tier1 cases, agentic rows) like code: JSON Schema (unknown keys and typo'd
-// assertion checks fail), kebab-case unique ids, and skill names that exist in src/skills.
+// assertion checks fail), <skill>-<scenario> unique ids, and skill names that exist in src/skills.
 //   node evals/lint-datasets.mjs
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,9 +24,12 @@ const schemaErrors = (label, validate, row) =>
 // updateInstall cases address skills by their custom-install dir name (chef_setup).
 const commandSkills = (steps) => (steps ?? []).flatMap((step) => (step.command ?? []).flatMap((arg) => [...String(arg).matchAll(/\{skills\}\/([^/]+)/g)].map((m) => m[1].replaceAll('_', '-'))));
 
+// Skills a row is evaluating: agentic `skills` are the ones expected to fire; tier1 runs the skills its commands name.
+const evaluatedSkills = (suite, row) => (suite === 'agentic' ? (row.skills ?? []) : commandSkills([row, ...(row.steps ?? [])]));
+
 function referencedSkills(suite, row) {
   if (suite === 'agentic') return [...(row.skills ?? []), ...(row.forbidSkills ?? []), ...commandSkills(row.setup), ...commandSkills(row.after)];
-  return commandSkills([row, ...(row.steps ?? [])]);
+  return evaluatedSkills(suite, row);
 }
 
 // suites: {tier1: cases, agentic: rows}; skillNames: names found in src/skills.
@@ -44,6 +47,10 @@ export function lintDatasets({ suites, skillNames }) {
       errors.push(...schemaErrors(label, validators[suite], row));
       if (seen.has(row?.id)) errors.push(`${label}: duplicate id`);
       seen.add(row?.id);
+      const evaluated = evaluatedSkills(suite, row ?? {});
+      if (typeof row?.id === 'string' && evaluated.length && !evaluated.some((skill) => row.id.startsWith(`${skill}-`))) {
+        errors.push(`${label}: id must start with an evaluated skill (${[...new Set(evaluated)].join(', ')}) as <skill>-<scenario>`);
+      }
       for (const skill of new Set(referencedSkills(suite, row ?? {}))) {
         if (!skillNames.has(skill)) errors.push(`${label}: unknown skill ${skill}`);
       }
