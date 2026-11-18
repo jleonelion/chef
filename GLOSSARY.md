@@ -56,6 +56,10 @@ _Avoid_: log line, telemetry event
 The bounded, local-only sequence of invocation events Chef keeps on the user's machine. Never submitted as a whole.
 _Avoid_: log, telemetry, history
 
+**Trajectory**:
+The runtime-neutral record of one agent turn as an eval observed it: the reply, the skills that fired, the tool calls made, and the Chef scripts run. Evals check a trajectory, never a raw transcript. Distinct from the invocation trace, which Chef itself keeps on the user's machine.
+_Avoid_: trace, transcript, harness output
+
 **Diagnostic bundle**:
 A snapshot of selected invocation events and coarse environment facts, built when the user makes a feedback report. Exists only inside one.
 _Avoid_: attachment, dump, logs
