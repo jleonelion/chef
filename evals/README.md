@@ -43,6 +43,12 @@ Every tier1 case needs `git` (`{headUnchanged, clean}` checked after the command
 
 New rows: `bun run evals:new <tier1|agentic> <skill> <slug> [--topic <topic>] [--from-repro <case_id>]` appends a skeleton with id `<skill>-<slug>` to the right file and refuses an id that exists. `--from-repro` also sets `repro` and `known_failure` to the case id (the case file must exist in `repro/`). Fill in the TODOs, then run `bun run evals:lint`. `--topic` picks the file for a topic-split skill (`chef-setup`: `settings`, `dietary`, `maintenance`) and is required there.
 
+## Flip pairs (agentic)
+
+A flip pair is two rows with `pair: <id>`, the exact same `turns`, and different `seed`/`setup`, so the same prompt must end differently because of data state (constraint declared or not, plan present or not, goal set or not, proposal rejected or new). The opposite outcomes must show in each row's own checks (skills, scripts, files, git). `evals:lint` fails if a pair id has other than two rows or the turns differ. Pairs avoid `{today}`, start ungated, and follow the id rule below; give both rows a scenario that says which side they are (`...-present-refuses`, `...-absent-saves`). Keep them as `chef-meal-planning-dairy-constraint-*`, `chef-meal-logging-plan-*`, `chef-health-goals-check-in-goal-*` and `chef-recipe-decisions-*`.
+
+The fixture holds a dairy-flagged recipe (`creamy-tomato-soup`) and one with no allergen flags (`roasted-vegetable-quinoa-bowl`), both over 60 minutes and without garlic, rice or tags the tier1 searches use. Tier1 assertions on recipe counts use `min` so the frozen `schema-v<n>` fixtures (fewer recipes) still pass `bun run migrations`.
+
 ## Shared sandbox
 
 `lib/sandbox.mjs` builds every rep sandbox for both suites: fixture copy, `seed` (inline `content` or `seedFile`), git commit, `afterCommitSeed`, and the `CHEF_DATA_ROOT` env. Add sandbox setup there, not in a suite runner.

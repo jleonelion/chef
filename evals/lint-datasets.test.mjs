@@ -91,3 +91,13 @@ test('seedFile and turnFile must be under evals/*/inputs/ and exist', () => {
 test('{today} in an agentic row fails', () => {
   assert.match(lint({ agentic: [agentic({ turns: ['Log {today}'] })] })[0], /wall-clock/);
 });
+
+test('a flip pair is two agentic rows with identical turns', () => {
+  const a = agentic({ id: 'chef-setup-a', pair: 'setup-flip' });
+  const b = agentic({ id: 'chef-setup-b', pair: 'setup-flip', seed: [{ path: 'x.md', content: 'x' }] });
+  assert.deepEqual(lint({ agentic: [a, b] }), []);
+  assert.match(lint({ agentic: [a] }).join('\n'), /pair setup-flip: needs exactly 2 rows, found 1/);
+  assert.match(lint({ agentic: [a, b, agentic({ id: 'chef-setup-c', pair: 'setup-flip' })] }).join('\n'), /found 3/);
+  assert.match(lint({ agentic: [a, { ...b, turns: ['other'] }] }).join('\n'), /pair setup-flip: rows chef-setup-a and chef-setup-b must have identical turns/);
+  assert.ok(lint({ agentic: [agentic({ pair: 'Bad_Id' })] }).length > 0);
+});

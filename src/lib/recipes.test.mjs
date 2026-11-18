@@ -10,9 +10,9 @@ const fixture = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../.
 
 test('lists the fixture recipes sorted by slug', () => {
   const { recipes, unreadable } = listRecipes(fixture);
-  assert.deepEqual(recipes.map((r) => r.slug), ['chickpea-spinach-stew', 'lemon-garlic-pasta']);
-  assert.equal(recipes[1].path, 'knowledge/wiki/recipes/lemon-garlic-pasta.md');
-  assert.equal(recipes[1].frontmatter.title, 'Lemon Garlic Pasta');
+  assert.deepEqual(recipes.map((r) => r.slug), ['chickpea-spinach-stew', 'creamy-tomato-soup', 'lemon-garlic-pasta', 'roasted-vegetable-quinoa-bowl']);
+  assert.equal(recipes[2].path, 'knowledge/wiki/recipes/lemon-garlic-pasta.md');
+  assert.equal(recipes[2].frontmatter.title, 'Lemon Garlic Pasta');
   assert.deepEqual(unreadable, []);
 });
 

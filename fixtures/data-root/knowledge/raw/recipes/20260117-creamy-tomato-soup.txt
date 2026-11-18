@@ -1,0 +1,3 @@
+Creamy tomato soup, serves 4. Synthetic fixture source text, written for Chef's test suite.
+800 g crushed tomatoes, 1 onion, 1 carrot, 200 ml cream, 500 ml vegetable stock.
+Soften onion and carrot, simmer with tomatoes and stock 50 minutes, blend and stir in the cream.

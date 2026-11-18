@@ -1,0 +1,3 @@
+Roasted vegetable quinoa bowl, serves 2. Synthetic fixture source text, written for Chef's test suite.
+150 g quinoa, 2 carrots, 1 zucchini, 2 tbsp olive oil.
+Roast the carrot and zucchini 50 minutes at 180 C, cook the quinoa, serve the vegetables over the quinoa.
