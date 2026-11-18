@@ -31,6 +31,7 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: node scripts/lint-skills.mjs
       - run: node --test
+      - run: node evals/lint-datasets.mjs
       - run: node evals/tier1/run.mjs
       - run: node evals/repro/lint.mjs
       - run: node evals/migration-regression.mjs
