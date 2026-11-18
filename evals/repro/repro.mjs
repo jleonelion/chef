@@ -47,11 +47,14 @@ function knownFailureErrors(label, row, byId, today) {
 const piiErrors = (label, text) => scanPii(text).map((f) => `${label}line ${f.line}: ${f.rule}`);
 
 // Seeds are synthetic overlays on the shared fixture; their paths and content must hold no personal details.
-function seedErrors(label, row) {
-  return [...(row.seed ?? []), ...(row.afterCommitSeed ?? [])].flatMap((file) => [
-    ...scanPii(file.path).map((f) => `${label}: seed path: ${f.rule}`),
-    ...piiErrors(`${label}: seed ${file.path} `, typeof file.content === 'string' ? file.content : JSON.stringify(file.content)),
-  ]);
+function seedErrors(label, row, readText) {
+  return [...(row.seed ?? []), ...(row.afterCommitSeed ?? [])].flatMap((file) => {
+    const content = file.seedFile ? readText(file.seedFile) : file.content;
+    return [
+      ...scanPii(file.path).map((f) => `${label}: seed path: ${f.rule}`),
+      ...(content === undefined ? [] : piiErrors(`${label}: seed ${file.path} `, typeof content === 'string' ? content : JSON.stringify(content))),
+    ];
+  });
 }
 
 // Test → case: a row's repro names a case that points back at that row.
@@ -65,8 +68,8 @@ function rowLinkErrors(suite, row, byId) {
 }
 
 // cases: [{file, data}]; suites: {tier1: rows, agentic: rows}; today: YYYY-MM-DD;
-// exists(repoPath) says whether a repo-relative path exists.
-export function lintRepro({ cases, suites, today, exists }) {
+// exists(repoPath) says whether a repo-relative path exists; readText(repoPath) returns a seedFile's text.
+export function lintRepro({ cases, suites, today, exists, readText = () => undefined }) {
   const errors = [];
   const byId = new Map();
   for (const { file, data, text } of cases) {
@@ -82,7 +85,7 @@ export function lintRepro({ cases, suites, today, exists }) {
   for (const [suite, rows] of Object.entries(suites)) {
     for (const row of rows) {
       const label = `${suite} row ${row.id}`;
-      errors.push(...rowLinkErrors(suite, row, byId), ...knownFailureErrors(label, row, byId, today), ...seedErrors(label, row));
+      errors.push(...rowLinkErrors(suite, row, byId), ...knownFailureErrors(label, row, byId, today), ...seedErrors(label, row, readText));
     }
   }
   return errors;

@@ -1,0 +1,369 @@
+[
+  {
+    "id": "chef-setup-update-commits-confirms-and-verifies",
+    "description": "Update commits pending user data, previews dropped skills, waits for confirmation, then verifies the tagged install.",
+    "updateInstall": true,
+    "afterCommitSeed": [
+      {
+        "path": "knowledge/wiki/household/pending-note.md",
+        "content": "User data awaiting commit.\n"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef_setup/scripts/setup.mjs",
+          "update"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "confirmation-required"
+          },
+          {
+            "path": "$.changes.skills.removed",
+            "includes": "chef_dropped"
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef_setup/scripts/setup.mjs",
+      "update",
+      "--confirm"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "updated"
+      },
+      {
+        "path": "$.release",
+        "equals": "v0.1.0"
+      },
+      {
+        "path": "$.verify.status",
+        "equals": "pass"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/pending-note.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "User data awaiting commit.\n"
+          }
+        ]
+      },
+      {
+        "path": ".git/logs/HEAD",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "Before Chef update"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-schedule-proposes-and-writes-nothing",
+    "description": "With default settings and no health goal, chef-setup proposes only the morning briefing and update notice, says why the rest are not offered, and writes nothing.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "schedule"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "proposal"
+      },
+      {
+        "path": "$.tasks[*].name",
+        "equals": [
+          "Chef morning briefing",
+          "Chef update notice"
+        ]
+      },
+      {
+        "path": "$.not_offered[*].name",
+        "equals": [
+          "Chef weekly health report",
+          "Chef shopping list",
+          "Chef receipt check"
+        ]
+      },
+      {
+        "path": "$.runtime.instruction",
+        "includes": "explicit yes"
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef morning briefing')].prompt",
+        "includes": "chef-meal-planning's `today`"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-schedule-offers-conditional-tasks",
+    "description": "An active health goal, household recipients and receipt senders unlock the weekly health report, shopping-list delivery task and receipt check; still nothing is written.",
+    "seed": [
+      {
+        "path": "data/health-goals/goals.json",
+        "content": "{\"goal\":\"More protein\",\"targets\":{\"protein\":{\"min\":90}}}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"household_recipients\":[\"cook@example.com\"],\"trusted_receipt_senders\":[\"receipts@example.com\"]}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "schedule"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.tasks[*].name",
+        "equals": [
+          "Chef morning briefing",
+          "Chef weekly health report",
+          "Chef shopping list",
+          "Chef update notice",
+          "Chef receipt check"
+        ]
+      },
+      {
+        "path": "$.not_offered",
+        "equals": []
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef shopping list')].skill",
+        "equals": "chef-shopping-lists"
+      },
+      {
+        "path": "$.tasks.[?(@name=='Chef shopping list')].prompt",
+        "includes": "build --upcoming"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-check-update-reports-current",
+    "description": "The update notice check compares the installed release with the newest tag and installs nothing.",
+    "updateInstall": true,
+    "command": [
+      "node",
+      "{skills}/chef_setup/scripts/setup.mjs",
+      "check-update"
+    ],
+    "parse": "json",
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    },
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "current"
+      },
+      {
+        "path": "$.latest",
+        "equals": "v0.1.0"
+      }
+    ]
+  },
+  {
+    "id": "chef-setup-clear-trace-deletes-it",
+    "description": "chef-setup clear-trace deletes the local invocation trace; trace then shows no events.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "clear-trace"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.trace.events",
+        "equals": []
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-report-draft-off-muse",
+    "description": "A defect report drafted off Muse attaches the recent recipe-search run, previews it as numbered lines, names the runtime unknown and says sending is not supported here; the data root stays clean in git.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "report-draft",
+      "--class",
+      "defect",
+      "--summary",
+      "Search finds nothing for a pasta shape",
+      "--expected",
+      "Matching recipes",
+      "--actual",
+      "An empty list",
+      "--frequency",
+      "always",
+      "--skill-ids",
+      "chef-recipe-search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "draft"
+      },
+      {
+        "path": "$.can_send",
+        "equals": false
+      },
+      {
+        "path": "$.send_notice",
+        "includes": "isn't supported in this runtime"
+      },
+      {
+        "path": "$.preview",
+        "includes": "[ 2] class = \"defect\""
+      },
+      {
+        "path": "$.preview",
+        "includes": "\"runtime\":\"unknown\""
+      },
+      {
+        "path": "$.preview",
+        "includes": "diagnostic_bundle.events[inv-1] = "
+      },
+      {
+        "path": "$.preview",
+        "includes": "Not observed: "
+      }
+    ],
+    "git": {
+      "clean": true,
+      "headUnchanged": true
+    }
+  },
+  {
+    "id": "chef-setup-trace-off-stops-capture",
+    "description": "Setting the trace off deletes the existing trace and stops capture: a later search writes no event.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set",
+          "--trace",
+          "off"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.tracing",
+        "equals": "off"
+      },
+      {
+        "path": "$.trace.events",
+        "equals": []
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.diagnostics",
+            "equals": {
+              "trace": "off"
+            }
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  }
+]

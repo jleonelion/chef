@@ -1,0 +1,679 @@
+[
+  {
+    "id": "chef-setup-creates-data-root",
+    "description": "chef-setup init creates a git-initialised data root with a schema-version file and a git-ignored settings file.",
+    "fixture": "none",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "init"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "created"
+      },
+      {
+        "path": "$.schema_version",
+        "equals": 1
+      }
+    ],
+    "files": [
+      {
+        "path": "schema-version.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.schema_version",
+            "equals": 1
+          }
+        ]
+      },
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.settings_version",
+            "equals": 2
+          }
+        ]
+      },
+      {
+        "path": ".gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "settings.json"
+          }
+        ]
+      },
+      {
+        "path": ".git/HEAD",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "refs/heads/main"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-settings-missing-uses-defaults",
+    "description": "With no settings.json, every v1 key falls back to its code default (units from locale) and no warning is shown.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "missing"
+      },
+      {
+        "path": "$.settings.household_recipients",
+        "equals": []
+      },
+      {
+        "path": "$.settings.trusted_receipt_senders",
+        "equals": []
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "us"
+      },
+      {
+        "path": "$.settings.calendar",
+        "equals": null
+      },
+      {
+        "path": "$.settings.convert_recipe_units",
+        "equals": false
+      },
+      {
+        "path": "$.warning",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-set-convert-recipe-units",
+    "description": "set --convert-recipe-units true turns on recipe conversion and stores a boolean; other settings are untouched.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--convert-recipe-units",
+      "true"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.changed",
+        "equals": [
+          "convert_recipe_units"
+        ]
+      },
+      {
+        "path": "$.inventory_page",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.convert_recipe_units",
+            "equals": true
+          },
+          {
+            "path": "$.units",
+            "equals": "metric"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-settings-units-default-from-locale",
+    "description": "Units default to metric outside imperial locales.",
+    "env": {
+      "LANG": "en_GB.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.settings.units",
+        "equals": "metric"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-settings-invalid-uses-defaults-and-warns",
+    "description": "An unparseable settings.json yields defaults plus one warning pointing at chef-setup, and the raw file for review.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"units\": "
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid"
+      },
+      {
+        "path": "$.settings.household_recipients",
+        "equals": []
+      },
+      {
+        "path": "$.settings.trusted_receipt_senders",
+        "equals": []
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "us"
+      },
+      {
+        "path": "$.settings.calendar",
+        "equals": null
+      },
+      {
+        "path": "$.warning",
+        "includes": "chef-setup"
+      },
+      {
+        "path": "$.content",
+        "includes": "settings_version"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-settings-unknown-version-uses-defaults-and-warns",
+    "description": "A settings.json from a newer Chef yields defaults plus one warning.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 7, \"units\": \"metric\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "settings"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "unknown-version"
+      },
+      {
+        "path": "$.settings.household_recipients",
+        "equals": []
+      },
+      {
+        "path": "$.settings.trusted_receipt_senders",
+        "equals": []
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "us"
+      },
+      {
+        "path": "$.settings.calendar",
+        "equals": null
+      },
+      {
+        "path": "$.warning",
+        "includes": "version 7"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-set-preserves-unknown-keys",
+    "description": "Change-settings writes the new values and keeps keys it does not know.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\": 1, \"future_key\": \"kept\"}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric",
+      "--household-recipients",
+      "cook@example.com, helper@example.com",
+      "--calendar",
+      "Family"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.settings.units",
+        "equals": "metric"
+      },
+      {
+        "path": "$.side_effects",
+        "equals": [
+          "recreate-delivery-tasks"
+        ]
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.future_key",
+            "equals": "kept"
+          },
+          {
+            "path": "$.settings_version",
+            "equals": 2
+          },
+          {
+            "path": "$.diagnostics",
+            "equals": {
+              "trace": "on"
+            }
+          },
+          {
+            "path": "$.units",
+            "equals": "metric"
+          },
+          {
+            "path": "$.calendar",
+            "equals": "Family"
+          },
+          {
+            "path": "$.household_recipients",
+            "equals": [
+              "cook@example.com",
+              "helper@example.com"
+            ]
+          }
+        ]
+      },
+      {
+        "path": ".gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "settings.json"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-units-change-regenerates-inventory-page",
+    "description": "Changing units rewrites the generated inventory page in the new system and commits it; the inventory store keeps its own units.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.changed",
+        "equals": [
+          "units"
+        ]
+      },
+      {
+        "path": "$.inventory_page.status",
+        "equals": "regenerated"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "- jasmine rice: 925 g"
+          },
+          {
+            "path": "$.content",
+            "includes": "- whole milk: 3.8 l (expires 2026-01-21)"
+          }
+        ]
+      },
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.fridge.dairy.whole_milk.unit",
+            "equals": "gal"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-set-refuses-invalid-file-without-rewrite",
+    "description": "Change-settings never silently overwrites a broken settings.json.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "not json\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.content",
+        "equals": "not json\n"
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "not json\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-set-rejects-bad-email",
+    "description": "Change-settings rejects a recipient that is not an email address.",
+    "env": {
+      "LANG": "en_US.UTF-8",
+      "LC_ALL": "",
+      "LC_MEASUREMENT": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--household-recipients",
+      "not-an-address"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "invalid-input"
+      },
+      {
+        "path": "$.problems[0]",
+        "includes": "not-an-address"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-usda-not-connected",
+    "description": "With no USDA connector or key, the connection check reports not-connected without calling USDA.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "usda"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "failed"
+      },
+      {
+        "path": "$.reason",
+        "equals": "not-connected"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-set-refuses-schema-mismatch",
+    "description": "A writing skill refuses to write to a data root on a different schema version and points the user at update Chef.",
+    "seed": [
+      {
+        "path": "schema-version.json",
+        "content": "{\"schema_version\":2}\n"
+      },
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1}\n"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "expectedStatus": 2,
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "refused"
+      },
+      {
+        "path": "$.reason",
+        "includes": "update Chef"
+      },
+      {
+        "path": "$.schema_version",
+        "equals": 2
+      },
+      {
+        "path": "$.expected_schema_version",
+        "equals": 1
+      }
+    ],
+    "files": [
+      {
+        "path": "settings.json",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "{\"settings_version\":1}\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-recipient-change-returns-delivery-tasks",
+    "description": "Changing household recipients through chef-setup returns the delivery tasks to re-create so Muse re-asks permission for the new addresses.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--household-recipients",
+      "cook@example.com"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.side_effects",
+        "equals": [
+          "recreate-delivery-tasks"
+        ]
+      },
+      {
+        "path": "$.delivery_tasks.action",
+        "equals": "recreate-delivery-tasks"
+      },
+      {
+        "path": "$.delivery_tasks.recipients",
+        "equals": [
+          "cook@example.com"
+        ]
+      },
+      {
+        "path": "$.delivery_tasks.tasks[0].skill",
+        "equals": "chef-shopping-lists"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-other-setting-change-has-no-delivery-tasks",
+    "description": "A settings change that leaves household recipients alone returns no delivery tasks.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set",
+      "--units",
+      "metric"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.delivery_tasks",
+        "absent": true
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  }
+]

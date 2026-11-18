@@ -4,14 +4,15 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { readInput } from './load-cases.mjs';
 
 // `seed` paths starting with ../ land beside the data root (inputs such as receipt transcripts)
-// and are not committed.
+// and are not committed. A file is `content` inline or `seedFile`, a path under evals/*/inputs/.
 export function writeSeed(dataRoot, files) {
   for (const file of files ?? []) {
     const abs = path.join(dataRoot, file.path);
     fs.mkdirSync(path.dirname(abs), { recursive: true });
-    fs.writeFileSync(abs, file.content);
+    fs.writeFileSync(abs, file.seedFile ? readInput(file.seedFile) : file.content);
   }
 }
 

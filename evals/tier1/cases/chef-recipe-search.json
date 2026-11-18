@@ -1,0 +1,738 @@
+[
+  {
+    "id": "chef-recipe-search-counts-missing-time",
+    "description": "A time facet leaves out recipes with no recorded time and counts them in missing_data.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-counts-missing-time/plain-rice.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--max-minutes",
+      "60"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.total_recipes",
+        "equals": 3
+      },
+      {
+        "path": "$.missing_data.total_minutes",
+        "equals": 1
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-show-converts-recipe-units",
+    "description": "With convert_recipe_units on, show converts ingredient weights and volumes with the original in parens, keeps spoons, adds the note and the oven scale; the stored page is unchanged.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\",\"convert_recipe_units\":true}\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/cheddar-bake.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-show-converts-recipe-units/cheddar-bake.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "cheddar-bake"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.body",
+        "equals": "\n# Cheddar Bake\n\n## Ingredients\n\nAmounts converted to metric units; steps keep the recipe's original amounts.\n\n- 235 ml (1 cup) milk\n- 225 g (8 oz) cheddar, grated\n- 1 tsp mustard\n- 2 eggs\n\n## Steps\n\n1. Heat the oven to 350°F (175°C).\n2. Bake for 30 minutes at 350 degrees.\n"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/cheddar-bake.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "---\ntype: recipe\ntitle: Cheddar Bake\nsource_kind: text\nsource_raw: []\ncreated: 2026-01-17\nupdated: 2026-01-17\n---\n\n# Cheddar Bake\n\n## Ingredients\n\n- 1 cup milk\n- 8 oz cheddar, grated\n- 1 tsp mustard\n- 2 eggs\n\n## Steps\n\n1. Heat the oven to 350°F.\n2. Bake for 30 minutes at 350 degrees.\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-show-keeps-amounts-by-default",
+    "description": "With convert_recipe_units unset, show returns the stored body byte for byte, even in metric.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"units\":\"metric\"}\n"
+      },
+      {
+        "path": "knowledge/wiki/recipes/cheddar-bake.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-show-keeps-amounts-by-default/cheddar-bake.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "show",
+      "--slug",
+      "cheddar-bake"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.body",
+        "equals": "\n# Cheddar Bake\n\n## Ingredients\n\n- 1 cup milk\n- 8 oz cheddar, grated\n\n## Steps\n\n1. Heat the oven to 350°F.\n"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-excludes-flagged-recipe",
+    "description": "A recipe flagged contains-X is left out for a member with hard constraint X, even when its wording no longer shows X, and listed with the reason. Plans carry the guarantee line as the check-labels footer.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-excludes-flagged-recipe/dietary-ruleset.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/rice-bowl.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-excludes-flagged-recipe/rice-bowl.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-excludes-flagged-recipe/plain-rice.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "rice"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "plain-rice"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='rice-bowl')].reasons.[?(@constraint=='sesame')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='rice-bowl')].reasons.[0].member",
+        "equals": "Alex Example"
+      },
+      {
+        "path": "$.dietary.status",
+        "equals": "declared"
+      },
+      {
+        "path": "$.dietary.footer",
+        "equals": "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels."
+      },
+      {
+        "path": "$.dietary.nudge",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-excludes-ingredient-text-match",
+    "description": "Ingredient wording excludes a recipe even when its stored flags are empty (stale), and a constraint outside the flag set is matched on ingredient text with a stated caveat.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-excludes-ingredient-text-match/dietary-ruleset.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/tomato-soup.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-excludes-ingredient-text-match/tomato-soup.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.excluded.[?(@slug=='tomato-soup')].reasons.[?(@constraint=='dairy')].why",
+        "equals": "ingredient-text"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='tomato-soup')].reasons.[0].detail",
+        "equals": "100 ml cream"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='chickpea-spinach-stew')].reasons.[?(@constraint=='cumin')].why",
+        "includes": "ingredient-text"
+      },
+      {
+        "path": "$.dietary.caveats[0]",
+        "includes": "\"cumin\""
+      },
+      {
+        "path": "$.dietary.caveats[0]",
+        "includes": "ingredient wording only"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-excludes-unchecked-recipe",
+    "description": "A recipe whose dietary flags were never checked is left out for a flag-set hard constraint (fail closed), with the reason.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-excludes-unchecked-recipe/dietary-ruleset.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 0
+      },
+      {
+        "path": "$.excluded.[?(@slug=='chickpea-spinach-stew')].reasons.[?(@constraint=='gluten')].why",
+        "equals": "not-checked"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[?(@constraint=='gluten')].why",
+        "equals": "ingredient-text"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-verified-by-user-keeps-recipe",
+    "description": "The user's dated verification makes an unchecked recipe usable for that constraint, permanently; a recipe that shows a conflict cannot be verified.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-verified-by-user-keeps-recipe/dietary-ruleset.md"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "verify",
+          "--slug",
+          "chickpea-spinach-stew",
+          "--constraint",
+          "celiac"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "verify",
+          "--slug",
+          "lemon-garlic-pasta",
+          "--constraint",
+          "gluten"
+        ],
+        "expectedStatus": 2
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "chickpea-spinach-stew"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[?(@constraint=='gluten')].why",
+        "equals": "ingredient-text"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "verified_by_user:\n  gluten: 20"
+          }
+        ]
+      },
+      {
+        "path": "knowledge/wiki/recipes/lemon-garlic-pasta.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "title: Lemon Garlic Pasta"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-override-one-plan-not-stored",
+    "description": "The declaring member's override lets a conflicting recipe into one search, marked as overridden; the next search without it excludes the recipe again and the ruleset is unchanged.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-override-one-plan-not-stored/dietary-ruleset.md"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "enrich",
+          "--unenriched"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--override",
+          "Alex Example:dairy"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[?(@constraint=='dairy')].why",
+        "includes": "flagged"
+      },
+      {
+        "path": "$.dietary.overrides",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "\"hard_constraints\":[\"dairy\"]"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-override-applies-to-that-search",
+    "description": "With an override for the declaring member, the flagged recipe is returned and marked dietary_override; an override for a constraint nobody declared is rejected.",
+    "env": {
+      "CHEF_USDA_FDC_KEY": ""
+    },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-override-applies-to-that-search/dietary-ruleset.md"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-add-recipe/scripts/add-recipe.mjs",
+          "enrich",
+          "--unenriched"
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--override",
+          "Sam Example:dairy"
+        ],
+        "expectedStatus": 2
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--override",
+      "Alex Example:dairy"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.recipes.[?(@slug=='lemon-garlic-pasta')].dietary_override.[0].constraint",
+        "equals": "dairy"
+      },
+      {
+        "path": "$.dietary.overrides",
+        "equals": [
+          {
+            "member": "Alex Example",
+            "constraint": "dairy"
+          }
+        ]
+      },
+      {
+        "path": "$.excluded",
+        "absent": true
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-nudge-while-never-asked",
+    "description": "With no dietary ruleset (never asked), output carries the one-line nudge and no check-labels footer, and nothing is excluded.",
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 2
+      },
+      {
+        "path": "$.dietary.status",
+        "equals": "never-asked"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "equals": "No dietary constraints recorded. Tell me about any allergies or foods someone must never eat."
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-no-nudge-once-none-declared",
+    "description": "Answering \"no\" to the allergy question records none declared: the nudge stops, no footer is added and no training notice is shown.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set-dietary",
+          "--none"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.dietary.status",
+        "equals": "none-declared"
+      },
+      {
+        "path": "$.dietary.nudge",
+        "absent": true
+      },
+      {
+        "path": "$.dietary.footer",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "members: []"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag",
+    "description": "Hard constraints written as free text (\"peanut allergy\", \"sesame seeds\", \"shellfish allergy\") map to their contains-* flags: flagged recipes are excluded even when the ingredient wording does not match, never downgraded to text-only.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag/dietary-ruleset.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/satay-bowl.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag/satay-bowl.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/seed-crackers.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag/seed-crackers.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/seafood-rice.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag/seafood-rice.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/plain-rice.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-free-text-allergen-maps-to-flag/plain-rice.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "rice"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 1
+      },
+      {
+        "path": "$.recipes[0].slug",
+        "equals": "plain-rice"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='satay-bowl')].reasons.[?(@constraint=='peanuts')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='seed-crackers')].reasons.[?(@constraint=='sesame')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='seafood-rice')].reasons.[?(@constraint=='shellfish')].why",
+        "equals": "flagged"
+      },
+      {
+        "path": "$.dietary.caveats",
+        "absent": true
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-dietary-gate-peanut-allergy-excludes-peanut-butter-text",
+    "description": "A member who declared \"peanut allergy\" in free text: a recipe with peanut butter in its ingredients and no peanut flag is excluded on the ingredient text.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-peanut-allergy-excludes-peanut-butter-text/dietary-ruleset.md"
+      },
+      {
+        "path": "knowledge/wiki/recipes/peanut-noodles.md",
+        "seedFile": "evals/tier1/inputs/chef-recipe-search-dietary-gate-peanut-allergy-excludes-peanut-butter-text/peanut-noodles.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+      "search",
+      "--ingredient",
+      "noodle"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.count",
+        "equals": 0
+      },
+      {
+        "path": "$.excluded.[?(@slug=='peanut-noodles')].reasons.[0].constraint",
+        "equals": "peanuts"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='peanut-noodles')].reasons.[0].why",
+        "equals": "ingredient-text"
+      },
+      {
+        "path": "$.excluded.[?(@slug=='peanut-noodles')].reasons.[0].detail",
+        "equals": "2 tbsp peanut butter"
+      }
+    ],
+    "git": {
+      "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-recipe-search-writes-one-invocation-event",
+    "description": "A recipe search appends one allowlisted invocation event to the local trace; chef-setup trace shows it, holding no query or recipe content, and the data root stays clean in git.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-recipe-search/scripts/recipe-search.mjs",
+          "search",
+          "--query",
+          "pasta"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "trace"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "ok"
+      },
+      {
+        "path": "$.tracing",
+        "equals": "on"
+      },
+      {
+        "path": "$.bounds",
+        "equals": {
+          "events": 200,
+          "kib": 256,
+          "days": 14
+        }
+      },
+      {
+        "path": "$.trace.schema_version",
+        "equals": 1
+      },
+      {
+        "path": "$.trace.events.length",
+        "equals": 1
+      },
+      {
+        "path": "$.trace.events[0].skill_id",
+        "equals": "chef-recipe-search"
+      },
+      {
+        "path": "$.trace.events[0].operation",
+        "equals": "search"
+      },
+      {
+        "path": "$.trace.events[0].outcome",
+        "equals": "ok"
+      },
+      {
+        "path": "$.trace.events[0].error_code",
+        "equals": null
+      },
+      {
+        "path": "$.trace.events[0].facts.query",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "diagnostics/.gitignore",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "*\n"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true,
+      "headUnchanged": true
+    }
+  }
+]

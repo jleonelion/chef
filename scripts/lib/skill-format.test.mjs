@@ -62,6 +62,6 @@ test('every v1 skill must be exercised by a tier1 case command or step', () => {
 
   assert.deepEqual(tier1CoverageErrors(cases), []);
   assert.deepEqual(tier1CoverageErrors(cases.filter((entry) => entry.id !== 'chef-health-goals-case')), [
-    'chef-health-goals: no tier1 case in evals/tier1/cases.json',
+    'chef-health-goals: no tier1 case in evals/tier1/cases/',
   ]);
 });

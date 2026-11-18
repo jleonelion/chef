@@ -1,0 +1,215 @@
+[
+  {
+    "id": "chef-setup-first-hard-constraint-shows-training-notice",
+    "description": "Declaring a first hard constraint saves the ruleset, records and shows the one-time training-setting notice, and states the text-only caveat.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Alex Example",
+      "--hard",
+      "peanuts, mustard",
+      "--avoid",
+      "olives"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.ruleset.status",
+        "equals": "declared"
+      },
+      {
+        "path": "$.notice",
+        "includes": "Help improve our AI models"
+      },
+      {
+        "path": "$.caveats[0]",
+        "includes": "\"mustard\""
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "hard_constraints:\n      - mustard\n      - peanuts"
+          }
+        ]
+      },
+      {
+        "path": "data/notices.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.training-setting",
+            "absent": false
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-training-notice-only-once",
+    "description": "A later hard constraint does not repeat the training-setting notice.",
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-setup/scripts/setup.mjs",
+          "set-dietary",
+          "--member",
+          "Alex Example",
+          "--hard",
+          "peanuts"
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Sam Example",
+      "--hard",
+      "egg"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.notice",
+        "absent": true
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-safety-screen",
+    "description": "The one safety screen: not medical advice, the guarantee line word for word, and the training setting link.",
+    "fixture": "none",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "safety"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.screen[0]",
+        "includes": "not medical advice"
+      },
+      {
+        "path": "$.screen[1]",
+        "equals": "Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels."
+      },
+      {
+        "path": "$.screen[2]",
+        "includes": "https://"
+      }
+    ],
+    "git": false,
+    "gitReason": "fixture none: the case has no data root to check"
+  },
+  {
+    "id": "chef-setup-free-text-allergen-saved-as-flag",
+    "description": "set-dietary stores free-text allergen wording under its flag name, so no caveat is shown and the gate matches the flag.",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Alex Example",
+      "--hard",
+      "Peanut allergy, tree nut"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.ruleset.members[0].hard_constraints",
+        "equals": [
+          "peanuts",
+          "tree-nuts"
+        ]
+      },
+      {
+        "path": "$.caveats",
+        "absent": true
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-setup-set-dietary-reports-how-entries-were-read",
+    "description": "set-dietary stores canonical names and reports each entry as read (\"peanut allergy\" -> peanuts, \"tree-nut\" -> tree-nuts, \"dairy-free\" -> dairy).",
+    "command": [
+      "node",
+      "{skills}/chef-setup/scripts/setup.mjs",
+      "set-dietary",
+      "--member",
+      "Alex Example",
+      "--hard",
+      "peanut allergy, tree-nut, dairy-free"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "saved"
+      },
+      {
+        "path": "$.read_as",
+        "equals": [
+          {
+            "entry": "peanut allergy",
+            "read_as": [
+              "peanuts"
+            ]
+          },
+          {
+            "entry": "tree-nut",
+            "read_as": [
+              "tree-nuts"
+            ]
+          },
+          {
+            "entry": "dairy-free",
+            "read_as": [
+              "dairy"
+            ]
+          }
+        ]
+      },
+      {
+        "path": "$.ruleset.members[0].hard_constraints",
+        "equals": [
+          "dairy",
+          "peanuts",
+          "tree-nuts"
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  }
+]

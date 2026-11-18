@@ -1,0 +1,14 @@
+{
+  "lastUpdated": "2026-01-14T18:00:00.000Z",
+  "pantry": {
+    "grains": {
+      "spaghetti": {
+        "name": "spaghetti",
+        "amount": 1,
+        "unit": "kg"
+      }
+    }
+  },
+  "fridge": {},
+  "freezer": {}
+}

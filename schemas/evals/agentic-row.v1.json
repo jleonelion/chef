@@ -10,7 +10,7 @@
     "id": { "$ref": "#/$defs/id" },
     "flow": { "enum": ["core", "should-not-act"] },
     "description": { "type": "string", "minLength": 1 },
-    "turns": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "turns": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["turnFile"], "properties": { "turnFile": { "$ref": "#/$defs/inputPath" } } }] } },
     "responses": { "type": "array", "items": { "$ref": "#/$defs/assertions" } },
     "skills": { "$ref": "#/$defs/skillNames" },
     "forbidSkills": { "$ref": "#/$defs/skillNames" },
@@ -19,8 +19,9 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["path", "content"],
-        "properties": { "path": { "type": "string", "minLength": 1 }, "content": {} }
+        "required": ["path"],
+        "oneOf": [{ "required": ["content"] }, { "required": ["seedFile"] }],
+        "properties": { "path": { "type": "string", "minLength": 1 }, "content": {}, "seedFile": { "$ref": "#/$defs/inputPath" } }
       }
     },
     "scripts": {
@@ -58,6 +59,7 @@
     "known_failure": { "$ref": "#/$defs/id" }
   },
   "$defs": {
+    "inputPath": { "type": "string", "pattern": "^evals/(tier1|agentic)/inputs/([^./][^/]*/)*[^./][^/]*$" },
     "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$", "maxLength": 100 },
     "scriptPaths": { "type": "array", "items": { "type": "string", "pattern": "^scripts/[^/]+$" } },
     "skillNames": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },

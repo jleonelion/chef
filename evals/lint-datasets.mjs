@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Ajv2020 from 'ajv/dist/2020.js';
+import { loadCases } from './lib/load-cases.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..');
 const readJson = (...parts) => JSON.parse(fs.readFileSync(path.join(repo, ...parts), 'utf8'));
@@ -32,8 +33,11 @@ function referencedSkills(suite, row) {
   return evaluatedSkills(suite, row);
 }
 
-// suites: {tier1: cases, agentic: rows}; skillNames: names found in src/skills.
-export function lintDatasets({ suites, skillNames }) {
+// Input files a row points at (seed `seedFile`, agentic `turnFile`); each must exist.
+const inputFiles = (row) => [...(row.seed ?? []).map((file) => file.seedFile), ...(row.turns ?? []).map((turn) => turn?.turnFile)].filter(Boolean);
+
+// suites: {tier1: cases, agentic: rows}; skillNames: names found in src/skills; exists: repo-relative path check.
+export function lintDatasets({ suites, skillNames, exists = () => true }) {
   const validators = compile();
   const errors = [];
   for (const [suite, rows] of Object.entries(suites)) {
@@ -47,6 +51,9 @@ export function lintDatasets({ suites, skillNames }) {
       errors.push(...schemaErrors(label, validators[suite], row));
       if (seen.has(row?.id)) errors.push(`${label}: duplicate id`);
       seen.add(row?.id);
+      for (const input of inputFiles(row ?? {})) {
+        if (!exists(input)) errors.push(`${label}: input file not found: ${input}`);
+      }
       const evaluated = evaluatedSkills(suite, row ?? {});
       if (typeof row?.id === 'string' && evaluated.length && !evaluated.some((skill) => row.id.startsWith(`${skill}-`))) {
         errors.push(`${label}: id must start with an evaluated skill (${[...new Set(evaluated)].join(', ')}) as <skill>-<scenario>`);
@@ -60,9 +67,15 @@ export function lintDatasets({ suites, skillNames }) {
 }
 
 if (import.meta.main ?? process.argv[1] === import.meta.filename) {
-  const suites = { tier1: readJson('evals', 'tier1', 'cases.json'), agentic: readJson('evals', 'agentic', 'rows.json') };
+  let suites;
+  try {
+    suites = { tier1: loadCases(path.join(repo, 'evals', 'tier1', 'cases')), agentic: loadCases(path.join(repo, 'evals', 'agentic', 'rows.json')) };
+  } catch (error) {
+    console.error(`error: ${error.message}`);
+    process.exit(1);
+  }
   const skillNames = new Set(fs.readdirSync(path.join(repo, 'src', 'skills'), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name));
-  const errors = lintDatasets({ suites, skillNames });
+  const errors = lintDatasets({ suites, skillNames, exists: (p) => fs.existsSync(path.join(repo, p)) });
   for (const e of errors) console.error(`error: ${e}`);
   if (errors.length) process.exit(1);
   console.log(`eval dataset lint passed: ${suites.tier1.length} tier1 case(s), ${suites.agentic.length} agentic row(s)`);
