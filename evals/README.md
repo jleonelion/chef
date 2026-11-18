@@ -10,14 +10,17 @@
 
 ## Harness launchers (agentic)
 
-`bun run agentic --harness claude` (default; codex and copilot land later). The runner is harness-neutral; each runtime has a launcher in `evals/agentic/harnesses/<name>.mjs` plus a Projector (raw transcript to Trajectory, `trajectory.mjs`).
+`bun run agentic --harness claude` (default), `codex` (copilot lands later). The runner is harness-neutral; each runtime has a launcher in `evals/agentic/harnesses/<name>.mjs` plus a Projector (raw transcript to Trajectory, `trajectory.mjs`).
 
 Launcher contract: `name`, `launcherVersion`, `project(transcript)`, `detect()` (binary and version, throws "not installed"), `prepare({ pluginDir, workdir, env })` (installs the built skills the way that harness discovers them, isolated per rep, never touching the user's config; returns `{ skillsDir, env, runTurn }`), `runTurn({ prompt, session, resume, model, timeoutMs })` (returns `{ out, err, ext }`, the raw transcript written to the log dir). Same capability set everywhere: shell, file read/write/edit, skills, no MCP.
 
 Result files are `chef-agentic` format 2 and carry `harness: {name, launcherVersion, cliVersion}` and `models`. Compare harnesses by row, never by cost.
 
+Local smoke (not CI): `bun run agentic:smoke --harness <name>` installs the skills the way the launcher does and runs tier1 against that dir. Re-record a Projector fixture from a real turn's log, trimming skill outputs and replacing temp paths and ids; never commit a raw log.
+
 | Harness | Skill loading | Unattended flags | Isolation |
 |---|---|---|---|
+| codex | built skills copied to a per-rep `CODEX_HOME/skills` (Codex has no skill tool: a skill fires when a command reads its `SKILL.md`) | `codex exec --json`, `-c sandbox_mode="workspace-write"` (writes confined to the rep workdir); stdin closed; `--ignore-user-config --ignore-rules --skip-git-repo-check`; turns resume via `codex exec resume <thread_id>` | `CODEX_HOME` and `HOME` inside the rep workdir; only `auth.json` is copied in, never written back; no login fails closed. No model or cost in the transcript: result `model` falls back to `--model` or "harness default", cost is 0. `CHEF_EVAL_CODEX_UNSANDBOXED=1` adds `--dangerously-bypass-approvals-and-sandbox` for environments where Codex's own sandbox cannot start (for example inside Copilot's sandbox); use only when already sandboxed. |
 | claude | `--plugin-dir` on a per-rep copy of the plugin | `--permission-mode dontAsk --allowedTools 'Bash Read Write Edit Glob Grep Skill'`, `--strict-mcp-config`, `--setting-sources project` | per-rep plugin copy and sandbox env |
 Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes`, `excludes`, `min`),
 duplicate ids, unknown skill names and badly shaped ids all fail it.
