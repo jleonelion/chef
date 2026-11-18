@@ -123,6 +123,7 @@
     "id": "chef-batch-prep-planning-pdf",
     "flow": "core",
     "description": "A prep plan for a week with a saved meal plan is rendered as the week's PDF under the data root.",
+    "grounding": { "recipes": ["chickpea-spinach-stew", "lemon-garlic-pasta"] },
     "setup": [
       {
         "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
@@ -225,6 +226,7 @@
     "id": "chef-meal-logging-planned-dinner",
     "flow": "core",
     "description": "\"I ate my planned dinner\" pre-fills the entry from that date's planned meal; after the cooked answer and a yes, the log holds one matching entry (#48).",
+    "grounding": { "recipes": ["chickpea-spinach-stew", "lemon-garlic-pasta"] },
     "setup": [
       {
         "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
@@ -255,18 +257,19 @@
   {
     "id": "chef-meal-logging-day-from-plan",
     "flow": "core",
-    "description": "\"Log today from the plan\" with breakfast, lunch and dinner planned gives one confirmation, with a cooked answer per meal, and three log entries (#48).",
+    "description": "\"Log 2026-01-20 from the plan\" with breakfast, lunch and dinner planned gives one confirmation, with a cooked answer per meal, and three log entries (#48).",
+    "grounding": { "recipes": ["chickpea-spinach-stew", "lemon-garlic-pasta"] },
     "setup": [
       {
-        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "{today}"],
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
         "stdin": [
-          { "date": "{today}", "slot": "breakfast", "recipe": "chickpea-spinach-stew", "servings": 1 },
-          { "date": "{today}", "slot": "lunch", "recipe": "lemon-garlic-pasta", "servings": 1 },
-          { "date": "{today}", "slot": "dinner", "recipe": "chickpea-spinach-stew", "servings": 2 }
+          { "date": "2026-01-20", "slot": "breakfast", "recipe": "chickpea-spinach-stew", "servings": 1 },
+          { "date": "2026-01-20", "slot": "lunch", "recipe": "lemon-garlic-pasta", "servings": 1 },
+          { "date": "2026-01-20", "slot": "dinner", "recipe": "chickpea-spinach-stew", "servings": 2 }
         ]
       }
     ],
-    "turns": ["Log today from my Chef meal plan.", "I cooked breakfast and dinner at home; lunch I did not cook at home. Yes, log all three."],
+    "turns": ["Log 2026-01-20 from my Chef meal plan.", "I cooked breakfast and dinner at home; lunch I did not cook at home. Yes, log all three."],
     "skills": ["chef-meal-logging"],
     "files": [
       {

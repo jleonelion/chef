@@ -50,3 +50,11 @@ Which skill counts as evaluated:
 The lint rejects an id that does not start with one of those skills, so grep `chef-<skill>-` finds every item covering a skill.
 Ids are referenced by `repro`, `known_failure` and result files, so renaming one means updating those too.
 New datasets should follow the same rule and add a schema under `schemas/evals/`.
+
+## Grounding
+
+Rows must resolve against `fixtures/data-root`, checked by `evals/grounding.test.mjs` (runs with `node --test`, so in CI):
+
+- `grounding` (optional, in tier1 cases and agentic rows) declares the fixture facts the item relies on: `recipes` (slugs), `inventory` (item keys), `mealPlans` (plan slugs). Each must exist in the fixture; a recipe the item's inputs name from the fixture must be declared.
+- The test also scans `recipe`/`slug` values and `--recipe`/`--slug` flags in `seed`, `afterCommitSeed`, `setup`, `turns`, `stdin`, `command` and `steps`. A slug must be in the fixture or created by the item's own seed (a seeded recipe page, proposal or draft). Assertions are not scanned.
+- Rows must not depend on the wall-clock date: use fixed dates, never `{today}` (the lint rejects it).

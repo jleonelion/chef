@@ -842,6 +842,11 @@
   {
     "id": "chef-add-recipe-re-enrich-saved-recipe",
     "description": "Re-enrich is an entry point: a saved recipe with no flags gets them, and nutrition is never filled in without USDA.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "env": {
       "CHEF_USDA_FDC_KEY": ""
     },
@@ -1537,6 +1542,11 @@
   {
     "id": "chef-food-inventory-cook-deduction-is-idempotent",
     "description": "A cook event scales and converts recipe quantities, and retrying its deduction id changes inventory only once.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
@@ -2013,6 +2023,11 @@
   {
     "id": "chef-recipe-decisions-retired-recipe-leaves-search",
     "description": "A retired recipe keeps its page but leaves recipe search; search reports how many it hid.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
@@ -2059,6 +2074,11 @@
   {
     "id": "chef-recipe-decisions-restore-returns-recipe",
     "description": "Retirement is reversible: a restored recipe is back in search.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
@@ -2229,6 +2249,12 @@
   {
     "id": "chef-recipe-search-dietary-gate-verified-by-user-keeps-recipe",
     "description": "The user's dated verification makes an unchecked recipe usable for that constraint, permanently; a recipe that shows a conflict cannot be verified.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "knowledge/wiki/household/dietary-ruleset.md",
@@ -2938,6 +2964,12 @@
   {
     "id": "chef-meal-planning-emits-calendar-payload-only-when-configured",
     "description": "A configured calendar produces a runtime payload, while the saved plan retains an incomplete nutrition rollup and the never-asked dietary nudge.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "settings.json",
@@ -3050,6 +3082,12 @@
   {
     "id": "chef-meal-planning-saves-breakfast-lunch-dinner-week",
     "description": "The case that motivated per-meal plans: a week with breakfast, lunch and dinner on some days and only dinner on another, all from saved recipes, saves every planned meal with its slot; today lists a three-meal day in slot order.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "knowledge/wiki/household/profile.md",
@@ -3669,6 +3707,11 @@
   {
     "id": "chef-meal-planning-no-goal-no-health-suggestions",
     "description": "With no goal declared, a saved meal plan carries no health suggestions.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew"
+      ]
+    },
     "command": [
       "node",
       "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
@@ -3869,6 +3912,11 @@
   {
     "id": "chef-meal-planning-goal-adds-advisory-suggestions",
     "description": "With a goal declared, a saved plan gets health suggestions with the footer; fixture recipes have no computed nutrition, so Chef says it cannot compare rather than estimating.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew"
+      ]
+    },
     "seed": [
       {
         "path": "data/health-goals/goals.json",
@@ -3913,6 +3961,11 @@
   {
     "id": "chef-meal-logging-cooked-meal-deducts-inventory-once",
     "description": "Logging a cooked saved recipe stores one entry and deducts its scaled ingredients; logging the same entry again changes neither the log nor inventory.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
@@ -4010,6 +4063,11 @@
   {
     "id": "chef-meal-logging-edit-keeps-inventory-unchanged",
     "description": "Editing a cooked meal changes only its log entry, preserves its stable ID, and directs the user to chef-food-inventory for the earlier deduction.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "data/food-inventory/current.json",
@@ -4098,6 +4156,11 @@
   {
     "id": "chef-meal-logging-delete-keeps-inventory-unchanged",
     "description": "Deleting a cooked meal changes only the log, leaves its earlier deduction untouched, and directs the user to chef-food-inventory for correction.",
+    "grounding": {
+      "recipes": [
+        "lemon-garlic-pasta"
+      ]
+    },
     "seed": [
       {
         "path": "data/food-inventory/current.json",
@@ -4655,6 +4718,12 @@
   {
     "id": "chef-batch-prep-planning-renders-pdf-from-saved-plan",
     "description": "A saved meal plan renders as a valid PDF under the data root with one page per unique recipe, each titled with the recipe and listing its planned dates with meal slots, committed through the guarded writer; off Muse there is no attachment instruction.",
+    "grounding": {
+      "recipes": [
+        "chickpea-spinach-stew",
+        "lemon-garlic-pasta"
+      ]
+    },
     "steps": [
       {
         "command": [
