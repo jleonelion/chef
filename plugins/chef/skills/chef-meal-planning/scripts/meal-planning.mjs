@@ -7078,6 +7078,14 @@ async function closedIntake(response) {
   const plain = message && message.length <= 200 && !/[\u0000-\u001f\u007f]/.test(message);
   return { ok: false, reason: "intake-closed", ...plain ? { message } : {} };
 }
+async function unprocessableReason(response) {
+  try {
+    const body = await response.json();
+    return body?.reason === "unsupported-schema-version" ? body.reason : "schema-invalid";
+  } catch {
+    return "schema-invalid";
+  }
+}
 var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
   for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
@@ -7141,7 +7149,9 @@ var muse = {
       if (closed)
         return closed;
       if (response.status !== 201) {
-        const reason = { 401: "missing-install-key", 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid", 429: "rate-limited" }[response.status] ?? "intake-rejected";
+        if (response.status === 422)
+          return { ok: false, reason: await unprocessableReason(response) };
+        const reason = { 401: "missing-install-key", 409: "nonce-replayed", 413: "too-large", 429: "rate-limited" }[response.status] ?? "intake-rejected";
         return { ok: false, reason };
       }
       let receipt;

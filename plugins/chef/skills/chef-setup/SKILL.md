@@ -261,6 +261,7 @@ When the user wants to report a problem, ask for something new or ask Chef to be
      | `rate-limited` | Intake is getting too many reports; try again later. |
      | `too-large` | The report is too large; ask which diagnostics items to remove by number. |
      | `schema-invalid` | Intake couldn't accept the format; edit or remove items by number, or update Chef. |
+     | `unsupported-schema-version` | Intake no longer accepts reports from this version of Chef; update Chef, then send again. |
      | `nonce-replayed` | Intake already has this report; check saved receipts before resending. |
      | `intake-rejected` | Intake turned the report down; try again later. |
      | `unreachable` | Chef couldn't reach intake; check the connection and try again. |

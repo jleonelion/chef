@@ -94,6 +94,16 @@ async function closedIntake(response) {
   return { ok: false, reason: 'intake-closed', ...(plain ? { message } : {}) };
 }
 
+// 422 carries a reason: `unsupported-schema-version` means this Chef is older than intake accepts.
+async function unprocessableReason(response) {
+  try {
+    const body = await response.json();
+    return body?.reason === 'unsupported-schema-version' ? body.reason : 'schema-invalid';
+  } catch {
+    return 'schema-invalid';
+  }
+}
+
 const pluginManifest = (repository) => path.join(repository, 'plugins', 'chef', '.claude-plugin', 'plugin.json');
 
 function findPluginRepository(skillDir) {
@@ -165,7 +175,8 @@ export const muse = {
       const closed = response.status === 503 && await closedIntake(response);
       if (closed) return closed;
       if (response.status !== 201) {
-        const reason = { 401: 'missing-install-key', 409: 'nonce-replayed', 413: 'too-large', 422: 'schema-invalid', 429: 'rate-limited' }[response.status] ?? 'intake-rejected';
+        if (response.status === 422) return { ok: false, reason: await unprocessableReason(response) };
+        const reason = { 401: 'missing-install-key', 409: 'nonce-replayed', 413: 'too-large', 429: 'rate-limited' }[response.status] ?? 'intake-rejected';
         return { ok: false, reason };
       }
       let receipt;
