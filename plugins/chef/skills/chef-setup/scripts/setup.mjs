@@ -7142,7 +7142,7 @@ var muse = {
       if (closed)
         return closed;
       if (response.status !== 201) {
-        const reason = { 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid" }[response.status] ?? "intake-rejected";
+        const reason = { 401: "missing-install-key", 409: "nonce-replayed", 413: "too-large", 422: "schema-invalid", 429: "rate-limited" }[response.status] ?? "intake-rejected";
         return { ok: false, reason };
       }
       let receipt;
@@ -9788,6 +9788,15 @@ function deletePendingContact(root, reportId) {
 var NOT_SENT = "Sending feedback isn't supported in this runtime, so Chef saved the approved report on this machine and sent nothing.";
 var SAVE_ONLY = "Sending feedback isn't supported in this runtime: on send, Chef saves the approved report on this machine and sends nothing.";
 var CLOSED = "Chef feedback is closed for now, so nothing was sent. Chef kept the approved report on this machine and will not try again by itself.";
+var REJECTION_MESSAGES = {
+  "missing-install-key": "Chef couldn't prove this install to feedback intake, so nothing was sent. Reconnect the Chef feedback connector and try again.",
+  "rate-limited": "Feedback intake is getting too many reports right now, so nothing was sent. Try again later.",
+  "too-large": "The report is too large for feedback intake, so nothing was sent. Tell me which diagnostics items to remove by number and I will show the new preview.",
+  "schema-invalid": "Feedback intake could not accept the report format, so nothing was sent. Chef did not change the report; you can edit or remove items by number, or try again after updating Chef.",
+  "nonce-replayed": "Feedback intake already has this report, so nothing new was sent. Check your saved receipts before sending it again.",
+  "intake-rejected": "Feedback intake turned the report down, so nothing was sent. You can try again later.",
+  unreachable: "Chef couldn't reach feedback intake, so nothing was sent. Check the connection and try again."
+};
 var canSend = (adapter) => hasCapability(adapter, "submit");
 async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now = new Date }) {
   checkAdapter(adapter);
@@ -9814,8 +9823,10 @@ async function sendReport(root, draft, { nonce, adapter = currentRuntime(), now 
         path: saveToOutbox(root, bytes, { nonce, now })
       };
     }
-    if (!submission.ok)
-      return { status: "failed", reason: submission.reason };
+    if (!submission.ok) {
+      const message = REJECTION_MESSAGES[submission.reason];
+      return { status: "failed", reason: submission.reason, ...message && { message } };
+    }
     const receipt = { report_id: submission.report_id, receipt_secret: submission.receipt_secret };
     let receiptPath = null;
     try {
