@@ -65,6 +65,7 @@
         "mealPlans": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" } }
       }
     },
+    "pair": { "description": "Flip pair id: exactly two rows share it and the same turns; they differ in seed/setup so the checks show opposite outcomes.", "$ref": "#/$defs/id" },
     "repro": { "$ref": "#/$defs/id" },
     "known_failure": { "$ref": "#/$defs/id" }
   },

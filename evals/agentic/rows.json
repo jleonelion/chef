@@ -193,6 +193,7 @@
   },
   {
     "id": "chef-recipe-decisions-rejected-not-reproposed",
+    "pair": "prior-rejection",
     "flow": "core",
     "description": "A recipe the user already turned down is not proposed again: the decision store, recipe book and git history are unchanged.",
     "seed": [
@@ -327,5 +328,237 @@
       }
     ],
     "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-meal-planning-dairy-constraint-absent-saves",
+    "pair": "dairy-constraint",
+    "flow": "core",
+    "description": "Flip pair dairy-constraint, no ruleset: the confirmed schedule with a dairy-flagged recipe is saved as the week's plan.",
+    "grounding": {"recipes": ["creamy-tomato-soup", "roasted-vegetable-quinoa-bowl"]},
+    "turns": [
+      "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: creamy tomato soup on day 1, roasted vegetable quinoa bowl on day 2, creamy tomato soup again on day 3. I confirm this schedule; save it without asking me again."
+    ],
+    "skills": ["chef-meal-planning"],
+    "scripts": {"required": ["scripts/meal-planning.mjs"]},
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "slug: creamy-tomato-soup"
+          }
+        ]
+      }
+    ],
+    "git": {"clean": true}
+  },
+  {
+    "id": "chef-meal-planning-dairy-constraint-present-refuses",
+    "pair": "dairy-constraint",
+    "flow": "should-not-act",
+    "description": "Flip pair dairy-constraint, dairy hard constraint declared: the same schedule is refused because of the dairy-flagged recipe, and no plan is saved.",
+    "grounding": {"recipes": ["creamy-tomato-soup", "roasted-vegetable-quinoa-bowl"]},
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/agentic/inputs/chef-meal-planning-dairy-constraint-present-refuses/dietary-ruleset.md"
+      }
+    ],
+    "turns": [
+      "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: creamy tomato soup on day 1, roasted vegetable quinoa bowl on day 2, creamy tomato soup again on day 3. I confirm this schedule; save it without asking me again."
+    ],
+    "skills": ["chef-meal-planning"],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans",
+        "count": 0
+      }
+    ],
+    "git": {"headUnchanged": true, "clean": true}
+  },
+  {
+    "id": "chef-meal-logging-plan-present-logs-planned-meal",
+    "pair": "plan-presence",
+    "flow": "core",
+    "description": "Flip pair plan-presence, lunch planned: \"log it\" after the plan is read logs the planned recipe and servings (#48).",
+    "grounding": {"recipes": ["lemon-garlic-pasta"]},
+    "setup": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+          "plan",
+          "--week-start",
+          "2026-01-19"
+        ],
+        "stdin": [
+          {
+            "date": "2026-01-21",
+            "slot": "lunch",
+            "recipe": "lemon-garlic-pasta",
+            "servings": 2
+          }
+        ]
+      }
+    ],
+    "turns": [
+      "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
+      "Yes, log it. I cooked it at home."
+    ],
+    "skills": ["chef-meal-logging"],
+    "scripts": {"required": ["scripts/meal-logging.mjs"]},
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.entries.length",
+            "equals": 1
+          },
+          {
+            "path": "$.entries[0].recipe",
+            "equals": "lemon-garlic-pasta"
+          },
+          {
+            "path": "$.entries[0].servings",
+            "equals": 2
+          },
+          {
+            "path": "$.entries[0].cooked",
+            "equals": true
+          }
+        ]
+      }
+    ],
+    "git": {"clean": true}
+  },
+  {
+    "id": "chef-meal-logging-plan-absent-logs-nothing",
+    "pair": "plan-presence",
+    "flow": "should-not-act",
+    "description": "Flip pair plan-presence, no plan: \"log it\" names no meal, so nothing is logged (#48).",
+    "turns": [
+      "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
+      "Yes, log it. I cooked it at home."
+    ],
+    "skills": ["chef-meal-logging"],
+    "scripts": {"forbidden": ["scripts/meal-logging.mjs"]},
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "absent": true
+      }
+    ],
+    "git": {"headUnchanged": true, "clean": true}
+  },
+  {
+    "id": "chef-health-goals-check-in-goal-set-reports-targets",
+    "pair": "health-goal",
+    "flow": "core",
+    "description": "Flip pair health-goal, goal declared: the check-in reports the stored goal and targets and changes nothing.",
+    "setup": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-health-goals/scripts/health-goals.mjs",
+          "set",
+          "--goal",
+          "Lower sodium",
+          "--max",
+          "sodium=2300",
+          "--min",
+          "protein=90"
+        ]
+      }
+    ],
+    "turns": [
+      "Check in on my Chef health goal: what is it, and what are my daily targets?"
+    ],
+    "responses": [
+      [
+        {
+          "path": "$.content",
+          "includes": "2300"
+        }
+      ]
+    ],
+    "skills": ["chef-health-goals"],
+    "scripts": {"required": ["scripts/health-goals.mjs"]},
+    "files": [
+      {
+        "path": "data/health-goals/goals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.targets",
+            "equals": {
+              "sodium": {
+                "max": 2300
+              },
+              "protein": {
+                "min": 90
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "git": {"headUnchanged": true, "clean": true}
+  },
+  {
+    "id": "chef-health-goals-check-in-goal-unset-stays-dormant",
+    "pair": "health-goal",
+    "flow": "should-not-act",
+    "description": "Flip pair health-goal, no goal: the check-in reports no goal, invents no targets and stores nothing.",
+    "turns": [
+      "Check in on my Chef health goal: what is it, and what are my daily targets?"
+    ],
+    "responses": [
+      [
+        {
+          "path": "$.content",
+          "excludes": "2300"
+        }
+      ]
+    ],
+    "skills": ["chef-health-goals"],
+    "scripts": {"required": ["scripts/health-goals.mjs"]},
+    "files": [
+      {
+        "path": "data/health-goals/goals.json",
+        "absent": true
+      }
+    ],
+    "git": {"headUnchanged": true, "clean": true}
+  },
+  {
+    "id": "chef-recipe-decisions-prior-rejection-new-proposed",
+    "pair": "prior-rejection",
+    "flow": "core",
+    "description": "Flip pair prior-rejection (the other row is chef-recipe-decisions-rejected-not-reproposed), no prior decision: the same suggestion is recorded as an open proposal and is not published to the recipe book.",
+    "turns": [
+      "Suggest this new recipe to me as a Chef recipe suggestion: Mushroom Barley Soup. Serves 4, about 50 minutes. Ingredients: 200 g mushrooms, 100 g pearl barley, 1 l vegetable stock. Steps: simmer everything for 40 minutes."
+    ],
+    "skills": ["chef-recipe-decisions"],
+    "scripts": {"required": ["scripts/recipe-decisions.mjs"]},
+    "files": [
+      {
+        "path": "data/recipe-decisions/proposals.json",
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.proposals.mushroom-barley-soup",
+            "absent": false
+          }
+        ]
+      },
+      {
+        "path": "knowledge/wiki/recipes/mushroom-barley-soup.md",
+        "absent": true
+      }
+    ],
+    "git": {"clean": true}
   }
 ]

@@ -36,6 +36,15 @@ function referencedSkills(suite, row) {
 // Input files a row points at (seed `seedFile`, agentic `turnFile`); each must exist.
 const inputFiles = (row) => [...(row.seed ?? []).map((file) => file.seedFile), ...(row.turns ?? []).map((turn) => turn?.turnFile)].filter(Boolean);
 
+// A flip pair is exactly two rows with identical turns; they may differ only in seed/setup.
+function pairErrors(rows) {
+  const groups = Map.groupBy(rows.filter((row) => row?.pair), (row) => row.pair);
+  return [...groups].flatMap(([pair, members]) => {
+    if (members.length !== 2) return [`agentic pair ${pair}: needs exactly 2 rows, found ${members.length}`];
+    return JSON.stringify(members[0].turns) === JSON.stringify(members[1].turns) ? [] : [`agentic pair ${pair}: rows ${members[0].id} and ${members[1].id} must have identical turns`];
+  });
+}
+
 // suites: {tier1: cases, agentic: rows}; skillNames: names found in src/skills; exists: repo-relative path check.
 export function lintDatasets({ suites, skillNames, exists = () => true }) {
   const validators = compile();
@@ -64,6 +73,7 @@ export function lintDatasets({ suites, skillNames, exists = () => true }) {
       }
     });
   }
+  if (Array.isArray(suites.agentic)) errors.push(...pairErrors(suites.agentic));
   return errors;
 }
 
