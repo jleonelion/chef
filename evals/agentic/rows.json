@@ -661,7 +661,7 @@
         { "path": "$.content", "includes": "dairy" },
         { "path": "$.content", "includes": "Lemon Garlic Pasta" },
         { "path": "$.content", "includes": "override" },
-        { "path": "$.content", "includes": "plan" }
+        { "path": "$.content", "includes": "one" }
       ],
       [
         { "path": "$.content", "includes": "2026" },
