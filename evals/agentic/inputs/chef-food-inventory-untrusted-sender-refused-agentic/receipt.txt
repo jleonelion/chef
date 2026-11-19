@@ -1,0 +1,3 @@
+Example Market, 2026-01-15
+- 2 lb bananas — $1.38
+- 1 gal whole milk — $3.49 -> fridge.dairy.whole_milk
