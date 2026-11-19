@@ -20,7 +20,7 @@ import { parseArgs } from 'node:util';
 import { readInput } from '../lib/load-cases.mjs';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, behaviorCheck, exitCodeFor, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
+import { aggregate, behaviorCheck, exitCodeFor, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { loadHarness } from './harnesses/index.mjs';
 import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
@@ -50,6 +50,7 @@ function script(rep, step) {
 async function runRep(row, number, { harness, model, logDir }) {
   let rep;
   const run = { row: row.id, rep: number, outcome: 'invalid', cost_usd: 0, skills: [], scriptRuns: [] };
+  const failures = [];
   try {
     rep = prepare(row, harness);
     for (const step of row.setup ?? []) script(rep, step);
@@ -69,21 +70,26 @@ async function runRep(row, number, { harness, model, logDir }) {
         const cause = { ...executionError, message: `turn ${index + 1}: ${executionError.message} (see ${row.id}-${number}-${index + 1}.${launched.ext})` };
         throw Object.assign(new Error(cause.message), { invalid: cause });
       }
-      checkResponse(turn.response, row.responses?.[index]);
+      recordBehaviorFailure(failures, () => checkResponse(turn.response, row.responses?.[index]));
     }
-    checkSkills(run.skills, row);
-    checkScripts(run.scriptRuns, row.scripts);
-    checkFiles(rep.dataRoot, row.files);
-    behaviorCheck('git-state', () =>
-      assertGitState({ beforeHead, afterHead: git(rep.dataRoot, 'rev-parse', 'HEAD'), status: git(rep.dataRoot, 'status', '--porcelain') }, row.git ?? {}),
+    recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
+    recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
+    recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files));
+    recordBehaviorFailure(failures, () =>
+      behaviorCheck('git-state', () =>
+        assertGitState({ beforeHead, afterHead: git(rep.dataRoot, 'rev-parse', 'HEAD'), status: git(rep.dataRoot, 'status', '--porcelain') }, row.git ?? {}),
+      ),
     );
     for (const step of row.after ?? []) {
       const output = script(rep, step);
-      behaviorCheck('post-run', () => {
-        for (const assertion of step.assertions ?? []) assertCase(output, assertion);
-      });
+      recordBehaviorFailure(failures, () =>
+        behaviorCheck('post-run', () => {
+          for (const assertion of step.assertions ?? []) assertCase(output, assertion);
+        }),
+      );
     }
-    run.outcome = 'pass';
+    if (failures.length) Object.assign(run, { outcome: 'failed', failure: failures[0], failures });
+    else run.outcome = 'pass';
   } catch (error) {
     Object.assign(run, errorOutcome(error));
   } finally {

@@ -28,6 +28,12 @@ test('invalid output from every Projector cannot reproduce a known failure', () 
   }
 });
 
+test('a Projector rate limit is more specific than a nonzero launcher exit', () => {
+  const error = projectCodex(stream({ type: 'turn.failed', error: { message: '429 Too Many Requests' } })).error;
+  const cause = turnInvalid({ ...launch, exitCode: 1 }, error);
+  assert.equal(cause.kind, 'rate_limit');
+});
+
 test('behavior from every Projector reproduces only the expected known-failure check', () => {
   const trajectories = [
     projectClaude(stream({ type: 'result', is_error: false, result: 'wrong response' })),
@@ -44,18 +50,25 @@ test('behavior from every Projector reproduces only the expected known-failure c
       }
       throw new Error('check unexpectedly passed');
     };
+    const expected = fail('expected', 'response');
+    const unexpected = fail('unexpected', 'skills');
+    const multiple = fail('multiple', 'response');
+    multiple.failures = [multiple.failure, fail('multiple', 'skills').failure];
     const result = aggregate({
       meta: {},
       reps: 1,
       rows: [
         { id: 'expected', flow: 'core', known_failure: 'case-one', expect_failure: 'response' },
         { id: 'unexpected', flow: 'core', known_failure: 'case-two', expect_failure: 'response' },
+        { id: 'multiple', flow: 'core', known_failure: 'case-three', expect_failure: 'response' },
       ],
-      runs: [fail('expected', 'response'), fail('unexpected', 'skills')],
+      runs: [expected, unexpected, multiple],
     });
     assert.equal(result.rows[0].pass, true, `Projector ${index + 1}`);
     assert.equal(result.rows[0].known_failure_reproduced, true, `Projector ${index + 1}`);
     assert.equal(result.rows[1].pass, false, `Projector ${index + 1}`);
     assert.equal(result.rows[1].known_failure_reproduced, false, `Projector ${index + 1}`);
+    assert.equal(result.rows[2].pass, false, `Projector ${index + 1}`);
+    assert.equal(result.rows[2].known_failure_reproduced, true, `Projector ${index + 1}`);
   }
 });
