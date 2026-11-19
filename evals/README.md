@@ -28,6 +28,9 @@ Local smoke (not CI): `bun run agentic:smoke --harness <name>` installs the skil
 Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes`, `excludes`, `min`),
 duplicate ids, unknown skill names and badly shaped ids all fail it.
 
+Agentic rows can forbid exact Trajectory tool names with `tools: {forbidden: [...]}`. The check covers every turn in a rep and reports failures under the stable `tools` check id.
+Script checks can match argument prefixes with `requiredCalls` and `forbiddenCalls`, for scripts that expose both read-only and mutating commands. Use `turnScripts` with one script-check object per turn when consent timing matters; `scripts` still checks the whole rep.
+
 ## Tier1 is the cross-harness baseline
 
 Tier1 runs `node <skills>/.../x.mjs` against a copy of `fixtures/data-root` with `CHEF_DATA_ROOT` set. It never starts Claude, so any harness can reuse it.
@@ -44,7 +47,7 @@ Move multi-line text out of the JSON. A seed entry takes `seedFile` instead of `
 
 Every tier1 case needs `git` (`{headUnchanged, clean}` checked after the command). Use `git: false` with a short `gitReason` only when the case cannot be checked, e.g. `fixture: "none"` has no data root. A case whose command commits its own writes takes `{clean: true}`.
 
-New rows: `bun run evals:new <tier1|agentic> <skill> <slug> [--topic <topic>] [--from-repro <case_id>] [--expect-failure <check>]` appends a skeleton with id `<skill>-<slug>` to the right file and refuses an id that exists. `--from-repro` also sets `repro` and `known_failure` to the case id (the case file must exist in `repro/`). Agentic repro rows require `--expect-failure` with one of `response`, `skills`, `scripts`, `files`, `git-state` or `post-run`. A marked row passes only when a valid rep fails that check, no valid rep fails another check, and no rep is invalid. Fill in the TODOs, then run `bun run evals:lint`. `--topic` picks the file for a topic-split skill (`chef-setup`: `settings`, `dietary`, `maintenance`) and is required there.
+New rows: `bun run evals:new <tier1|agentic> <skill> <slug> [--topic <topic>] [--from-repro <case_id>] [--expect-failure <check>]` appends a skeleton with id `<skill>-<slug>` to the right file and refuses an id that exists. `--from-repro` also sets `repro` and `known_failure` to the case id (the case file must exist in `repro/`). Agentic repro rows require `--expect-failure` with one of `response`, `skills`, `scripts`, `tools`, `files`, `git-state` or `post-run`. A marked row passes only when a valid rep fails that check, no valid rep fails another check, and no rep is invalid. Fill in the TODOs, then run `bun run evals:lint`. `--topic` picks the file for a topic-split skill (`chef-setup`: `settings`, `dietary`, `maintenance`) and is required there.
 
 ## Flip pairs (agentic)
 

@@ -65,6 +65,9 @@ export function lintDatasets({ suites, skillNames, exists = () => true }) {
         if (!exists(input)) errors.push(`${label}: input file not found: ${input}`);
       }
       if (suite === 'agentic' && JSON.stringify(row).includes('{today}')) errors.push(`${label}: {today} makes the row depend on the wall-clock date; use a fixed date`);
+      if (suite === 'agentic' && row?.turnScripts && row.turnScripts.length !== row.turns?.length) {
+        errors.push(`${label}: turnScripts must have one entry per turn`);
+      }
       const evaluated = evaluatedSkills(suite, row ?? {});
       if (typeof row?.id === 'string' && evaluated.length && !evaluated.some((skill) => row.id.startsWith(`${skill}-`))) {
         errors.push(`${label}: id must start with an evaluated skill (${[...new Set(evaluated)].join(', ')}) as <skill>-<scenario>`);

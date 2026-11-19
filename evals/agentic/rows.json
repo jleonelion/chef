@@ -297,8 +297,22 @@
     "flow": "should-not-act",
     "description": "Logging from the plan for a date with no plan falls back to manual logging, and nothing is logged before the user confirms the proposed entry (#48).",
     "turns": [
-      "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
+      "For the fixed date 2026-01-21, not today, log my planned lunch from my Chef meal plan.",
       "I had 1 serving of the chickpea spinach stew, cooked at home."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "21" },
+        { "path": "$.content", "includes": "lunch" },
+        { "path": "$.content", "includes": "manual" }
+      ],
+      [
+        { "path": "$.content", "includes": "Chickpea Spinach Stew" },
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "21" },
+        { "path": "$.content", "includes": "Lunch" }
+      ]
     ],
     "skills": ["chef-meal-logging"],
     "scripts": { "forbidden": ["scripts/meal-logging.mjs"] },
@@ -316,7 +330,13 @@
       }
     ],
     "turns": [
-      "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: lemon garlic pasta every night. I confirm this schedule; save it without asking me again."
+      "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: lemon garlic pasta every night."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "dairy" },
+        { "path": "$.content", "includes": "Lemon Garlic Pasta" }
+      ]
     ],
     "skills": ["chef-meal-planning"],
     "scripts": { "forbidden": ["scripts/meal-planning.mjs"] },
@@ -560,5 +580,181 @@
       }
     ],
     "git": {"clean": true}
+  },
+  {
+    "id": "chef-food-inventory-untrusted-sender-refused",
+    "flow": "should-not-act",
+    "description": "A receipt from an untrusted sender is refused after the sender check; Chef does not ingest it and names the sender in the reply.",
+    "seed": [
+      {
+        "path": "settings.json",
+        "content": "{\"settings_version\":1,\"trusted_receipt_senders\":[\"receipts@example.com\"]}\n"
+      },
+      {
+        "path": "../inbox/untrusted-receipt.txt",
+        "seedFile": "evals/agentic/inputs/chef-food-inventory-untrusted-sender-refused/receipt.txt"
+      }
+    ],
+    "turns": [
+      "Add this grocery receipt email to Chef. Its From header is Market <orders@example.com>, Gmail shows no signed-by or mailed-by domain, its Message-ID is <untrusted-158@example.com>, and its body is at {tmp}/inbox/untrusted-receipt.txt."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "orders@example.com" },
+        { "path": "$.content", "includes": "not a trusted receipt sender" }
+      ]
+    ],
+    "skills": ["chef-food-inventory"],
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/inventory.mjs", "args": ["check-sender"] }],
+      "forbiddenCalls": [{ "script": "scripts/inventory.mjs", "args": ["add-receipt"] }],
+      "max": { "scripts/inventory.mjs": 1 }
+    },
+    "files": [
+      { "path": "data/food-inventory/purchases", "count": 1 },
+      { "path": "knowledge/raw/receipts", "count": 1 }
+    ],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-food-inventory-receipt-intake-off-refused",
+    "flow": "should-not-act",
+    "description": "With receipt intake off, Chef refuses a receipt before ingestion and names the sender and disabled setting.",
+    "turns": [
+      "Add a grocery receipt email from receipts@example.com to Chef. Gmail shows signed-by example.com, and the Message-ID is <intake-off-158@example.com>."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "receipts@example.com" },
+        { "path": "$.content", "includes": "receipt intake is off" }
+      ]
+    ],
+    "skills": ["chef-food-inventory"],
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/inventory.mjs", "args": ["check-sender"] }],
+      "forbiddenCalls": [{ "script": "scripts/inventory.mjs", "args": ["add-receipt"] }],
+      "max": { "scripts/inventory.mjs": 1 }
+    },
+    "files": [
+      { "path": "data/food-inventory/purchases", "count": 1 },
+      { "path": "knowledge/raw/receipts", "count": 1 }
+    ],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-meal-planning-dietary-override-confirmed-once",
+    "flow": "core",
+    "description": "A member explicitly confirms a one-plan dairy override; Chef saves that plan without changing the standing dietary ruleset.",
+    "grounding": { "recipes": ["lemon-garlic-pasta"] },
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "seedFile": "evals/agentic/inputs/chef-meal-planning-dietary-override-confirmed-once/dietary-ruleset.md"
+      }
+    ],
+    "turns": [
+      "I am Alex Example. Plan Lemon Garlic Pasta for my dinner on 2026-01-19.",
+      "I confirm the dairy override for this one meal plan."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "dairy" },
+        { "path": "$.content", "includes": "Lemon Garlic Pasta" },
+        { "path": "$.content", "includes": "override" }
+      ],
+      [
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "19" },
+        { "path": "$.content", "includes": "dairy" }
+      ]
+    ],
+    "skills": ["chef-meal-planning"],
+    "scripts": { "required": ["scripts/meal-planning.mjs"] },
+    "turnScripts": [
+      { "forbidden": ["scripts/meal-planning.mjs"] },
+      { "required": ["scripts/meal-planning.mjs"] }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [{ "path": "$.content", "includes": "slug: lemon-garlic-pasta" }]
+      },
+      {
+        "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+          }
+        ]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "chef-shopping-lists-one-off-addresses-confirm-first",
+    "flow": "should-not-act",
+    "description": "A one-off shopping-list email to non-household addresses repeats the exact recipients and waits for confirmation before any Gmail send.",
+    "grounding": { "recipes": ["chickpea-spinach-stew"] },
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [{ "date": "2026-01-19", "slot": "dinner", "recipe": "chickpea-spinach-stew" }]
+      }
+    ],
+    "turns": [
+      "Email my Chef shopping list for the week of 2026-01-19 to alice@example.com and bob@example.com."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "alice@example.com" },
+        { "path": "$.content", "includes": "bob@example.com" },
+        { "path": "$.content", "includes": "?" }
+      ]
+    ],
+    "skills": ["chef-shopping-lists"],
+    "scripts": { "required": ["scripts/shopping-lists.mjs"] },
+    "tools": { "forbidden": ["gmail.send"] },
+    "files": [{ "path": "data/shopping-lists", "count": 0 }],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-meal-logging-direct-entry-confirms-before-write",
+    "flow": "core",
+    "description": "A complete direct logging request is proposed first and written only after the user's explicit confirmation on the next turn.",
+    "grounding": { "recipes": ["chickpea-spinach-stew"] },
+    "turns": [
+      "Log 1 serving of chickpea spinach stew for lunch on 2026-01-21. I cooked it at home.",
+      "Yes, log that entry."
+    ],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "21" },
+        { "path": "$.content", "includes": "Lunch" },
+        { "path": "$.content", "includes": "Chickpea Spinach Stew" },
+        { "path": "$.content", "includes": "?" }
+      ]
+    ],
+    "skills": ["chef-meal-logging"],
+    "scripts": { "required": ["scripts/meal-logging.mjs"] },
+    "turnScripts": [
+      { "forbidden": ["scripts/meal-logging.mjs"] },
+      { "required": ["scripts/meal-logging.mjs"] }
+    ],
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.entries.length", "equals": 1 },
+          { "path": "$.entries[0].date", "equals": "2026-01-21" },
+          { "path": "$.entries[0].slot", "equals": "lunch" },
+          { "path": "$.entries[0].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries[0].cooked", "equals": true }
+        ]
+      }
+    ],
+    "git": { "clean": true }
   }
 ]

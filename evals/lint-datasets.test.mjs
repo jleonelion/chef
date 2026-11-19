@@ -41,8 +41,31 @@ test('typo\'d row key fails', () => {
 
 test('agentic scripts accepts skill-relative paths only', () => {
   assert.deepEqual(lint({ agentic: [agentic({ scripts: { required: ['scripts/setup.mjs'], forbidden: ['scripts/x.mjs'], max: { 'scripts/setup.mjs': 1 } } })] }), []);
+  assert.deepEqual(
+    lint({
+      agentic: [
+        agentic({
+          turns: ['ask', 'yes'],
+          scripts: {
+            requiredCalls: [{ script: 'scripts/setup.mjs', args: ['set'] }],
+            forbiddenCalls: [{ script: 'scripts/setup.mjs', args: ['rewrite'] }],
+          },
+          turnScripts: [{ forbidden: ['scripts/setup.mjs'] }, { required: ['scripts/setup.mjs'] }],
+        }),
+      ],
+    }),
+    [],
+  );
   assert.ok(lint({ agentic: [agentic({ scripts: { forbidden: ['setup.mjs'] } })] }).length > 0);
   assert.match(lint({ agentic: [agentic({ scripts: { forbiden: [] } })] }).join('\n'), /forbiden/);
+  assert.ok(lint({ agentic: [agentic({ scripts: { forbiddenCalls: [{ script: 'setup.mjs', args: ['set'] }] } })] }).length > 0);
+  assert.match(lint({ agentic: [agentic({ turns: ['ask', 'yes'], turnScripts: [{}, {}, {}] })] }).join('\n'), /turnScripts/);
+});
+
+test('agentic tools accepts forbidden tool names only', () => {
+  assert.deepEqual(lint({ agentic: [agentic({ tools: { forbidden: ['gmail.send'] } })] }), []);
+  assert.match(lint({ agentic: [agentic({ tools: { forbiden: ['gmail.send'] } })] }).join('\n'), /forbiden/);
+  assert.ok(lint({ agentic: [agentic({ tools: { forbidden: [''] } })] }).length > 0);
 });
 
 test('duplicate ids fail', () => {
@@ -104,6 +127,7 @@ test('a flip pair is two agentic rows with identical turns', () => {
 
 test('agentic known failures require one stable behavioral check', () => {
   assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'response' })] }), []);
+  assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'tools' })] }), []);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ expect_failure: 'response' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'unknown' })] }).join('\n'), /expect_failure/);

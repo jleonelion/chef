@@ -28,13 +28,13 @@
         "properties": { "path": { "type": "string", "minLength": 1 }, "content": {}, "seedFile": { "$ref": "#/$defs/inputPath" } }
       }
     },
-    "scripts": {
+    "scripts": { "$ref": "#/$defs/scriptChecks" },
+    "turnScripts": { "type": "array", "items": { "$ref": "#/$defs/scriptChecks" } },
+    "tools": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "required": { "$ref": "#/$defs/scriptPaths" },
-        "forbidden": { "$ref": "#/$defs/scriptPaths" },
-        "max": { "type": "object", "propertyNames": { "pattern": "^scripts/[^/]+$" }, "additionalProperties": { "type": "integer", "minimum": 0 } }
+        "forbidden": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
       }
     },
     "setup": { "$ref": "#/$defs/steps" },
@@ -72,12 +72,32 @@
     "pair": { "description": "Flip pair id: exactly two rows share it and the same turns; they differ in seed/setup so the checks show opposite outcomes.", "$ref": "#/$defs/id" },
     "repro": { "$ref": "#/$defs/id" },
     "known_failure": { "$ref": "#/$defs/id" },
-    "expect_failure": { "enum": ["response", "skills", "scripts", "files", "git-state", "post-run"] }
+    "expect_failure": { "enum": ["response", "skills", "scripts", "tools", "files", "git-state", "post-run"] }
   },
   "$defs": {
     "inputPath": { "type": "string", "pattern": "^evals/(tier1|agentic)/inputs/([^./][^/]*/)*[^./][^/]*$" },
     "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)+$", "maxLength": 100 },
     "scriptPaths": { "type": "array", "items": { "type": "string", "pattern": "^scripts/[^/]+$" } },
+    "scriptCall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["script", "args"],
+      "properties": {
+        "script": { "type": "string", "pattern": "^scripts/[^/]+$" },
+        "args": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "scriptChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "required": { "$ref": "#/$defs/scriptPaths" },
+        "forbidden": { "$ref": "#/$defs/scriptPaths" },
+        "max": { "type": "object", "propertyNames": { "pattern": "^scripts/[^/]+$" }, "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "requiredCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } },
+        "forbiddenCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } }
+      }
+    },
     "skillNames": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
     "assertions": { "type": "array", "items": { "$ref": "assertion.v1.json" } },
     "steps": {
