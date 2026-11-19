@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { aggregate, checkFiles, checkResponse, assertScriptPaths, checkScripts, checkSkills } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, exitCodeFor, assertScriptPaths, checkScripts, checkSkills } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -58,55 +58,153 @@ test('checkFiles counts the files in a folder', (t) => {
   assert.throws(() => checkFiles(root, [{ path: 'data', count: 2 }]), /data: expected 2 files, found 1/);
 });
 
-test('aggregate counts passes per row and passes only when every row passed every rep', () => {
+test('behavioral checks throw stable check identifiers', (t) => {
+  const root = dataRoot(t);
+  const failures = [
+    () => checkSkills([], { skills: ['chef-add-recipe'] }),
+    () => checkScripts([], { required: ['scripts/a.mjs'] }),
+    () => checkResponse('no', [{ path: '$.content', includes: 'yes' }]),
+    () => checkFiles(root, [{ path: 'missing.md' }]),
+    () => behaviorCheck('git-state', () => assert.fail('dirty')),
+    () => behaviorCheck('post-run', () => assert.fail('wrong output')),
+  ];
+  assert.deepEqual(
+    failures.map((fail) => {
+      try {
+        fail();
+      } catch (error) {
+        return error.check;
+      }
+      return null;
+    }),
+    ['skills', 'scripts', 'response', 'files', 'git-state', 'post-run'],
+  );
+});
+
+const passed = (row, rep, extra = {}) => ({ row, rep, outcome: 'pass', model: 'm1', cost_usd: 0, ...extra });
+const failed = (row, rep, check, message = 'failed check') => ({ row, rep, outcome: 'failed', model: 'm1', cost_usd: 0, failure: { check, message } });
+const invalid = (row, rep, kind, message = 'invalid execution') => ({ row, rep, outcome: 'invalid', model: 'm1', cost_usd: 0, invalid: { kind, message } });
+
+test('aggregate reports passing, broken and flaky rows from valid reps', () => {
   const result = aggregate({
     meta: { commit: 'abc', plugin_version: '0.1.0', date: '2026-01-19' },
     reps: 3,
-    rows: [{ id: 'a', flow: 'core' }, { id: 'b', flow: 'should-not-act' }],
+    rows: [{ id: 'passing', flow: 'core' }, { id: 'broken', flow: 'core' }, { id: 'flaky', flow: 'should-not-act' }],
     runs: [
-      { row: 'a', rep: 1, pass: true, model: 'm1', cost_usd: 1 },
-      { row: 'a', rep: 2, pass: true, model: 'm1', cost_usd: 1 },
-      { row: 'a', rep: 3, pass: true, model: 'm1', cost_usd: 1 },
-      { row: 'b', rep: 1, pass: true, model: 'm1', cost_usd: 0.5 },
-      { row: 'b', rep: 2, pass: false, model: 'm1', error: 'boom', cost_usd: 0.5 },
-      { row: 'b', rep: 3, pass: true, model: 'm1', cost_usd: 0.5 },
+      passed('passing', 1, { cost_usd: 1 }),
+      passed('passing', 2, { cost_usd: 1 }),
+      passed('passing', 3, { cost_usd: 1 }),
+      failed('broken', 1, 'response'),
+      failed('broken', 2, 'response'),
+      failed('broken', 3, 'response'),
+      passed('flaky', 1, { cost_usd: 0.5 }),
+      failed('flaky', 2, 'skills'),
+      passed('flaky', 3, { cost_usd: 0.5 }),
     ],
   });
   assert.equal(result.passed, false);
   assert.deepEqual(result.models, ['m1']);
-  assert.equal(result.cost_usd, 4.5);
+  assert.equal(result.cost_usd, 4);
   assert.deepEqual(
-    result.rows.map(({ id, passes, pass }) => ({ id, passes, pass })),
+    result.rows.map(({ id, classification, behavior, passes, pass_rate, valid_reps, invalid_reps, flaky, pass }) => ({
+      id,
+      classification,
+      behavior,
+      passes,
+      pass_rate,
+      valid_reps,
+      invalid_reps,
+      flaky,
+      pass,
+    })),
     [
-      { id: 'a', passes: '3/3', pass: true },
-      { id: 'b', passes: '2/3', pass: false },
+      { id: 'passing', classification: 'passing', behavior: 'passing', passes: '3/3', pass_rate: 1, valid_reps: 3, invalid_reps: 0, flaky: false, pass: true },
+      { id: 'broken', classification: 'broken', behavior: 'broken', passes: '0/3', pass_rate: 0, valid_reps: 3, invalid_reps: 0, flaky: false, pass: false },
+      { id: 'flaky', classification: 'flaky', behavior: 'flaky', passes: '2/3', pass_rate: 2 / 3, valid_reps: 3, invalid_reps: 0, flaky: true, pass: false },
     ],
   );
-  assert.deepEqual(result.rows[1].failures, [{ rep: 2, error: 'boom' }]);
+  assert.deepEqual(result.rows[2].failures, [{ rep: 2, check: 'skills', message: 'failed check' }]);
+  assert.deepEqual(result.rows[2].runs[0], { rep: 1, outcome: 'pass', skills: [] });
+  assert.deepEqual(result.rows[2].runs[1], { rep: 2, outcome: 'failed', skills: [], failure: { check: 'skills', message: 'failed check' } });
   assert.equal(result.commit, 'abc');
 });
 
-test('aggregate passes a fully green run', () => {
-  const result = aggregate({ meta: {}, reps: 1, rows: [{ id: 'a', flow: 'core' }], runs: [{ row: 'a', rep: 1, pass: true, model: 'm1', cost_usd: 0 }] });
-  assert.equal(result.passed, true);
+test('aggregate excludes invalid reps from pass rates and reports each invalid cause', () => {
+  const kinds = ['timeout', 'rate_limit', 'process', 'transcript', 'harness'];
+  const result = aggregate({
+    meta: {},
+    reps: 7,
+    rows: [{ id: 'mixed', flow: 'core' }],
+    runs: [passed('mixed', 1), failed('mixed', 2, 'files'), ...kinds.map((kind, index) => invalid('mixed', index + 3, kind, `${kind} detail`))],
+  });
+  const { runs, ...summary } = result.rows[0];
+  assert.deepEqual(summary, {
+    id: 'mixed',
+    flow: 'core',
+    passes: '1/2',
+    pass_rate: 0.5,
+    valid_reps: 2,
+    invalid_reps: 5,
+    behavior: 'flaky',
+    classification: 'invalid',
+    flaky: true,
+    pass: false,
+    failures: [{ rep: 2, check: 'files', message: 'failed check' }],
+    invalid: kinds.map((kind, index) => ({ rep: index + 3, kind, message: `${kind} detail` })),
+  });
+  assert.equal(runs.length, 7);
+  assert.equal(result.invalid, true);
 });
 
-test('a known_failure row passes the suite while it still fails a rep, and fails it once every rep passes', () => {
-  const run = (row, ...passes) => passes.map((pass, i) => ({ row, rep: i + 1, pass, model: 'm1', cost_usd: 0, ...(!pass && { error: 'still broken' }) }));
+test('missing rep records make the row invalid instead of silently reducing the gate', () => {
+  const result = aggregate({ meta: {}, reps: 3, rows: [{ id: 'incomplete', flow: 'core' }], runs: [passed('incomplete', 1)] });
+  assert.equal(result.passed, false);
+  assert.equal(result.invalid, true);
+  assert.equal(result.rows[0].classification, 'invalid');
+  assert.equal(result.rows[0].valid_reps, 1);
+  assert.deepEqual(result.rows[0].invalid, [
+    { rep: 2, kind: 'harness', message: 'rep produced no result' },
+    { rep: 3, kind: 'harness', message: 'rep produced no result' },
+  ]);
+});
+
+test('a known failure is reproduced only by its expected behavioral check', () => {
   const result = aggregate({
     meta: {},
     reps: 2,
-    rows: [{ id: 'broken', flow: 'core', known_failure: 'case-1' }, { id: 'fixed', flow: 'core', known_failure: 'case-2' }],
-    runs: [...run('broken', true, false), ...run('fixed', true, true)],
+    rows: [
+      { id: 'expected', flow: 'core', known_failure: 'case-1', expect_failure: 'response' },
+      { id: 'unexpected', flow: 'core', known_failure: 'case-2', expect_failure: 'response' },
+      { id: 'fixed', flow: 'core', known_failure: 'case-3', expect_failure: 'response' },
+      { id: 'invalid', flow: 'core', known_failure: 'case-4', expect_failure: 'response' },
+    ],
+    runs: [
+      passed('expected', 1),
+      failed('expected', 2, 'response'),
+      failed('unexpected', 1, 'response'),
+      failed('unexpected', 2, 'files'),
+      passed('fixed', 1),
+      passed('fixed', 2),
+      failed('invalid', 1, 'response'),
+      invalid('invalid', 2, 'timeout'),
+    ],
   });
   assert.deepEqual(
-    result.rows.map(({ id, passes, pass, known_failure }) => ({ id, passes, pass, known_failure })),
+    result.rows.map(({ id, pass, known_failure_reproduced }) => ({ id, pass, known_failure_reproduced })),
     [
-      { id: 'broken', passes: '1/2', pass: true, known_failure: 'case-1' },
-      { id: 'fixed', passes: '2/2', pass: false, known_failure: 'case-2' },
+      { id: 'expected', pass: true, known_failure_reproduced: true },
+      { id: 'unexpected', pass: false, known_failure_reproduced: true },
+      { id: 'fixed', pass: false, known_failure_reproduced: false },
+      { id: 'invalid', pass: false, known_failure_reproduced: true },
     ],
   );
   assert.equal(result.passed, false);
+});
+
+test('exitCodeFor distinguishes behavioral failures from invalid executions', () => {
+  assert.equal(exitCodeFor({ passed: true, invalid: false }), 0);
+  assert.equal(exitCodeFor({ passed: false, invalid: false }), 1);
+  assert.equal(exitCodeFor({ passed: false, invalid: true }), 2);
 });
 
 function validResult() {
@@ -118,14 +216,14 @@ function validResult() {
       plugin_version: '1.3.1',
       dataset_sha: `sha256:${'b'.repeat(64)}`,
       fixture_sha: `sha256:${'c'.repeat(64)}`,
-      harness: { name: 'claude', launcherVersion: 1, cliVersion: '2.0.0' },
+      harness: { name: 'claude', launcherVersion: 2, cliVersion: '2.0.0' },
       selected_rows: ['a'],
       rows_selected: 1,
       rows_total: 2,
     },
     reps: 1,
     rows: [{ id: 'a', flow: 'core' }],
-    runs: [{ row: 'a', rep: 1, pass: true, model: 'm1', cost_usd: 0, skills: ['chef-a'] }],
+    runs: [{ row: 'a', rep: 1, outcome: 'pass', model: 'm1', cost_usd: 0, skills: ['chef-a'] }],
   });
 }
 
@@ -136,9 +234,8 @@ test('agentic result schema accepts a complete result and rejects missing proven
   assert(validateResult(result).some((error) => error.includes('fixture_sha')));
 });
 
-test('aggregate retains skills and errors for every rep', () => {
-  const result = validResult();
-  assert.deepEqual(result.rows[0].runs, [{ rep: 1, pass: true, skills: ['chef-a'], error: null }]);
+test('aggregate retains skills and outcomes for every rep', () => {
+  assert.deepEqual(validResult().rows[0].runs, [{ rep: 1, outcome: 'pass', skills: ['chef-a'] }]);
 });
 
 test('content hashes change with dataset and fixture content', (t) => {

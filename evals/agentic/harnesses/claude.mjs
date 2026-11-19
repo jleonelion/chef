@@ -9,9 +9,10 @@ import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { projectClaude } from '../trajectory.mjs';
+import { collectProcess } from './process.mjs';
 
 export const name = 'claude';
-export const launcherVersion = 1;
+export const launcherVersion = 2;
 export const project = projectClaude;
 
 export function detect() {
@@ -32,18 +33,7 @@ export function prepare({ pluginDir, workdir, env }) {
     args.push('--strict-mcp-config', '--setting-sources', 'project', '--permission-mode', 'dontAsk');
     args.push('--allowedTools', 'Bash Read Write Edit Glob Grep Skill');
     args.push(...(resume ? ['--resume', session] : ['--session-id', session]), ...(model ? ['--model', model] : []));
-    return new Promise((resolve) => {
-      const child = spawn('claude', args, { cwd: workdir, env, stdio: ['ignore', 'pipe', 'pipe'] });
-      let out = '';
-      let err = '';
-      child.stdout.on('data', (chunk) => (out += chunk));
-      child.stderr.on('data', (chunk) => (err += chunk));
-      const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
-      child.on('close', () => {
-        clearTimeout(timer);
-        resolve({ out, err, ext: 'jsonl' });
-      });
-    });
+    return collectProcess(spawn('claude', args, { cwd: workdir, env, stdio: ['ignore', 'pipe', 'pipe'] }), { timeoutMs, ext: 'jsonl' });
   };
   return { skillsDir, env, runTurn };
 }

@@ -53,6 +53,16 @@ test('--from-repro adds the repro link and known_failure marker', () => {
   assert.throws(() => scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'bug2', fromRepro: 'missing' }), /not found/);
 });
 
+test('an agentic repro requires its expected behavioral check', () => {
+  const root = sandboxRoot();
+  fs.writeFileSync(path.join(root, 'evals', 'repro', 'rc-1.json'), '{}');
+  assert.throws(() => scaffold({ root, suite: 'agentic', skill: 'chef-setup', slug: 'missing-check', fromRepro: 'rc-1' }), /--expect-failure/);
+  const { file } = scaffold({ root, suite: 'agentic', skill: 'chef-setup', slug: 'bug', fromRepro: 'rc-1', expectFailure: 'response' });
+  const [row] = loadCases(file);
+  assert.equal(row.expect_failure, 'response');
+  assert.deepEqual(lintRoot(root), []);
+});
+
 test('a topic-split skill needs --topic', () => {
   const root = sandboxRoot();
   scaffold({ root, suite: 'tier1', skill: 'chef-setup', slug: 'a', topic: 'settings' });

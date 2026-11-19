@@ -101,3 +101,10 @@ test('a flip pair is two agentic rows with identical turns', () => {
   assert.match(lint({ agentic: [a, { ...b, turns: ['other'] }] }).join('\n'), /pair setup-flip: rows chef-setup-a and chef-setup-b must have identical turns/);
   assert.ok(lint({ agentic: [agentic({ pair: 'Bad_Id' })] }).length > 0);
 });
+
+test('agentic known failures require one stable behavioral check', () => {
+  assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'response' })] }), []);
+  assert.match(lint({ agentic: [agentic({ known_failure: 'case-one' })] }).join('\n'), /expect_failure/);
+  assert.match(lint({ agentic: [agentic({ expect_failure: 'response' })] }).join('\n'), /expect_failure/);
+  assert.match(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'unknown' })] }).join('\n'), /expect_failure/);
+});

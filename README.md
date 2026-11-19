@@ -130,7 +130,7 @@ Requires Node 20+ and Bun.
 |---|---|
 | `bun run build` | Bundle `src/skills/*` into `plugins/chef/skills/*` (commit the result) |
 | `bun run check` | Skill-format lint, unit tests, eval dataset lint, tier1 evals, reproduction-case lint, migration regression |
-| `bun run evals:new <tier1\|agentic> <skill> <slug> [--topic <t>]` | Scaffold a lint-clean eval row (see `evals/README.md`) |
+| `bun run evals:new <tier1\|agentic> <skill> <slug> [--topic <t>]` | Scaffold a lint-clean eval row; agentic repro rows also take `--expect-failure <check>` (see `evals/README.md`) |
 | `bun run evals:lint` | Lint `evals/tier1/cases/` and `evals/agentic/rows.json` (JSON Schema in `schemas/evals/`, `<skill>-<scenario>` ids, real skill names; see `evals/README.md`) |
 | `bun run repro` | Lint reproduction cases in `evals/repro/` (schema, test links, `known_failure` age, PII scan); see its README |
 | `bun run smoke` | Run tier1 against a copy of the built skills outside the repo |
@@ -140,15 +140,17 @@ Requires Node 20+ and Bun.
 The agentic suite runs `claude -p` with `plugins/chef` loaded against a fresh copy of the fixture
 per rep, so it needs a signed-in Claude Code and spends real usage. It never runs in CI. Each row
 in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with deterministic
-asserts only (skills fired, reply text, files written or not, script output, git state). A row must pass
-every rep; failing rows get fixed or dropped, never retried. The result file
-(`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version and per-row pass
-counts) is attached to the release. `--rows <id,id>`, `--known-failures`, `--reps`, `--model` and `--out` narrow a run.
+asserts only (skills fired, reply text, files written or not, script output, git state). The runner
+does not retry. It separates behavioral failures from invalid executions such as timeouts, rate
+limits, process failures and unusable transcripts. The result file
+(`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version, pass rates,
+classifications and invalid-rep details) is attached to the release. `--rows <id,id>`,
+`--known-failures`, `--reps`, `--model` and `--out` narrow a run.
 
 Checks never read a raw transcript. A runtime's projector turns each turn into a Trajectory
-(`{response, skills, toolCalls, scriptRuns, error}`, documented in `evals/agentic/trajectory.mjs`;
-provisional until a second runtime exists). A transcript with an unparseable line or no `result`
-event gets an `error`, so the rep fails instead of reading as an empty reply. A row may add
+(`{response, skills, toolCalls, scriptRuns, error}`, documented in `evals/agentic/trajectory.mjs`).
+A transcript with an unparseable line or no result event gets a structured invalid-execution
+error, so it cannot count as a behavioral failure. A row may add
 `scripts: {required, forbidden, max}` (skill-relative paths such as `scripts/meal-logging.mjs`; `max`
 caps calls per path), checked over all turns of a rep; the should-not-act rows list their mutating
 scripts under `forbidden`. Projector tests use trimmed recordings in `evals/agentic/testdata/`
