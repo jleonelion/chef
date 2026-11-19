@@ -50,6 +50,19 @@ export function checkScripts(scriptRuns, { required = [], forbidden = [], max = 
   });
 }
 
+export function checkTools(toolCalls, { forbidden = [] } = {}) {
+  return behaviorCheck('tools', () => {
+    const called = new Set(toolCalls.map(({ name }) => name));
+    for (const tool of forbidden) assert(!called.has(tool), `${tool} was called`);
+  });
+}
+
+export function checkTrajectory({ skills = [], scriptRuns = [], toolCalls = [] }, row) {
+  checkSkills(skills, row);
+  checkScripts(scriptRuns, row.scripts);
+  checkTools(toolCalls, row.tools);
+}
+
 export function checkResponse(response, assertions = []) {
   return behaviorCheck('response', () => {
     for (const assertion of assertions) assertCase({ content: response }, assertion);

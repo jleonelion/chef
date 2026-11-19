@@ -11,7 +11,7 @@ import { parseArgs } from 'node:util';
 import { loadCases, repoRoot } from './lib/load-cases.mjs';
 
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const AGENTIC_CHECKS = ['response', 'skills', 'scripts', 'files', 'git-state', 'post-run'];
+const AGENTIC_CHECKS = ['response', 'skills', 'scripts', 'tools', 'files', 'git-state', 'post-run'];
 
 const skeletons = {
   tier1: (id, skill) => ({

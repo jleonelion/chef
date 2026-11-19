@@ -95,7 +95,7 @@
   },
   "$defs": {
     "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
-    "check": { "enum": ["response", "skills", "scripts", "files", "git-state", "post-run"] },
+    "check": { "enum": ["response", "skills", "scripts", "tools", "files", "git-state", "post-run"] },
     "failureCause": {
       "type": "object",
       "additionalProperties": false,

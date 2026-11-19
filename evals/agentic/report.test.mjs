@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { aggregate, behaviorCheck, checkFiles, checkResponse, exitCodeFor, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, checkTools, exitCodeFor, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -22,6 +22,13 @@ test('checkScripts enforces required, forbidden and max script runs', () => {
   assert.throws(() => checkScripts(runs, { max: { 'scripts/a.mjs': 1 } }), /ran 2 times, max 1/);
   assertScriptPaths({ required: ['scripts/a.mjs'], max: { 'scripts/b.mjs': 1 } });
   assert.throws(() => assertScriptPaths({ forbidden: ['a.mjs'] }), /skill-relative path/);
+});
+
+test('checkTools forbids named Trajectory tool calls', () => {
+  const calls = [{ name: 'Read', path: '/tmp/list.md' }, { name: 'gmail.send' }];
+  checkTools(calls, { forbidden: ['Write'] });
+  checkTools([], undefined);
+  assert.throws(() => checkTools(calls, { forbidden: ['gmail.send'] }), /gmail\.send was called/);
 });
 
 test('checkResponse applies content assertions to the final reply', () => {
@@ -63,6 +70,7 @@ test('behavioral checks throw stable check identifiers', (t) => {
   const failures = [
     () => checkSkills([], { skills: ['chef-add-recipe'] }),
     () => checkScripts([], { required: ['scripts/a.mjs'] }),
+    () => checkTools([{ name: 'Write' }], { forbidden: ['Write'] }),
     () => checkResponse('no', [{ path: '$.content', includes: 'yes' }]),
     () => checkFiles(root, [{ path: 'missing.md' }]),
     () => behaviorCheck('git-state', () => assert.fail('dirty')),
@@ -77,7 +85,7 @@ test('behavioral checks throw stable check identifiers', (t) => {
       }
       return null;
     }),
-    ['skills', 'scripts', 'response', 'files', 'git-state', 'post-run'],
+    ['skills', 'scripts', 'tools', 'response', 'files', 'git-state', 'post-run'],
   );
 });
 
@@ -270,6 +278,15 @@ test('agentic result schema rejects behavioral failures on a passing rep', () =>
   const result = validResult();
   result.rows[0].runs[0].failures = [{ check: 'files', message: 'unexpected file' }];
   assert(validateResult(result).some((error) => error.includes('must NOT be valid')));
+});
+
+test('agentic result schema accepts tools as a behavioral failure check', () => {
+  const result = validResult();
+  result.passed = false;
+  result.rows[0].pass = false;
+  result.rows[0].failures = [{ rep: 1, check: 'tools', message: 'gmail.send was called' }];
+  result.rows[0].runs[0] = { rep: 1, outcome: 'failed', skills: ['chef-a'], failure: { check: 'tools', message: 'gmail.send was called' } };
+  assert.deepEqual(validateResult(result), []);
 });
 
 test('aggregate retains skills and outcomes for every rep', () => {

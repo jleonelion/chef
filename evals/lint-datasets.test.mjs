@@ -45,6 +45,12 @@ test('agentic scripts accepts skill-relative paths only', () => {
   assert.match(lint({ agentic: [agentic({ scripts: { forbiden: [] } })] }).join('\n'), /forbiden/);
 });
 
+test('agentic tools accepts forbidden tool names only', () => {
+  assert.deepEqual(lint({ agentic: [agentic({ tools: { forbidden: ['gmail.send'] } })] }), []);
+  assert.match(lint({ agentic: [agentic({ tools: { forbiden: ['gmail.send'] } })] }).join('\n'), /forbiden/);
+  assert.ok(lint({ agentic: [agentic({ tools: { forbidden: [''] } })] }).length > 0);
+});
+
 test('duplicate ids fail', () => {
   assert.match(lint({ tier1: [tier1(), tier1()] }).join('\n'), /duplicate id/);
 });
@@ -104,6 +110,7 @@ test('a flip pair is two agentic rows with identical turns', () => {
 
 test('agentic known failures require one stable behavioral check', () => {
   assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'response' })] }), []);
+  assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'tools' })] }), []);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ expect_failure: 'response' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'unknown' })] }).join('\n'), /expect_failure/);

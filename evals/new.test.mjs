@@ -57,9 +57,9 @@ test('an agentic repro requires its expected behavioral check', () => {
   const root = sandboxRoot();
   fs.writeFileSync(path.join(root, 'evals', 'repro', 'rc-1.json'), '{}');
   assert.throws(() => scaffold({ root, suite: 'agentic', skill: 'chef-setup', slug: 'missing-check', fromRepro: 'rc-1' }), /--expect-failure/);
-  const { file } = scaffold({ root, suite: 'agentic', skill: 'chef-setup', slug: 'bug', fromRepro: 'rc-1', expectFailure: 'response' });
+  const { file } = scaffold({ root, suite: 'agentic', skill: 'chef-setup', slug: 'bug', fromRepro: 'rc-1', expectFailure: 'tools' });
   const [row] = loadCases(file);
-  assert.equal(row.expect_failure, 'response');
+  assert.equal(row.expect_failure, 'tools');
   assert.deepEqual(lintRoot(root), []);
 });
 

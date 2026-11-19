@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { errorOutcome, turnInvalid } from './invalid.mjs';
-import { aggregate, checkResponse, checkSkills } from './report.mjs';
+import { aggregate, checkResponse, checkSkills, checkTrajectory } from './report.mjs';
 import { projectClaude, projectCodex, projectCopilot } from './trajectory.mjs';
 
 const stream = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
@@ -70,5 +70,19 @@ test('behavior from every Projector reproduces only the expected known-failure c
     assert.equal(result.rows[1].known_failure_reproduced, false, `Projector ${index + 1}`);
     assert.equal(result.rows[2].pass, false, `Projector ${index + 1}`);
     assert.equal(result.rows[2].known_failure_reproduced, true, `Projector ${index + 1}`);
+  }
+});
+
+test('forbidden tool calls from every Projector are behavior failures', () => {
+  const trajectories = [
+    projectClaude(stream({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'gmail.send', input: {} }] } }, { type: 'result', is_error: false, result: 'sent' })),
+    projectCodex(stream({ type: 'item.completed', item: { type: 'command_execution', command: 'send-mail' } }, { type: 'turn.completed' })),
+    projectCopilot(stream({ type: 'assistant.message', data: { toolRequests: [{ name: 'gmail.send', arguments: {} }] } }, { type: 'result', exitCode: 0 })),
+  ];
+  for (const trajectory of trajectories) {
+    assert.throws(
+      () => checkTrajectory(trajectory, { tools: { forbidden: [trajectory.toolCalls[0].name] } }),
+      (error) => error.check === 'tools',
+    );
   }
 });

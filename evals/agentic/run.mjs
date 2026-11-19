@@ -7,7 +7,8 @@
 //   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts, each a string or {turnFile: evals/agentic/inputs/...};
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
 //   scripts ({required, forbidden, max}: skill-relative paths like scripts/<name>, max is a per-path
-//   call cap, checked over all turns of a rep), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
+//   call cap, checked over all turns of a rep), tools ({forbidden}: exact Trajectory tool names,
+//   checked over all turns), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root} and {tmp}; rows must not depend on the wall-clock date (the lint rejects {today}).
 //   repro / known_failure / expect_failure (see evals/repro/README.md): a known_failure row passes
 //   only when a valid rep fails the named behavioral check. --known-failures runs only marked rows.
@@ -20,7 +21,7 @@ import { parseArgs } from 'node:util';
 import { readInput } from '../lib/load-cases.mjs';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, behaviorCheck, exitCodeFor, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, exitCodeFor, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills, checkTools, recordBehaviorFailure } from './report.mjs';
 import { loadHarness } from './harnesses/index.mjs';
 import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
@@ -49,7 +50,7 @@ function script(rep, step) {
 
 async function runRep(row, number, { harness, model, logDir }) {
   let rep;
-  const run = { row: row.id, rep: number, outcome: 'invalid', cost_usd: 0, skills: [], scriptRuns: [] };
+  const run = { row: row.id, rep: number, outcome: 'invalid', cost_usd: 0, skills: [], scriptRuns: [], toolCalls: [] };
   const failures = [];
   try {
     rep = prepare(row, harness);
@@ -65,6 +66,7 @@ async function runRep(row, number, { harness, model, logDir }) {
       Object.assign(run, { model: run.model ?? turn.model ?? model ?? 'harness default', cost_usd: run.cost_usd + (turn.cost_usd ?? 0) });
       run.skills.push(...turn.skills);
       run.scriptRuns.push(...turn.scriptRuns);
+      run.toolCalls.push(...turn.toolCalls);
       const executionError = turnInvalid(launched, turn.error);
       if (executionError) {
         const cause = { ...executionError, message: `turn ${index + 1}: ${executionError.message} (see ${row.id}-${number}-${index + 1}.${launched.ext})` };
@@ -74,6 +76,7 @@ async function runRep(row, number, { harness, model, logDir }) {
     }
     recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
     recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
+    recordBehaviorFailure(failures, () => checkTools(run.toolCalls, row.tools));
     recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files));
     recordBehaviorFailure(failures, () =>
       behaviorCheck('git-state', () =>
