@@ -17,6 +17,15 @@ export function behaviorCheck(check, evaluate) {
   }
 }
 
+export function recordBehaviorFailure(failures, evaluate) {
+  try {
+    evaluate();
+  } catch (error) {
+    if (!error?.check) throw error;
+    failures.push({ check: error.check, message: error.message });
+  }
+}
+
 export function checkSkills(fired, { skills = [], forbidSkills = [] }) {
   return behaviorCheck('skills', () => {
     for (const skill of skills) assert(fired.includes(skill), `${skill} did not fire (fired: ${fired.join(', ') || 'none'})`);
@@ -104,8 +113,9 @@ export function aggregate({ meta, reps, rows, runs }) {
     const failures = valid.filter((run) => run.outcome === 'failed');
     const passes = valid.filter((run) => run.outcome === 'pass').length;
     const rowBehavior = behavior(valid.length, passes);
-    const expectedFailures = failures.filter((run) => run.failure.check === row.expect_failure);
-    const unexpectedFailures = failures.filter((run) => run.failure.check !== row.expect_failure);
+    const failureEntries = failures.flatMap((run) => (run.failures ?? [run.failure]).map((failure) => ({ rep: run.rep, ...failure })));
+    const expectedFailures = failureEntries.filter((failure) => failure.check === row.expect_failure);
+    const unexpectedFailures = failureEntries.filter((failure) => failure.check !== row.expect_failure);
     const knownFailureReproduced = expectedFailures.length > 0;
     const pass = row.known_failure
       ? invalid.length === 0 && knownFailureReproduced && unexpectedFailures.length === 0
@@ -126,13 +136,14 @@ export function aggregate({ meta, reps, rows, runs }) {
         expect_failure: row.expect_failure,
         known_failure_reproduced: knownFailureReproduced,
       }),
-      failures: failures.map(({ rep, failure }) => ({ rep, ...failure })),
+      failures: failureEntries,
       invalid: invalid.map(({ rep, invalid: cause }) => ({ rep, ...cause })),
-      runs: rowRuns.map(({ rep, outcome, skills = [], failure, invalid: cause }) => ({
+      runs: rowRuns.map(({ rep, outcome, skills = [], failure, failures: runFailures, invalid: cause }) => ({
         rep,
         outcome,
         skills: [...new Set(skills)].sort(),
         ...(failure && { failure }),
+        ...(runFailures && { failures: runFailures }),
         ...(cause && { invalid: cause }),
       })),
     };

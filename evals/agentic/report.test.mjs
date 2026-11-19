@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { aggregate, behaviorCheck, checkFiles, checkResponse, exitCodeFor, assertScriptPaths, checkScripts, checkSkills } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, exitCodeFor, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -81,8 +81,20 @@ test('behavioral checks throw stable check identifiers', (t) => {
   );
 });
 
+test('recordBehaviorFailure collects behavioral failures and rethrows harness errors', () => {
+  const failures = [];
+  recordBehaviorFailure(failures, () => behaviorCheck('response', () => assert.fail('wrong response')));
+  recordBehaviorFailure(failures, () => behaviorCheck('files', () => assert.fail('missing file')));
+  assert.deepEqual(failures, [
+    { check: 'response', message: 'wrong response' },
+    { check: 'files', message: 'missing file' },
+  ]);
+  assert.throws(() => recordBehaviorFailure(failures, () => assert.fail('harness failed')), /harness failed/);
+});
+
 const passed = (row, rep, extra = {}) => ({ row, rep, outcome: 'pass', model: 'm1', cost_usd: 0, ...extra });
 const failed = (row, rep, check, message = 'failed check') => ({ row, rep, outcome: 'failed', model: 'm1', cost_usd: 0, failure: { check, message } });
+const failedMany = (row, rep, failures) => ({ row, rep, outcome: 'failed', model: 'm1', cost_usd: 0, failure: failures[0], failures });
 const invalid = (row, rep, kind, message = 'invalid execution') => ({ row, rep, outcome: 'invalid', model: 'm1', cost_usd: 0, invalid: { kind, message } });
 
 test('aggregate reports passing, broken and flaky rows from valid reps', () => {
@@ -201,6 +213,26 @@ test('a known failure is reproduced only by its expected behavioral check', () =
   assert.equal(result.passed, false);
 });
 
+test('an expected and unrelated failure in the same rep does not reproduce a known failure', () => {
+  const result = aggregate({
+    meta: {},
+    reps: 1,
+    rows: [{ id: 'multiple', flow: 'core', known_failure: 'case-1', expect_failure: 'response' }],
+    runs: [
+      failedMany('multiple', 1, [
+        { check: 'response', message: 'expected failure' },
+        { check: 'files', message: 'unexpected failure' },
+      ]),
+    ],
+  });
+  assert.equal(result.rows[0].known_failure_reproduced, true);
+  assert.equal(result.rows[0].pass, false);
+  assert.deepEqual(result.rows[0].failures, [
+    { rep: 1, check: 'response', message: 'expected failure' },
+    { rep: 1, check: 'files', message: 'unexpected failure' },
+  ]);
+});
+
 test('exitCodeFor distinguishes behavioral failures from invalid executions', () => {
   assert.equal(exitCodeFor({ passed: true, invalid: false }), 0);
   assert.equal(exitCodeFor({ passed: false, invalid: false }), 1);
@@ -232,6 +264,12 @@ test('agentic result schema accepts a complete result and rejects missing proven
   assert.deepEqual(validateResult(result), []);
   delete result.fixture_sha;
   assert(validateResult(result).some((error) => error.includes('fixture_sha')));
+});
+
+test('agentic result schema rejects behavioral failures on a passing rep', () => {
+  const result = validResult();
+  result.rows[0].runs[0].failures = [{ check: 'files', message: 'unexpected file' }];
+  assert(validateResult(result).some((error) => error.includes('must NOT be valid')));
 });
 
 test('aggregate retains skills and outcomes for every rep', () => {

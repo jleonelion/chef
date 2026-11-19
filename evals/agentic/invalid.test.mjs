@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { harnessInvalid, launchInvalid } from './invalid.mjs';
+import { harnessInvalid, invalid, launchInvalid, turnInvalid } from './invalid.mjs';
 
 test('launchInvalid distinguishes timeout, rate limit and process failures', () => {
   assert.deepEqual(launchInvalid({ timedOut: true, exitCode: null, signal: 'SIGTERM', stderr: '' }), {
@@ -28,4 +28,9 @@ test('harnessInvalid retains setup and runner failures as harness errors', () =>
     kind: 'harness',
     message: 'could not prepare sandbox',
   });
+});
+
+test('turnInvalid preserves a process failure over a transcript parsing error', () => {
+  const launch = { timedOut: false, exitCode: 1, signal: null, stderr: '' };
+  assert.equal(turnInvalid(launch, invalid('transcript', 'missing result event')).kind, 'process');
 });

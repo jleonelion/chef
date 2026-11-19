@@ -21,7 +21,9 @@ export function launchInvalid({ timedOut, exitCode, signal, stderr, spawnError }
 }
 
 export function turnInvalid(launch, trajectoryError) {
-  return launchInvalid(launch) ?? trajectoryError;
+  const launchError = launchInvalid(launch);
+  if (launchError?.kind === 'process' && trajectoryError?.kind === 'rate_limit') return trajectoryError;
+  return launchError ?? trajectoryError;
 }
 
 export function harnessInvalid(error) {

@@ -70,12 +70,13 @@
                 "outcome": { "enum": ["pass", "failed", "invalid"] },
                 "skills": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
                 "failure": { "$ref": "#/$defs/failureCause" },
+                "failures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/failureCause" } },
                 "invalid": { "$ref": "#/$defs/invalidCause" }
               },
               "allOf": [
                 {
                   "if": { "properties": { "outcome": { "const": "pass" } } },
-                  "then": { "not": { "anyOf": [{ "required": ["failure"] }, { "required": ["invalid"] }] } }
+                  "then": { "not": { "anyOf": [{ "required": ["failure"] }, { "required": ["failures"] }, { "required": ["invalid"] }] } }
                 },
                 {
                   "if": { "properties": { "outcome": { "const": "failed" } } },
@@ -83,7 +84,7 @@
                 },
                 {
                   "if": { "properties": { "outcome": { "const": "invalid" } } },
-                  "then": { "required": ["invalid"], "not": { "required": ["failure"] } }
+                  "then": { "required": ["invalid"], "not": { "anyOf": [{ "required": ["failure"] }, { "required": ["failures"] }] } }
                 }
               ]
             }
