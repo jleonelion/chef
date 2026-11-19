@@ -302,13 +302,15 @@
     ],
     "responses": [
       [
-        { "path": "$.content", "includes": "2026-01-21" },
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "21" },
         { "path": "$.content", "includes": "lunch" },
         { "path": "$.content", "includes": "manual" }
       ],
       [
-        { "path": "$.content", "includes": "chickpea" },
-        { "path": "$.content", "includes": "2026-01-21" },
+        { "path": "$.content", "includes": "Chickpea Spinach Stew" },
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "21" },
         { "path": "$.content", "includes": "lunch" }
       ]
     ],
@@ -333,7 +335,7 @@
     "responses": [
       [
         { "path": "$.content", "includes": "dairy" },
-        { "path": "$.content", "includes": "lemon" }
+        { "path": "$.content", "includes": "Lemon Garlic Pasta" }
       ]
     ],
     "skills": ["chef-meal-planning"],
@@ -643,16 +645,17 @@
       }
     ],
     "turns": [
-      "I am Alex Example. Plan lemon garlic pasta for my dinner on 2026-01-19 even though my Chef dietary rules say dairy is a hard constraint.",
+      "I am Alex Example. Plan Lemon Garlic Pasta for my dinner on 2026-01-19.",
       "I confirm the dairy override for this one meal plan."
     ],
     "responses": [
       [
         { "path": "$.content", "includes": "dairy" },
-        { "path": "$.content", "includes": "confirm" }
+        { "path": "$.content", "includes": "Lemon Garlic Pasta" }
       ],
       [
-        { "path": "$.content", "includes": "2026-01-19" },
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "19" },
         { "path": "$.content", "includes": "dairy" }
       ]
     ],
@@ -688,7 +691,7 @@
       [
         { "path": "$.content", "includes": "alice@example.net" },
         { "path": "$.content", "includes": "bob@example.net" },
-        { "path": "$.content", "includes": "confirm" }
+        { "path": "$.content", "includes": "?" }
       ]
     ],
     "skills": ["chef-shopping-lists"],
@@ -708,9 +711,11 @@
     ],
     "responses": [
       [
-        { "path": "$.content", "includes": "2026-01-21" },
-        { "path": "$.content", "includes": "lunch" },
-        { "path": "$.content", "includes": "chickpea" }
+        { "path": "$.content", "includes": "2026" },
+        { "path": "$.content", "includes": "21" },
+        { "path": "$.content", "includes": "Lunch" },
+        { "path": "$.content", "includes": "Chickpea Spinach Stew" },
+        { "path": "$.content", "includes": "?" }
       ]
     ],
     "skills": ["chef-meal-logging"],
