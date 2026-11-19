@@ -582,7 +582,7 @@
     "git": {"clean": true}
   },
   {
-    "id": "chef-food-inventory-untrusted-sender-refused-agentic",
+    "id": "chef-food-inventory-untrusted-sender-refused",
     "flow": "should-not-act",
     "description": "A receipt from an untrusted sender is refused after the sender check; Chef does not ingest it and names the sender in the reply.",
     "seed": [
@@ -592,7 +592,7 @@
       },
       {
         "path": "../inbox/untrusted-receipt.txt",
-        "seedFile": "evals/agentic/inputs/chef-food-inventory-untrusted-sender-refused-agentic/receipt.txt"
+        "seedFile": "evals/agentic/inputs/chef-food-inventory-untrusted-sender-refused/receipt.txt"
       }
     ],
     "turns": [
@@ -605,7 +605,11 @@
       ]
     ],
     "skills": ["chef-food-inventory"],
-    "scripts": { "required": ["scripts/inventory.mjs"], "max": { "scripts/inventory.mjs": 1 } },
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/inventory.mjs", "args": ["check-sender"] }],
+      "forbiddenCalls": [{ "script": "scripts/inventory.mjs", "args": ["add-receipt"] }],
+      "max": { "scripts/inventory.mjs": 1 }
+    },
     "files": [
       { "path": "data/food-inventory/purchases", "count": 1 },
       { "path": "knowledge/raw/receipts", "count": 1 }
@@ -613,7 +617,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
-    "id": "chef-food-inventory-receipt-intake-off-refused-agentic",
+    "id": "chef-food-inventory-receipt-intake-off-refused",
     "flow": "should-not-act",
     "description": "With receipt intake off, Chef refuses a receipt before ingestion and names the sender and disabled setting.",
     "turns": [
@@ -626,7 +630,11 @@
       ]
     ],
     "skills": ["chef-food-inventory"],
-    "scripts": { "required": ["scripts/inventory.mjs"], "max": { "scripts/inventory.mjs": 1 } },
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/inventory.mjs", "args": ["check-sender"] }],
+      "forbiddenCalls": [{ "script": "scripts/inventory.mjs", "args": ["add-receipt"] }],
+      "max": { "scripts/inventory.mjs": 1 }
+    },
     "files": [
       { "path": "data/food-inventory/purchases", "count": 1 },
       { "path": "knowledge/raw/receipts", "count": 1 }
@@ -651,7 +659,8 @@
     "responses": [
       [
         { "path": "$.content", "includes": "dairy" },
-        { "path": "$.content", "includes": "Lemon Garlic Pasta" }
+        { "path": "$.content", "includes": "Lemon Garlic Pasta" },
+        { "path": "$.content", "includes": "?" }
       ],
       [
         { "path": "$.content", "includes": "2026" },
@@ -661,6 +670,10 @@
     ],
     "skills": ["chef-meal-planning"],
     "scripts": { "required": ["scripts/meal-planning.mjs"] },
+    "turnScripts": [
+      { "forbidden": ["scripts/meal-planning.mjs"] },
+      { "required": ["scripts/meal-planning.mjs"] }
+    ],
     "files": [
       {
         "path": "knowledge/wiki/meal-plans/2026-01-19.md",
@@ -668,7 +681,12 @@
       },
       {
         "path": "knowledge/wiki/household/dietary-ruleset.md",
-        "assertions": [{ "path": "$.content", "includes": "\"hard_constraints\":[\"dairy\"]" }]
+        "assertions": [
+          {
+            "path": "$.content",
+            "equals": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
+          }
+        ]
       }
     ],
     "git": { "clean": true }
@@ -720,6 +738,10 @@
     ],
     "skills": ["chef-meal-logging"],
     "scripts": { "required": ["scripts/meal-logging.mjs"] },
+    "turnScripts": [
+      { "forbidden": ["scripts/meal-logging.mjs"] },
+      { "required": ["scripts/meal-logging.mjs"] }
+    ],
     "files": [
       {
         "path": "data/meal-log/log.json",

@@ -41,8 +41,25 @@ test('typo\'d row key fails', () => {
 
 test('agentic scripts accepts skill-relative paths only', () => {
   assert.deepEqual(lint({ agentic: [agentic({ scripts: { required: ['scripts/setup.mjs'], forbidden: ['scripts/x.mjs'], max: { 'scripts/setup.mjs': 1 } } })] }), []);
+  assert.deepEqual(
+    lint({
+      agentic: [
+        agentic({
+          turns: ['ask', 'yes'],
+          scripts: {
+            requiredCalls: [{ script: 'scripts/setup.mjs', args: ['set'] }],
+            forbiddenCalls: [{ script: 'scripts/setup.mjs', args: ['rewrite'] }],
+          },
+          turnScripts: [{ forbidden: ['scripts/setup.mjs'] }, { required: ['scripts/setup.mjs'] }],
+        }),
+      ],
+    }),
+    [],
+  );
   assert.ok(lint({ agentic: [agentic({ scripts: { forbidden: ['setup.mjs'] } })] }).length > 0);
   assert.match(lint({ agentic: [agentic({ scripts: { forbiden: [] } })] }).join('\n'), /forbiden/);
+  assert.ok(lint({ agentic: [agentic({ scripts: { forbiddenCalls: [{ script: 'setup.mjs', args: ['set'] }] } })] }).length > 0);
+  assert.match(lint({ agentic: [agentic({ turns: ['ask', 'yes'], turnScripts: [{}, {}, {}] })] }).join('\n'), /turnScripts/);
 });
 
 test('agentic tools accepts forbidden tool names only', () => {

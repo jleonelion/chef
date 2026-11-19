@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { errorOutcome, turnInvalid } from './invalid.mjs';
-import { aggregate, checkResponse, checkSkills, checkTrajectory } from './report.mjs';
+import { aggregate, checkResponse, checkSkills, checkTools } from './report.mjs';
 import { projectClaude, projectCodex, projectCopilot } from './trajectory.mjs';
 
 const stream = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
@@ -81,7 +81,7 @@ test('forbidden tool calls from every Projector are behavior failures', () => {
   ];
   for (const trajectory of trajectories) {
     assert.throws(
-      () => checkTrajectory(trajectory, { tools: { forbidden: [trajectory.toolCalls[0].name] } }),
+      () => checkTools(trajectory.toolCalls, { forbidden: [trajectory.toolCalls[0].name] }),
       (error) => error.check === 'tools',
     );
   }

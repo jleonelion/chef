@@ -24,6 +24,20 @@ test('checkScripts enforces required, forbidden and max script runs', () => {
   assert.throws(() => assertScriptPaths({ forbidden: ['a.mjs'] }), /skill-relative path/);
 });
 
+test('checkScripts matches required and forbidden call argument prefixes', () => {
+  const runs = [
+    { script: 'scripts/inventory.mjs', args: ['check-sender', '--from', 'orders@example.com'] },
+    { script: 'scripts/other.mjs', args: ['read'] },
+  ];
+  const checkSender = { script: 'scripts/inventory.mjs', args: ['check-sender'] };
+  const addReceipt = { script: 'scripts/inventory.mjs', args: ['add-receipt'] };
+  checkScripts(runs, { requiredCalls: [checkSender], forbiddenCalls: [addReceipt] });
+  assert.throws(() => checkScripts(runs, { requiredCalls: [addReceipt] }), /scripts\/inventory\.mjs add-receipt did not run/);
+  assert.throws(() => checkScripts(runs, { forbiddenCalls: [checkSender] }), /scripts\/inventory\.mjs check-sender ran/);
+  assertScriptPaths({ requiredCalls: [checkSender], forbiddenCalls: [addReceipt] });
+  assert.throws(() => assertScriptPaths({ forbiddenCalls: [{ script: 'inventory.mjs', args: ['add-receipt'] }] }), /skill-relative path/);
+});
+
 test('checkTools forbids named Trajectory tool calls', () => {
   const calls = [{ name: 'Read', path: '/tmp/list.md' }, { name: 'gmail.send' }];
   checkTools(calls, { forbidden: ['Write'] });

@@ -29,6 +29,7 @@ Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes
 duplicate ids, unknown skill names and badly shaped ids all fail it.
 
 Agentic rows can forbid exact Trajectory tool names with `tools: {forbidden: [...]}`. The check covers every turn in a rep and reports failures under the stable `tools` check id.
+Script checks can match argument prefixes with `requiredCalls` and `forbiddenCalls`, for scripts that expose both read-only and mutating commands. Use `turnScripts` with one script-check object per turn when consent timing matters; `scripts` still checks the whole rep.
 
 ## Tier1 is the cross-harness baseline
 
