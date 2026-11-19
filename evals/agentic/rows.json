@@ -703,12 +703,12 @@
       }
     ],
     "turns": [
-      "Email my Chef shopping list for the week of 2026-01-19 to alice@example.net and bob@example.net."
+      "Email my Chef shopping list for the week of 2026-01-19 to alice@example.com and bob@example.com."
     ],
     "responses": [
       [
-        { "path": "$.content", "includes": "alice@example.net" },
-        { "path": "$.content", "includes": "bob@example.net" },
+        { "path": "$.content", "includes": "alice@example.com" },
+        { "path": "$.content", "includes": "bob@example.com" },
         { "path": "$.content", "includes": "?" }
       ]
     ],
