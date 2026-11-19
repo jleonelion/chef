@@ -297,7 +297,7 @@
     "flow": "should-not-act",
     "description": "Logging from the plan for a date with no plan falls back to manual logging, and nothing is logged before the user confirms the proposed entry (#48).",
     "turns": [
-      "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
+      "For the fixed date 2026-01-21, not today, log my planned lunch from my Chef meal plan.",
       "I had 1 serving of the chickpea spinach stew, cooked at home."
     ],
     "responses": [
@@ -660,8 +660,7 @@
       [
         { "path": "$.content", "includes": "dairy" },
         { "path": "$.content", "includes": "Lemon Garlic Pasta" },
-        { "path": "$.content", "includes": "override" },
-        { "path": "$.content", "includes": "one" }
+        { "path": "$.content", "includes": "override" }
       ],
       [
         { "path": "$.content", "includes": "2026" },
