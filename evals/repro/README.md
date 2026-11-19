@@ -25,8 +25,9 @@ fixture differs from `scenario.fixture`.
 
 Mark the row `known_failure: <case_id>` (same value as `repro`). tier1 then reports the row
 without failing CI when one of its checks fails, and fails if it passes, so the fix PR drops the
-marker. A broken row (bad output, unknown parse mode) still fails. An agentic
-`known_failure` row passes the suite while it fails at least one rep. The lint fails a marker
+marker. A broken row (bad output, unknown parse mode) still fails. An agentic row also names
+`expect_failure`: `response`, `skills`, `scripts`, `files`, `git-state` or `post-run`. It passes only
+when a valid rep fails that check, no valid rep fails another check, and no rep is invalid. The lint fails a marker
 more than 60 days after the case's `created_on`. The agentic suite never runs in CI, so
 `RELEASE-CHECKLIST.md` covers agentic repro rows: fixed ones pass 3/3 in the full run, and
 `bun run agentic --known-failures --reps 5` confirms each marked row still fails a rep.

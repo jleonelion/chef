@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jleonelion/chef/schemas/evals/agentic-result.v3.json",
+  "title": "Chef agentic result format 3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["suite", "format", "date", "commit", "commit_dirty", "plugin_version", "dataset_sha", "fixture_sha", "harness", "selected_rows", "rows_selected", "rows_total", "models", "reps", "passed", "invalid", "cost_usd", "rows"],
+  "properties": {
+    "suite": { "const": "chef-agentic" },
+    "format": { "const": 3 },
+    "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$" },
+    "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "commit_dirty": { "type": "boolean" },
+    "plugin_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$" },
+    "dataset_sha": { "$ref": "#/$defs/sha256" },
+    "fixture_sha": { "$ref": "#/$defs/sha256" },
+    "harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "launcherVersion", "cliVersion"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "launcherVersion": { "type": "integer", "minimum": 1 },
+        "cliVersion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "selected_rows": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "rows_selected": { "type": "integer", "minimum": 0 },
+    "rows_total": { "type": "integer", "minimum": 0 },
+    "models": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+    "reps": { "type": "integer", "minimum": 1 },
+    "passed": { "type": "boolean" },
+    "invalid": { "type": "boolean" },
+    "cost_usd": { "type": "number", "minimum": 0 },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "flow", "passes", "pass_rate", "valid_reps", "invalid_reps", "behavior", "classification", "flaky", "pass", "failures", "invalid", "runs"],
+        "dependentRequired": {
+          "known_failure": ["expect_failure", "known_failure_reproduced"],
+          "expect_failure": ["known_failure"],
+          "known_failure_reproduced": ["known_failure"]
+        },
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "flow": { "type": "string", "minLength": 1 },
+          "passes": { "type": "string", "pattern": "^[0-9]+/[0-9]+$" },
+          "pass_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "valid_reps": { "type": "integer", "minimum": 0 },
+          "invalid_reps": { "type": "integer", "minimum": 0 },
+          "behavior": { "enum": ["passing", "broken", "flaky", null] },
+          "classification": { "enum": ["passing", "broken", "flaky", "invalid"] },
+          "flaky": { "type": "boolean" },
+          "pass": { "type": "boolean" },
+          "known_failure": { "type": "string", "minLength": 1 },
+          "expect_failure": { "$ref": "#/$defs/check" },
+          "known_failure_reproduced": { "type": "boolean" },
+          "failures": { "type": "array", "items": { "$ref": "#/$defs/failure" } },
+          "invalid": { "type": "array", "items": { "$ref": "#/$defs/invalid" } },
+          "runs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["rep", "outcome", "skills"],
+              "properties": {
+                "rep": { "type": "integer", "minimum": 1 },
+                "outcome": { "enum": ["pass", "failed", "invalid"] },
+                "skills": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "failure": { "$ref": "#/$defs/failureCause" },
+                "invalid": { "$ref": "#/$defs/invalidCause" }
+              },
+              "allOf": [
+                {
+                  "if": { "properties": { "outcome": { "const": "pass" } } },
+                  "then": { "not": { "anyOf": [{ "required": ["failure"] }, { "required": ["invalid"] }] } }
+                },
+                {
+                  "if": { "properties": { "outcome": { "const": "failed" } } },
+                  "then": { "required": ["failure"], "not": { "required": ["invalid"] } }
+                },
+                {
+                  "if": { "properties": { "outcome": { "const": "invalid" } } },
+                  "then": { "required": ["invalid"], "not": { "required": ["failure"] } }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "sha256": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "check": { "enum": ["response", "skills", "scripts", "files", "git-state", "post-run"] },
+    "failureCause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check", "message"],
+      "properties": { "check": { "$ref": "#/$defs/check" }, "message": { "type": "string", "minLength": 1 } }
+    },
+    "invalidCause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "message"],
+      "properties": {
+        "kind": { "enum": ["timeout", "rate_limit", "process", "transcript", "harness"] },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rep", "check", "message"],
+      "properties": {
+        "rep": { "type": "integer", "minimum": 1 },
+        "check": { "$ref": "#/$defs/check" },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "invalid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rep", "kind", "message"],
+      "properties": {
+        "rep": { "type": "integer", "minimum": 1 },
+        "kind": { "enum": ["timeout", "rate_limit", "process", "transcript", "harness"] },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

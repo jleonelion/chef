@@ -5,9 +5,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { assertCase } from '../tier1/assertions.mjs';
 
+export function behaviorCheck(check, evaluate) {
+  try {
+    return evaluate();
+  } catch (error) {
+    if (error?.check) throw error;
+    const failure = new Error(error instanceof Error ? error.message : String(error), { cause: error });
+    failure.name = 'BehaviorFailure';
+    failure.check = check;
+    throw failure;
+  }
+}
+
 export function checkSkills(fired, { skills = [], forbidSkills = [] }) {
-  for (const skill of skills) assert(fired.includes(skill), `${skill} did not fire (fired: ${fired.join(', ') || 'none'})`);
-  for (const skill of forbidSkills) assert(!fired.includes(skill), `${skill} fired`);
+  return behaviorCheck('skills', () => {
+    for (const skill of skills) assert(fired.includes(skill), `${skill} did not fire (fired: ${fired.join(', ') || 'none'})`);
+    for (const skill of forbidSkills) assert(!fired.includes(skill), `${skill} fired`);
+  });
 }
 
 // scriptRuns: [{script, args}] over every turn of a rep. `required` and `forbidden` list
@@ -17,16 +31,20 @@ export function assertScriptPaths({ required = [], forbidden = [], max = {} } = 
 }
 
 export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {} } = {}) {
-  const counts = new Map();
-  for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
-  const ran = [...counts.keys()].join(', ') || 'none';
-  for (const script of required) assert(counts.has(script), `${script} did not run (ran: ${ran})`);
-  for (const script of forbidden) assert(!counts.has(script), `${script} ran ${counts.get(script)} time(s)`);
-  for (const [script, limit] of Object.entries(max)) assert((counts.get(script) ?? 0) <= limit, `${script} ran ${counts.get(script)} times, max ${limit}`);
+  return behaviorCheck('scripts', () => {
+    const counts = new Map();
+    for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
+    const ran = [...counts.keys()].join(', ') || 'none';
+    for (const script of required) assert(counts.has(script), `${script} did not run (ran: ${ran})`);
+    for (const script of forbidden) assert(!counts.has(script), `${script} ran ${counts.get(script)} time(s)`);
+    for (const [script, limit] of Object.entries(max)) assert((counts.get(script) ?? 0) <= limit, `${script} ran ${counts.get(script)} times, max ${limit}`);
+  });
 }
 
 export function checkResponse(response, assertions = []) {
-  for (const assertion of assertions) assertCase({ content: response }, assertion);
+  return behaviorCheck('response', () => {
+    for (const assertion of assertions) assertCase({ content: response }, assertion);
+  });
 }
 
 function countFiles(abs) {
@@ -37,51 +55,102 @@ function countFiles(abs) {
 // Each check is {path} (must exist), {path, absent: true}, or {path, count: n} (files under a folder);
 // `assertions` run against {content} or, with parse: 'json', the parsed file (see tier1 assertions).
 export function checkFiles(dataRoot, checks) {
-  for (const check of checks ?? []) {
-    const abs = path.join(dataRoot, check.path);
-    if (Object.hasOwn(check, 'count')) {
-      const found = countFiles(abs);
-      assert.equal(found, check.count, `${check.path}: expected ${check.count} files, found ${found}`);
-      continue;
+  return behaviorCheck('files', () => {
+    for (const check of checks ?? []) {
+      const abs = path.join(dataRoot, check.path);
+      if (Object.hasOwn(check, 'count')) {
+        const found = countFiles(abs);
+        assert.equal(found, check.count, `${check.path}: expected ${check.count} files, found ${found}`);
+        continue;
+      }
+      if (check.absent) {
+        assert(!fs.existsSync(abs), `file must not be written: ${check.path}`);
+        continue;
+      }
+      assert(fs.existsSync(abs), `expected file was not written: ${check.path}`);
+      const content = fs.readFileSync(abs, 'utf8');
+      const value = check.parse === 'json' ? JSON.parse(content) : { content };
+      for (const assertion of check.assertions ?? []) assertCase(value, assertion);
     }
-    if (check.absent) {
-      assert(!fs.existsSync(abs), `file must not be written: ${check.path}`);
-      continue;
-    }
-    assert(fs.existsSync(abs), `expected file was not written: ${check.path}`);
-    const content = fs.readFileSync(abs, 'utf8');
-    const value = check.parse === 'json' ? JSON.parse(content) : { content };
-    for (const assertion of check.assertions ?? []) assertCase(value, assertion);
-  }
+  });
 }
 
-// runs: [{row, rep, pass, model, cost_usd, error?}] → the result file attached to a release.
-// A known_failure row passes while it still fails at least one rep (reproduced) and fails once
-// every rep passes, so a fix can't land without dropping its marker.
+function behavior(validRuns, passes) {
+  if (validRuns === 0) return null;
+  if (passes === validRuns) return 'passing';
+  if (passes === 0) return 'broken';
+  return 'flaky';
+}
+
+function completeRuns(rows, reps, runs) {
+  return rows.flatMap((row) =>
+    Array.from({ length: reps }, (_, index) => {
+      const rep = index + 1;
+      const matches = runs.filter((run) => run.row === row.id && run.rep === rep);
+      if (matches.length === 1) return matches[0];
+      const message = matches.length ? `rep produced ${matches.length} results` : 'rep produced no result';
+      return { row: row.id, rep, outcome: 'invalid', cost_usd: 0, skills: [], invalid: { kind: 'harness', message } };
+    }),
+  );
+}
+
+// runs: [{row, rep, outcome, failure?, invalid?, model, cost_usd}] → the release result.
 export function aggregate({ meta, reps, rows, runs }) {
+  const completedRuns = completeRuns(rows, reps, runs);
   const summaries = rows.map((row) => {
-    const mine = runs.filter((run) => run.row === row.id);
-    const passes = mine.filter((run) => run.pass).length;
+    const rowRuns = completedRuns.filter((run) => run.row === row.id);
+    const valid = rowRuns.filter((run) => run.outcome !== 'invalid');
+    const invalid = rowRuns.filter((run) => run.outcome === 'invalid');
+    const failures = valid.filter((run) => run.outcome === 'failed');
+    const passes = valid.filter((run) => run.outcome === 'pass').length;
+    const rowBehavior = behavior(valid.length, passes);
+    const expectedFailures = failures.filter((run) => run.failure.check === row.expect_failure);
+    const unexpectedFailures = failures.filter((run) => run.failure.check !== row.expect_failure);
+    const knownFailureReproduced = expectedFailures.length > 0;
+    const pass = row.known_failure
+      ? invalid.length === 0 && knownFailureReproduced && unexpectedFailures.length === 0
+      : invalid.length === 0 && rowBehavior === 'passing';
     return {
       id: row.id,
       flow: row.flow,
-      passes: `${passes}/${reps}`,
-      pass: row.known_failure ? passes < reps : passes === reps,
-      ...(row.known_failure && { known_failure: row.known_failure }),
-      failures: mine.filter((run) => !run.pass).map(({ rep, error }) => ({ rep, error })),
-      runs: mine
-        .sort((a, b) => a.rep - b.rep)
-        .map((run) => ({ rep: run.rep, pass: run.pass, skills: [...new Set(run.skills ?? [])].sort(), error: run.error ?? null })),
+      passes: `${passes}/${valid.length}`,
+      pass_rate: valid.length ? passes / valid.length : null,
+      valid_reps: valid.length,
+      invalid_reps: invalid.length,
+      behavior: rowBehavior,
+      classification: invalid.length ? 'invalid' : rowBehavior,
+      flaky: rowBehavior === 'flaky',
+      pass,
+      ...(row.known_failure && {
+        known_failure: row.known_failure,
+        expect_failure: row.expect_failure,
+        known_failure_reproduced: knownFailureReproduced,
+      }),
+      failures: failures.map(({ rep, failure }) => ({ rep, ...failure })),
+      invalid: invalid.map(({ rep, invalid: cause }) => ({ rep, ...cause })),
+      runs: rowRuns.map(({ rep, outcome, skills = [], failure, invalid: cause }) => ({
+        rep,
+        outcome,
+        skills: [...new Set(skills)].sort(),
+        ...(failure && { failure }),
+        ...(cause && { invalid: cause }),
+      })),
     };
   });
   return {
     suite: 'chef-agentic',
-    format: 2,
+    format: 3,
     ...meta,
-    models: [...new Set(runs.map((run) => run.model).filter(Boolean))],
+    models: [...new Set(completedRuns.map((run) => run.model).filter(Boolean))],
     reps,
     passed: summaries.every((row) => row.pass),
-    cost_usd: Math.round(runs.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) * 100) / 100,
+    invalid: summaries.some((row) => row.invalid_reps > 0),
+    cost_usd: Math.round(completedRuns.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) * 100) / 100,
     rows: summaries,
   };
+}
+
+export function exitCodeFor(result) {
+  if (result.invalid) return 2;
+  return result.passed ? 0 : 1;
 }

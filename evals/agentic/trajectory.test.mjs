@@ -50,15 +50,19 @@ test('includes nested subagent tool calls and non-Bash tool paths', () => {
 
 test('an unparseable line sets an error naming the line, blank lines are ignored', () => {
   const text = `${JSON.stringify({ type: 'system', subtype: 'init' })}\n\n{"type":"assis\n${JSON.stringify(result)}`;
-  assert.match(projectClaude(text).error, /line 3 is not valid JSON/);
+  assert.deepEqual(projectClaude(text).error, { kind: 'transcript', message: 'transcript line 3 is not valid JSON' });
   assert.equal(projectClaude(`\n${JSON.stringify(result)}\n\n`).error, null);
-  assert.match(projectClaude(`${JSON.stringify(result)}\n42`).error, /line 2/);
+  assert.deepEqual(projectClaude(`${JSON.stringify(result)}\n42`).error, { kind: 'transcript', message: 'transcript line 2 is not valid JSON' });
 });
 
 test('a missing result event or an error result sets an error', () => {
-  assert.match(projectClaude('').error, /no result event/);
-  assert.match(projectClaude(stream({ type: 'system', subtype: 'init' })).error, /no result event/);
-  assert.match(projectClaude(stream({ ...result, is_error: true, result: 'boom' })).error, /turn ended in error: boom/);
+  assert.deepEqual(projectClaude('').error, { kind: 'transcript', message: 'transcript has no result event' });
+  assert.deepEqual(projectClaude(stream({ type: 'system', subtype: 'init' })).error, { kind: 'transcript', message: 'transcript has no result event' });
+  assert.deepEqual(projectClaude(stream({ ...result, is_error: true, result: 'boom' })).error, { kind: 'process', message: 'turn ended in error: boom' });
+  assert.deepEqual(projectClaude(stream({ ...result, is_error: true, result: 'API usage limit reached' })).error, {
+    kind: 'rate_limit',
+    message: 'turn ended in error: API usage limit reached',
+  });
 });
 
 test('scriptsRunBy finds only skill-relative script references with their arguments', () => {
@@ -82,9 +86,16 @@ test('projects a recorded Codex turn', () => {
 
 test('Codex: failures and truncated transcripts set error', () => {
   const lines = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
-  assert.match(projectCodex(lines({ type: 'turn.started' })).error, /no turn.completed/);
-  assert.match(projectCodex(lines({ type: 'turn.failed', error: { message: 'rate limited' } })).error, /rate limited/);
-  assert.match(projectCodex('not json').error, /not valid JSON/);
+  assert.deepEqual(projectCodex(lines({ type: 'turn.started' })).error, { kind: 'transcript', message: 'transcript has no turn.completed event' });
+  assert.deepEqual(projectCodex(lines({ type: 'turn.failed', error: { message: 'rate limited' } })).error, {
+    kind: 'rate_limit',
+    message: 'turn ended in error: rate limited',
+  });
+  assert.deepEqual(projectCodex(lines({ type: 'turn.failed', error: { message: 'child crashed' } })).error, {
+    kind: 'process',
+    message: 'turn ended in error: child crashed',
+  });
+  assert.deepEqual(projectCodex('not json').error, { kind: 'transcript', message: 'transcript line 1 is not valid JSON' });
 });
 
 // Copilot fixture: a real `copilot -p --output-format json` turn, reduced to its assistant.message and result events.
@@ -100,7 +111,21 @@ test('projects a recorded Copilot turn', () => {
 
 test('Copilot: a failed or truncated transcript sets error', () => {
   const lines = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
-  assert.match(projectCopilot(lines({ type: 'assistant.message', data: {} })).error, /no result event/);
-  assert.match(projectCopilot(lines({ type: 'result', exitCode: 1 })).error, /exit code 1/);
-  assert.match(projectCopilot('not json').error, /not valid JSON/);
+  assert.deepEqual(projectCopilot(lines({ type: 'assistant.message', data: {} })).error, { kind: 'transcript', message: 'transcript has no result event' });
+  assert.deepEqual(projectCopilot(lines({ type: 'result', exitCode: 1 })).error, { kind: 'process', message: 'turn ended in error: exit code 1' });
+  assert.deepEqual(projectCopilot(lines({ type: 'result', exitCode: 1, error: '429 Too Many Requests' })).error, {
+    kind: 'rate_limit',
+    message: 'turn ended in error: 429 Too Many Requests',
+  });
+  assert.deepEqual(projectCopilot('not json').error, { kind: 'transcript', message: 'transcript line 1 is not valid JSON' });
+});
+
+test('all Projectors detect a rate limit beyond the retained message prefix', () => {
+  const detail = `${'x'.repeat(250)} 429 Too Many Requests`;
+  const errors = [
+    projectClaude(stream({ ...result, is_error: true, result: detail })).error,
+    projectCodex(stream({ type: 'turn.failed', error: { message: detail } })).error,
+    projectCopilot(stream({ type: 'result', exitCode: 1, error: detail })).error,
+  ];
+  assert.deepEqual(errors.map((error) => error.kind), ['rate_limit', 'rate_limit', 'rate_limit']);
 });

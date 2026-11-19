@@ -6,18 +6,16 @@
 //     skills:     string[],                              // chef skills fired, in order, "chef:" prefix dropped
 //     toolCalls:  [{ name, command?, path? }],           // every tool call, Skill calls included
 //     scriptRuns: [{ script, args }],                    // Chef scripts run via Bash; script is skill-relative, e.g. "scripts/recipe-search.mjs"
-//     error:      string | null,                         // why the turn is not a usable record; never an empty-but-valid response
+//     error:      {kind, message} | null,                 // structured invalid-execution cause; never an empty-but-valid response
 //     model?:     string,                                // absent when the runtime does not report it (Codex; Copilot reports no cost)
 //     cost_usd?:  number,                                // absent when the runtime does not report it (Codex; Copilot reports no cost)
 //   }
 //
 // Each runtime has a projector that turns its raw transcript into a Trajectory. Checks and the
 // runner consume Trajectories only, never raw transcripts.
+import { invalid, runtimeInvalid } from './invalid.mjs';
 
-// Claude Code: one `claude -p --output-format stream-json` transcript → Trajectory. Subagent
-// activity (parent_tool_use_id set) is part of the turn. A line that fails to parse, or a missing
-// `result` event, sets `error`.
-export function projectClaude(text) {
+function parseEvents(text) {
   const events = [];
   let error = null;
   for (const [index, line] of text.split('\n').entries()) {
@@ -27,9 +25,19 @@ export function projectClaude(text) {
       if (event === null || typeof event !== 'object' || Array.isArray(event)) throw new Error('not an object');
       events.push(event);
     } catch {
-      error ??= `transcript line ${index + 1} is not valid JSON`;
+      error ??= invalid('transcript', `transcript line ${index + 1} is not valid JSON`);
     }
   }
+  return { events, error };
+}
+
+// Claude Code: one `claude -p --output-format stream-json` transcript → Trajectory. Subagent
+// activity (parent_tool_use_id set) is part of the turn. A line that fails to parse, or a missing
+// `result` event, sets `error`.
+export function projectClaude(text) {
+  const parsed = parseEvents(text);
+  const { events } = parsed;
+  let { error } = parsed;
   const result = events.find((event) => event.type === 'result');
   const blocks = events
     .filter((event) => event.type === 'assistant' && Array.isArray(event.message?.content))
@@ -40,8 +48,8 @@ export function projectClaude(text) {
     ...(typeof input?.command === 'string' && { command: input.command }),
     ...(typeof (input?.file_path ?? input?.path) === 'string' && { path: input.file_path ?? input.path }),
   }));
-  if (!result) error ??= 'transcript has no result event';
-  else if (result.is_error === true) error ??= `turn ended in error: ${String(result.result ?? 'no detail').slice(0, 200)}`;
+  if (!result) error ??= invalid('transcript', 'transcript has no result event');
+  else if (result.is_error === true) error ??= runtimeInvalid(`turn ended in error: ${String(result.result ?? 'no detail')}`);
   return {
     response: typeof result?.result === 'string' ? result.result : '',
     skills: blocks.filter((block) => block.name === 'Skill').map((block) => String(block.input?.skill ?? '').replace(/^[^:]*:/, '')),
@@ -94,18 +102,9 @@ function shellWords(text) {
 // when a shell command reads its SKILL.md. The transcript carries no model or cost. A line that fails
 // to parse, a `turn.failed`/`error` event, or a missing `turn.completed` sets `error`.
 export function projectCodex(text) {
-  const events = [];
-  let error = null;
-  for (const [index, line] of text.split('\n').entries()) {
-    if (!line.trim()) continue;
-    try {
-      const event = JSON.parse(line);
-      if (event === null || typeof event !== 'object' || Array.isArray(event)) throw new Error('not an object');
-      events.push(event);
-    } catch {
-      error ??= `transcript line ${index + 1} is not valid JSON`;
-    }
-  }
+  const parsed = parseEvents(text);
+  const { events } = parsed;
+  let { error } = parsed;
   const items = events.filter((event) => event.type === 'item.completed' && event.item).map((event) => event.item);
   const toolCalls = items.flatMap((item) => {
     if (item.type === 'command_execution') return [{ name: 'shell', command: String(item.command ?? '') }];
@@ -113,8 +112,8 @@ export function projectCodex(text) {
     return [];
   });
   const failure = events.find((event) => event.type === 'turn.failed' || event.type === 'error');
-  if (failure) error ??= `turn ended in error: ${String(failure.error?.message ?? failure.message ?? 'no detail').slice(0, 200)}`;
-  else if (!events.some((event) => event.type === 'turn.completed')) error ??= 'transcript has no turn.completed event';
+  if (failure) error ??= runtimeInvalid(`turn ended in error: ${String(failure.error?.message ?? failure.message ?? 'no detail')}`);
+  else if (!events.some((event) => event.type === 'turn.completed')) error ??= invalid('transcript', 'transcript has no turn.completed event');
   const messages = items.filter((item) => item.type === 'agent_message');
   return {
     response: String(messages.at(-1)?.text ?? ''),
@@ -133,18 +132,9 @@ const SKILL_READ = /\bskills\/([\w-]+)\/SKILL\.md/g;
 // a `path`); the final `result` event carries the exit code and only premium-request usage, so no
 // cost. A bad line, a missing `result`, or a nonzero `exitCode` sets `error`.
 export function projectCopilot(text) {
-  const events = [];
-  let error = null;
-  for (const [index, line] of text.split('\n').entries()) {
-    if (!line.trim()) continue;
-    try {
-      const event = JSON.parse(line);
-      if (event === null || typeof event !== 'object' || Array.isArray(event)) throw new Error('not an object');
-      events.push(event);
-    } catch {
-      error ??= `transcript line ${index + 1} is not valid JSON`;
-    }
-  }
+  const parsed = parseEvents(text);
+  const { events } = parsed;
+  let { error } = parsed;
   const messages = events.filter((event) => event.type === 'assistant.message').map((event) => event.data ?? {});
   const toolCalls = messages
     .flatMap((message) => message.toolRequests ?? [])
@@ -155,8 +145,11 @@ export function projectCopilot(text) {
     }));
   const skillCalls = messages.flatMap((message) => message.toolRequests ?? []).filter((call) => call.name === 'skill');
   const result = events.find((event) => event.type === 'result');
-  if (!result) error ??= 'transcript has no result event';
-  else if (result.exitCode !== 0) error ??= `turn ended in error: exit code ${result.exitCode}`;
+  if (!result) error ??= invalid('transcript', 'transcript has no result event');
+  else if (result.exitCode !== 0) {
+    const detail = String(result.error ?? result.message ?? `exit code ${result.exitCode}`);
+    error ??= runtimeInvalid(`turn ended in error: ${detail}`);
+  }
   return {
     response: String(messages.filter((message) => message.content).at(-1)?.content ?? ''),
     skills: skillCalls.map((call) => String(call.arguments?.skill ?? '').replace(/^[^:]*:/, '')),

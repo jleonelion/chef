@@ -13,9 +13,10 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { projectCodex } from '../trajectory.mjs';
+import { collectProcess } from './process.mjs';
 
 export const name = 'codex';
-export const launcherVersion = 1;
+export const launcherVersion = 2;
 export const project = projectCodex;
 
 export function detect() {
@@ -42,18 +43,10 @@ export function prepare({ pluginDir, workdir, env }) {
     flags.push('-c', 'sandbox_mode="workspace-write"', ...(model ? ['-m', model] : []));
     if (process.env.CHEF_EVAL_CODEX_UNSANDBOXED) flags.push('--dangerously-bypass-approvals-and-sandbox');
     const args = resume && thread ? ['exec', 'resume', ...flags, thread, prompt] : ['exec', ...flags, prompt];
-    return new Promise((resolve) => {
-      const child = spawn('codex', args, { cwd: workdir, env: rep, stdio: ['ignore', 'pipe', 'pipe'] });
-      let out = '';
-      let err = '';
-      child.stdout.on('data', (chunk) => (out += chunk));
-      child.stderr.on('data', (chunk) => (err += chunk));
-      const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
-      child.on('close', () => {
-        clearTimeout(timer);
-        thread ??= /"thread_id":"([^"]+)"/.exec(out)?.[1] ?? null;
-        resolve({ out, err, ext: 'jsonl' });
-      });
+    const result = collectProcess(spawn('codex', args, { cwd: workdir, env: rep, stdio: ['ignore', 'pipe', 'pipe'] }), { timeoutMs, ext: 'jsonl' });
+    return result.then((turn) => {
+      thread ??= /"thread_id":"([^"]+)"/.exec(turn.transcript)?.[1] ?? null;
+      return turn;
     });
   };
   return { skillsDir, env: rep, runTurn };

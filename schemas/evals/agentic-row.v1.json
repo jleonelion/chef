@@ -6,6 +6,10 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "flow", "description", "turns", "skills", "files", "git"],
+  "dependentRequired": {
+    "known_failure": ["expect_failure"],
+    "expect_failure": ["known_failure"]
+  },
   "properties": {
     "id": { "$ref": "#/$defs/id" },
     "flow": { "enum": ["core", "should-not-act"] },
@@ -67,7 +71,8 @@
     },
     "pair": { "description": "Flip pair id: exactly two rows share it and the same turns; they differ in seed/setup so the checks show opposite outcomes.", "$ref": "#/$defs/id" },
     "repro": { "$ref": "#/$defs/id" },
-    "known_failure": { "$ref": "#/$defs/id" }
+    "known_failure": { "$ref": "#/$defs/id" },
+    "expect_failure": { "enum": ["response", "skills", "scripts", "files", "git-state", "post-run"] }
   },
   "$defs": {
     "inputPath": { "type": "string", "pattern": "^evals/(tier1|agentic)/inputs/([^./][^/]*/)*[^./][^/]*$" },

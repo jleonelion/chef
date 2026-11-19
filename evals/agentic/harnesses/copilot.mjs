@@ -12,9 +12,10 @@ import { execFileSync, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { projectCopilot } from '../trajectory.mjs';
+import { collectProcess } from './process.mjs';
 
 export const name = 'copilot';
-export const launcherVersion = 1;
+export const launcherVersion = 2;
 export const project = projectCopilot;
 
 export function detect() {
@@ -46,18 +47,7 @@ export function prepare({ pluginDir, workdir, env }) {
     const args = ['-p', prompt, '--output-format', 'json', '--allow-all-tools', '--no-ask-user', '--no-auto-update'];
     args.push('--disable-builtin-mcps', '--no-custom-instructions', '--plugin-dir', plugin);
     args.push(resume ? `--resume=${session}` : `--session-id=${session}`, ...(model ? ['--model', model] : []));
-    return new Promise((resolve) => {
-      const child = spawn('copilot', args, { cwd: workdir, env: rep, stdio: ['ignore', 'pipe', 'pipe'] });
-      let out = '';
-      let err = '';
-      child.stdout.on('data', (chunk) => (out += chunk));
-      child.stderr.on('data', (chunk) => (err += chunk));
-      const timer = setTimeout(() => child.kill('SIGTERM'), timeoutMs);
-      child.on('close', () => {
-        clearTimeout(timer);
-        resolve({ out, err, ext: 'jsonl' });
-      });
-    });
+    return collectProcess(spawn('copilot', args, { cwd: workdir, env: rep, stdio: ['ignore', 'pipe', 'pipe'] }), { timeoutMs, ext: 'jsonl' });
   };
   return { skillsDir: path.join(plugin, 'skills'), env: rep, runTurn };
 }
