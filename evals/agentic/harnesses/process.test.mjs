@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { once } from 'node:events';
 import { test } from 'node:test';
 import { collectProcess } from './process.mjs';
 
@@ -16,7 +17,8 @@ test('collectProcess retains transcript, stderr and exit code', async () => {
 });
 
 test('collectProcess force-kills a child that ignores the timeout signal', async () => {
-  const child = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); setInterval(() => {}, 1000)"]);
+  const child = spawn(process.execPath, ['-e', "process.on('SIGTERM', () => {}); process.stdout.write('ready'); setInterval(() => {}, 1000)"]);
+  await once(child.stdout, 'data');
   const result = await collectProcess(child, { timeoutMs: 20, killGraceMs: 20, ext: 'jsonl' });
   assert.equal(result.timedOut, true);
   assert.equal(result.exitCode, null);

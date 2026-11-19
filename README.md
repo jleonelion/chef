@@ -142,9 +142,9 @@ per rep, so it needs a signed-in Claude Code and spends real usage. It never run
 in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with deterministic
 asserts only (skills fired, reply text, files written or not, script output, git state). The runner
 does not retry. It separates behavioral failures from invalid executions such as timeouts, rate
-limits, process failures and unusable transcripts. The result file
-(`evals/agentic/results/agentic-<commit>.json`, with the model id, plugin version, pass rates,
-classifications and invalid-rep details) is attached to the release. `--rows <id,id>`,
+limits, process failures and unusable transcripts. The uniquely named result file under
+`evals/agentic/archive/` includes the model id, plugin version, pass rates, classifications and
+invalid-rep details, and is attached to the release. `--rows <id,id>`,
 `--known-failures`, `--reps`, `--model` and `--out` narrow a run.
 
 Checks never read a raw transcript. A runtime's projector turns each turn into a Trajectory

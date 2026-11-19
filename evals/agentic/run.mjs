@@ -22,7 +22,7 @@ import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
 import { aggregate, behaviorCheck, exitCodeFor, assertScriptPaths, checkFiles, checkResponse, checkScripts, checkSkills } from './report.mjs';
 import { loadHarness } from './harnesses/index.mjs';
-import { harnessInvalid, turnInvalid } from './invalid.mjs';
+import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -85,8 +85,7 @@ async function runRep(row, number, { harness, model, logDir }) {
     }
     run.outcome = 'pass';
   } catch (error) {
-    if (error?.check) Object.assign(run, { outcome: 'failed', failure: { check: error.check, message: error.message } });
-    else Object.assign(run, { outcome: 'invalid', invalid: error?.invalid ?? harnessInvalid(error) });
+    Object.assign(run, errorOutcome(error));
   } finally {
     if (rep) fs.rmSync(rep.tmp, { recursive: true, force: true });
   }

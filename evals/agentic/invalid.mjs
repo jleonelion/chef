@@ -27,3 +27,8 @@ export function turnInvalid(launch, trajectoryError) {
 export function harnessInvalid(error) {
   return invalid('harness', error instanceof Error ? error.message : String(error));
 }
+
+export function errorOutcome(error) {
+  if (error?.check) return { outcome: 'failed', failure: { check: error.check, message: error.message } };
+  return { outcome: 'invalid', invalid: error?.invalid ?? harnessInvalid(error) };
+}
