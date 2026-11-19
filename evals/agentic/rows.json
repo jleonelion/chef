@@ -311,7 +311,7 @@
         { "path": "$.content", "includes": "Chickpea Spinach Stew" },
         { "path": "$.content", "includes": "2026" },
         { "path": "$.content", "includes": "21" },
-        { "path": "$.content", "includes": "lunch" }
+        { "path": "$.content", "includes": "Lunch" }
       ]
     ],
     "skills": ["chef-meal-logging"],
