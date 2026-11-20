@@ -72,6 +72,10 @@ _Avoid_: adapter, driver, runner
 An agentic eval row promoted into scheduled and release checks after meeting the written promotion criteria.
 _Avoid_: stable row, CI row
 
+**Semantic target**:
+The user-visible facts and qualities a judge-scored reply should satisfy without prescribing its wording.
+_Avoid_: expected answer, answer template
+
 **Diagnostic bundle**:
 A snapshot of selected invocation events and coarse environment facts, built when the user makes a feedback report. Exists only inside one.
 _Avoid_: attachment, dump, logs
