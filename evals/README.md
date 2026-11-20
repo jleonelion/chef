@@ -6,6 +6,8 @@
 | `agentic/` | `bun run agentic` | Harness behavior: a headless agent with the plugin fires the right skills and writes the right files. Local only (spends real usage). |
 | `repro/`, `migration-regression.mjs` | `bun run repro`, `bun run migrations` | See `repro/README.md`. |
 
+Agentic promotion criteria, the gated workflow, and provider secrets are documented in `agentic/README.md`.
+
 `bun run evals:lint` checks the tier1 and agentic datasets against `schemas/evals/` and runs in CI.
 
 ## Harness launchers (agentic)

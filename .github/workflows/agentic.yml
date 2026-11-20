@@ -1,0 +1,73 @@
+name: Agentic gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      harness:
+        description: Harness
+        required: true
+        default: claude
+        type: choice
+        options: [claude, codex, copilot]
+      reps:
+        description: Repetitions per gated row
+        required: true
+        default: '3'
+      model:
+        description: Optional model ID
+        required: false
+        default: ''
+  schedule:
+    - cron: '17 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  gated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+      - run: bun install --frozen-lockfile
+      - name: Install Claude harness
+        if: ${{ inputs.harness == 'claude' || (github.event_name == 'schedule') }}
+        run: npm_config_ignore_scripts=true bunx @anthropic-ai/claude-code --version
+      - name: Configure Claude secret
+        if: ${{ inputs.harness == 'claude' || (github.event_name == 'schedule') }}
+        env:
+          CHEF_EVAL_CLAUDE_API_KEY: ${{ secrets.CHEF_EVAL_CLAUDE_API_KEY }}
+        run: test -n "$CHEF_EVAL_CLAUDE_API_KEY" && echo "ANTHROPIC_API_KEY=$CHEF_EVAL_CLAUDE_API_KEY" >> "$GITHUB_ENV"
+      - name: Configure Codex secret
+        if: ${{ inputs.harness == 'codex' }}
+        env:
+          CHEF_EVAL_CODEX_AUTH_JSON: ${{ secrets.CHEF_EVAL_CODEX_AUTH_JSON }}
+        run: |
+          test -n "$CHEF_EVAL_CODEX_AUTH_JSON"
+          mkdir -p "$RUNNER_TEMP/codex-auth"
+          echo "$CHEF_EVAL_CODEX_AUTH_JSON" | base64 --decode > "$RUNNER_TEMP/codex-auth/auth.json"
+          echo "CODEX_HOME=$RUNNER_TEMP/codex-auth" >> "$GITHUB_ENV"
+      - name: Configure Copilot secret
+        if: ${{ inputs.harness == 'copilot' }}
+        env:
+          CHEF_EVAL_COPILOT_TOKEN: ${{ secrets.CHEF_EVAL_COPILOT_TOKEN }}
+        run: test -n "$CHEF_EVAL_COPILOT_TOKEN" && echo "GH_TOKEN=$CHEF_EVAL_COPILOT_TOKEN" >> "$GITHUB_ENV"
+      - name: Run gated agentic subset
+        env:
+          HARNESS: ${{ inputs.harness || 'claude' }}
+          REPS: ${{ inputs.reps || '3' }}
+          MODEL: ${{ inputs.model || '' }}
+          RESULT: evals/agentic/archive/agentic-gates-${{ github.run_id }}.json
+        run: |
+          args=(bun run agentic --gates-only --harness "$HARNESS" --reps "$REPS" --out "$RESULT")
+          if [ -n "$MODEL" ]; then args+=(--model "$MODEL"); fi
+          "${args[@]}"
+      - name: Upload agentic result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agentic-gates-${{ github.run_id }}
+          path: evals/agentic/archive/agentic-gates-${{ github.run_id }}.json
+          if-no-files-found: error

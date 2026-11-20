@@ -1,5 +1,6 @@
 [
   {
+    "gate": false,
     "id": "chef-setup-receipt-intake",
     "flow": "core",
     "description": "Onboarding says Chef checks the user's Gmail for grocery receipts and asks for trusted senders only after consent (#40).",
@@ -21,6 +22,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-setup-household-recipients",
     "flow": "core",
     "description": "Onboarding explains that household recipients are defaults for an approved shopping-list recurring task, not a restriction on one-off delivery (#39). Rationale: \"default\" protects defaults-vs-restriction, \"recurring\"/\"appro\" protect recurring-task consent, \"anyone\" protects one-off delivery, and \"mandatory\"/\"forbidden\" protect against treating recipients as restrictions.",
@@ -42,6 +44,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-add-recipe-pasted-text",
     "flow": "core",
     "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",
@@ -73,6 +76,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-planning-plan-week",
     "flow": "core",
     "description": "A confirmed schedule from saved recipes is saved as the week's meal plan with its nutrition rollup.",
@@ -104,6 +108,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-food-inventory-receipt-to-inventory",
     "flow": "core",
     "description": "A grocery receipt handed over as text adds a purchase, its transcript and inventory items, and the inventory check stays healthy.",
@@ -143,6 +148,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-batch-prep-planning-pdf",
     "flow": "core",
     "description": "A prep plan for a week with a saved meal plan is rendered as the week's PDF under the data root.",
@@ -178,6 +184,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-health-goals-check-in",
     "flow": "core",
     "description": "A goal with user-stated targets is saved to the one goals store, and the one-time training notice is recorded.",
@@ -200,6 +207,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-recipe-decisions-accept-publish",
     "flow": "core",
     "description": "Chef proposes a recipe, records the user's yes as a decision, publishes it, and search finds it (ADR-0019).",
@@ -229,6 +237,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-recipe-decisions-rejected-not-reproposed",
     "pair": "prior-rejection",
     "flow": "core",
@@ -261,6 +270,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-logging-planned-dinner",
     "flow": "core",
     "description": "\"I ate my planned dinner\" pre-fills the entry from that date's planned meal; after the cooked answer and a yes, the log holds one matching entry (#48).",
@@ -293,6 +303,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-logging-day-from-plan",
     "flow": "core",
     "description": "\"Log 2026-01-20 from the plan\" with breakfast, lunch and dinner planned gives one confirmation, with a cooked answer per meal, and three log entries (#48).",
@@ -330,6 +341,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-logging-from-plan-no-plan",
     "flow": "should-not-act",
     "description": "Logging from the plan for a date with no plan falls back to manual logging, and nothing is logged before the user confirms the proposed entry (#48).",
@@ -357,6 +369,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-planning-dietary-should-not-act",
     "flow": "should-not-act",
     "description": "Asked to plan a recipe the dietary gate leaves out (unchecked flags under a dairy hard constraint), Chef saves no plan and changes nothing.",
@@ -387,6 +400,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-planning-dairy-constraint-absent-saves",
     "pair": "dairy-constraint",
     "flow": "core",
@@ -411,6 +425,7 @@
     "git": {"clean": true}
   },
   {
+    "gate": false,
     "id": "chef-meal-planning-dairy-constraint-present-refuses",
     "pair": "dairy-constraint",
     "flow": "should-not-act",
@@ -436,6 +451,7 @@
     "git": {"headUnchanged": true, "clean": true}
   },
   {
+    "gate": false,
     "id": "chef-meal-logging-plan-present-logs-planned-meal",
     "pair": "plan-presence",
     "flow": "core",
@@ -493,6 +509,7 @@
     "git": {"clean": true}
   },
   {
+    "gate": false,
     "id": "chef-meal-logging-plan-absent-logs-nothing",
     "pair": "plan-presence",
     "flow": "should-not-act",
@@ -513,6 +530,7 @@
     "git": {"headUnchanged": true, "clean": true}
   },
   {
+    "gate": false,
     "id": "chef-health-goals-check-in-goal-set-reports-targets",
     "pair": "health-goal",
     "flow": "core",
@@ -567,6 +585,7 @@
     "git": {"headUnchanged": true, "clean": true}
   },
   {
+    "gate": false,
     "id": "chef-health-goals-check-in-goal-unset-stays-dormant",
     "pair": "health-goal",
     "flow": "should-not-act",
@@ -593,6 +612,7 @@
     "git": {"headUnchanged": true, "clean": true}
   },
   {
+    "gate": false,
     "id": "chef-recipe-decisions-prior-rejection-new-proposed",
     "pair": "prior-rejection",
     "flow": "core",
@@ -621,6 +641,7 @@
     "git": {"clean": true}
   },
   {
+    "gate": false,
     "id": "chef-food-inventory-untrusted-sender-refused",
     "flow": "should-not-act",
     "description": "A receipt from an untrusted sender is refused after the sender check; Chef does not ingest it and names the sender in the reply.",
@@ -656,6 +677,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-food-inventory-receipt-intake-off-refused",
     "flow": "should-not-act",
     "description": "With receipt intake off, Chef refuses a receipt before ingestion and names the sender and disabled setting.",
@@ -681,6 +703,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-planning-dietary-override-confirmed-once",
     "flow": "core",
     "description": "A member explicitly confirms a one-plan dairy override; Chef saves that plan without changing the standing dietary ruleset.",
@@ -731,6 +754,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-shopping-lists-one-off-addresses-confirm-first",
     "flow": "should-not-act",
     "description": "A one-off shopping-list email to non-household addresses repeats the exact recipients and waits for confirmation before any Gmail send.",
@@ -758,6 +782,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-meal-logging-direct-entry-confirms-before-write",
     "flow": "core",
     "description": "A complete direct logging request is proposed first and written only after the user's explicit confirmation on the next turn.",
@@ -797,6 +822,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-recipe-search-natural-request",
     "flow": "core",
     "description": "A natural request for saved recipes by ingredient routes to recipe search and returns only grounded script results.",
@@ -808,6 +834,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-shopping-lists-natural-from-plan",
     "flow": "core",
     "description": "A natural grocery-list request from a saved plan routes to shopping lists and excludes inventory already on hand.",
@@ -826,6 +853,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-food-inventory-expiring-natural-request",
     "flow": "core",
     "description": "A natural request to prioritize soon-expiring groceries routes to inventory expiring and not recipe or meal planning.",
@@ -837,6 +865,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-health-goals-natural-request",
     "flow": "core",
     "description": "A natural health-goal request without the product name is routed to health goals.",
@@ -848,6 +877,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-add-recipe-natural-request",
     "flow": "core",
     "description": "A natural pasted-recipe request without the product name routes to add recipe.",
@@ -858,6 +888,7 @@
     "git": { "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-setup-natural-request",
     "flow": "core",
     "description": "A natural preferences request without the product name routes to setup.",
@@ -868,6 +899,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-off-topic-weather",
     "flow": "should-not-act",
     "description": "A weather question does not trigger Chef skills.",
@@ -878,6 +910,7 @@
     "git": { "headUnchanged": true, "clean": true }
   },
   {
+    "gate": false,
     "id": "chef-off-topic-laptop",
     "flow": "should-not-act",
     "description": "A laptop comparison does not trigger Chef skills.",

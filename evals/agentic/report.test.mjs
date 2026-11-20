@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, failureDigest, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -259,6 +259,7 @@ test('aggregate excludes invalid reps from pass rates and reports each invalid c
   assert.deepEqual(summary, {
     id: 'mixed',
     flow: 'core',
+    gate: false,
     passes: '1/2',
     pass_rate: 0.5,
     valid_reps: 2,
@@ -343,6 +344,20 @@ test('exitCodeFor distinguishes behavioral failures from invalid executions', ()
   assert.equal(exitCodeFor({ passed: true, invalid: false }), 0);
   assert.equal(exitCodeFor({ passed: false, invalid: false }), 1);
   assert.equal(exitCodeFor({ passed: false, invalid: true }), 2);
+});
+
+test('failureDigest emits compact row, rep, check, message lines', () => {
+  const digest = failureDigest({
+    rows: [{
+      id: 'chef-setup-ok',
+      failures: [{ rep: 2, check: 'skills', message: 'chef-setup\ndid not fire' }],
+      invalid: [{ rep: 3, kind: 'timeout', message: 'turn timed out' }],
+    }],
+  });
+  assert.deepEqual(digest, [
+    '(chef-setup-ok, 2, skills, chef-setup did not fire)',
+    '(chef-setup-ok, 3, timeout, turn timed out)',
+  ]);
 });
 
 function validResult() {
