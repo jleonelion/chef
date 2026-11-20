@@ -301,7 +301,7 @@ test('failureDigest emits compact row, rep, check, message lines', () => {
   const digest = failureDigest({
     rows: [{
       id: 'chef-setup-ok',
-      failures: [{ rep: 2, check: 'skills', message: 'chef-setup did not fire' }],
+      failures: [{ rep: 2, check: 'skills', message: 'chef-setup\ndid not fire' }],
       invalid: [{ rep: 3, kind: 'timeout', message: 'turn timed out' }],
     }],
   });

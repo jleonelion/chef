@@ -59,8 +59,9 @@ jobs:
           HARNESS: ${{ inputs.harness || 'claude' }}
           REPS: ${{ inputs.reps || '3' }}
           MODEL: ${{ inputs.model || '' }}
+          RESULT: evals/agentic/archive/agentic-gates-${{ github.run_id }}.json
         run: |
-          args=(bun run agentic --gates-only --harness "$HARNESS" --reps "$REPS")
+          args=(bun run agentic --gates-only --harness "$HARNESS" --reps "$REPS" --out "$RESULT")
           if [ -n "$MODEL" ]; then args+=(--model "$MODEL"); fi
           "${args[@]}"
       - name: Upload agentic result
@@ -68,5 +69,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: agentic-gates-${{ github.run_id }}
-          path: evals/agentic/archive/*.json
+          path: evals/agentic/archive/agentic-gates-${{ github.run_id }}.json
           if-no-files-found: error

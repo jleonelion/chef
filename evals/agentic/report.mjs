@@ -195,7 +195,7 @@ export function exitCodeFor(result) {
 
 export function failureDigest(result) {
   return (result.rows ?? []).flatMap((row) => [
-    ...(row.failures ?? []).map((failure) => `(${row.id}, ${failure.rep}, ${failure.check}, ${failure.message})`),
-    ...(row.invalid ?? []).map((cause) => `(${row.id}, ${cause.rep}, ${cause.kind}, ${cause.message})`),
+    ...(row.failures ?? []).map((failure) => `(${row.id}, ${failure.rep}, ${failure.check}, ${String(failure.message).replace(/\s+/g, ' ').trim()})`),
+    ...(row.invalid ?? []).map((cause) => `(${row.id}, ${cause.rep}, ${cause.kind}, ${String(cause.message).replace(/\s+/g, ' ').trim()})`),
   ]);
 }

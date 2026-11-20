@@ -37,7 +37,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "flow", "gate", "passes", "pass_rate", "valid_reps", "invalid_reps", "behavior", "classification", "flaky", "pass", "failures", "invalid", "runs"],
+        "required": ["id", "flow", "passes", "pass_rate", "valid_reps", "invalid_reps", "behavior", "classification", "flaky", "pass", "failures", "invalid", "runs"],
         "dependentRequired": {
           "known_failure": ["expect_failure", "known_failure_reproduced"],
           "expect_failure": ["known_failure"],
