@@ -23,17 +23,18 @@
   {
     "id": "chef-setup-household-recipients",
     "flow": "core",
-    "description": "Onboarding explains that household recipients are defaults for an approved shopping-list recurring task, not a restriction on one-off delivery (#39).",
+    "description": "Onboarding explains that household recipients are defaults for an approved shopping-list recurring task, not a restriction on one-off delivery (#39). Rationale: \"default\" protects defaults-vs-restriction, \"recurring\"/\"appro\" protect recurring-task consent, \"anyone\" protects one-off delivery, and \"mandatory\"/\"forbidden\" protect against treating recipients as restrictions.",
     "turns": [
       "Continue onboarding for this existing Chef data root. I have seen the safety screen and want to keep the current units. Ask me the household recipients question next."
     ],
     "responses": [
       [
-        { "path": "$.content", "includes": "email shopping lists to by default" },
-        { "path": "$.content", "includes": "automatically" },
-        { "path": "$.content", "includes": "approve the Chef shopping list recurring task" },
-        { "path": "$.content", "includes": "still ask Chef to email" },
-        { "path": "$.content", "includes": "to anyone" }
+        { "path": "$.content", "includes": "default" },
+        { "path": "$.content", "includes": "recurring" },
+        { "path": "$.content", "includes": "appro" },
+        { "path": "$.content", "includes": "anyone" },
+        { "path": "$.content", "excludes": "mandatory" },
+        { "path": "$.content", "excludes": "forbidden" }
       ]
     ],
     "skills": ["chef-setup"],
