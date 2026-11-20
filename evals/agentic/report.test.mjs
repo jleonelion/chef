@@ -53,6 +53,25 @@ test('checkResponse applies content assertions to the final reply', () => {
   assert.throws(() => checkResponse('Recipients are required.', [{ path: '$.content', includes: 'defaults' }]), /missing "defaults"/);
 });
 
+test('household recipient reply assertions accept equivalent wording and reject wrong semantics', () => {
+  const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
+  const row = rows.find(({ id }) => id === 'chef-setup-household-recipients');
+  const assertions = row.responses[0];
+
+  checkResponse(
+    'I’ll use these people as the default shopping-list recipients. A recurring delivery needs your approval, and this does not prevent you from asking Chef to email anyone else.',
+    assertions,
+  );
+  assert.throws(
+    () => checkResponse('I’ll send shopping lists only to this household and nobody else.', assertions),
+    /missing/,
+  );
+  for (const assertion of assertions) {
+    assert.ok(assertion.includes.length <= 9, `reply invariant is too coupled: "${assertion.includes}"`);
+  }
+  assert.match(row.description, /Rationale:/);
+});
+
 function dataRoot(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-agentic-test-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
