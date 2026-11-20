@@ -5,13 +5,14 @@
   "description": "One row in evals/agentic/rows.json. Keys are those read by evals/agentic/run.mjs and report.mjs.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "flow", "description", "turns", "skills", "files", "git"],
+  "required": ["id", "flow", "description", "turns", "skills", "files", "git", "gate"],
   "dependentRequired": {
     "known_failure": ["expect_failure"],
     "expect_failure": ["known_failure"]
   },
   "properties": {
     "id": { "$ref": "#/$defs/id" },
+    "gate": { "type": "boolean", "description": "Whether this row blocks scheduled and patch-release agentic checks." },
     "flow": { "enum": ["core", "should-not-act"] },
     "description": { "type": "string", "minLength": 1 },
     "turns": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["turnFile"], "properties": { "turnFile": { "$ref": "#/$defs/inputPath" } } }] } },

@@ -37,7 +37,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "flow", "passes", "pass_rate", "valid_reps", "invalid_reps", "behavior", "classification", "flaky", "pass", "failures", "invalid", "runs"],
+        "required": ["id", "flow", "gate", "passes", "pass_rate", "valid_reps", "invalid_reps", "behavior", "classification", "flaky", "pass", "failures", "invalid", "runs"],
         "dependentRequired": {
           "known_failure": ["expect_failure", "known_failure_reproduced"],
           "expect_failure": ["known_failure"],
@@ -46,6 +46,7 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "flow": { "type": "string", "minLength": 1 },
+          "gate": { "type": "boolean" },
           "passes": { "type": "string", "pattern": "^[0-9]+/[0-9]+$" },
           "pass_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
           "valid_reps": { "type": "integer", "minimum": 0 },

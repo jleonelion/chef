@@ -30,6 +30,7 @@ const skeletons = {
     skills: [skill],
     files: [],
     git: { headUnchanged: true, clean: true },
+    gate: false,
   }),
 };
 

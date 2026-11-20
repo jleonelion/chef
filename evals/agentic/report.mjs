@@ -149,6 +149,7 @@ export function aggregate({ meta, reps, rows, runs }) {
     return {
       id: row.id,
       flow: row.flow,
+      gate: row.gate === true,
       passes: `${passes}/${valid.length}`,
       pass_rate: valid.length ? passes / valid.length : null,
       valid_reps: valid.length,
@@ -190,4 +191,11 @@ export function aggregate({ meta, reps, rows, runs }) {
 export function exitCodeFor(result) {
   if (result.invalid) return 2;
   return result.passed ? 0 : 1;
+}
+
+export function failureDigest(result) {
+  return (result.rows ?? []).flatMap((row) => [
+    ...(row.failures ?? []).map((failure) => `(${row.id}, ${failure.rep}, ${failure.check}, ${failure.message})`),
+    ...(row.invalid ?? []).map((cause) => `(${row.id}, ${cause.rep}, ${cause.kind}, ${cause.message})`),
+  ]);
 }
