@@ -17,6 +17,15 @@
     "description": { "type": "string", "minLength": 1 },
     "turns": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["turnFile"], "properties": { "turnFile": { "$ref": "#/$defs/inputPath" } } }] } },
     "responses": { "type": "array", "items": { "$ref": "#/$defs/assertions" } },
+    "judge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expected", "threshold"],
+      "properties": {
+        "expected": { "type": "string", "minLength": 1 },
+        "threshold": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
     "skills": { "$ref": "#/$defs/skillNames" },
     "forbidSkills": { "$ref": "#/$defs/skillNames" },
     "seed": {

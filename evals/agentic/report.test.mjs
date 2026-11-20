@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { aggregate, behaviorCheck, checkFiles, checkResponse, checkTools, exitCodeFor, failureDigest, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, failureDigest, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -72,6 +72,14 @@ test('household recipient reply assertions accept equivalent wording and reject 
     }
   }
   assert.match(row.description, /Rationale:/);
+});
+
+test('checkReplyDenyList rejects internal vocabulary but allows Chef product language', () => {
+  checkReplyDenyList('Chef saved the recipe.');
+  assert.throws(
+    () => checkReplyDenyList('Read CHEF_DATA_ROOT before running scripts/add-recipe.mjs'),
+    (error) => error.check === 'response',
+  );
 });
 
 function dataRoot(t) {
@@ -173,6 +181,27 @@ const passed = (row, rep, extra = {}) => ({ row, rep, outcome: 'pass', model: 'm
 const failed = (row, rep, check, message = 'failed check') => ({ row, rep, outcome: 'failed', model: 'm1', cost_usd: 0, failure: { check, message } });
 const failedMany = (row, rep, failures) => ({ row, rep, outcome: 'failed', model: 'm1', cost_usd: 0, failure: failures[0], failures });
 const invalid = (row, rep, kind, message = 'invalid execution') => ({ row, rep, outcome: 'invalid', model: 'm1', cost_usd: 0, invalid: { kind, message } });
+
+test('judge failures are separate from behavioral passes', () => {
+  const result = aggregate({
+    meta: {},
+    reps: 1,
+    rows: [{ id: 'judged', flow: 'core', judge: { expected: 'complete', threshold: 0.7 } }],
+    runs: [{
+      row: 'judged',
+      rep: 1,
+      outcome: 'pass',
+      judge: { pass: false, score: 0.4, verdict: null, reason: 'missing critical detail' },
+      judge_failure: { message: 'missing critical detail' },
+    }],
+  });
+  assert.equal(result.rows[0].behavior, 'passing');
+  assert.equal(result.rows[0].pass, false);
+  assert.deepEqual(result.rows[0].judge_failures, [
+    { rep: 1, check: 'judge', message: 'missing critical detail' },
+  ]);
+  assert.deepEqual(result.rows[0].runs[0].judge, { pass: false, score: 0.4, verdict: null, reason: 'missing critical detail' });
+});
 
 test('aggregate reports passing, broken and flaky rows from valid reps', () => {
   const result = aggregate({

@@ -58,6 +58,16 @@
           "known_failure": { "type": "string", "minLength": 1 },
           "expect_failure": { "$ref": "#/$defs/check" },
           "known_failure_reproduced": { "type": "boolean" },
+          "judge": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["status", "passes"],
+            "properties": {
+              "status": { "enum": ["passing", "failed", "flaky", null] },
+              "passes": { "type": "string", "pattern": "^[0-9]+/[0-9]+$" }
+            }
+          },
+          "judge_failures": { "type": "array", "items": { "$ref": "#/$defs/judgeFailure" } },
           "failures": { "type": "array", "items": { "$ref": "#/$defs/failure" } },
           "invalid": { "type": "array", "items": { "$ref": "#/$defs/invalid" } },
           "runs": {
@@ -72,6 +82,8 @@
                 "skills": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
                 "failure": { "$ref": "#/$defs/failureCause" },
                 "failures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/failureCause" } },
+                "judge": { "$ref": "#/$defs/judgeVerdict" },
+                "judge_failure": { "$ref": "#/$defs/judgeFailureCause" },
                 "invalid": { "$ref": "#/$defs/invalidCause" }
               },
               "allOf": [
@@ -120,6 +132,32 @@
         "rep": { "type": "integer", "minimum": 1 },
         "check": { "$ref": "#/$defs/check" },
         "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "judgeFailure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rep", "check", "message"],
+      "properties": {
+        "rep": { "type": "integer", "minimum": 1 },
+        "check": { "const": "judge" },
+        "message": { "type": "string", "minLength": 1 }
+      }
+    },
+    "judgeFailureCause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message"],
+      "properties": { "message": { "type": "string", "minLength": 1 } }
+    },
+    "judgeVerdict": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["pass", "score"],
+      "properties": {
+        "pass": { "type": "boolean" },
+        "score": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reason": { "type": "string" }
       }
     },
     "invalid": {

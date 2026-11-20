@@ -1,9 +1,10 @@
 // Pure parts of the agentic suite: check a rep's Trajectory data and data root,
-// and aggregate reps into the release result. Deterministic checks only; no LLM judging.
+// and aggregate reps into the release result. Deterministic behavior checks and opt-in LLM judging are reported separately.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertCase } from '../tier1/assertions.mjs';
+import { scanReply } from './deny-list.mjs';
 
 export function behaviorCheck(check, evaluate) {
   try {
@@ -66,6 +67,13 @@ export function checkTools(toolCalls, { forbidden = [] } = {}) {
 export function checkResponse(response, assertions = []) {
   return behaviorCheck('response', () => {
     for (const assertion of assertions) assertCase({ content: response }, assertion);
+  });
+}
+
+export function checkReplyDenyList(response) {
+  return behaviorCheck('response', () => {
+    const matches = scanReply(response);
+    assert(matches.length === 0, `reply leaked internal vocabulary: ${matches.join(', ')}`);
   });
 }
 
@@ -140,12 +148,24 @@ export function aggregate({ meta, reps, rows, runs }) {
     const passes = valid.filter((run) => run.outcome === 'pass').length;
     const rowBehavior = behavior(valid.length, passes);
     const failureEntries = failures.flatMap((run) => (run.failures ?? [run.failure]).map((failure) => ({ rep: run.rep, ...failure })));
+    const judgeFailureEntries = rowRuns.flatMap((run) =>
+      run.judge_failure ? [{ rep: run.rep, check: 'judge', message: run.judge_failure.message }] : [],
+    );
+    const judgeRuns = rowRuns.filter((run) => run.judge);
+    const judgePasses = judgeRuns.filter((run) => run.judge.pass).length;
+    const judgeStatus = judgeRuns.length === 0
+      ? null
+      : judgePasses === judgeRuns.length
+        ? 'passing'
+        : judgePasses === 0
+          ? 'failed'
+          : 'flaky';
     const expectedFailures = failureEntries.filter((failure) => failure.check === row.expect_failure);
     const unexpectedFailures = failureEntries.filter((failure) => failure.check !== row.expect_failure);
     const knownFailureReproduced = expectedFailures.length > 0;
     const pass = row.known_failure
-      ? invalid.length === 0 && knownFailureReproduced && unexpectedFailures.length === 0
-      : invalid.length === 0 && rowBehavior === 'passing';
+      ? invalid.length === 0 && knownFailureReproduced && unexpectedFailures.length === 0 && judgeFailureEntries.length === 0
+      : invalid.length === 0 && rowBehavior === 'passing' && judgeFailureEntries.length === 0;
     return {
       id: row.id,
       flow: row.flow,
@@ -163,14 +183,23 @@ export function aggregate({ meta, reps, rows, runs }) {
         expect_failure: row.expect_failure,
         known_failure_reproduced: knownFailureReproduced,
       }),
+      ...(row.judge && {
+        judge: {
+          status: judgeStatus,
+          passes: `${judgePasses}/${judgeRuns.length}`,
+        },
+        judge_failures: judgeFailureEntries,
+      }),
       failures: failureEntries,
       invalid: invalid.map(({ rep, invalid: cause }) => ({ rep, ...cause })),
-      runs: rowRuns.map(({ rep, outcome, skills = [], failure, failures: runFailures, invalid: cause }) => ({
+      runs: rowRuns.map(({ rep, outcome, skills = [], failure, failures: runFailures, invalid: cause, judge, judge_failure }) => ({
         rep,
         outcome,
         skills: [...new Set(skills)].sort(),
         ...(failure && { failure }),
         ...(runFailures && { failures: runFailures }),
+        ...(judge && { judge }),
+        ...(judge_failure && { judge_failure }),
         ...(cause && { invalid: cause }),
       })),
     };
