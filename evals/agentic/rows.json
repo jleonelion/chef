@@ -45,6 +45,10 @@
     "id": "chef-add-recipe-pasted-text",
     "flow": "core",
     "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",
+    "judge": {
+      "expected": "Confirms that the pasted recipe was saved and is findable, gives a clear result, and does not expose internal paths or planning details.",
+      "threshold": 0.7
+    },
     "turns": [
       { "turnFile": "evals/agentic/inputs/chef-add-recipe-pasted-text/turn-1.txt" }
     ],
@@ -72,6 +76,10 @@
     "id": "chef-meal-planning-plan-week",
     "flow": "core",
     "description": "A confirmed schedule from saved recipes is saved as the week's meal plan with its nutrition rollup.",
+    "judge": {
+      "expected": "Confirms the meal plan was saved for 2026-01-19 through 2026-01-21 and accurately names the planned dinner on each date.",
+      "threshold": 0.7
+    },
     "turns": [
       "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: lemon garlic pasta on day 1, chickpea spinach stew on day 2, lemon garlic pasta again on day 3. I confirm this schedule; save it without asking me again."
     ],
@@ -173,6 +181,10 @@
     "id": "chef-health-goals-check-in",
     "flow": "core",
     "description": "A goal with user-stated targets is saved to the one goals store, and the one-time training notice is recorded.",
+    "judge": {
+      "expected": "Confirms the lower-sodium goal was saved with at most 2300 mg sodium and at least 90 g protein as the user's daily targets.",
+      "threshold": 0.7
+    },
     "turns": [
       "I want a health goal in Chef: lower sodium. My daily targets are at most 2300 mg sodium and at least 90 g protein. Those are my own numbers and I confirm them; save them."
     ],
