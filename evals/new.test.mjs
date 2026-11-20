@@ -34,7 +34,7 @@ test('agentic skeleton appends to rows.json without reformatting it', () => {
   const root = sandboxRoot();
   const rows = path.join(root, 'evals', 'agentic', 'rows.json');
   fs.mkdirSync(path.dirname(rows));
-  const original = '[\n  {\n    "id": "chef-setup-old", "flow": "core", "description": "d", "turns": ["hi"], "skills": ["chef-setup"], "files": [], "git": { "clean": true }\n  }\n]\n';
+  const original = '[\n  {\n    "id": "chef-setup-old", "flow": "core", "description": "d", "turns": ["hi"], "skills": ["chef-setup"], "files": [], "git": { "clean": true }, "gate": false\n  }\n]\n';
   fs.writeFileSync(rows, original);
   scaffold({ root, suite: 'agentic', skill: 'chef-setup', slug: 'new' });
   assert.ok(fs.readFileSync(rows, 'utf8').startsWith(original.slice(0, -3)));

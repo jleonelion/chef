@@ -22,6 +22,7 @@ const agentic = (over = {}) => ({
   skills: ['chef-setup'],
   files: [],
   git: { clean: true },
+  gate: false,
   ...over,
 });
 const lint = (suites) => lintDatasets({ suites: { tier1: [], agentic: [], ...suites }, skillNames });
@@ -130,9 +131,18 @@ test('a flip pair is two agentic rows with identical turns', () => {
 test('agentic known failures require one stable behavioral check', () => {
   assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'response' })] }), []);
   assert.deepEqual(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'tools' })] }), []);
+  assert.match(lint({ agentic: [agentic({ gate: true, known_failure: 'case-one', expect_failure: 'response' })] }).join('\n'), /known_failure rows cannot be gated/);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ expect_failure: 'response' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'unknown' })] }).join('\n'), /expect_failure/);
+});
+
+test('agentic rows must carry an explicit gate flag', () => {
+  assert.deepEqual(lint({ agentic: [agentic({ gate: false })] }), []);
+  assert.deepEqual(lint({ agentic: [agentic({ gate: true })] }), []);
+  const { gate, ...missingGate } = agentic();
+  assert.match(lint({ agentic: [missingGate] }).join('\n'), /gate/);
+  assert.match(lint({ agentic: [agentic({ gate: 'yes' })] }).join('\n'), /gate/);
 });
 
 test('agentic dataset covers every skill and negative routing', () => {

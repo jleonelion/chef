@@ -68,6 +68,9 @@ export function lintDatasets({ suites, skillNames, exists = () => true }) {
       if (suite === 'agentic' && row?.turnScripts && row.turnScripts.length !== row.turns?.length) {
         errors.push(`${label}: turnScripts must have one entry per turn`);
       }
+      if (suite === 'agentic' && row?.gate === true && row?.known_failure) {
+        errors.push(`${label}: known_failure rows cannot be gated`);
+      }
       const evaluated = evaluatedSkills(suite, row ?? {});
       if (typeof row?.id === 'string' && evaluated.length && !evaluated.some((skill) => row.id.startsWith(`${skill}-`))) {
         errors.push(`${label}: id must start with an evaluated skill (${[...new Set(evaluated)].join(', ')}) as <skill>-<scenario>`);
