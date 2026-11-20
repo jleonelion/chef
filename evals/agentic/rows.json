@@ -412,7 +412,8 @@
     "turns": [
       "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: creamy tomato soup on day 1, roasted vegetable quinoa bowl on day 2, creamy tomato soup again on day 3. I confirm this schedule; save it without asking me again."
     ],
-    "skills": ["chef-meal-planning"],
+    "skills": [],
+    "forbidSkills": ["chef-meal-planning"],
     "files": [
       {
         "path": "knowledge/wiki/meal-plans",
@@ -487,7 +488,8 @@
       "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
       "Yes, log it. I cooked it at home."
     ],
-    "skills": ["chef-meal-logging"],
+    "skills": [],
+    "forbidSkills": ["chef-meal-logging"],
     "scripts": {"forbidden": ["scripts/meal-logging.mjs"]},
     "files": [
       {
@@ -567,8 +569,8 @@
         }
       ]
     ],
-    "skills": ["chef-health-goals"],
-    "scripts": {"required": ["scripts/health-goals.mjs"]},
+    "skills": [],
+    "forbidSkills": ["chef-health-goals"],
     "files": [
       {
         "path": "data/health-goals/goals.json",
@@ -780,5 +782,96 @@
       }
     ],
     "git": { "clean": true }
+  },
+  {
+    "id": "chef-recipe-search-natural-request",
+    "flow": "core",
+    "description": "A natural request for saved recipes by ingredient routes to recipe search and returns only grounded script results.",
+    "turns": ["What saved dinners use chickpeas and take 45 minutes or less?"],
+    "skills": ["chef-recipe-search"],
+    "forbidSkills": ["chef-meal-planning", "chef-add-recipe"],
+    "scripts": { "required": ["scripts/recipe-search.mjs"] },
+    "files": [],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-shopping-lists-natural-from-plan",
+    "flow": "core",
+    "description": "A natural grocery-list request from a saved plan routes to shopping lists and excludes inventory already on hand.",
+    "grounding": { "recipes": ["chickpea-spinach-stew"] },
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [{ "date": "2026-01-19", "slot": "dinner", "recipe": "chickpea-spinach-stew" }]
+      }
+    ],
+    "turns": ["Turn the 2026-01-19 dinners into a grocery list and leave out what is already in the pantry."],
+    "skills": ["chef-shopping-lists"],
+    "forbidSkills": ["chef-meal-planning", "chef-food-inventory"],
+    "scripts": { "required": ["scripts/shopping-lists.mjs"] },
+    "files": [{ "path": "data/shopping-lists", "count": 0 }],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-food-inventory-expiring-natural-request",
+    "flow": "core",
+    "description": "A natural request to prioritize soon-expiring groceries routes to inventory expiring and not recipe or meal planning.",
+    "turns": ["Which groceries should I use first because they're nearing their expiry dates?"],
+    "skills": ["chef-food-inventory"],
+    "forbidSkills": ["chef-recipe-search", "chef-meal-planning"],
+    "scripts": { "requiredCalls": [{ "script": "scripts/inventory.mjs", "args": ["expiring"] }] },
+    "files": [],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-health-goals-natural-request",
+    "flow": "core",
+    "description": "A natural health-goal request without the product name is routed to health goals.",
+    "turns": ["I would like to keep daily sodium below 2300 mg and protein at least 90 g. Save those targets."],
+    "skills": ["chef-health-goals"],
+    "forbidSkills": ["chef-meal-planning", "chef-food-inventory"],
+    "scripts": { "required": ["scripts/health-goals.mjs"] },
+    "files": [{ "path": "data/health-goals/goals.json", "parse": "json", "assertions": [{ "path": "$.targets.sodium.max", "equals": 2300 }, { "path": "$.targets.protein.min", "equals": 90 }] }],
+    "git": { "clean": true }
+  },
+  {
+    "id": "chef-add-recipe-natural-request",
+    "flow": "core",
+    "description": "A natural pasted-recipe request without the product name routes to add recipe.",
+    "turns": ["Please keep this recipe for me: Black Bean Chili. Serves 4. Ingredients: 400 g black beans, 2 tomatoes, 1 onion, 1 bell pepper. Steps: simmer everything for 30 minutes."],
+    "skills": ["chef-add-recipe"],
+    "forbidSkills": ["chef-recipe-decisions", "chef-recipe-search"],
+    "files": [],
+    "git": { "clean": true }
+  },
+  {
+    "id": "chef-setup-natural-request",
+    "flow": "core",
+    "description": "A natural preferences request without the product name routes to setup.",
+    "turns": ["Show my current household and delivery preferences, then help me change the units to metric."],
+    "skills": ["chef-setup"],
+    "forbidSkills": ["chef-shopping-lists", "chef-health-goals"],
+    "files": [],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-off-topic-weather",
+    "flow": "should-not-act",
+    "description": "A weather question does not trigger Chef skills.",
+    "turns": ["Give me a short weather forecast for Seattle next Tuesday."],
+    "skills": [],
+    "forbidSkills": ["chef-add-recipe", "chef-batch-prep-planning", "chef-food-inventory", "chef-health-goals", "chef-meal-logging", "chef-meal-planning", "chef-recipe-decisions", "chef-recipe-search", "chef-setup", "chef-shopping-lists"],
+    "files": [],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "id": "chef-off-topic-laptop",
+    "flow": "should-not-act",
+    "description": "A laptop comparison does not trigger Chef skills.",
+    "turns": ["Compare two 14-inch laptops for software development and summarize the tradeoffs."],
+    "skills": [],
+    "forbidSkills": ["chef-add-recipe", "chef-batch-prep-planning", "chef-food-inventory", "chef-health-goals", "chef-meal-logging", "chef-meal-planning", "chef-recipe-decisions", "chef-recipe-search", "chef-setup", "chef-shopping-lists"],
+    "files": [],
+    "git": { "headUnchanged": true, "clean": true }
   }
 ]

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import fs from 'node:fs';
+import path from 'node:path';
 import { lintDatasets } from './lint-datasets.mjs';
 
 const skillNames = new Set(['chef-setup', 'chef-add-recipe']);
@@ -131,4 +133,32 @@ test('agentic known failures require one stable behavioral check', () => {
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ expect_failure: 'response' })] }).join('\n'), /expect_failure/);
   assert.match(lint({ agentic: [agentic({ known_failure: 'case-one', expect_failure: 'unknown' })] }).join('\n'), /expect_failure/);
+});
+
+test('agentic dataset covers every skill and negative routing', () => {
+  const repo = path.resolve(import.meta.dirname, '..');
+  const rows = JSON.parse(fs.readFileSync(path.join(repo, 'evals', 'agentic', 'rows.json'), 'utf8'));
+  const skills = new Set(fs.readdirSync(path.join(repo, 'src', 'skills'), { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name));
+  const required = new Set(rows.flatMap((row) => row.skills ?? []));
+  assert.deepEqual([...skills].filter((skill) => !required.has(skill)), []);
+
+  assert.ok(rows.filter((row) => (row.forbidSkills ?? []).length > 0).length >= 3);
+  assert.ok(rows.filter((row) => row.flow === 'should-not-act' && (row.forbidSkills ?? []).length > 0).length >= 2);
+  const mirroredPairs = ['dairy-constraint', 'plan-presence', 'health-goal'];
+  for (const pair of mirroredPairs) {
+    const members = rows.filter((row) => row.pair === pair);
+    assert.equal(members.length, 2, `${pair} needs two routing rows`);
+    const requiredSkill = members.find((row) => (row.skills ?? []).length > 0)?.skills[0];
+    assert.ok(requiredSkill, `${pair} needs a positive routing member`);
+    assert.ok(members.some((row) => (row.forbidSkills ?? []).includes(requiredSkill)),
+      `${pair} needs a negative routing member forbidding ${requiredSkill}`);
+  }
+
+  for (const skill of skills) {
+    const natural = rows.some((row) => (row.skills ?? []).includes(skill)
+      && (row.turns ?? []).some((turn) => typeof turn === 'string' && !/\bchef\b/i.test(turn)));
+    assert.ok(natural, `${skill} needs a natural-phrasing prompt without the word Chef`);
+  }
 });
