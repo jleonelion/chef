@@ -49,6 +49,14 @@ test('excludes rejects forbidden text and accepts text without it', () => {
   );
 });
 
+test('matches requires a string to match a regular expression', () => {
+  assertCase({ date: '2026-01-20' }, { path: '$.date', matches: '^\\d{4}-\\d{2}-\\d{2}$' });
+  assert.throws(
+    () => assertCase({ date: 'yesterday' }, { path: '$.date', matches: '^\\d{4}-\\d{2}-\\d{2}$' }),
+    /does not match/,
+  );
+});
+
 test('an assertion with no recognised check key throws', () => {
   assert.throws(() => assertCase(doc, { path: '$.one', includs: 'x' }), /no recognised check/);
   assert.throws(() => assertCase(doc, { path: '$.one' }), /no recognised check/);

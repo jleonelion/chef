@@ -54,10 +54,10 @@
         "assertions": [
           { "path": "$.content", "includes": "title: Tomato Lentil Soup" },
           { "path": "$.content", "includes": "1 cup red lentils" },
-          { "path": "$.content", "includes": "dietary_flags:" }
+          { "path": "$.content", "includes": "dietary_flags: []" }
         ]
       },
-      { "path": "knowledge/raw/recipes", "count": 3 }
+      { "path": "knowledge/raw/recipes", "count": { "baseline": 2, "delta": 1 } }
     ],
     "after": [
       {
@@ -80,8 +80,9 @@
         "path": "knowledge/wiki/meal-plans/2026-01-19.md",
         "assertions": [
           { "path": "$.content", "includes": "type: meal-plan" },
-          { "path": "$.content", "includes": "slug: chickpea-spinach-stew" },
-          { "path": "$.content", "includes": "nutrition:" }
+          { "path": "$.content", "includes": "| 2026-01-19 | dinner | Lemon Garlic Pasta |" },
+          { "path": "$.content", "includes": "| 2026-01-20 | dinner | Chickpea Spinach Stew |" },
+          { "path": "$.content", "includes": "| 2026-01-21 | dinner | Lemon Garlic Pasta |" }
         ]
       }
     ],
@@ -108,8 +109,21 @@
     ],
     "skills": ["chef-food-inventory"],
     "files": [
-      { "path": "data/food-inventory/purchases", "count": 2 },
-      { "path": "knowledge/raw/receipts", "count": 2 }
+      { "path": "data/food-inventory/purchases", "count": { "baseline": 1, "delta": 1 } },
+      { "path": "knowledge/raw/receipts", "count": { "baseline": 1, "delta": 1 } },
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.fridge.dairy.whole_milk.amount", "equals": 2 },
+          { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" },
+          { "path": "$.pantry.produce.bananas.amount", "equals": 2.1 },
+          { "path": "$.pantry.produce.bananas.unit", "equals": "lb" },
+          { "path": "$.pantry.canned.red_lentils.amount", "equals": 1 },
+          { "path": "$.pantry.canned.red_lentils.unit", "equals": "lb" },
+          { "path": "$.pantry.canned.reusable_bag", "absent": true }
+        ]
+      }
     ],
     "after": [
       {
@@ -139,7 +153,17 @@
     "files": [
       {
         "path": "data/batch-prep-plans/2026-01-19.pdf",
-        "assertions": [{ "path": "$.content", "includes": "%PDF-" }]
+        "parse": "pdf",
+        "assertions": [
+          { "path": "$.valid", "equals": true },
+          { "path": "$.pages", "equals": 2 },
+          { "path": "$.title", "equals": "Batch prep plan: week of 2026-01-19" },
+          { "path": "$.text", "includes": "Lemon Garlic Pasta" },
+          { "path": "$.text", "includes": "Chickpea Spinach Stew" },
+          { "path": "$.text", "includes": "Planned: 2026-01-19 dinner" },
+          { "path": "$.text", "includes": "Planned: 2026-01-20 dinner" },
+          { "path": "$.text", "includes": "Planned: 2026-01-21 dinner" }
+        ]
       }
     ],
     "git": { "clean": true }
@@ -158,7 +182,7 @@
         "parse": "json",
         "assertions": [{ "path": "$.targets", "equals": { "sodium": { "max": 2300 }, "protein": { "min": 90 } } }]
       },
-      { "path": "data/notices.json", "parse": "json", "assertions": [{ "path": "$.training-setting", "absent": false }] }
+      { "path": "data/notices.json", "parse": "json", "assertions": [{ "path": "$.training-setting", "matches": "^\\d{4}-\\d{2}-\\d{2}$" }] }
     ],
     "git": { "clean": true }
   },

@@ -32,7 +32,7 @@ export function query(value, expression) {
   return result.length === 1 ? result[0] : result;
 }
 
-const CHECKS = ['equals', 'absent', 'includes', 'excludes', 'min'];
+const CHECKS = ['equals', 'absent', 'includes', 'excludes', 'min', 'matches'];
 
 export function assertCase(evaluation, assertion) {
   assert(CHECKS.some((check) => Object.hasOwn(assertion, check)), `${assertion.path}: assertion has no recognised check (${CHECKS.join(', ')}); got keys ${Object.keys(assertion).join(', ')}`);
@@ -52,6 +52,10 @@ export function assertCase(evaluation, assertion) {
   }
   if (Object.hasOwn(assertion, 'min')) {
     assert(Number(actual) >= assertion.min, `${assertion.path}: expected >= ${assertion.min}, got ${actual}`);
+  }
+  if (Object.hasOwn(assertion, 'matches')) {
+    assert(typeof actual === 'string', `${assertion.path}: matches target is not a string`);
+    assert(new RegExp(assertion.matches).test(actual), `${assertion.path}: ${JSON.stringify(actual)} does not match ${assertion.matches}`);
   }
 }
 

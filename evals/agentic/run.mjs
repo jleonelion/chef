@@ -73,21 +73,21 @@ async function runRep(row, number, { harness, model, logDir }) {
         const cause = { ...executionError, message: `turn ${index + 1}: ${executionError.message} (see ${row.id}-${number}-${index + 1}.${launched.ext})` };
         throw Object.assign(new Error(cause.message), { invalid: cause });
       }
-      recordBehaviorFailure(failures, () => checkResponse(turn.response, row.responses?.[index]));
-      recordBehaviorFailure(failures, () => checkScripts(turn.scriptRuns, row.turnScripts?.[index]));
+      await recordBehaviorFailure(failures, () => checkResponse(turn.response, row.responses?.[index]));
+      await recordBehaviorFailure(failures, () => checkScripts(turn.scriptRuns, row.turnScripts?.[index]));
     }
-    recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
-    recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
-    recordBehaviorFailure(failures, () => checkTools(run.toolCalls, row.tools));
-    recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files));
-    recordBehaviorFailure(failures, () =>
+    await recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
+    await recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
+    await recordBehaviorFailure(failures, () => checkTools(run.toolCalls, row.tools));
+    await recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files));
+    await recordBehaviorFailure(failures, () =>
       behaviorCheck('git-state', () =>
         assertGitState({ beforeHead, afterHead: git(rep.dataRoot, 'rev-parse', 'HEAD'), status: git(rep.dataRoot, 'status', '--porcelain') }, row.git ?? {}),
       ),
     );
     for (const step of row.after ?? []) {
       const output = script(rep, step);
-      recordBehaviorFailure(failures, () =>
+      await recordBehaviorFailure(failures, () =>
         behaviorCheck('post-run', () => {
           for (const assertion of step.assertions ?? []) assertCase(output, assertion);
         }),
