@@ -68,6 +68,14 @@ _Avoid_: adapter, reader
 The per-runtime code that makes an agentic eval run one turn in a headless agent runtime: it installs the built skills the way that runtime finds them, isolated from the user's own config, runs the prompt, and returns the raw transcript for the Projector. One per runtime (Claude Code, Codex, Copilot).
 _Avoid_: adapter, driver, runner
 
+**Gated eval row**:
+An agentic eval row promoted into scheduled and release checks after meeting the written promotion criteria.
+_Avoid_: stable row, CI row
+
+**Semantic target**:
+The user-visible facts and qualities a judge-scored reply should satisfy without prescribing its wording.
+_Avoid_: expected answer, answer template
+
 **Diagnostic bundle**:
 A snapshot of selected invocation events and coarse environment facts, built when the user makes a feedback report. Exists only inside one.
 _Avoid_: attachment, dump, logs
