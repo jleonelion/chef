@@ -58,15 +58,17 @@ test('household recipient reply assertions accept equivalent wording and reject 
   const row = rows.find(({ id }) => id === 'chef-setup-household-recipients');
   const assertions = row.responses[0];
   const rewordedTranscript =
-    'I’ll use these people as the default shopping-list recipients. A recurring shopping task needs your approval, and this does not prevent you from asking Chef to email anyone else.';
+    'I’ll use these people as the default shopping-list recipients. A recurring shopping task needs explicit approval, and this does not prevent you from asking Chef to email anyone else.';
   const wrongTranscript =
-    'The household addresses are the default recipients for shopping lists, and the recurring task does not need approval. I will only email those addresses and nobody else.';
+    'The household addresses are the mandatory default recipients for shopping lists. The recurring task does not need approval, and anyone else is forbidden.';
   const maxInvariantLength = 9;
 
   checkResponse(rewordedTranscript, assertions);
-  assert.throws(() => checkResponse(wrongTranscript, assertions), /missing/);
+  assert.throws(() => checkResponse(wrongTranscript, assertions), /missing|unexpected/);
   for (const assertion of assertions) {
-    assert.ok(assertion.includes.length <= maxInvariantLength, `reply invariant is too coupled: "${assertion.includes}"`);
+    for (const key of ['includes', 'excludes']) {
+      if (assertion[key]) assert.ok(assertion[key].length <= maxInvariantLength, `reply invariant is too coupled: "${assertion[key]}"`);
+    }
   }
   assert.match(row.description, /Rationale:/);
 });
