@@ -1,5 +1,9 @@
 const cache = new Map();
 
+function passesJudge(verdict, threshold) {
+  return verdict.passes && verdict.score >= threshold;
+}
+
 export function createJudgeCacheKey({ prompt, expected, response }) {
   return JSON.stringify([prompt, expected, response]);
 }
@@ -23,9 +27,8 @@ export function parseJudgeVerdict(text) {
   return parsed;
 }
 
-export async function judgeReply(options, input) {
-  const settings = input ?? options;
-  const callJudge = input ? options.callJudge : options.callJudge;
+export async function judgeReply(settings) {
+  const callJudge = settings.callJudge;
   if (typeof settings.response !== 'string' || !settings.response.trim()) {
     return { pass: false, score: 0, verdict: null, reason: 'empty response' };
   }
@@ -34,7 +37,7 @@ export async function judgeReply(options, input) {
   if (cache.has(key)) {
     const cached = cache.get(key);
     return cached.verdict
-      ? { pass: cached.verdict.passes && cached.score >= settings.threshold, score: cached.score, verdict: cached.verdict }
+      ? { pass: passesJudge(cached.verdict, settings.threshold), score: cached.score, verdict: cached.verdict }
       : cached;
   }
   const prompt = [
@@ -48,7 +51,7 @@ export async function judgeReply(options, input) {
   const raw = await callJudge(prompt);
   const verdict = parseJudgeVerdict(raw);
   const result = verdict
-    ? { pass: verdict.passes && verdict.score >= settings.threshold, score: verdict.score, verdict }
+    ? { pass: passesJudge(verdict, settings.threshold), score: verdict.score, verdict }
     : { pass: false, score: 0, verdict: null, reason: 'unparseable verdict' };
   cache.set(key, verdict
     ? { pass: result.pass, score: result.score, verdict }

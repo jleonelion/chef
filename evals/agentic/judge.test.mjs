@@ -10,20 +10,20 @@ test('parseJudgeVerdict rejects empty and unparseable replies', () => {
 
 test('judgeReply returns fail-closed verdicts and caches identical calls', async () => {
   let calls = 0;
-  const judge = judgeReply.bind(null, {
-    callJudge: async () => {
-      calls += 1;
-      return '{"score":0.8,"passes":true,"reasoning":"complete","missing_critical_details":[],"unexpected_problems":[],"confidence":0.9}';
-    },
-  });
+  const callJudge = async () => {
+    calls += 1;
+    return '{"score":0.8,"passes":true,"reasoning":"complete","missing_critical_details":[],"unexpected_problems":[],"confidence":0.9}';
+  };
 
-  const first = await judge({
+  const first = await judgeReply({
+    callJudge,
     prompt: 'Plan dinner',
     expected: 'A grounded week plan',
     response: 'I planned Monday dinner.',
     threshold: 0.7,
   });
-  const second = await judge({
+  const second = await judgeReply({
+    callJudge,
     prompt: 'Plan dinner',
     expected: 'A grounded week plan',
     response: 'I planned Monday dinner.',

@@ -1,5 +1,5 @@
 // Pure parts of the agentic suite: check a rep's Trajectory data and data root,
-// and aggregate reps into the release result. Deterministic checks only; no LLM judging.
+// and aggregate reps into the release result. Deterministic behavior checks and opt-in LLM judging are reported separately.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';

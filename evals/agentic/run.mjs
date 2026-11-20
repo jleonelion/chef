@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Agentic suite: a headless agent harness (see harnesses/, projected into a Trajectory; see trajectory.mjs)
-// with the built plugin, one fresh copy of the synthetic fixture data root per rep, deterministic checks only (skills fired, files written or
-// not, script output, git state). Every row must pass every rep; nothing is retried.
+// with the built plugin, one fresh copy of the synthetic fixture data root per rep. It checks behavior (skills fired, files written or
+// not, script output, git state) and, for opted-in rows, answer quality. Every row must pass every rep; nothing is retried.
 // Local only: it spends real harness usage, so it never runs in CI. Rows are in rows.json:
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
 //   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts, each a string or {turnFile: evals/agentic/inputs/...};
@@ -99,7 +99,7 @@ async function runRep(row, number, { harness, model, judgeModel, judgeCall, logD
         }),
       );
     }
-    if (row.judge && failures.length === 0) {
+    if (row.judge) {
       try {
         if (!judgeCall) throw new Error(`judge model is required (use --judge-model or CHEF_EVAL_JUDGE_MODEL)`);
         const result = await judgeReply({
