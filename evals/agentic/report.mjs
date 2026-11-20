@@ -17,9 +17,9 @@ export function behaviorCheck(check, evaluate) {
   }
 }
 
-export function recordBehaviorFailure(failures, evaluate) {
+export async function recordBehaviorFailure(failures, evaluate) {
   try {
-    evaluate();
+    await evaluate();
   } catch (error) {
     if (!error?.check) throw error;
     failures.push({ check: error.check, message: error.message });
@@ -74,15 +74,16 @@ function countFiles(abs) {
   return fs.readdirSync(abs, { recursive: true }).filter((name) => fs.statSync(path.join(abs, name)).isFile()).length;
 }
 
-// Each check is {path} (must exist), {path, absent: true}, or {path, count: n} (files under a folder);
-// `assertions` run against {content} or, with parse: 'json', the parsed file (see tier1 assertions).
-export function checkFiles(dataRoot, checks) {
-  return behaviorCheck('files', () => {
+// Each check is {path} (must exist), {path, absent: true}, or {path, count: n|{baseline,delta}}.
+// `assertions` run against text, parsed JSON, or parsed PDF data (see tier1 assertions).
+export async function checkFiles(dataRoot, checks) {
+  try {
     for (const check of checks ?? []) {
       const abs = path.join(dataRoot, check.path);
       if (Object.hasOwn(check, 'count')) {
         const found = countFiles(abs);
-        assert.equal(found, check.count, `${check.path}: expected ${check.count} files, found ${found}`);
+        const expected = typeof check.count === 'object' ? check.count.baseline + check.count.delta : check.count;
+        assert.equal(found, expected, `${check.path}: expected ${expected} files, found ${found}`);
         continue;
       }
       if (check.absent) {
@@ -90,11 +91,23 @@ export function checkFiles(dataRoot, checks) {
         continue;
       }
       assert(fs.existsSync(abs), `expected file was not written: ${check.path}`);
+      if (check.parse === 'pdf') {
+        const { readPdf } = await import('../tier1/pdf.mjs');
+        const value = await readPdf(fs.readFileSync(abs));
+        for (const assertion of check.assertions ?? []) assertCase(value, assertion);
+        continue;
+      }
       const content = fs.readFileSync(abs, 'utf8');
       const value = check.parse === 'json' ? JSON.parse(content) : { content };
       for (const assertion of check.assertions ?? []) assertCase(value, assertion);
     }
-  });
+  } catch (error) {
+    if (error?.check) throw error;
+    const failure = new Error(error instanceof Error ? error.message : String(error), { cause: error });
+    failure.name = 'BehaviorFailure';
+    failure.check = 'files';
+    throw failure;
+  }
 }
 
 function behavior(validRuns, passes) {

@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { aggregate, behaviorCheck, checkFiles, checkResponse, checkTools, exitCodeFor, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
@@ -62,56 +63,90 @@ function dataRoot(t) {
   return root;
 }
 
-test('checkFiles asserts present, absent and parsed file contents', (t) => {
+test('checkFiles asserts present, absent and parsed file contents', async (t) => {
   const root = dataRoot(t);
-  checkFiles(root, [
+  await checkFiles(root, [
     { path: 'page.md', assertions: [{ path: '$.content', includes: '# Page' }] },
     { path: 'data/store.json', parse: 'json', assertions: [{ path: '$.items[0].id', equals: 'a' }] },
     { path: 'missing.md', absent: true },
   ]);
-  assert.throws(() => checkFiles(root, [{ path: 'missing.md' }]), /expected file was not written: missing.md/);
-  assert.throws(() => checkFiles(root, [{ path: 'page.md', absent: true }]), /file must not be written: page.md/);
+  await assert.rejects(checkFiles(root, [{ path: 'missing.md' }]), /expected file was not written: missing.md/);
+  await assert.rejects(checkFiles(root, [{ path: 'page.md', absent: true }]), /file must not be written: page.md/);
 });
 
-test('checkFiles counts the files in a folder', (t) => {
+test('checkFiles counts the files in a folder', async (t) => {
   const root = dataRoot(t);
-  checkFiles(root, [{ path: 'data', count: 1 }, { path: 'nowhere', count: 0 }]);
-  assert.throws(() => checkFiles(root, [{ path: 'data', count: 2 }]), /data: expected 2 files, found 1/);
+  await checkFiles(root, [{ path: 'data', count: 1 }, { path: 'nowhere', count: 0 }]);
+  await checkFiles(root, [{ path: 'data', count: { baseline: 0, delta: 1 } }]);
+  await assert.rejects(checkFiles(root, [{ path: 'data', count: 2 }]), /data: expected 2 files, found 1/);
 });
 
-test('behavioral checks throw stable check identifiers', (t) => {
+test('checkFiles parses PDFs and rejects empty PDF content', async (t) => {
+  const root = dataRoot(t);
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  pdf.addPage().drawText('Lemon Garlic Pasta', { font });
+  const bytes = await pdf.save();
+  fs.writeFileSync(path.join(root, 'plan.pdf'), bytes);
+  await checkFiles(root, [{ path: 'plan.pdf', parse: 'pdf', assertions: [
+    { path: '$.valid', equals: true },
+    { path: '$.pages', equals: 1 },
+    { path: '$.text', includes: 'Lemon Garlic Pasta' },
+  ] }]);
+
+  const empty = await PDFDocument.create();
+  empty.addPage();
+  fs.writeFileSync(path.join(root, 'empty.pdf'), await empty.save());
+  await assert.rejects(checkFiles(root, [{ path: 'empty.pdf', parse: 'pdf', assertions: [
+    { path: '$.text', includes: 'Lemon Garlic Pasta' },
+  ] }]), /missing "Lemon Garlic Pasta"/);
+});
+
+test('checkFiles rejects inventory containing a reusable bag', async (t) => {
+  const root = dataRoot(t);
+  fs.writeFileSync(path.join(root, 'data', 'inventory.json'), JSON.stringify({
+    pantry: { canned: { reusable_bag: { name: 'reusable bag', amount: 1, unit: 'each' } } },
+  }));
+  await assert.rejects(checkFiles(root, [{
+    path: 'data/inventory.json',
+    parse: 'json',
+    assertions: [{ path: '$.pantry.canned.reusable_bag', absent: true }],
+  }]), /pantry\.canned\.reusable_bag: expected absent/);
+});
+
+test('behavioral checks throw stable check identifiers', async (t) => {
   const root = dataRoot(t);
   const failures = [
     () => checkSkills([], { skills: ['chef-add-recipe'] }),
     () => checkScripts([], { required: ['scripts/a.mjs'] }),
     () => checkTools([{ name: 'Write' }], { forbidden: ['Write'] }),
     () => checkResponse('no', [{ path: '$.content', includes: 'yes' }]),
-    () => checkFiles(root, [{ path: 'missing.md' }]),
+    async () => checkFiles(root, [{ path: 'missing.md' }]),
     () => behaviorCheck('git-state', () => assert.fail('dirty')),
     () => behaviorCheck('post-run', () => assert.fail('wrong output')),
   ];
   assert.deepEqual(
-    failures.map((fail) => {
+    await Promise.all(failures.map(async (fail) => {
       try {
-        fail();
+        await fail();
       } catch (error) {
         return error.check;
       }
       return null;
-    }),
+    })),
     ['skills', 'scripts', 'tools', 'response', 'files', 'git-state', 'post-run'],
   );
 });
 
-test('recordBehaviorFailure collects behavioral failures and rethrows harness errors', () => {
+test('recordBehaviorFailure collects behavioral failures and rethrows harness errors', async () => {
   const failures = [];
-  recordBehaviorFailure(failures, () => behaviorCheck('response', () => assert.fail('wrong response')));
-  recordBehaviorFailure(failures, () => behaviorCheck('files', () => assert.fail('missing file')));
+  await recordBehaviorFailure(failures, () => behaviorCheck('response', () => assert.fail('wrong response')));
+  await recordBehaviorFailure(failures, () => behaviorCheck('files', () => assert.fail('missing file')));
   assert.deepEqual(failures, [
     { check: 'response', message: 'wrong response' },
     { check: 'files', message: 'missing file' },
   ]);
-  assert.throws(() => recordBehaviorFailure(failures, () => assert.fail('harness failed')), /harness failed/);
+  await assert.rejects(recordBehaviorFailure(failures, () => assert.fail('harness failed')), /harness failed/);
 });
 
 const passed = (row, rep, extra = {}) => ({ row, rep, outcome: 'pass', model: 'm1', cost_usd: 0, ...extra });
