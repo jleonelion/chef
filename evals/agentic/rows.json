@@ -370,6 +370,77 @@
   },
   {
     "gate": false,
+    "id": "chef-meal-logging-plan-leftovers-and-food",
+    "flow": "core",
+    "description": "A leftovers lunch and dinner out are confirmed together; neither is cooked.",
+    "grounding": { "recipes": ["lemon-garlic-pasta"] },
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta", "servings": 2 },
+          { "date": "2026-01-20", "slot": "lunch", "leftovers_of": { "date": "2026-01-19", "slot": "dinner" }, "servings": 1 },
+          { "date": "2026-01-20", "slot": "dinner", "food": "Thai dinner out", "servings": 2 }
+        ]
+      }
+    ],
+    "turns": ["Log 2026-01-20 from my Chef meal plan.", "Dinner was not cooked at home. Yes, log both."],
+    "responses": [[
+      { "path": "$.content", "includes": "leftovers" },
+      { "path": "$.content", "excludes": "Did you cook lunch" },
+      { "path": "$.content", "excludes": "did you cook lunch" }
+    ]],
+    "skills": ["chef-meal-logging"],
+    "scripts": { "required": ["scripts/meal-logging.mjs"] },
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.entries.length", "equals": 2 },
+          { "path": "$.entries.[?(@slot=='lunch')].recipe", "equals": "lemon-garlic-pasta" },
+          { "path": "$.entries.[?(@slot=='lunch')].servings", "equals": 1 },
+          { "path": "$.entries.[?(@slot=='lunch')].cooked", "equals": false },
+          { "path": "$.entries.[?(@slot=='dinner')].food", "equals": "Thai dinner out" },
+          { "path": "$.entries.[?(@slot=='dinner')].cooked", "equals": false }
+        ]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "gate": false,
+    "id": "chef-meal-logging-plan-cooking-servings",
+    "flow": "core",
+    "description": "A recipe meal with planned leftovers logs servings eaten, not total servings cooked.",
+    "grounding": { "recipes": ["lemon-garlic-pasta"] },
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta", "servings": 2 },
+          { "date": "2026-01-20", "slot": "lunch", "leftovers_of": { "date": "2026-01-19", "slot": "dinner" }, "servings": 1 }
+        ]
+      }
+    ],
+    "turns": ["Log my planned dinner for 2026-01-19.", "I cooked it at home. Yes, log it."],
+    "skills": ["chef-meal-logging"],
+    "scripts": { "required": ["scripts/meal-logging.mjs"] },
+    "files": [
+      {
+        "path": "data/meal-log/log.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.entries.length", "equals": 1 },
+          { "path": "$.entries[0].servings", "equals": 2 },
+          { "path": "$.entries[0].cooked", "equals": true }
+        ]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "gate": false,
     "id": "chef-meal-planning-dietary-should-not-act",
     "flow": "should-not-act",
     "description": "Asked to plan a recipe the dietary gate leaves out (unchecked flags under a dairy hard constraint), Chef saves no plan and changes nothing.",
