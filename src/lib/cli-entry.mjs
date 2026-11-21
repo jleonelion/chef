@@ -1,6 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+const canonicalPath = (file) => {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return path.resolve(file);
+  }
+};
+
+export const isDirectExecution = (url, entry = process.argv[1]) => entry !== undefined
+  && canonicalPath(entry) === canonicalPath(fileURLToPath(url));
 
 export const invalidMode = (mode, modes, dataRoot) => ({
   status: 'invalid-input',

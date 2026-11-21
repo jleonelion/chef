@@ -75,17 +75,17 @@ var require_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  function visit_(key, node, visitor, path8) {
-    const ctrl = callVisitor(key, node, visitor, path8);
+  function visit_(key, node, visitor, path9) {
+    const ctrl = callVisitor(key, node, visitor, path9);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path8, ctrl);
-      return visit_(key, ctrl, visitor, path8);
+      replaceNode(key, path9, ctrl);
+      return visit_(key, ctrl, visitor, path9);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path8 = Object.freeze(path8.concat(node));
+        path9 = Object.freeze(path9.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = visit_(i, node.items[i], visitor, path8);
+          const ci = visit_(i, node.items[i], visitor, path9);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -96,13 +96,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path8 = Object.freeze(path8.concat(node));
-        const ck = visit_("key", node.key, visitor, path8);
+        path9 = Object.freeze(path9.concat(node));
+        const ck = visit_("key", node.key, visitor, path9);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = visit_("value", node.value, visitor, path8);
+        const cv = visit_("value", node.value, visitor, path9);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -123,17 +123,17 @@ var require_visit = __commonJS((exports) => {
   visitAsync.BREAK = BREAK;
   visitAsync.SKIP = SKIP;
   visitAsync.REMOVE = REMOVE;
-  async function visitAsync_(key, node, visitor, path8) {
-    const ctrl = await callVisitor(key, node, visitor, path8);
+  async function visitAsync_(key, node, visitor, path9) {
+    const ctrl = await callVisitor(key, node, visitor, path9);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path8, ctrl);
-      return visitAsync_(key, ctrl, visitor, path8);
+      replaceNode(key, path9, ctrl);
+      return visitAsync_(key, ctrl, visitor, path9);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path8 = Object.freeze(path8.concat(node));
+        path9 = Object.freeze(path9.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = await visitAsync_(i, node.items[i], visitor, path8);
+          const ci = await visitAsync_(i, node.items[i], visitor, path9);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -144,13 +144,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path8 = Object.freeze(path8.concat(node));
-        const ck = await visitAsync_("key", node.key, visitor, path8);
+        path9 = Object.freeze(path9.concat(node));
+        const ck = await visitAsync_("key", node.key, visitor, path9);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = await visitAsync_("value", node.value, visitor, path8);
+        const cv = await visitAsync_("value", node.value, visitor, path9);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -177,23 +177,23 @@ var require_visit = __commonJS((exports) => {
     }
     return visitor;
   }
-  function callVisitor(key, node, visitor, path8) {
+  function callVisitor(key, node, visitor, path9) {
     if (typeof visitor === "function")
-      return visitor(key, node, path8);
+      return visitor(key, node, path9);
     if (identity.isMap(node))
-      return visitor.Map?.(key, node, path8);
+      return visitor.Map?.(key, node, path9);
     if (identity.isSeq(node))
-      return visitor.Seq?.(key, node, path8);
+      return visitor.Seq?.(key, node, path9);
     if (identity.isPair(node))
-      return visitor.Pair?.(key, node, path8);
+      return visitor.Pair?.(key, node, path9);
     if (identity.isScalar(node))
-      return visitor.Scalar?.(key, node, path8);
+      return visitor.Scalar?.(key, node, path9);
     if (identity.isAlias(node))
-      return visitor.Alias?.(key, node, path8);
+      return visitor.Alias?.(key, node, path9);
     return;
   }
-  function replaceNode(key, path8, node) {
-    const parent = path8[path8.length - 1];
+  function replaceNode(key, path9, node) {
+    const parent = path9[path9.length - 1];
     if (identity.isCollection(parent)) {
       parent.items[key] = node;
     } else if (identity.isPair(parent)) {
@@ -754,10 +754,10 @@ var require_Collection = __commonJS((exports) => {
   var createNode = require_createNode();
   var identity = require_identity();
   var Node = require_Node();
-  function collectionFromPath(schema, path8, value) {
+  function collectionFromPath(schema, path9, value) {
     let v = value;
-    for (let i = path8.length - 1;i >= 0; --i) {
-      const k = path8[i];
+    for (let i = path9.length - 1;i >= 0; --i) {
+      const k = path9[i];
       if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
         const a = [];
         a[k] = v;
@@ -776,7 +776,7 @@ var require_Collection = __commonJS((exports) => {
       sourceObjects: new Map
     });
   }
-  var isEmptyPath = (path8) => path8 == null || typeof path8 === "object" && !!path8[Symbol.iterator]().next().done;
+  var isEmptyPath = (path9) => path9 == null || typeof path9 === "object" && !!path9[Symbol.iterator]().next().done;
 
   class Collection extends Node.NodeBase {
     constructor(type, schema) {
@@ -797,11 +797,11 @@ var require_Collection = __commonJS((exports) => {
         copy.range = this.range.slice();
       return copy;
     }
-    addIn(path8, value) {
-      if (isEmptyPath(path8))
+    addIn(path9, value) {
+      if (isEmptyPath(path9))
         this.add(value);
       else {
-        const [key, ...rest] = path8;
+        const [key, ...rest] = path9;
         const node = this.get(key, true);
         if (identity.isCollection(node))
           node.addIn(rest, value);
@@ -811,8 +811,8 @@ var require_Collection = __commonJS((exports) => {
           throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
       }
     }
-    deleteIn(path8) {
-      const [key, ...rest] = path8;
+    deleteIn(path9) {
+      const [key, ...rest] = path9;
       if (rest.length === 0)
         return this.delete(key);
       const node = this.get(key, true);
@@ -821,8 +821,8 @@ var require_Collection = __commonJS((exports) => {
       else
         throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
     }
-    getIn(path8, keepScalar) {
-      const [key, ...rest] = path8;
+    getIn(path9, keepScalar) {
+      const [key, ...rest] = path9;
       const node = this.get(key, true);
       if (rest.length === 0)
         return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -837,15 +837,15 @@ var require_Collection = __commonJS((exports) => {
         return n == null || allowScalar && identity.isScalar(n) && n.value == null && !n.commentBefore && !n.comment && !n.tag;
       });
     }
-    hasIn(path8) {
-      const [key, ...rest] = path8;
+    hasIn(path9) {
+      const [key, ...rest] = path9;
       if (rest.length === 0)
         return this.has(key);
       const node = this.get(key, true);
       return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
-    setIn(path8, value) {
-      const [key, ...rest] = path8;
+    setIn(path9, value) {
+      const [key, ...rest] = path9;
       if (rest.length === 0) {
         this.set(key, value);
       } else {
@@ -3238,9 +3238,9 @@ var require_Document = __commonJS((exports) => {
       if (assertCollection(this.contents))
         this.contents.add(value);
     }
-    addIn(path8, value) {
+    addIn(path9, value) {
       if (assertCollection(this.contents))
-        this.contents.addIn(path8, value);
+        this.contents.addIn(path9, value);
     }
     createAlias(node, name) {
       if (!node.anchor) {
@@ -3289,30 +3289,30 @@ var require_Document = __commonJS((exports) => {
     delete(key) {
       return assertCollection(this.contents) ? this.contents.delete(key) : false;
     }
-    deleteIn(path8) {
-      if (Collection.isEmptyPath(path8)) {
+    deleteIn(path9) {
+      if (Collection.isEmptyPath(path9)) {
         if (this.contents == null)
           return false;
         this.contents = null;
         return true;
       }
-      return assertCollection(this.contents) ? this.contents.deleteIn(path8) : false;
+      return assertCollection(this.contents) ? this.contents.deleteIn(path9) : false;
     }
     get(key, keepScalar) {
       return identity.isCollection(this.contents) ? this.contents.get(key, keepScalar) : undefined;
     }
-    getIn(path8, keepScalar) {
-      if (Collection.isEmptyPath(path8))
+    getIn(path9, keepScalar) {
+      if (Collection.isEmptyPath(path9))
         return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-      return identity.isCollection(this.contents) ? this.contents.getIn(path8, keepScalar) : undefined;
+      return identity.isCollection(this.contents) ? this.contents.getIn(path9, keepScalar) : undefined;
     }
     has(key) {
       return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
-    hasIn(path8) {
-      if (Collection.isEmptyPath(path8))
+    hasIn(path9) {
+      if (Collection.isEmptyPath(path9))
         return this.contents !== undefined;
-      return identity.isCollection(this.contents) ? this.contents.hasIn(path8) : false;
+      return identity.isCollection(this.contents) ? this.contents.hasIn(path9) : false;
     }
     set(key, value) {
       if (this.contents == null) {
@@ -3321,13 +3321,13 @@ var require_Document = __commonJS((exports) => {
         this.contents.set(key, value);
       }
     }
-    setIn(path8, value) {
-      if (Collection.isEmptyPath(path8)) {
+    setIn(path9, value) {
+      if (Collection.isEmptyPath(path9)) {
         this.contents = value;
       } else if (this.contents == null) {
-        this.contents = Collection.collectionFromPath(this.schema, Array.from(path8), value);
+        this.contents = Collection.collectionFromPath(this.schema, Array.from(path9), value);
       } else if (assertCollection(this.contents)) {
-        this.contents.setIn(path8, value);
+        this.contents.setIn(path9, value);
       }
     }
     setSchema(version, options = {}) {
@@ -5223,9 +5223,9 @@ var require_cst_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  visit.itemAtPath = (cst, path8) => {
+  visit.itemAtPath = (cst, path9) => {
     let item = cst;
-    for (const [field, index] of path8) {
+    for (const [field, index] of path9) {
       const tok = item?.[field];
       if (tok && "items" in tok) {
         item = tok.items[index];
@@ -5234,23 +5234,23 @@ var require_cst_visit = __commonJS((exports) => {
     }
     return item;
   };
-  visit.parentCollection = (cst, path8) => {
-    const parent = visit.itemAtPath(cst, path8.slice(0, -1));
-    const field = path8[path8.length - 1][0];
+  visit.parentCollection = (cst, path9) => {
+    const parent = visit.itemAtPath(cst, path9.slice(0, -1));
+    const field = path9[path9.length - 1][0];
     const coll = parent?.[field];
     if (coll && "items" in coll)
       return coll;
     throw new Error("Parent collection not found");
   };
-  function _visit(path8, item, visitor) {
-    let ctrl = visitor(item, path8);
+  function _visit(path9, item, visitor) {
+    let ctrl = visitor(item, path9);
     if (typeof ctrl === "symbol")
       return ctrl;
     for (const field of ["key", "value"]) {
       const token = item[field];
       if (token && "items" in token) {
         for (let i = 0;i < token.items.length; ++i) {
-          const ci = _visit(Object.freeze(path8.concat([[field, i]])), token.items[i], visitor);
+          const ci = _visit(Object.freeze(path9.concat([[field, i]])), token.items[i], visitor);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -5261,10 +5261,10 @@ var require_cst_visit = __commonJS((exports) => {
           }
         }
         if (typeof ctrl === "function" && field === "key")
-          ctrl = ctrl(item, path8);
+          ctrl = ctrl(item, path9);
       }
     }
-    return typeof ctrl === "function" ? ctrl(item, path8) : ctrl;
+    return typeof ctrl === "function" ? ctrl(item, path9) : ctrl;
   }
   exports.visit = visit;
 });
@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs8 = this.flowScalar(this.type);
+            const fs9 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs8, sep: [] });
+              map.items.push({ start, key: fs9, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs8);
+              this.stack.push(fs9);
             } else {
-              Object.assign(it, { key: fs8, sep: [] });
+              Object.assign(it, { key: fs9, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs8 = this.flowScalar(this.type);
+            const fs9 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs8, sep: [] });
+              fc.items.push({ start: [], key: fs9, sep: [] });
             else if (it.sep)
-              this.stack.push(fs8);
+              this.stack.push(fs9);
             else
-              Object.assign(it, { key: fs8, sep: [] });
+              Object.assign(it, { key: fs9, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6946,13 +6946,22 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-setup/scripts/setup.mjs
-import path24 from "node:path";
+import path27 from "node:path";
 import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { parseArgs } from "node:util";
 
 // src/lib/cli-entry.mjs
+import fs from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
-var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var canonicalPath = (file) => {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return path.resolve(file);
+  }
+};
+var isDirectExecution = (url, entry = process.argv[1]) => entry !== undefined && canonicalPath(entry) === canonicalPath(fileURLToPath(url));
 var invalidMode = (mode, modes, dataRoot) => ({
   status: "invalid-input",
   ...dataRoot && { data_root: dataRoot },
@@ -6961,13 +6970,13 @@ var invalidMode = (mode, modes, dataRoot) => ({
 
 // src/lib/data-root.mjs
 import os2 from "node:os";
-import path2 from "node:path";
+import path3 from "node:path";
 
 // src/runtime/muse.mjs
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
+import fs2 from "node:fs";
 import os from "node:os";
-import path from "node:path";
+import path2 from "node:path";
 
 // src/lib/recurring-tasks.json
 var recurring_tasks_default = [
@@ -7096,32 +7105,32 @@ async function unprocessableReason(response) {
     return "schema-invalid";
   }
 }
-var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
+var pluginManifest = (repository) => path2.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
-  for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
-    if (fs.existsSync(pluginManifest(candidate)))
+  for (let candidate = path2.resolve(skillDir);candidate !== path2.dirname(candidate); candidate = path2.dirname(candidate)) {
+    if (fs2.existsSync(pluginManifest(candidate)))
       return candidate;
   }
   return null;
 }
 function findWorkspaceRepository(skillsDir) {
-  const workspace = path.dirname(skillsDir);
-  const where = `next to ${path.basename(skillsDir)}/ in ${workspace}`;
-  const names = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => entry.name).sort();
+  const workspace = path2.dirname(skillsDir);
+  const where = `next to ${path2.basename(skillsDir)}/ in ${workspace}`;
+  const names = fs2.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs2.existsSync(pluginManifest(path2.join(workspace, entry.name)))).map((entry) => entry.name).sort();
   if (names.length === 0)
     throw new Error(`no Chef repository found ${where}; clone Chef there or reinstall`);
   if (names.length > 1) {
     throw new Error(`found ${names.length} Chef repositories ${where}: ${names.join(", ")}; keep one and remove the others`);
   }
-  return path.join(workspace, names[0]);
+  return path2.join(workspace, names[0]);
 }
 function updateInstall({ skillDir, repository }) {
-  const skillsDir = path.dirname(skillDir);
-  const customSkills = path.basename(skillsDir) === "custom-skills";
+  const skillsDir = path2.dirname(skillDir);
+  const customSkills = path2.basename(skillsDir) === "custom-skills";
   return {
     repository: repository ?? (customSkills ? findWorkspaceRepository(skillsDir) : findPluginRepository(skillDir)),
     skillsDir,
-    installedName: path.basename(skillDir),
+    installedName: path2.basename(skillDir),
     nameForSkill: customSkills ? "underscores" : "hyphens"
   };
 }
@@ -7132,19 +7141,19 @@ var muse = {
   adapterContractVersion: 1,
   feedback: {
     destination: { host: new URL(FEEDBACK_URL).host },
-    status({ exists = fs.existsSync, run = runFile } = {}) {
+    status({ exists = fs2.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC))
         return { ok: false, reason: "not-connected" };
       const { ok, reason } = fromConnector(PROVIDERS["chef-feedback"], run);
       return ok ? { ok } : { ok, reason };
     },
-    capabilities({ exists = fs.existsSync, run = runFile } = {}) {
+    capabilities({ exists = fs2.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC))
         return [];
       const credential = fromConnector(PROVIDERS["chef-feedback"], run);
       return credential.ok ? ["submit.connector", "contact.opaque", "delete.receipt"] : [];
     },
-    async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+    async submit(bytes, { exists = fs2.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
       if (!credential.ok)
         return { ok: false, reason: "unsupported" };
@@ -7172,7 +7181,7 @@ var muse = {
       }
       return isReceipt(receipt) ? { ok: true, ...receipt } : { ok: false, reason: "invalid-receipt" };
     },
-    async submitContact(receipt, choice, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+    async submitContact(receipt, choice, { exists = fs2.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
       if (!credential.ok)
         return { ok: false, reason: credential.reason };
@@ -7187,7 +7196,7 @@ var muse = {
         return { ok: true };
       return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
     },
-    async deleteReport(receipt, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+    async deleteReport(receipt, { exists = fs2.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
       if (!credential.ok)
         return { ok: false, reason: credential.reason };
@@ -7202,7 +7211,7 @@ var muse = {
       return { ok: false, reason: response.status === 404 ? "not-found" : "intake-rejected" };
     }
   },
-  isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
+  isMuse: ({ exists = fs2.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
       connector: "gmail",
@@ -7228,13 +7237,13 @@ var muse = {
     };
   },
   scheduleSetup: () => ({ scheduler: "muse-recurring-tasks", instruction: SCHEDULE_SETUP }),
-  defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
+  defaultDataRoot: () => path2.join(os.homedir(), "workspace", "chef"),
   updateInstall,
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
   },
-  credential(provider, { env = process.env, exists = fs.existsSync, run = runFile } = {}) {
+  credential(provider, { env = process.env, exists = fs2.existsSync, run = runFile } = {}) {
     const spec = PROVIDERS[provider];
     if (!spec)
       throw new Error(`unknown credential provider: ${provider}`);
@@ -7243,7 +7252,7 @@ var muse = {
     const value = env[spec.env]?.trim();
     return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   },
-  attachment(file, { exists = fs.existsSync } = {}) {
+  attachment(file, { exists = fs2.existsSync } = {}) {
     return muse.isMuse({ exists }) ? { attachment: { action: "send-chat-attachment", path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
   }
 };
@@ -7251,7 +7260,7 @@ var muse = {
 // src/lib/data-root.mjs
 function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   const raw = flag ?? env.CHEF_DATA_ROOT ?? adapter.defaultDataRoot();
-  return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
+  return path3.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
 // src/lib/diagnostics/capture.mjs
@@ -7353,7 +7362,7 @@ var plugin_default = {
 };
 
 // src/runtime/contract.mjs
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 // schemas/feedback/capabilities.v1.json
 var capabilities_v1_default = {
   registry_version: 1,
@@ -7382,7 +7391,7 @@ var generic = {
 
 // src/runtime/contract.mjs
 var ADAPTER_CONTRACT_VERSION = 1;
-var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
+var currentRuntime = ({ exists = fs3.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
 var hasCapability = (adapter, prefix) => adapter.feedback.capabilities().some((name) => name.startsWith(`${prefix}.`));
 function checkAdapter(adapter) {
   const major = adapter.adapterContractVersion;
@@ -7396,15 +7405,15 @@ function checkAdapter(adapter) {
 }
 
 // src/lib/schema.mjs
-import fs3 from "node:fs";
-import path3 from "node:path";
+import fs4 from "node:fs";
+import path4 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
-  const file = path3.join(root, SCHEMA_FILE);
-  if (!fs3.existsSync(file))
+  const file = path4.join(root, SCHEMA_FILE);
+  if (!fs4.existsSync(file))
     return null;
-  return JSON.parse(fs3.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs4.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -7432,8 +7441,8 @@ function schemaWriteBlocker(root) {
 }
 
 // src/lib/settings.mjs
-import fs4 from "node:fs";
-import path4 from "node:path";
+import fs5 from "node:fs";
+import path5 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 2;
 var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics", "post_error_offers"];
@@ -7498,10 +7507,10 @@ function classify(stored) {
 }
 function readSettings(root, { locale } = {}) {
   const defaults = defaultSettings({ locale });
-  const file = path4.join(root, SETTINGS_FILE);
-  if (!fs4.existsSync(file))
+  const file = path5.join(root, SETTINGS_FILE);
+  if (!fs5.existsSync(file))
     return { status: "missing", settings: defaults };
-  const content = fs4.readFileSync(file, "utf8");
+  const content = fs5.readFileSync(file, "utf8");
   const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== "ok")
@@ -7511,12 +7520,12 @@ function readSettings(root, { locale } = {}) {
 }
 
 // src/lib/diagnostics/offers.mjs
-import fs6 from "node:fs";
-import path6 from "node:path";
+import fs7 from "node:fs";
+import path7 from "node:path";
 
 // src/lib/diagnostics/trace.mjs
-import fs5 from "node:fs";
-import path5 from "node:path";
+import fs6 from "node:fs";
+import path6 from "node:path";
 // schemas/feedback/invocation-trace.v1.json
 var invocation_trace_v1_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -7555,19 +7564,19 @@ var PRIVATE_FILE = { mode: 384 };
 var lineOf = (event) => `${JSON.stringify(event)}
 `;
 function ensureDiagnosticsDir(root) {
-  const dir = path5.join(root, DIAGNOSTICS_DIR);
-  fs5.mkdirSync(dir, { recursive: true, mode: 448 });
-  fs5.chmodSync(dir, 448);
-  const ignore = path5.join(dir, ".gitignore");
-  if (!fs5.existsSync(ignore))
-    fs5.writeFileSync(ignore, `*
+  const dir = path6.join(root, DIAGNOSTICS_DIR);
+  fs6.mkdirSync(dir, { recursive: true, mode: 448 });
+  fs6.chmodSync(dir, 448);
+  const ignore = path6.join(dir, ".gitignore");
+  if (!fs6.existsSync(ignore))
+    fs6.writeFileSync(ignore, `*
 `, PRIVATE_FILE);
-  fs5.chmodSync(ignore, 384);
+  fs6.chmodSync(ignore, 384);
 }
 function storedEvents(file) {
   let text;
   try {
-    text = fs5.readFileSync(file, "utf8");
+    text = fs6.readFileSync(file, "utf8");
   } catch {
     return [];
   }
@@ -7595,24 +7604,24 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
 }
 function writePrivate(file, text) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs5.writeFileSync(temp, text, PRIVATE_FILE);
-  fs5.chmodSync(temp, 384);
-  fs5.renameSync(temp, file);
+  fs6.writeFileSync(temp, text, PRIVATE_FILE);
+  fs6.chmodSync(temp, 384);
+  fs6.renameSync(temp, file);
 }
 var rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(""));
 function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   ensureDiagnosticsDir(root);
-  const file = path5.join(root, TRACE_FILE);
+  const file = path6.join(root, TRACE_FILE);
   const stored = storedEvents(file);
   const kept = withinBounds([...stored, event], now, bounds);
-  const onlyAppended = kept.length === stored.length + 1 && fs5.existsSync(file);
+  const onlyAppended = kept.length === stored.length + 1 && fs6.existsSync(file);
   if (onlyAppended)
-    fs5.appendFileSync(file, lineOf(event), PRIVATE_FILE);
+    fs6.appendFileSync(file, lineOf(event), PRIVATE_FILE);
   else
     rewrite(file, kept);
 }
 function readTrace(root, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
-  const file = path5.join(root, TRACE_FILE);
+  const file = path6.join(root, TRACE_FILE);
   const stored = storedEvents(file);
   const events = withinBounds(stored, now, bounds);
   if (events.length !== stored.length)
@@ -7620,10 +7629,10 @@ function readTrace(root, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   return { schema_version: TRACE_SCHEMA_VERSION, events };
 }
 function clearTrace(root) {
-  const file = path5.join(root, TRACE_FILE);
-  if (!fs5.existsSync(file))
+  const file = path6.join(root, TRACE_FILE);
+  if (!fs6.existsSync(file))
     return false;
-  fs5.rmSync(file);
+  fs6.rmSync(file);
   return true;
 }
 
@@ -7633,7 +7642,7 @@ var OFFER_INTERVAL_MS = 60 * 60 * 1000;
 var keyOf = ({ skill, code }) => `${skill}/${code}`;
 function readErrors(root) {
   try {
-    const { errors } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
+    const { errors } = JSON.parse(fs7.readFileSync(path7.join(root, OFFERS_FILE), "utf8"));
     return errors !== null && typeof errors === "object" ? errors : {};
   } catch {
     return {};
@@ -7641,7 +7650,7 @@ function readErrors(root) {
 }
 function writeErrors(root, errors) {
   ensureDiagnosticsDir(root);
-  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ errors })}
+  writePrivate(path7.join(root, OFFERS_FILE), `${JSON.stringify({ errors })}
 `);
 }
 function claimOffer(root, error, { now = new Date } = {}) {
@@ -7662,13 +7671,13 @@ function clearDeclines(root) {
 }
 
 // src/lib/notices.mjs
-import fs7 from "node:fs";
-import path7 from "node:path";
+import fs8 from "node:fs";
+import path8 from "node:path";
 var NOTICES_PATH = "data/notices.json";
 var LOCAL_NOTICES_PATH = `${DIAGNOSTICS_DIR}/notices.json`;
 function readNotices(root, file = NOTICES_PATH) {
   try {
-    return JSON.parse(fs7.readFileSync(path7.join(root, file), "utf8"));
+    return JSON.parse(fs8.readFileSync(path8.join(root, file), "utf8"));
   } catch {
     return {};
   }
@@ -7686,7 +7695,7 @@ function takeLocalNotice(root, key, date) {
   if (notices[key])
     return false;
   ensureDiagnosticsDir(root);
-  writePrivate(path7.join(root, LOCAL_NOTICES_PATH), withKey(notices, key, date));
+  writePrivate(path8.join(root, LOCAL_NOTICES_PATH), withKey(notices, key, date));
   return true;
 }
 
@@ -7831,8 +7840,8 @@ async function chefCapture({ root, skill, script, operation, classify: classify2
 }
 
 // src/lib/dietary-ruleset.mjs
-import fs9 from "node:fs";
-import path9 from "node:path";
+import fs10 from "node:fs";
+import path10 from "node:path";
 
 // src/lib/dietary-flags.mjs
 var words = (...list) => new RegExp(`(?<![a-z])(?:${list.join("|")})(?:s|es)?(?![a-z])`);
@@ -7988,8 +7997,8 @@ var textOnlyCaveat = (constraint) => `"${constraint}" is not one of Chef's aller
 var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
 
 // src/lib/wiki.mjs
-import fs8 from "node:fs";
-import path8 from "node:path";
+import fs9 from "node:fs";
+import path9 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -8020,7 +8029,7 @@ function wikiPath(type, slug) {
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
 function pathUnder(dir, relative, kind) {
-  const normalized = path8.posix.normalize(relative);
+  const normalized = path9.posix.normalize(relative);
   if (!normalized.startsWith(`${dir}/`))
     throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
@@ -8029,7 +8038,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs8.existsSync(path8.join(root, ".git")))
+  if (!fs9.existsSync(path9.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -8040,14 +8049,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs8.existsSync(path8.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs9.existsSync(path9.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
-    const abs = path8.join(root, file.path);
-    fs8.mkdirSync(path8.dirname(abs), { recursive: true });
-    fs8.writeFileSync(abs, file.content);
+    const abs = path9.join(root, file.path);
+    fs9.mkdirSync(path9.dirname(abs), { recursive: true });
+    fs9.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -8133,11 +8142,11 @@ function rulesetFromPage(frontmatter) {
   return { status: hard.length || avoid.length ? "declared" : "none-declared", members, hard, avoid };
 }
 function readRuleset(root) {
-  const file = path9.join(root, RULESET_PATH);
-  if (!fs9.existsSync(file))
+  const file = path10.join(root, RULESET_PATH);
+  if (!fs10.existsSync(file))
     return { status: "never-asked", members: [], hard: [], avoid: [] };
   try {
-    return rulesetFromPage(parsePage(fs9.readFileSync(file, "utf8")).frontmatter);
+    return rulesetFromPage(parsePage(fs10.readFileSync(file, "utf8")).frontmatter);
   } catch (error) {
     return { status: "unreadable", reason: error.message, members: [], hard: [], avoid: [] };
   }
@@ -8154,6 +8163,27 @@ function dietaryNotes(ruleset) {
   if (textOnly.length)
     notes.caveats = textOnly.map(textOnlyCaveat);
   return notes;
+}
+
+// src/lib/household-profile.mjs
+import fs11 from "node:fs";
+import path11 from "node:path";
+var HOUSEHOLD_PROFILE_PATH = wikiPath("household-profile", "profile");
+var namedMembers = (members) => Array.isArray(members) && members.every((member) => member && typeof member === "object" && typeof member.name === "string" && member.name.trim());
+function readHouseholdProfile(root) {
+  const file = path11.join(root, HOUSEHOLD_PROFILE_PATH);
+  if (!fs11.existsSync(file))
+    return { path: null, members: [], servings: 1, servings_source: "default" };
+  const { frontmatter } = parsePage(fs11.readFileSync(file, "utf8"));
+  const members = namedMembers(frontmatter.members) ? frontmatter.members.map(({ name }) => ({ name: name.trim() })) : [];
+  const portions = frontmatter.portions_per_meal;
+  const fromProfile = Number.isInteger(portions) && portions > 0;
+  return {
+    path: HOUSEHOLD_PROFILE_PATH,
+    members,
+    servings: members.length || (fromProfile ? portions : 1),
+    servings_source: members.length ? "roster" : fromProfile ? "profile" : "default"
+  };
 }
 
 // src/lib/list-edits.mjs
@@ -8192,16 +8222,16 @@ function mergeList(current = [], change = {}) {
 }
 
 // src/lib/fdc-cache.mjs
-import fs10 from "node:fs";
-import path10 from "node:path";
+import fs12 from "node:fs";
+import path12 from "node:path";
 var CACHE_DIR = "cache";
 function fdcReplyCache(root) {
-  const cacheRoot = path10.join(root, CACHE_DIR);
-  const file = (fdcId) => path10.join(cacheRoot, "fdc", "food", `${fdcId}.json`);
+  const cacheRoot = path12.join(root, CACHE_DIR);
+  const file = (fdcId) => path12.join(cacheRoot, "fdc", "food", `${fdcId}.json`);
   return {
     read(fdcId) {
       try {
-        const body = JSON.parse(fs10.readFileSync(file(fdcId), "utf8"));
+        const body = JSON.parse(fs12.readFileSync(file(fdcId), "utf8"));
         return body?.fdcId === fdcId ? body : null;
       } catch {
         return null;
@@ -8209,14 +8239,14 @@ function fdcReplyCache(root) {
     },
     write(fdcId, body) {
       try {
-        fs10.mkdirSync(path10.dirname(file(fdcId)), { recursive: true });
-        const ignore = path10.join(cacheRoot, ".gitignore");
-        if (!fs10.existsSync(ignore))
-          fs10.writeFileSync(ignore, `*
+        fs12.mkdirSync(path12.dirname(file(fdcId)), { recursive: true });
+        const ignore = path12.join(cacheRoot, ".gitignore");
+        if (!fs12.existsSync(ignore))
+          fs12.writeFileSync(ignore, `*
 `);
         const temp = `${file(fdcId)}.${process.pid}.tmp`;
-        fs10.writeFileSync(temp, JSON.stringify(body));
-        fs10.renameSync(temp, file(fdcId));
+        fs12.writeFileSync(temp, JSON.stringify(body));
+        fs12.renameSync(temp, file(fdcId));
       } catch {}
     }
   };
@@ -8415,8 +8445,8 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs11 from "node:fs";
-import path11 from "node:path";
+import fs13 from "node:fs";
+import path13 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
 function isIsoDate(value) {
@@ -8482,8 +8512,8 @@ function listItems(inventory) {
   return LOCATIONS.flatMap((location) => Object.entries(inventory[location] ?? {}).flatMap(([category, items]) => Object.entries(items).map(([key, item]) => ({ ...item, name: item.name ?? key.replaceAll("_", " "), path: `${location}.${category}.${key}`, location, category, key }))));
 }
 var readText = (root, relative) => {
-  const file = path11.join(root, relative);
-  return fs11.existsSync(file) ? fs11.readFileSync(file, "utf8") : null;
+  const file = path13.join(root, relative);
+  return fs13.existsSync(file) ? fs13.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -8558,8 +8588,8 @@ function regenerateRollup(root, now) {
 }
 
 // src/skills/chef-setup/scripts/lib/adopt-data-root.mjs
-import fs12 from "node:fs";
-import path12 from "node:path";
+import fs14 from "node:fs";
+import path14 from "node:path";
 var URL_FORMS = [/^https:\/\/\S+$/, /^ssh:\/\/\S+$/, /^[\w.-]+@[\w.-]+:[^\s:]\S*$/, /^file:\/\/\/\S+$/];
 var SAFE_CLONE = ["-c", "core.hooksPath=/dev/null", "-c", "core.symlinks=false", "-c", "protocol.ext.allow=never", "-c", "protocol.fd.allow=never"];
 var QUIET = { GIT_TERMINAL_PROMPT: "0" };
@@ -8570,21 +8600,21 @@ function sourceProblem(source) {
     return 'source must not start with "-"';
   if (URL_FORMS.some((form) => form.test(source)))
     return null;
-  if (/^[a-z][\w+.-]*::?/i.test(source) && !path12.isAbsolute(source))
+  if (/^[a-z][\w+.-]*::?/i.test(source) && !path14.isAbsolute(source))
     return `unsupported source "${source}": use an https or ssh git URL, or a local folder`;
-  return fs12.existsSync(source) && fs12.statSync(source).isDirectory() ? null : `no folder at ${source}`;
+  return fs14.existsSync(source) && fs14.statSync(source).isDirectory() ? null : `no folder at ${source}`;
 }
-var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path12.resolve(source);
+var cloneSource = (source) => URL_FORMS.some((form) => form.test(source)) ? source : path14.resolve(source);
 function targetProblem(root) {
   if (readSchemaVersion(root) !== null)
     return "there is already a Chef data root here; nothing was changed";
-  if (fs12.existsSync(root) && fs12.readdirSync(root).length > 0)
+  if (fs14.existsSync(root) && fs14.readdirSync(root).length > 0)
     return "directory is not empty and is not a Chef data root";
   return null;
 }
 function cloneInto(dest, source) {
   try {
-    git(path12.dirname(dest), [...SAFE_CLONE, "clone", "-q", "--template=", "--no-recurse-submodules", "--", cloneSource(source), dest], { env: QUIET });
+    git(path14.dirname(dest), [...SAFE_CLONE, "clone", "-q", "--template=", "--no-recurse-submodules", "--", cloneSource(source), dest], { env: QUIET });
     return null;
   } catch (error) {
     return `clone failed: ${String(error.stderr || error.message).trim().split(`
@@ -8616,9 +8646,9 @@ function adoptDataRoot(root, source) {
   const badTarget = targetProblem(root);
   if (badTarget)
     return { status: "refused", data_root: root, reason: badTarget };
-  fs12.mkdirSync(path12.dirname(root), { recursive: true });
-  const staging = fs12.mkdtempSync(path12.join(path12.dirname(root), `.${path12.basename(root)}.adopt-`));
-  const clone = path12.join(staging, "data-root");
+  fs14.mkdirSync(path14.dirname(root), { recursive: true });
+  const staging = fs14.mkdtempSync(path14.join(path14.dirname(root), `.${path14.basename(root)}.adopt-`));
+  const clone = path14.join(staging, "data-root");
   try {
     const cloneFailed = cloneInto(clone, source);
     if (cloneFailed)
@@ -8627,28 +8657,28 @@ function adoptDataRoot(root, source) {
     if (blocked)
       return { status: "refused", data_root: root, ...blocked };
     const removed_remotes = removeRemotes(clone);
-    if (fs12.existsSync(root))
-      fs12.rmdirSync(root);
-    fs12.renameSync(clone, root);
+    if (fs14.existsSync(root))
+      fs14.rmdirSync(root);
+    fs14.renameSync(clone, root);
     return { status: "adopted", data_root: root, schema_version: readSchemaVersion(root), removed_remotes };
   } finally {
-    fs12.rmSync(staging, { recursive: true, force: true });
+    fs14.rmSync(staging, { recursive: true, force: true });
   }
 }
 
 // src/skills/chef-setup/scripts/lib/check-update.mjs
-import fs18 from "node:fs";
-import path17 from "node:path";
+import fs20 from "node:fs";
+import path19 from "node:path";
 
 // src/skills/chef-setup/scripts/lib/update-chef.mjs
-import fs17 from "node:fs";
-import path16 from "node:path";
+import fs19 from "node:fs";
+import path18 from "node:path";
 
 // src/lib/migrations.mjs
-import fs13 from "node:fs";
-import path13 from "node:path";
+import fs15 from "node:fs";
+import path15 from "node:path";
 var MIGRATIONS = {};
-var stamp = (root, version) => fs13.writeFileSync(path13.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
+var stamp = (root, version) => fs15.writeFileSync(path15.join(root, SCHEMA_FILE), `${JSON.stringify({ schema_version: version })}
 `);
 function migrationPlan(root, { migrations = MIGRATIONS, target = SCHEMA_VERSION } = {}) {
   const from = readSchemaVersion(root);
@@ -8676,15 +8706,15 @@ function migrate(root, options = {}) {
 }
 
 // src/lib/settings-migrations.mjs
-import fs14 from "node:fs";
-import path14 from "node:path";
+import fs16 from "node:fs";
+import path16 from "node:path";
 function storedSettings(root) {
-  const file = path14.join(root, SETTINGS_FILE);
-  if (!fs14.existsSync(file))
+  const file = path16.join(root, SETTINGS_FILE);
+  if (!fs16.existsSync(file))
     return null;
   let stored;
   try {
-    stored = JSON.parse(fs14.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs16.readFileSync(file, "utf8"));
   } catch {
     throw new Error(`${SETTINGS_FILE} is not valid JSON; fix it with chef-setup before updating`);
   }
@@ -8717,19 +8747,19 @@ function migrateSettings(root, options = {}) {
     if (stored?.settings_version !== version + 1)
       throw new Error(`settings migration ${version} did not stamp version ${version + 1}`);
   }
-  fs14.writeFileSync(path14.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
+  fs16.writeFileSync(path16.join(root, SETTINGS_FILE), `${JSON.stringify(stored, null, 2)}
 `);
   return plan;
 }
 
 // src/skills/chef-setup/scripts/lib/verify-install.mjs
-import fs16 from "node:fs";
+import fs18 from "node:fs";
 
 // src/lib/smoke.mjs
 import { spawnSync } from "node:child_process";
-import fs15 from "node:fs";
+import fs17 from "node:fs";
 import os3 from "node:os";
-import path15 from "node:path";
+import path17 from "node:path";
 var SMOKE_FILE = "smoke.json";
 var isEntry = (name) => name.endsWith(".mjs") && !name.endsWith(".test.mjs");
 function parseStatus(stdout) {
@@ -8740,13 +8770,13 @@ function parseStatus(stdout) {
   }
 }
 function runCase(skillDir, testCase, fixture) {
-  const tmp = fs15.mkdtempSync(path15.join(os3.tmpdir(), "chef-smoke-"));
-  const dataRoot = path15.join(tmp, "data-root");
+  const tmp = fs17.mkdtempSync(path17.join(os3.tmpdir(), "chef-smoke-"));
+  const dataRoot = path17.join(tmp, "data-root");
   try {
-    fs15.cpSync(fixture, dataRoot, { recursive: true });
+    fs17.cpSync(fixture, dataRoot, { recursive: true });
     const env = { ...process.env, CHEF_DATA_ROOT: dataRoot, HOME: tmp };
     const input = testCase.stdin === undefined ? undefined : JSON.stringify(testCase.stdin);
-    const run = spawnSync(process.execPath, [path15.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000, input });
+    const run = spawnSync(process.execPath, [path17.join(skillDir, testCase.script), ...testCase.args], { cwd: skillDir, env, encoding: "utf8", timeout: 30000, input });
     const status = parseStatus(run.stdout);
     if (run.status !== testCase.expect.exit)
       return `exit ${run.status}, expected ${testCase.expect.exit}: ${(run.stderr || run.stdout).trim().slice(0, 300)}`;
@@ -8754,20 +8784,20 @@ function runCase(skillDir, testCase, fixture) {
       return `status "${status}", expected "${testCase.expect.status}"`;
     return null;
   } finally {
-    fs15.rmSync(tmp, { recursive: true, force: true });
+    fs17.rmSync(tmp, { recursive: true, force: true });
   }
 }
 function uncovered(skillDir, cases) {
-  const scripts = path15.join(skillDir, "scripts");
-  if (!fs15.existsSync(scripts))
+  const scripts = path17.join(skillDir, "scripts");
+  if (!fs17.existsSync(scripts))
     return [];
-  const covered = new Set(cases.map((c) => path15.normalize(c.script)));
-  return fs15.readdirSync(scripts).filter(isEntry).sort().map((f) => path15.join("scripts", f)).filter((f) => !covered.has(f));
+  const covered = new Set(cases.map((c) => path17.normalize(c.script)));
+  return fs17.readdirSync(scripts).filter(isEntry).sort().map((f) => path17.join("scripts", f)).filter((f) => !covered.has(f));
 }
 function smokeSkill(skillsDir, skill, fixture) {
-  const skillDir = path15.join(skillsDir, skill);
-  const file = path15.join(skillDir, SMOKE_FILE);
-  const cases = fs15.existsSync(file) ? JSON.parse(fs15.readFileSync(file, "utf8")) : [];
+  const skillDir = path17.join(skillsDir, skill);
+  const file = path17.join(skillDir, SMOKE_FILE);
+  const cases = fs17.existsSync(file) ? JSON.parse(fs17.readFileSync(file, "utf8")) : [];
   const gaps = uncovered(skillDir, cases).map((script) => ({ skill, id: "coverage", ok: false, detail: `no smoke case for ${script}` }));
   const results = cases.map((testCase) => {
     const problem = runCase(skillDir, testCase, fixture);
@@ -8776,7 +8806,7 @@ function smokeSkill(skillsDir, skill, fixture) {
   return [...gaps, ...results];
 }
 function runSmoke({ skillsDir, fixture }) {
-  const skills = fs15.readdirSync(skillsDir).filter((name) => fs15.statSync(path15.join(skillsDir, name)).isDirectory()).sort();
+  const skills = fs17.readdirSync(skillsDir).filter((name) => fs17.statSync(path17.join(skillsDir, name)).isDirectory()).sort();
   return skills.flatMap((skill) => smokeSkill(skillsDir, skill, fixture));
 }
 
@@ -8788,10 +8818,10 @@ function nodeCheck(version) {
   return result("node", major >= MIN_NODE ? null : `Node ${version} is too old; Chef needs Node ${MIN_NODE} or later`, version);
 }
 function dataRootCheck(root) {
-  if (!fs16.existsSync(root))
+  if (!fs18.existsSync(root))
     return result("data-root", `no data root at ${root}; run chef-setup init`);
   try {
-    fs16.accessSync(root, fs16.constants.W_OK);
+    fs18.accessSync(root, fs18.constants.W_OK);
     return result("data-root", null, `${root} is writable`);
   } catch {
     return result("data-root", `${root} is not writable`);
@@ -8869,7 +8899,7 @@ function taggedSkills(repository, tag) {
 `).filter(chefFolder).sort();
 }
 function skillChanges(skillsDir, expected) {
-  const current = fs17.existsSync(skillsDir) ? fs17.readdirSync(skillsDir).filter(chefFolder).sort() : [];
+  const current = fs19.existsSync(skillsDir) ? fs19.readdirSync(skillsDir).filter(chefFolder).sort() : [];
   return {
     added: expected.filter((name) => !current.includes(name)),
     replaced: expected.filter((name) => current.includes(name)),
@@ -8899,26 +8929,26 @@ function recurringTaskChanges(repository, target) {
   return targetTasks.filter((task) => installed.has(task.name) && installed.get(task.name) !== task.prompt).map(({ name, prompt }) => ({ name, prompt }));
 }
 function syncSkills(repository, skillsDir, sourceNames, expectedNames) {
-  const source = path16.join(repository, "plugins", "chef", "skills");
-  if (path16.resolve(source) === path16.resolve(skillsDir)) {
-    for (const name of fs17.readdirSync(skillsDir).filter(chefFolder)) {
+  const source = path18.join(repository, "plugins", "chef", "skills");
+  if (path18.resolve(source) === path18.resolve(skillsDir)) {
+    for (const name of fs19.readdirSync(skillsDir).filter(chefFolder)) {
       if (!expectedNames.includes(name))
-        fs17.rmSync(path16.join(skillsDir, name), { recursive: true, force: true });
+        fs19.rmSync(path18.join(skillsDir, name), { recursive: true, force: true });
     }
     return;
   }
-  fs17.mkdirSync(skillsDir, { recursive: true });
-  const staging = fs17.mkdtempSync(path16.join(path16.dirname(skillsDir), ".chef-update-"));
+  fs19.mkdirSync(skillsDir, { recursive: true });
+  const staging = fs19.mkdtempSync(path18.join(path18.dirname(skillsDir), ".chef-update-"));
   try {
     for (let index = 0;index < sourceNames.length; index += 1) {
-      fs17.cpSync(path16.join(source, sourceNames[index]), path16.join(staging, expectedNames[index]), { recursive: true });
+      fs19.cpSync(path18.join(source, sourceNames[index]), path18.join(staging, expectedNames[index]), { recursive: true });
     }
-    for (const name of fs17.readdirSync(skillsDir).filter(chefFolder))
-      fs17.rmSync(path16.join(skillsDir, name), { recursive: true, force: true });
+    for (const name of fs19.readdirSync(skillsDir).filter(chefFolder))
+      fs19.rmSync(path18.join(skillsDir, name), { recursive: true, force: true });
     for (const name of expectedNames)
-      fs17.renameSync(path16.join(staging, name), path16.join(skillsDir, name));
+      fs19.renameSync(path18.join(staging, name), path18.join(skillsDir, name));
   } finally {
-    fs17.rmSync(staging, { recursive: true, force: true });
+    fs19.rmSync(staging, { recursive: true, force: true });
   }
 }
 function updateChef(root, {
@@ -8964,7 +8994,7 @@ function updateChef(root, {
 }
 
 // src/skills/chef-setup/scripts/lib/check-update.mjs
-var installedVersion = (repository) => JSON.parse(fs18.readFileSync(path17.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json"), "utf8")).version;
+var installedVersion = (repository) => JSON.parse(fs20.readFileSync(path19.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json"), "utf8")).version;
 function checkUpdate({ adapter = muse, skillDir } = {}) {
   try {
     const { repository } = adapter.updateInstall({ skillDir });
@@ -8994,8 +9024,8 @@ async function checkUsda(fdc) {
 }
 
 // src/lib/feedback/bundle.mjs
-import fs19 from "node:fs";
-import path18 from "node:path";
+import fs21 from "node:fs";
+import path20 from "node:path";
 // schemas/feedback/diagnostic-bundle.v1.json
 var diagnostic_bundle_v1_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -9140,11 +9170,11 @@ function selectAround(events, focusId) {
 function installedSkills(skillsDir, version = plugin_default.version) {
   let entries;
   try {
-    entries = fs19.readdirSync(skillsDir, { withFileTypes: true });
+    entries = fs21.readdirSync(skillsDir, { withFileTypes: true });
   } catch {
     return [];
   }
-  return entries.filter((entry) => entry.isDirectory() && /^chef[-_]/.test(entry.name) && fs19.existsSync(path18.join(skillsDir, entry.name, "SKILL.md"))).map((entry) => ({ id: entry.name.replaceAll("_", "-"), version })).sort((a, b) => a.id.localeCompare(b.id));
+  return entries.filter((entry) => entry.isDirectory() && /^chef[-_]/.test(entry.name) && fs21.existsSync(path20.join(skillsDir, entry.name, "SKILL.md"))).map((entry) => ({ id: entry.name.replaceAll("_", "-"), version })).sort((a, b) => a.id.localeCompare(b.id));
 }
 function rekey(events) {
   const keys = new Map(events.map((event, i) => [event.invocation_id, `inv-${i + 1}`]));
@@ -9701,22 +9731,22 @@ function destinationCard(adapter, bytes) {
 }
 
 // src/lib/feedback/store.mjs
-import fs20 from "node:fs";
-import path19 from "node:path";
+import fs22 from "node:fs";
+import path21 from "node:path";
 var DRAFT_FILE = `${DIAGNOSTICS_DIR}/report-draft.json`;
 var OUTBOX_DIR = `${DIAGNOSTICS_DIR}/outbox`;
 var CONTACT_RETRY_DIR = `${DIAGNOSTICS_DIR}/contact-retry`;
 var RECEIPTS_DIR = `${DIAGNOSTICS_DIR}/receipts`;
 var RECEIPT_MAX_AGE_MS = 90 * DAY_MS;
-var expired = (file, now, maxAgeMs = TRACE_BOUNDS.maxAgeMs) => now - fs20.statSync(file).mtimeMs > maxAgeMs;
+var expired = (file, now, maxAgeMs = TRACE_BOUNDS.maxAgeMs) => now - fs22.statSync(file).mtimeMs > maxAgeMs;
 function pruneFiles(root, relativeDir, now, maxAgeMs) {
-  const dir = path19.join(root, relativeDir);
-  if (!fs20.existsSync(dir))
+  const dir = path21.join(root, relativeDir);
+  if (!fs22.existsSync(dir))
     return;
-  for (const name of fs20.readdirSync(dir)) {
-    const file = path19.join(dir, name);
+  for (const name of fs22.readdirSync(dir)) {
+    const file = path21.join(dir, name);
     if (expired(file, now, maxAgeMs))
-      fs20.rmSync(file);
+      fs22.rmSync(file);
   }
 }
 function pruneOutbox(root, now) {
@@ -9730,49 +9760,49 @@ function writePrivateJson(file, value) {
 }
 function saveDraft(root, draft) {
   ensureDiagnosticsDir(root);
-  writePrivate(path19.join(root, DRAFT_FILE), `${JSON.stringify(draft)}
+  writePrivate(path21.join(root, DRAFT_FILE), `${JSON.stringify(draft)}
 `);
 }
 function readDraft(root, { now = new Date } = {}) {
   pruneOutbox(root, now);
-  const file = path19.join(root, DRAFT_FILE);
-  if (!fs20.existsSync(file))
+  const file = path21.join(root, DRAFT_FILE);
+  if (!fs22.existsSync(file))
     return null;
   if (expired(file, now)) {
-    fs20.rmSync(file);
+    fs22.rmSync(file);
     return null;
   }
   try {
-    return JSON.parse(fs20.readFileSync(file, "utf8"));
+    return JSON.parse(fs22.readFileSync(file, "utf8"));
   } catch {
     return null;
   }
 }
 function deleteDraft(root) {
-  const file = path19.join(root, DRAFT_FILE);
-  if (!fs20.existsSync(file))
+  const file = path21.join(root, DRAFT_FILE);
+  if (!fs22.existsSync(file))
     return false;
-  fs20.rmSync(file);
+  fs22.rmSync(file);
   return true;
 }
 function saveToOutbox(root, bytes, { nonce, now = new Date }) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
-  fs20.mkdirSync(path19.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
+  fs22.mkdirSync(path21.join(root, OUTBOX_DIR), { recursive: true, mode: 448 });
   const suffix2 = `-${nonce.slice(0, 8)}.json`;
-  const existing = fs20.readdirSync(path19.join(root, OUTBOX_DIR)).find((name) => name.endsWith(suffix2));
+  const existing = fs22.readdirSync(path21.join(root, OUTBOX_DIR)).find((name) => name.endsWith(suffix2));
   if (existing)
     return `${OUTBOX_DIR}/${existing}`;
   const stamp2 = now.toISOString().replace(/[-:]|\.\d{3}/g, "");
   const relative = `${OUTBOX_DIR}/${stamp2}${suffix2}`;
-  writePrivate(path19.join(root, relative), bytes);
+  writePrivate(path21.join(root, relative), bytes);
   return relative;
 }
 function savePendingContact(root, pending, { now = new Date } = {}) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
-  const file = path19.join(root, CONTACT_RETRY_DIR, `${pending.report_id}.json`);
-  fs20.mkdirSync(path19.dirname(file), { recursive: true, mode: 448 });
+  const file = path21.join(root, CONTACT_RETRY_DIR, `${pending.report_id}.json`);
+  fs22.mkdirSync(path21.dirname(file), { recursive: true, mode: 448 });
   writePrivateJson(file, pending);
   return file;
 }
@@ -9781,30 +9811,30 @@ function saveReceipt(root, receipt, { now = new Date } = {}) {
   ensureDiagnosticsDir(root);
   pruneOutbox(root, now);
   const relative = `${RECEIPTS_DIR}/${receipt.report_id}.json`;
-  fs20.mkdirSync(path19.join(root, RECEIPTS_DIR), { recursive: true, mode: 448 });
-  writePrivateJson(path19.join(root, relative), receipt);
+  fs22.mkdirSync(path21.join(root, RECEIPTS_DIR), { recursive: true, mode: 448 });
+  writePrivateJson(path21.join(root, relative), receipt);
   return relative;
 }
 var reportIdIsSafe = (reportId) => /^[0-9a-f-]{36}$/i.test(reportId);
 var receiptFile = (root, reportId) => {
   if (!reportIdIsSafe(reportId))
     throw new Error("invalid report id");
-  return path19.join(root, RECEIPTS_DIR, `${reportId}.json`);
+  return path21.join(root, RECEIPTS_DIR, `${reportId}.json`);
 };
 function parseReceipt(file) {
-  return { class: null, sent_at: fs20.statSync(file).mtime.toISOString(), ...JSON.parse(fs20.readFileSync(file, "utf8")) };
+  return { class: null, sent_at: fs22.statSync(file).mtime.toISOString(), ...JSON.parse(fs22.readFileSync(file, "utf8")) };
 }
 function readReceipt(root, reportId, { now = new Date } = {}) {
   const file = receiptFile(root, reportId);
   pruneOutbox(root, now);
-  return fs20.existsSync(file) ? parseReceipt(file) : null;
+  return fs22.existsSync(file) ? parseReceipt(file) : null;
 }
 function listReceipts(root, { now = new Date } = {}) {
   pruneOutbox(root, now);
-  const dir = path19.join(root, RECEIPTS_DIR);
-  if (!fs20.existsSync(dir))
+  const dir = path21.join(root, RECEIPTS_DIR);
+  if (!fs22.existsSync(dir))
     return [];
-  return fs20.readdirSync(dir).map((name) => name.replace(/\.json$/, "")).filter(reportIdIsSafe).flatMap((reportId) => {
+  return fs22.readdirSync(dir).map((name) => name.replace(/\.json$/, "")).filter(reportIdIsSafe).flatMap((reportId) => {
     try {
       const { report_id, class: reportClass, sent_at } = parseReceipt(receiptFile(root, reportId));
       return [{ report_id, class: reportClass, sent_at }];
@@ -9815,27 +9845,27 @@ function listReceipts(root, { now = new Date } = {}) {
 }
 function deleteReceipt(root, reportId) {
   const file = receiptFile(root, reportId);
-  if (!fs20.existsSync(file))
+  if (!fs22.existsSync(file))
     return false;
-  fs20.rmSync(file);
+  fs22.rmSync(file);
   return true;
 }
 function readPendingContact(root, reportId, { now = new Date } = {}) {
   if (!reportIdIsSafe(reportId))
     throw new Error("invalid report id");
   pruneOutbox(root, now);
-  const file = path19.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
-  if (!fs20.existsSync(file))
+  const file = path21.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs22.existsSync(file))
     return null;
-  return JSON.parse(fs20.readFileSync(file, "utf8"));
+  return JSON.parse(fs22.readFileSync(file, "utf8"));
 }
 function deletePendingContact(root, reportId) {
   if (!reportIdIsSafe(reportId))
     throw new Error("invalid report id");
-  const file = path19.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
-  if (!fs20.existsSync(file))
+  const file = path21.join(root, CONTACT_RETRY_DIR, `${reportId}.json`);
+  if (!fs22.existsSync(file))
     return false;
-  fs20.rmSync(file);
+  fs22.rmSync(file);
   return true;
 }
 
@@ -10117,40 +10147,40 @@ function reportModes({ skillsDir, adapter }) {
 }
 
 // src/skills/chef-setup/scripts/lib/init-data-root.mjs
-import fs21 from "node:fs";
-import path20 from "node:path";
-var writeJson = (file, value) => fs21.writeFileSync(file, `${JSON.stringify(value)}
+import fs23 from "node:fs";
+import path22 from "node:path";
+var writeJson = (file, value) => fs23.writeFileSync(file, `${JSON.stringify(value)}
 `);
 function initDataRoot(root) {
   const existing = readSchemaVersion(root);
   if (existing !== null)
     return { status: "exists", data_root: root, schema_version: existing };
-  if (fs21.existsSync(root) && fs21.readdirSync(root).length > 0) {
+  if (fs23.existsSync(root) && fs23.readdirSync(root).length > 0) {
     return { status: "refused", data_root: root, reason: "directory is not empty and is not a Chef data root" };
   }
-  fs21.mkdirSync(root, { recursive: true });
+  fs23.mkdirSync(root, { recursive: true });
   git(root, ["init", "-q", "-b", "main"]);
-  fs21.writeFileSync(path20.join(root, ".gitignore"), `${SETTINGS_FILE}
+  fs23.writeFileSync(path22.join(root, ".gitignore"), `${SETTINGS_FILE}
 `);
-  writeJson(path20.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
-  writeJson(path20.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
+  writeJson(path22.join(root, SCHEMA_FILE), { schema_version: SCHEMA_VERSION });
+  writeJson(path22.join(root, SETTINGS_FILE), { settings_version: SETTINGS_VERSION });
   git(root, ["add", ".gitignore", SCHEMA_FILE]);
   commit(root, "chef-setup: create data root");
   return { status: "created", data_root: root, schema_version: SCHEMA_VERSION };
 }
 
 // src/skills/chef-health-goals/scripts/lib/goals.mjs
-import fs22 from "node:fs";
-import path21 from "node:path";
+import fs24 from "node:fs";
+import path23 from "node:path";
 var GOALS_PATH = "data/health-goals/goals.json";
 var FIELDS = Object.keys(NUTRIENTS);
 function readGoal(root) {
-  const file = path21.join(root, GOALS_PATH);
-  if (!fs22.existsSync(file))
+  const file = path23.join(root, GOALS_PATH);
+  if (!fs24.existsSync(file))
     return { status: "dormant" };
   let stored;
   try {
-    stored = JSON.parse(fs22.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs24.readFileSync(file, "utf8"));
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
@@ -10207,8 +10237,8 @@ function changesFromFlags(values) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-ruleset.mjs
-import fs23 from "node:fs";
-import path22 from "node:path";
+import fs25 from "node:fs";
+import path24 from "node:path";
 var line = (m) => {
   const parts = [m.hard_constraints?.length && `must never eat ${m.hard_constraints.join(", ")}`, m.avoidances?.length && `avoids ${m.avoidances.join(", ")}`];
   return `- ${m.name}: ${parts.filter(Boolean).join("; ")}.`;
@@ -10260,12 +10290,16 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
   const problems = inputProblems(change);
   if (problems.length)
     return { status: "invalid-input", data_root: root, problems };
+  const roster = readHouseholdProfile(root).members;
+  if (change.member && roster.length && !roster.some(({ name }) => name === change.member.trim())) {
+    return { status: "invalid-input", data_root: root, problems: [`--member: unknown household member ${JSON.stringify(change.member.trim())}`] };
+  }
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
   const current = readRuleset(root);
   if (current.status === "unreadable" && !rewrite2) {
-    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs23.readFileSync(path22.join(root, RULESET_PATH), "utf8") };
+    return { status: "refused", data_root: root, reason: `the dietary ruleset can't be read (${current.reason})`, content: fs25.readFileSync(path24.join(root, RULESET_PATH), "utf8") };
   }
   if (change.none && current.status === "declared") {
     return { status: "refused", data_root: root, reason: "dietary constraints are declared; remove them one member at a time instead" };
@@ -10298,12 +10332,12 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
 }
 
 // src/skills/chef-setup/scripts/lib/write-settings.mjs
-import fs24 from "node:fs";
-import path23 from "node:path";
+import fs26 from "node:fs";
+import path25 from "node:path";
 var IGNORE_LINES = new Set([SETTINGS_FILE, `/${SETTINGS_FILE}`]);
 var SIDE_EFFECTS = { household_recipients: "recreate-delivery-tasks" };
 function isTracked(root) {
-  if (!fs24.existsSync(path23.join(root, ".git")))
+  if (!fs26.existsSync(path25.join(root, ".git")))
     return false;
   try {
     git(root, ["ls-files", "--error-unmatch", SETTINGS_FILE]);
@@ -10313,14 +10347,14 @@ function isTracked(root) {
   }
 }
 function ensureIgnored(root) {
-  const file = path23.join(root, ".gitignore");
-  const content = fs24.existsSync(file) ? fs24.readFileSync(file, "utf8") : "";
+  const file = path25.join(root, ".gitignore");
+  const content = fs26.existsSync(file) ? fs26.readFileSync(file, "utf8") : "";
   if (content.split(/\r?\n/).some((line2) => IGNORE_LINES.has(line2.trim())))
     return;
   const separator = content === "" || content.endsWith(`
 `) ? "" : `
 `;
-  fs24.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
+  fs26.writeFileSync(file, `${content}${separator}${SETTINGS_FILE}
 `);
 }
 function applyChanges(stored, changes) {
@@ -10356,7 +10390,7 @@ function writeSettings(root, changes, { locale, rewrite: rewrite2 = false } = {}
     return { status: "refused", data_root: root, ...blocked };
   ensureIgnored(root);
   const next = applyChanges(current.stored ?? {}, changes);
-  fs24.writeFileSync(path23.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
+  fs26.writeFileSync(path25.join(root, SETTINGS_FILE), `${JSON.stringify(next, null, 2)}
 `);
   const saved = readSettings(root, { locale });
   const changed2 = SETTING_KEYS.filter((key) => JSON.stringify(current.settings[key]) !== JSON.stringify(saved.settings[key]));
@@ -10368,8 +10402,58 @@ function writeSettings(root, changes, { locale, rewrite: rewrite2 = false } = {}
   return { status: "saved", data_root: root, settings: saved.settings, changed: changed2, side_effects, ...recipients, ...traceOff };
 }
 
+// src/skills/chef-setup/scripts/lib/write-household-profile.mjs
+import fs27 from "node:fs";
+import path26 from "node:path";
+var DEFAULT_BODY = `# Household profile
+`;
+function inputProblems2(members) {
+  if (!Array.isArray(members) || members.some((name) => typeof name !== "string" || !name.trim())) {
+    return ["every household member needs a name"];
+  }
+  const names = members.map((name) => name.trim());
+  return new Set(names).size === names.length ? [] : ["household member names must be unique"];
+}
+function writeHouseholdProfile(root, { members, date, rewrite: rewrite2 = false }) {
+  const problems = inputProblems2(members);
+  if (problems.length)
+    return { status: "invalid-input", data_root: root, problems };
+  const refusal = writeRefusal(root);
+  if (refusal)
+    return refusal;
+  const file = path26.join(root, HOUSEHOLD_PROFILE_PATH);
+  let page = { frontmatter: {}, body: DEFAULT_BODY };
+  if (fs27.existsSync(file)) {
+    try {
+      page = parsePage(fs27.readFileSync(file, "utf8"));
+    } catch (error) {
+      if (!rewrite2)
+        return { status: "refused", data_root: root, reason: `the household profile can't be read (${error.message})`, content: fs27.readFileSync(file, "utf8") };
+    }
+  }
+  const roster = members.map((name) => ({ name: name.trim() }));
+  if (roster.length) {
+    const names = new Set(roster.map(({ name }) => name));
+    const unknown = readRuleset(root).members.find(({ name }) => !names.has(name));
+    if (unknown)
+      return { status: "invalid-input", data_root: root, problems: [`members: dietary rules name unknown household member ${JSON.stringify(unknown.name)}`] };
+  }
+  const frontmatter = {
+    ...page.frontmatter,
+    type: "household-profile",
+    title: page.frontmatter.title ?? "Household profile",
+    members: roster,
+    updated: date
+  };
+  const written = writeWiki(root, {
+    pages: [{ slug: "profile", frontmatter, body: page.body || DEFAULT_BODY }],
+    message: "chef-setup: update household roster"
+  });
+  return written.status === "written" ? { status: "saved", data_root: root, path: written.pages[0], members: roster } : written;
+}
+
 // src/skills/chef-setup/scripts/setup.mjs
-var skillDir = path24.resolve(path24.dirname(fileURLToPath2(import.meta.url)), "..");
+var skillDir = path27.resolve(path27.dirname(fileURLToPath2(import.meta.url)), "..");
 var OPTIONS = {
   "data-root": { type: "string" },
   source: { type: "string" },
@@ -10377,6 +10461,7 @@ var OPTIONS = {
   confirm: { type: "boolean" },
   ...SETTING_FLAGS,
   member: { type: "string" },
+  members: { type: "string" },
   hard: { type: "string" },
   avoid: { type: "string" },
   "add-hard": { type: "string", multiple: true },
@@ -10439,7 +10524,7 @@ function update(root) {
   try {
     return updateChef(root, {
       skillDir,
-      fixture: path24.join(skillDir, "fixture", "data-root"),
+      fixture: path27.join(skillDir, "fixture", "data-root"),
       confirm: values.confirm ?? false
     });
   } catch (error) {
@@ -10467,6 +10552,15 @@ function setDietary(root) {
   };
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
+function household(root) {
+  const profile = readHouseholdProfile(root);
+  return { status: "ok", data_root: root, path: profile.path, members: profile.members };
+}
+function setHousehold(root) {
+  if (values.members === undefined)
+    return { status: "invalid-input", data_root: root, problems: ['give --members "Name,Name" (or an empty value to clear the roster)'] };
+  return writeHouseholdProfile(root, { members: list(values.members) ?? [], date: today(), rewrite: values.rewrite ?? false });
+}
 function showTraceMode(root) {
   if (readSchemaVersion(root) === null)
     return { ...NOT_A_ROOT, data_root: root };
@@ -10480,17 +10574,19 @@ function clearTraceMode(root) {
   return { status: clearTrace(root) ? "cleared" : "empty", data_root: root };
 }
 var inDataRoot = (mode) => (root) => readSchemaVersion(root) === null ? { ...NOT_A_ROOT, data_root: root } : mode(root, values);
-var REPORT_MODES = Object.fromEntries(Object.entries(reportModes({ skillsDir: path24.dirname(skillDir) })).map(([name, mode]) => [name, inDataRoot(mode)]));
+var REPORT_MODES = Object.fromEntries(Object.entries(reportModes({ skillsDir: path27.dirname(skillDir) })).map(([name, mode]) => [name, inDataRoot(mode)]));
 var MODES2 = {
   init: (root) => initDataRoot(root),
   adopt: (root) => adoptDataRoot(root, values.source),
   settings: show,
   set,
   update,
-  verify: (root) => verifyInstall(root, { skillsDir: path24.dirname(skillDir), fixture: path24.join(skillDir, "fixture", "data-root") }),
+  verify: (root) => verifyInstall(root, { skillsDir: path27.dirname(skillDir), fixture: path27.join(skillDir, "fixture", "data-root") }),
   usda: () => checkUsda(usdaClient()),
   feedback: () => checkFeedback(currentRuntime()),
   safety: () => ({ status: "ok", screen: SAFETY_SCREEN }),
+  household,
+  "set-household": setHousehold,
   dietary,
   "set-dietary": setDietary,
   schedule: scheduleProposal,

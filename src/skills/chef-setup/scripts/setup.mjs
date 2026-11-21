@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // chef-setup entry point. Modes: init (create the data root), adopt (clone an existing one),
 // settings (show), set (change), update (install a tagged release), verify (check the install),
-// usda (check the USDA connection), feedback (check the Chef feedback connection), safety (the one safety screen), dietary (show the dietary
-// ruleset), set-dietary (change it), schedule (propose recurring tasks; writes nothing),
+// usda (check the USDA connection), feedback (check the Chef feedback connection), safety (the one safety screen), household (show the roster),
+// set-household (replace it), dietary (show the dietary ruleset), set-dietary (change it), schedule (propose recurring tasks; writes nothing),
 // check-update (is a newer release out; installs nothing), trace (show the local invocation
 // trace), clear-trace (delete it), report-* (draft, preview, change and send a feedback report, or delete a sent one).
 import path from 'node:path';
@@ -13,6 +13,7 @@ import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture, traceEnabled } from '../../../lib/diagnostics/capture.mjs';
 import { clearTrace, DAY_MS, readTrace, TRACE_BOUNDS } from '../../../lib/diagnostics/trace.mjs';
 import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
+import { readHouseholdProfile } from '../../../lib/household-profile.mjs';
 import { mergeList } from '../../../lib/list-edits.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
 import { today } from '../../../lib/recipes.mjs';
@@ -34,6 +35,7 @@ import { updateChef } from './lib/update-chef.mjs';
 import { verifyInstall } from './lib/verify-install.mjs';
 import { writeRuleset } from './lib/write-ruleset.mjs';
 import { writeSettings } from './lib/write-settings.mjs';
+import { writeHouseholdProfile } from './lib/write-household-profile.mjs';
 
 // Installed layout: <skills>/chef-setup/scripts/setup.mjs, fixture in chef-setup/fixture/.
 const skillDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,6 +47,7 @@ const OPTIONS = {
   confirm: { type: 'boolean' },
   ...SETTING_FLAGS,
   member: { type: 'string' },
+  members: { type: 'string' },
   hard: { type: 'string' },
   avoid: { type: 'string' },
   'add-hard': { type: 'string', multiple: true },
@@ -139,6 +142,16 @@ function setDietary(root) {
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
 
+function household(root) {
+  const profile = readHouseholdProfile(root);
+  return { status: 'ok', data_root: root, path: profile.path, members: profile.members };
+}
+
+function setHousehold(root) {
+  if (values.members === undefined) return { status: 'invalid-input', data_root: root, problems: ['give --members "Name,Name" (or an empty value to clear the roster)'] };
+  return writeHouseholdProfile(root, { members: list(values.members) ?? [], date: today(), rewrite: values.rewrite ?? false });
+}
+
 function showTraceMode(root) {
   if (readSchemaVersion(root) === null) return { ...NOT_A_ROOT, data_root: root };
   const { maxEvents, maxBytes, maxAgeMs } = TRACE_BOUNDS;
@@ -164,6 +177,8 @@ const MODES = {
   usda: () => checkUsda(usdaClient()),
   feedback: () => checkFeedback(currentRuntime()),
   safety: () => ({ status: 'ok', screen: SAFETY_SCREEN }),
+  household,
+  'set-household': setHousehold,
   dietary,
   'set-dietary': setDietary,
   schedule: scheduleProposal,

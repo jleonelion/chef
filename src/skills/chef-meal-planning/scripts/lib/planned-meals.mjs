@@ -42,6 +42,11 @@ function mealProblems(meal, at, week, weekStart) {
     problems.push(`${at}.servings: must be a number greater than zero`);
   }
   if (meal.note !== undefined && typeof meal.note !== 'string') problems.push(`${at}.note: must be text`);
+  if (meal.eaters !== undefined && (!Array.isArray(meal.eaters) || !meal.eaters.length || meal.eaters.some((name) => !isText(name)))) {
+    problems.push(`${at}.eaters: must be a non-empty list of household member names`);
+  } else if (meal.eaters !== undefined && new Set(meal.eaters).size !== meal.eaters.length) {
+    problems.push(`${at}.eaters: household member names must not repeat`);
+  }
   return problems;
 }
 
