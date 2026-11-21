@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { parseArgs } from 'node:util';
+import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { today } from '../../../lib/recipes.mjs';
@@ -8,22 +9,24 @@ import { clearGoal, parseTargets, readGoal, setGoal } from './lib/goals.mjs';
 import { weeklyReport } from './lib/report.mjs';
 
 const many = { type: 'string', multiple: true };
+const OPTIONS = {
+  'data-root': { type: 'string' },
+  goal: { type: 'string' },
+  min: many,
+  max: many,
+  'add-min': many,
+  'remove-min': many,
+  'add-max': many,
+  'remove-max': many,
+  'set-min': many,
+  'set-max': many,
+  'remove-target': many,
+  rewrite: { type: 'boolean' },
+  'week-start': { type: 'string' },
+};
 const { values, positionals } = parseArgs({
-  options: {
-    'data-root': { type: 'string' },
-    goal: { type: 'string' },
-    min: many,
-    max: many,
-    'add-min': many,
-    'remove-min': many,
-    'add-max': many,
-    'remove-max': many,
-    'set-min': many,
-    'set-max': many,
-    'remove-target': many,
-    rewrite: { type: 'boolean' },
-    'week-start': { type: 'string' },
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true,
 });
 
@@ -69,10 +72,19 @@ const commands = {
   clear: () => clearGoal(root, { date: today() }),
   report: () => (isDate(values['week-start']) ? weeklyReport(root, { weekStart: values['week-start'] }) : invalid(['--week-start must be YYYY-MM-DD'])),
 };
+export const SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(commands),
+  flags: Object.keys(OPTIONS),
+  statuses: { ok: ['active', 'dormant', 'saved', 'cleared', 'report'], errors: ['invalid-input', 'refused', 'unreadable'] },
+});
 
 const operation = positionals[0];
-const run = () => (Object.hasOwn(commands, operation) ? commands[operation]() : invalid([`supported commands: ${Object.keys(commands).join(', ')}`]));
+const run = () => commands[operation]();
 const failures = { unreadable: 'store-unreadable' };
-const result = await chefCapture({ root, skill: 'chef-health-goals', script: 'health-goals', operation, failures }, run);
-console.log(JSON.stringify(result));
-if (['invalid-input', 'refused', 'unreadable'].includes(result.status)) process.exitCode = 2;
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(commands, operation)
+    ? await chefCapture({ root, skill: 'chef-health-goals', script: 'health-goals', operation, failures }, run)
+    : invalidMode(operation, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status)) process.exitCode = 2;
+}

@@ -6947,8 +6947,17 @@ var require_public_api = __commonJS((exports) => {
 
 // src/skills/chef-setup/scripts/setup.mjs
 import path24 from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath as fileURLToPath2 } from "node:url";
 import { parseArgs } from "node:util";
+
+// src/lib/cli-entry.mjs
+import { fileURLToPath } from "node:url";
+var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var invalidMode = (mode, modes, dataRoot) => ({
+  status: "invalid-input",
+  ...dataRoot && { data_root: dataRoot },
+  problems: [`unsupported command "${mode ?? ""}"; supported commands: ${modes.join(", ")}`]
+});
 
 // src/lib/data-root.mjs
 import os2 from "node:os";
@@ -7315,13 +7324,14 @@ var facts_v1_default = {
     "chef-recipe-search/recipe-search": {
       operations: ["search", "show"],
       facts: {
+        status: { type: "enum", values: ["ok"], description: "Top-level result status of an ok run." },
         results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "feedback", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline", "report-delete"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "cleared", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -10359,32 +10369,34 @@ function writeSettings(root, changes, { locale, rewrite: rewrite2 = false } = {}
 }
 
 // src/skills/chef-setup/scripts/setup.mjs
-var skillDir = path24.resolve(path24.dirname(fileURLToPath(import.meta.url)), "..");
+var skillDir = path24.resolve(path24.dirname(fileURLToPath2(import.meta.url)), "..");
+var OPTIONS = {
+  "data-root": { type: "string" },
+  source: { type: "string" },
+  rewrite: { type: "boolean" },
+  confirm: { type: "boolean" },
+  ...SETTING_FLAGS,
+  member: { type: "string" },
+  hard: { type: "string" },
+  avoid: { type: "string" },
+  "add-hard": { type: "string", multiple: true },
+  "remove-hard": { type: "string", multiple: true },
+  "add-avoid": { type: "string", multiple: true },
+  "remove-avoid": { type: "string", multiple: true },
+  "add-household-recipient": { type: "string", multiple: true },
+  "remove-household-recipient": { type: "string", multiple: true },
+  "add-household-recipients": { type: "string", multiple: true },
+  "remove-household-recipients": { type: "string", multiple: true },
+  "add-trusted-receipt-sender": { type: "string", multiple: true },
+  "remove-trusted-receipt-sender": { type: "string", multiple: true },
+  "add-trusted-receipt-senders": { type: "string", multiple: true },
+  "remove-trusted-receipt-senders": { type: "string", multiple: true },
+  none: { type: "boolean" },
+  ...REPORT_FLAGS
+};
 var { values, positionals } = parseArgs({
-  options: {
-    "data-root": { type: "string" },
-    source: { type: "string" },
-    rewrite: { type: "boolean" },
-    confirm: { type: "boolean" },
-    ...SETTING_FLAGS,
-    member: { type: "string" },
-    hard: { type: "string" },
-    avoid: { type: "string" },
-    "add-hard": { type: "string", multiple: true },
-    "remove-hard": { type: "string", multiple: true },
-    "add-avoid": { type: "string", multiple: true },
-    "remove-avoid": { type: "string", multiple: true },
-    "add-household-recipient": { type: "string", multiple: true },
-    "remove-household-recipient": { type: "string", multiple: true },
-    "add-household-recipients": { type: "string", multiple: true },
-    "remove-household-recipients": { type: "string", multiple: true },
-    "add-trusted-receipt-sender": { type: "string", multiple: true },
-    "remove-trusted-receipt-sender": { type: "string", multiple: true },
-    "add-trusted-receipt-senders": { type: "string", multiple: true },
-    "remove-trusted-receipt-senders": { type: "string", multiple: true },
-    none: { type: "boolean" },
-    ...REPORT_FLAGS
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true
 });
 function set(root) {
@@ -10487,17 +10499,26 @@ var MODES2 = {
   "clear-trace": clearTraceMode,
   ...REPORT_MODES
 };
+var SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES2),
+  flags: Object.keys(OPTIONS),
+  statuses: {
+    ok: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "cleared", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"],
+    errors: ["refused", "invalid-input", "fail"]
+  }
+});
 var mode = positionals[0] ?? "init";
-if (!Object.hasOwn(MODES2, mode)) {
-  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES2).join(", ")}`);
-  process.exit(64);
-}
 var root = resolveDataRoot({ flag: values["data-root"] });
 var UNTRACED = ["trace", "clear-trace"];
 var capture = { root, skill: "chef-setup", script: "setup", operation: mode, failures: { failed: "usda-unavailable", fail: "install-check-failed" } };
-var result2 = UNTRACED.includes(mode) ? MODES2[mode](root) : await chefCapture(capture, () => MODES2[mode](root));
-console.log(JSON.stringify(result2));
-if (result2.status === "refused" || result2.status === "invalid-input")
-  process.exitCode = 2;
-if (result2.status === "fail")
-  process.exitCode = 1;
+if (isDirectExecution(import.meta.url)) {
+  const result2 = !Object.hasOwn(MODES2, mode) ? invalidMode(mode, SCRIPT_CONTRACT.modes, root) : UNTRACED.includes(mode) ? MODES2[mode](root) : await chefCapture(capture, () => MODES2[mode](root));
+  console.log(JSON.stringify(result2));
+  if (result2.status === "refused" || result2.status === "invalid-input")
+    process.exitCode = 2;
+  if (result2.status === "fail")
+    process.exitCode = 1;
+}
+export {
+  SCRIPT_CONTRACT
+};

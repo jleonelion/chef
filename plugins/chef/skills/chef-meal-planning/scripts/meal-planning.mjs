@@ -6949,6 +6949,15 @@ var require_public_api = __commonJS((exports) => {
 import fs15 from "node:fs";
 import { parseArgs } from "node:util";
 
+// src/lib/cli-entry.mjs
+import { fileURLToPath } from "node:url";
+var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var invalidMode = (mode, modes, dataRoot) => ({
+  status: "invalid-input",
+  ...dataRoot && { data_root: dataRoot },
+  problems: [`unsupported command "${mode ?? ""}"; supported commands: ${modes.join(", ")}`]
+});
+
 // src/lib/data-root.mjs
 import os2 from "node:os";
 import path2 from "node:path";
@@ -7314,13 +7323,14 @@ var facts_v1_default = {
     "chef-recipe-search/recipe-search": {
       operations: ["search", "show"],
       facts: {
+        status: { type: "enum", values: ["ok"], description: "Top-level result status of an ok run." },
         results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "feedback", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline", "report-delete"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "cleared", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -8810,13 +8820,15 @@ function todayPlan(root, date) {
 
 // src/skills/chef-meal-planning/scripts/meal-planning.mjs
 var many = { type: "string", multiple: true };
+var OPTIONS = {
+  "data-root": { type: "string" },
+  "week-start": { type: "string" },
+  date: { type: "string" },
+  override: many
+};
 var { values, positionals } = parseArgs({
-  options: {
-    "data-root": { type: "string" },
-    "week-start": { type: "string" },
-    date: { type: "string" },
-    override: many
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true
 });
 var root = resolveDataRoot({ flag: values["data-root"] });
@@ -8844,8 +8856,18 @@ function plan() {
   return problems.length ? invalid(...problems) : planWeek(root, { weekStart: values["week-start"], meals, overrides });
 }
 var MODES = { plan, today: today2 };
-var run = () => Object.hasOwn(MODES, mode) ? MODES[mode]() : invalid("supported commands: plan, today");
-var result = await chefCapture({ root, skill: "chef-meal-planning", script: "meal-planning", operation: mode }, run);
-console.log(JSON.stringify(result));
-if (["invalid-input", "refused"].includes(result.status))
-  process.exitCode = 2;
+var SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: { ok: ["saved", "planned", "no-plan"], errors: ["invalid-input", "refused"] }
+});
+var run = () => MODES[mode]();
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(MODES, mode) ? await chefCapture({ root, skill: "chef-meal-planning", script: "meal-planning", operation: mode }, run) : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status))
+    process.exitCode = 2;
+}
+export {
+  SCRIPT_CONTRACT
+};
