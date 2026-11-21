@@ -854,6 +854,34 @@
   },
   {
     "gate": false,
+    "id": "chef-shopping-lists-footer-once",
+    "flow": "core",
+    "description": "With a declared hard constraint, the check-labels footer appears exactly once in the reply: the list text already holds it, so relaying the separate dietary fields would print it twice.",
+    "grounding": { "recipes": ["chickpea-spinach-stew"] },
+    "seed": [
+      { "path": "knowledge/wiki/household/dietary-ruleset.md", "seedFile": "evals/agentic/inputs/chef-shopping-lists-footer-once/dietary-ruleset.md" },
+      { "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md", "seedFile": "evals/agentic/inputs/chef-shopping-lists-footer-once/chickpea-spinach-stew.md" }
+    ],
+    "setup": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [{ "date": "2026-01-19", "slot": "dinner", "recipe": "chickpea-spinach-stew" }]
+      }
+    ],
+    "turns": ["Make my shopping list for the week of 2026-01-19."],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "always check labels" },
+        { "path": "$.content", "matches": "^(?:(?!always check labels)[\\s\\S])*always check labels(?:(?!always check labels)[\\s\\S])*$" }
+      ]
+    ],
+    "skills": ["chef-shopping-lists"],
+    "scripts": { "required": ["scripts/shopping-lists.mjs"] },
+    "files": [],
+    "git": { "headUnchanged": true, "clean": true }
+  },
+  {
+    "gate": false,
     "id": "chef-food-inventory-expiring-natural-request",
     "flow": "core",
     "description": "A natural request to prioritize soon-expiring groceries routes to inventory expiring and not recipe or meal planning.",

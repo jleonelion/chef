@@ -26,8 +26,8 @@ The result has:
 - `meals`: the recipe meals the list covers, `{ date, slot, slug, servings, cook_servings }`. Each is bought at its amount to cook, `cook_servings`: its own servings plus those of its leftovers meals. Leftovers and free-text food add nothing. A recipe planned at several meals is bought once for all their amounts.
 - `excluded`: planned recipes the dietary gate now leaves out, because the ruleset changed after planning. Name each one and its reasons; their ingredients are not on the list. Offer to re-plan.
 - `missing_recipes`: planned recipes that no longer exist.
-- `dietary`: pass on `nudge`, `footer`, `caveats` or `problem` exactly as provided. `text` already includes them.
-- `text`: the list, ready to show or send.
+- `text`: the list, ready to show or send. It already holds the dietary notes (`nudge`, `footer`, `caveats`); show `text` as is and do not repeat them.
+- `dietary`: the same notes as separate fields, for reference only. A `problem` here is already in `text` too.
 
 ## Delivery
 

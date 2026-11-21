@@ -275,7 +275,6 @@
       }
     ],
     "git": {
-      "headUnchanged": true,
       "clean": true
     }
   },
@@ -308,6 +307,56 @@
     ],
     "git": {
       "headUnchanged": true,
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-food-inventory-health-regenerates-stale-page",
+    "description": "A page left in old units still matches the store; health redraws it itself, says so, and leaves the worktree clean.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "seedFile": "evals/tier1/inputs/chef-food-inventory-health-regenerates-stale-page/current-inventory.md"
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-food-inventory/scripts/inventory.mjs",
+      "health",
+      "--today",
+      "2026-01-16"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "healthy"
+      },
+      {
+        "path": "$.regenerated",
+        "equals": true
+      },
+      {
+        "path": "$.stale_page",
+        "absent": true
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/household/current-inventory.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "whole milk: 4 qt"
+          },
+          {
+            "path": "$.content",
+            "excludes": "1 gal"
+          }
+        ]
+      }
+    ],
+    "git": {
       "clean": true
     }
   },
@@ -505,7 +554,7 @@
       },
       {
         "path": "../receipt.txt",
-        "content": "Example Market, 2026-01-15\n- 2 lb bananas — $1.38\n"
+        "content": "Example Market, 2026-01-15\n- 2 lb bananas \u2014 $1.38\n"
       }
     ],
     "command": [
