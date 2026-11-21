@@ -12,7 +12,7 @@
         ]
       }
     ],
-    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-19", "--slot", "dinner"],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-19", "--slot", "dinner", "--plan-hash", "e2b873b2e160edc85379f14426b88f5ebf0f47ec4acdd3e31c8f43b577de5acc"],
     "parse": "json",
     "assertions": [
       { "path": "$.status", "equals": "logged" },
@@ -35,7 +35,7 @@
         ]
       }
     ],
-    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20"],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--plan-hash", "240a2c6a86512e7e7f90586ed6e4cc0be9de2abd6e9ebd3df5c57d3922bec561"],
     "parse": "json",
     "assertions": [
       { "path": "$.results[0].entry.recipe", "equals": "lemon-garlic-pasta" },
@@ -61,10 +61,13 @@
         ]
       }
     ],
-    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--cooked", "lunch"],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--cooked", "lunch", "--plan-hash", "240a2c6a86512e7e7f90586ed6e4cc0be9de2abd6e9ebd3df5c57d3922bec561"],
     "expectedStatus": 2,
     "parse": "json",
-    "assertions": [{ "path": "$.status", "equals": "invalid-input" }],
+    "assertions": [
+      { "path": "$.status", "equals": "invalid-input" },
+      { "path": "$.problems[0]", "equals": "--cooked requires selected non-leftovers slots" }
+    ],
     "git": { "clean": true }
   }
 ]

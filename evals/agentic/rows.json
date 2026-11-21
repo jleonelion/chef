@@ -423,7 +423,7 @@
         ]
       }
     ],
-    "turns": ["Log my planned dinner for 2026-01-19.", "I cooked it at home. Yes, log it."],
+    "turns": ["Log my planned dinner for 2026-01-19.", "I cooked 3 servings at home. Yes, log it."],
     "skills": ["chef-meal-logging"],
     "scripts": { "required": ["scripts/meal-logging.mjs"] },
     "files": [

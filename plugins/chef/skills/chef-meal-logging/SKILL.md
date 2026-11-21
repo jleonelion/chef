@@ -24,16 +24,15 @@ Do not pass `--cooked` for restaurant, takeaway, packaged or otherwise not-cooke
 
 ## Log from the plan
 
-When the user ate a planned meal ("I had my planned dinner", "log today from the plan"), read that date's planned meals with `chef-meal-planning`'s read-only `today` command, passing `--date YYYY-MM-DD` for any day other than today.
+When the user ate a planned meal ("I had my planned dinner", "log today from the plan"), read that date with `chef-meal-planning`'s `today` command. If the requested meals exist, preview them with `log --from-plan --date YYYY-MM-DD --preview`. Add `--slot` for one meal. Keep the returned `plan_hash` for the write.
 
-Show the planned entries for confirmation. Identify leftovers by `leftovers_of` before checking for food or a recipe. Show the source meal and "not cooked" for leftovers. Ask whether each other meal was cooked at home. Never ask that question for leftovers: their source meal already deducted inventory.
+Show the planned entries for confirmation. Identify leftovers by `leftovers_of` before checking for food or a recipe. Show the source meal and "not cooked" for leftovers. Ask whether each other meal was cooked at home. For a cooked recipe with planned leftovers, also ask how many servings were cooked, using `cook_servings` as the proposed amount. Show the confirmed amount in the proposal. Never ask whether leftovers were cooked: their source meal already deducted inventory.
 
-After an explicit yes, log the selected slot or the whole day with `--from-plan`. List only the slots the user cooked at home, separated by commas, after `--cooked`; omit it if none were cooked. The script copies servings eaten, not `cook_servings`, and refuses to mark leftovers cooked.
+After an explicit yes, run `log --from-plan` with the same date and slot, and pass the preview's `plan_hash` as `--plan-hash`. List only the slots the user cooked at home, separated by commas, after `--cooked`; omit it if none were cooked. For each cooked recipe with leftovers, pass its confirmed amount as `--cooked-servings SLOT=AMOUNT`. The script stores servings eaten and deducts the confirmed amount cooked. It refuses to mark leftovers cooked. If the plan changed, preview and confirm again.
 
 ```sh
-node scripts/meal-logging.mjs log --from-plan --date 2026-01-20 --slot dinner --cooked dinner
-node scripts/meal-logging.mjs log --from-plan --date 2026-01-20 --cooked breakfast,dinner
-node scripts/meal-logging.mjs log --from-plan --date 2026-01-20
+node scripts/meal-logging.mjs log --from-plan --date 2026-01-20 --slot dinner --preview
+node scripts/meal-logging.mjs log --from-plan --date 2026-01-20 --slot dinner --plan-hash HASH --cooked dinner --cooked-servings dinner=4
 ```
 
 The user may change any field before confirming. For a changed entry, use manual logging with the confirmed fields; leftovers remain not cooked and must never pass `--cooked`.

@@ -64,7 +64,7 @@ export function logMeal(root, input) {
     status = 'logged';
   }
   const inventory = entry.cooked && entry.recipe
-    ? deductRecipe(root, { recipe: entry.recipe, servings: entry.servings, deductionId: entry.id, now: entry.logged_at })
+    ? deductRecipe(root, { recipe: entry.recipe, servings: input.inventoryServings ?? entry.servings, deductionId: entry.id, now: entry.logged_at })
     : { status: 'not-requested' };
   return { status, entry: existing ?? entry, inventory };
 }
