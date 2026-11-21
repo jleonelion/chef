@@ -12,6 +12,7 @@ const many = { type: 'string', multiple: true };
 const OPTIONS = {
   'data-root': { type: 'string' },
   goal: { type: 'string' },
+  member: { type: 'string' },
   min: many,
   max: many,
   'add-min': many,
@@ -55,6 +56,7 @@ function set() {
   if (problems.length) return invalid(problems);
   return setGoal(root, {
     goal: values.goal,
+    member: values.member,
     targets,
     addMin: values['add-min'],
     removeMin: values['remove-min'],

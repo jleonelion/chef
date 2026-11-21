@@ -17,6 +17,10 @@ const isEntry = (name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs');
 async function bundle(entry, outDir) {
   const result = await Bun.build({ entrypoints: [entry], outdir: outDir, target: 'node', format: 'esm', naming: '[name].mjs' });
   if (!result.success) throw new AggregateError(result.logs, `bundle failed: ${entry}`);
+  for (const file of fs.readdirSync(outDir).filter((name) => name.endsWith('.mjs'))) {
+    const output = path.join(outDir, file);
+    fs.writeFileSync(output, fs.readFileSync(output, 'utf8').replaceAll('// ../../node_modules/', '// node_modules/'));
+  }
 }
 
 async function buildSkill(name) {

@@ -10184,9 +10184,21 @@ function readGoal(root) {
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
-  if (!stored?.goal)
+  if (!stored?.goal && (!Array.isArray(stored?.goals) || !stored.goals.length))
     return { status: "dormant" };
-  return { status: "active", goal: stored.goal, targets: stored.targets ?? {}, set: stored.set };
+  if (Array.isArray(stored.goals)) {
+    const roster = readHouseholdProfile(root).members;
+    const unknown = stored.goals.find(({ member }) => !roster.some(({ name }) => name === member));
+    if (unknown)
+      return { status: "invalid-input", reason: `unknown household member "${unknown.member}"; add the member to the household profile first` };
+  }
+  return {
+    status: "active",
+    ...stored.goal && { goal: stored.goal },
+    ...stored.targets && { targets: stored.targets },
+    ...Array.isArray(stored.goals) && { goals: stored.goals },
+    set: stored.set
+  };
 }
 var activeGoal = (root) => {
   const goal = readGoal(root);

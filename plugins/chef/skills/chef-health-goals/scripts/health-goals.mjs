@@ -7835,6 +7835,16 @@ var $visit = visit.visit;
 var $visitAsync = visit.visitAsync;
 
 // src/lib/frontmatter.mjs
+var BLOCK = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
+function parsePage(text) {
+  const match = text.match(BLOCK);
+  if (!match)
+    return { frontmatter: {}, body: text };
+  const frontmatter = $parse(match[1], { schema: "core" }) ?? {};
+  if (typeof frontmatter !== "object" || Array.isArray(frontmatter))
+    throw new Error("frontmatter must be a YAML mapping");
+  return { frontmatter, body: text.slice(match[0].length) };
+}
 function serializePage(frontmatter, body) {
   const yaml = $stringify(frontmatter, { schema: "core", lineWidth: 0, flowCollectionPadding: false });
   return `---
@@ -7927,28 +7937,61 @@ var TRAINING_NOTICE = `Your dietary and health details are saved in your Chef da
 var SAFETY_SCREEN = [NOT_MEDICAL_ADVICE, GUARANTEE_LINE, `Muse's "Help improve our AI models" setting may cover what you tell Chef; see ${TRAINING_SETTING_URL}.`];
 
 // src/skills/chef-health-goals/scripts/lib/goals.mjs
-import fs10 from "node:fs";
-import path10 from "node:path";
+import fs11 from "node:fs";
+import path11 from "node:path";
 
 // src/lib/fdc.mjs
 var NUTRIENTS = { calories: 1008, protein: 1003, fat: 1004, saturated_fat: 1258, carbs: 1005, fiber: 1079, sugar: 2000, sodium: 1093, cholesterol: 1253 };
+
+// src/lib/household-profile.mjs
+import fs10 from "node:fs";
+import path10 from "node:path";
+var HOUSEHOLD_PROFILE_PATH = wikiPath("household-profile", "profile");
+var namedMembers = (members) => Array.isArray(members) && members.every((member) => member && typeof member === "object" && typeof member.name === "string" && member.name.trim());
+function readHouseholdProfile(root) {
+  const file = path10.join(root, HOUSEHOLD_PROFILE_PATH);
+  if (!fs10.existsSync(file))
+    return { path: null, members: [], servings: 1, servings_source: "default" };
+  const { frontmatter } = parsePage(fs10.readFileSync(file, "utf8"));
+  const members = namedMembers(frontmatter.members) ? frontmatter.members.map(({ name }) => ({ name: name.trim() })) : [];
+  const portions = frontmatter.portions_per_meal;
+  const fromProfile = Number.isInteger(portions) && portions > 0;
+  return {
+    path: HOUSEHOLD_PROFILE_PATH,
+    members,
+    servings: members.length || (fromProfile ? portions : 1),
+    servings_source: members.length ? "roster" : fromProfile ? "profile" : "default"
+  };
+}
 
 // src/skills/chef-health-goals/scripts/lib/goals.mjs
 var GOALS_PATH = "data/health-goals/goals.json";
 var FIELDS = Object.keys(NUTRIENTS);
 function readGoal(root) {
-  const file = path10.join(root, GOALS_PATH);
-  if (!fs10.existsSync(file))
+  const file = path11.join(root, GOALS_PATH);
+  if (!fs11.existsSync(file))
     return { status: "dormant" };
   let stored;
   try {
-    stored = JSON.parse(fs10.readFileSync(file, "utf8"));
+    stored = JSON.parse(fs11.readFileSync(file, "utf8"));
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
-  if (!stored?.goal)
+  if (!stored?.goal && (!Array.isArray(stored?.goals) || !stored.goals.length))
     return { status: "dormant" };
-  return { status: "active", goal: stored.goal, targets: stored.targets ?? {}, set: stored.set };
+  if (Array.isArray(stored.goals)) {
+    const roster = readHouseholdProfile(root).members;
+    const unknown = stored.goals.find(({ member }) => !roster.some(({ name }) => name === member));
+    if (unknown)
+      return { status: "invalid-input", reason: `unknown household member "${unknown.member}"; add the member to the household profile first` };
+  }
+  return {
+    status: "active",
+    ...stored.goal && { goal: stored.goal },
+    ...stored.targets && { targets: stored.targets },
+    ...Array.isArray(stored.goals) && { goals: stored.goals },
+    set: stored.set
+  };
 }
 var activeGoal = (root) => {
   const goal = readGoal(root);
@@ -8008,19 +8051,31 @@ function mergeTargets(current = {}, edit = {}) {
     delete targets[nutrient.trim()]?.max;
   return Object.fromEntries(Object.entries(targets).filter(([, bounds]) => bounds && Object.keys(bounds).length));
 }
-function setGoal(root, { goal, targets, addMin, removeMin, addMax, removeMax, setMin, setMax, removeTarget }, { date, rewrite: rewrite2 = false, mergeTargets: partial = false } = {}) {
+function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax, removeMax, setMin, setMax, removeTarget }, { date, rewrite: rewrite2 = false, mergeTargets: partial = false } = {}) {
   const text = goal?.trim();
-  if (!text)
+  if (!text && !Array.isArray(goals))
     return { status: "invalid-input", data_root: root, problems: ["give --goal with a short description of the goal"] };
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
+  const roster = readHouseholdProfile(root).members;
+  if (member) {
+    if (!roster.length || !roster.some(({ name }) => name === member.trim())) {
+      return { status: "invalid-input", data_root: root, problems: [`unknown household member "${member.trim()}"; add the member to the household profile first`] };
+    }
+  }
+  if (Array.isArray(goals)) {
+    const unknown = goals.map(({ member: name }) => name).filter((name) => !roster.some(({ name: memberName }) => memberName === name));
+    if (unknown.length)
+      return { status: "invalid-input", data_root: root, problems: [`unknown household member "${unknown[0]}"; add the member to the household profile first`] };
+  }
   const current = readGoal(root);
   if (current.status === "unreadable" && !rewrite2) {
-    return { status: "refused", data_root: root, reason: current.reason, content: fs10.readFileSync(path10.join(root, GOALS_PATH), "utf8") };
+    return { status: "refused", data_root: root, reason: current.reason, content: fs11.readFileSync(path11.join(root, GOALS_PATH), "utf8") };
   }
   const set = current.status === "active" ? current.set : date;
-  const finalTargets = partial ? mergeTargets(current.status === "active" ? current.targets : {}, {
+  const memberTargetSet = member && current.status === "active" ? current.goals?.find((entry) => entry.member === member.trim())?.targets ?? {} : current.status === "active" ? current.targets ?? {} : {};
+  const finalTargets = partial ? mergeTargets(memberTargetSet, {
     addMin,
     removeMin,
     addMax,
@@ -8042,12 +8097,34 @@ function setGoal(root, { goal, targets, addMin, removeMin, addMax, removeMax, se
     if (problems.length)
       return { status: "invalid-input", data_root: root, problems };
   }
-  if (partial && JSON.stringify(finalTargets) === JSON.stringify(current.status === "active" ? current.targets : {})) {
-    return { status: "unchanged", data_root: root, goal: text, targets: finalTargets };
+  if (partial && JSON.stringify(finalTargets) === JSON.stringify(member ? current.status === "active" ? current.goals?.find((entry) => entry.member === member.trim())?.targets ?? {} : {} : current.status === "active" ? current.targets ?? {} : {})) {
+    return member ? { status: "unchanged", data_root: root, member: member.trim(), goal: text, targets: finalTargets } : { status: "unchanged", data_root: root, goal: text, targets: finalTargets };
   }
   const notice = noticeToRecord(root, "training-setting", date);
+  let value;
+  if (Array.isArray(goals)) {
+    value = { goals, set: current.status === "active" ? current.set : date, updated: date };
+  } else if (member) {
+    const memberName = member.trim();
+    const existingGoals = current.status === "active" && Array.isArray(current.goals) ? current.goals : [];
+    const nextGoals = [...existingGoals.filter((entry) => entry.member !== memberName), { member: memberName, goal: text, targets: finalTargets }];
+    value = {
+      ...current.status === "active" && current.goal ? { goal: current.goal, targets: current.targets ?? {} } : {},
+      goals: nextGoals,
+      set: current.status === "active" ? current.set : date,
+      updated: date
+    };
+  } else {
+    value = {
+      goal: text,
+      targets: finalTargets,
+      ...current.status === "active" && Array.isArray(current.goals) && { goals: current.goals },
+      set,
+      updated: date
+    };
+  }
   const written = writeWiki(root, {
-    data: [storeFile({ goal: text, targets: finalTargets, set, updated: date }), ...notice ? [notice] : []],
+    data: [storeFile(value), ...notice ? [notice] : []],
     message: "chef-health-goals: set goal"
   });
   if (written.status !== "written")
@@ -8055,15 +8132,17 @@ function setGoal(root, { goal, targets, addMin, removeMin, addMax, removeMax, se
   return { status: "saved", data_root: root, goal: text, targets: finalTargets, ...notice && { notice: TRAINING_NOTICE }, footer: NOT_MEDICAL_ADVICE };
 }
 function clearGoal(root, { date }) {
-  if (readGoal(root).status !== "active")
+  const current = readGoal(root);
+  if (current.status !== "active")
     return { status: "dormant", data_root: root };
-  const written = writeWiki(root, { data: [storeFile({ goal: null, targets: {}, updated: date })], message: "chef-health-goals: clear goal" });
+  const value = Array.isArray(current.goals) ? { goal: null, targets: {}, goals: [], updated: date } : { goal: null, targets: {}, updated: date };
+  const written = writeWiki(root, { data: [storeFile(value)], message: "chef-health-goals: clear goal" });
   return written.status === "written" ? { status: "cleared", data_root: root } : written;
 }
 
 // src/lib/meal-log.mjs
-import fs11 from "node:fs";
-import path11 from "node:path";
+import fs12 from "node:fs";
+import path12 from "node:path";
 var MEAL_LOG_PATH = "data/meal-log/log.json";
 function mealEntryId(entry) {
   return `${entry.date}-${entry.slot}-${entry.recipe ?? slugify(entry.food ?? "")}`;
@@ -8082,11 +8161,11 @@ function entriesWithIds(entries) {
   });
 }
 function readMealLog(root) {
-  const file = path11.join(root, MEAL_LOG_PATH);
-  if (!fs11.existsSync(file))
+  const file = path12.join(root, MEAL_LOG_PATH);
+  if (!fs12.existsSync(file))
     return { entries: [] };
   try {
-    const log = JSON.parse(fs11.readFileSync(file, "utf8"));
+    const log = JSON.parse(fs12.readFileSync(file, "utf8"));
     if (!Array.isArray(log?.entries))
       throw new Error("no entries list");
     return { entries: entriesWithIds(log.entries) };
@@ -8153,6 +8232,7 @@ var many = { type: "string", multiple: true };
 var OPTIONS = {
   "data-root": { type: "string" },
   goal: { type: "string" },
+  member: { type: "string" },
   min: many,
   max: many,
   "add-min": many,
@@ -8195,6 +8275,7 @@ function set() {
     return invalid(problems);
   return setGoal(root, {
     goal: values.goal,
+    member: values.member,
     targets,
     addMin: values["add-min"],
     removeMin: values["remove-min"],

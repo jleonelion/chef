@@ -71,6 +71,8 @@ When the `calendar` setting is absent, output has no `calendar` field and nothin
 
 When the user has declared a goal with `chef-health-goals`, a saved plan includes `health_suggestions`: one serving of each planned meal (by date, slot and recipe) compared with the daily targets. Report them as advice after the plan, ending with their `footer` exactly as given. They never change the planned meals or what the dietary gate allowed. With no `health_suggestions`, say nothing about health; never infer a goal.
 
+For member-specific goals, `nutrition_by_member.members[].comparison` adds each member's goal, per-day totals and target statuses, and weekly totals. Statuses are `met`, `under` or `over`; exactly at a minimum or maximum is `met`. When incomplete recipe nutrition blocks a member, the comparison is `incomplete` and never estimates or shows target statuses. Members without a goal have rollups but no comparison.
+
 ## Rules
 
 - Propose only recipes returned by `chef-recipe-search`, then pass the confirmed slugs to this script.

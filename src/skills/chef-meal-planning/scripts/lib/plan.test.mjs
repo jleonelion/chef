@@ -288,6 +288,32 @@ test('with a declared goal, the saved plan gets advisory health suggestions that
   assert.doesNotMatch(JSON.stringify(result.health_suggestions), /cheesy/);
 });
 
+test('member goals give independent per-day and weekly target comparisons', () => {
+  const members = [{ name: 'Alex Example' }, { name: 'Sam Example' }, { name: 'Jo Example' }];
+  const root = makeRoot([
+    measured('soup', 2300),
+    profile({ members }),
+    {
+      path: 'data/health-goals/goals.json',
+      content: '{"goals":[{"member":"Alex Example","goal":"Lower sodium","targets":{"sodium":{"max":2300}}},{"member":"Sam Example","goal":"Higher protein","targets":{"protein":{"min":30}}}],"set":"2026-01-10","updated":"2026-01-10"}\n',
+    },
+  ]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }],
+  });
+
+  const [alex, sam, jo] = result.nutrition_by_member.members;
+  assert.equal(alex.comparison.status, 'measured');
+  assert.deepEqual(alex.comparison.days[0].targets, { sodium: 'met' });
+  assert.deepEqual(alex.comparison.weekly, { sodium: 'met' });
+  assert.equal(sam.comparison.status, 'measured');
+  assert.deepEqual(sam.comparison.days[0].targets, { protein: 'under' });
+  assert.deepEqual(sam.comparison.weekly, { protein: 'under' });
+  assert.equal(jo.comparison, undefined);
+});
+
 test('nutrition and health suggestions are per planned meal, so one recipe at two slots on a day stays two meals', () => {
   const root = makeRoot([measured('soup', 2500), goalsFile]);
   const result = planWeek(root, {
@@ -386,6 +412,10 @@ test('incomplete nutrition blocks only members who eat that meal', () => {
     measured('soup', 100),
     recipe('mystery-stew', { frontmatter: { nutrition_status: 'incomplete' } }),
     profile({ members }),
+    {
+      path: 'data/health-goals/goals.json',
+      content: '{"goals":[{"member":"Alex Example","goal":"Higher protein","targets":{"protein":{"min":30}}}],"set":"2026-01-10","updated":"2026-01-10"}\n',
+    },
   ]);
 
   const result = planWeek(root, {
@@ -401,6 +431,8 @@ test('incomplete nutrition blocks only members who eat that meal', () => {
   assert.deepEqual(alex.missing, [{ date: '2026-01-20', slot: 'dinner', slug: 'mystery-stew', reason: 'recipe nutrition is not complete' }]);
   assert.equal(alex.days[1].status, 'incomplete');
   assert.equal(alex.totals, undefined);
+  assert.equal(alex.comparison.status, 'incomplete');
+  assert.equal(alex.comparison.targets, undefined);
   assert.equal(sam.status, 'complete');
   assert.equal(sam.totals.calories, 400);
   assert.deepEqual(sam.days.map(({ date }) => date), ['2026-01-19']);

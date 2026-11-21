@@ -8530,9 +8530,21 @@ function readGoal(root) {
   } catch {
     return { status: "unreadable", reason: `${GOALS_PATH} is not valid JSON` };
   }
-  if (!stored?.goal)
+  if (!stored?.goal && (!Array.isArray(stored?.goals) || !stored.goals.length))
     return { status: "dormant" };
-  return { status: "active", goal: stored.goal, targets: stored.targets ?? {}, set: stored.set };
+  if (Array.isArray(stored.goals)) {
+    const roster = readHouseholdProfile(root).members;
+    const unknown = stored.goals.find(({ member }) => !roster.some(({ name }) => name === member));
+    if (unknown)
+      return { status: "invalid-input", reason: `unknown household member "${unknown.member}"; add the member to the household profile first` };
+  }
+  return {
+    status: "active",
+    ...stored.goal && { goal: stored.goal },
+    ...stored.targets && { targets: stored.targets },
+    ...Array.isArray(stored.goals) && { goals: stored.goals },
+    set: stored.set
+  };
 }
 var activeGoal = (root) => {
   const goal = readGoal(root);
@@ -8704,11 +8716,68 @@ function memberRollup(name, mealRecipes) {
     ...weekly.unmeasured && { unmeasured: weekly.unmeasured }
   };
 }
-function planNutritionByMember(mealRecipes, members) {
+function targetStatus(value, { min, max }) {
+  if (min !== undefined && value < min)
+    return "under";
+  if (max !== undefined && value > max)
+    return "over";
+  return "met";
+}
+function targetStatuses(totals, targets) {
+  if (!totals)
+    return;
+  return Object.fromEntries(Object.entries(targets).map(([nutrient, bounds]) => [
+    nutrient,
+    targetStatus(totals[nutrient] ?? 0, bounds)
+  ]));
+}
+function memberGoal(goal, name, members) {
+  if (Array.isArray(goal.goals)) {
+    const memberGoalEntry = goal.goals.find((entry) => entry.member === name);
+    if (memberGoalEntry)
+      return memberGoalEntry;
+  }
+  if (goal.goal && members.length === 1 && members[0].name === name)
+    return { member: name, goal: goal.goal, targets: goal.targets ?? {} };
+  return null;
+}
+function memberComparison(member, goal) {
+  if (!goal)
+    return {};
+  const comparison = {
+    goal: goal.goal,
+    footer: NOT_MEDICAL_ADVICE
+  };
+  if (member.status === "incomplete") {
+    return { comparison: { ...comparison, status: "incomplete" } };
+  }
+  if (!member.totals)
+    return { comparison: { ...comparison, status: "no-meals", days: [], weekly: {} } };
+  const weekly = targetStatuses(member.totals, goal.targets);
+  const days = member.days.filter((day) => day.status === "complete").map((day) => {
+    const targets = targetStatuses(day.totals, goal.targets);
+    return { date: day.date, totals: day.totals, targets };
+  });
+  return {
+    comparison: {
+      ...comparison,
+      status: "measured",
+      days,
+      weekly,
+      weekly_totals: member.totals,
+      targets: weekly
+    }
+  };
+}
+function planNutritionByMember(mealRecipes, members, goal) {
   if (!members.length)
     return null;
   return {
-    members: members.map(({ name }) => memberRollup(name, mealRecipes)),
+    members: members.map(({ name }) => {
+      const member = memberRollup(name, mealRecipes);
+      const goalForMember = goal ? memberGoal(goal, name, members) : null;
+      return { ...member, ...memberComparison(member, goalForMember) };
+    }),
     unattributed_servings: mealRecipes.reduce((sum, { meal }) => sum + Math.max(0, meal.servings - meal.eaters.length), 0)
   };
 }
@@ -8755,7 +8824,13 @@ ${rows}
 `;
 }
 function applyHealthSuggestions(plan, goal) {
-  return goal ? { ...plan, health_suggestions: healthSuggestions(plan, goal) } : plan;
+  if (!goal)
+    return plan;
+  if (!goal.goal)
+    return plan;
+  if (plan.nutrition_by_member?.members.length > 1)
+    return plan;
+  return { ...plan, health_suggestions: healthSuggestions(plan, goal) };
 }
 function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   const problems = plannedMealProblems(planned, weekStart);
@@ -8808,7 +8883,8 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     return avoidances.length ? [{ date: meal.date, slot: meal.slot, slug: meal.slug, avoidances }] : [];
   });
   const nutrition = nutritionRollup(mealRecipes);
-  const nutritionByMember = planNutritionByMember(mealRecipes, profile.members);
+  const goal = activeGoal(root);
+  const nutritionByMember = planNutritionByMember(mealRecipes, profile.members, goal);
   const dietary = dietaryNotes(ruleset);
   const inventory = { items_considered: inventoryItems.length };
   const frontmatter = {
@@ -8850,7 +8926,7 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     ...avoidanceNotes.length && { avoidance_notes: avoidanceNotes },
     ...settings.warning && { settings_warning: settings.warning },
     ...calendarPayload(settings.settings.calendar, meals)
-  }, activeGoal(root));
+  }, goal);
 }
 
 // src/skills/chef-meal-planning/scripts/lib/today.mjs
