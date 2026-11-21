@@ -1,7 +1,7 @@
 // Checks the planned meals `plan` reads on stdin: [{date, slot, servings?, note?}] plus exactly
 // one of `recipe`, free-text `food` or `leftovers_of: {date, slot}` (ADR-0001).
 import { MEAL_SLOTS, byDateAndSlot } from '../../../../lib/meal-slots.mjs';
-import { mealKind } from '../../../../lib/planned-meal.mjs';
+import { mealKey, mealKind } from '../../../../lib/planned-meal.mjs';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const KIND_FIELDS = ['recipe', 'food', 'leftovers_of'];
@@ -44,8 +44,6 @@ function mealProblems(meal, at, week, weekStart) {
   if (meal.note !== undefined && typeof meal.note !== 'string') problems.push(`${at}.note: must be text`);
   return problems;
 }
-
-const mealKey = ({ date, slot }) => `${date} ${slot}`;
 
 // A leftovers meal points to an earlier recipe meal in the same list; no leftovers of leftovers.
 function leftoversProblem(meal, at, byKey) {

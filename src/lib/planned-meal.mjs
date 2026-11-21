@@ -9,7 +9,7 @@ export function mealKind(meal) {
   return 'recipe';
 }
 
-const mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
+export const mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
 
 export const leftoversFeeding = (meals, cooking) =>
   meals.filter((meal) => mealKind(meal) === 'leftovers' && mealKey(meal.leftovers_of) === mealKey(cooking));

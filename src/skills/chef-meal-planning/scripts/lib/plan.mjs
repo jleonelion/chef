@@ -5,7 +5,7 @@ import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { rollupNutrition } from '../../../../lib/nutrition.mjs';
 import { byDateAndSlot } from '../../../../lib/meal-slots.mjs';
-import { mealKind, withAmountToCook } from '../../../../lib/planned-meal.mjs';
+import { mealKey, mealKind, withAmountToCook } from '../../../../lib/planned-meal.mjs';
 import { listRecipes, today } from '../../../../lib/recipes.mjs';
 import { readSettings } from '../../../../lib/settings.mjs';
 import { wikiPath, writeWiki } from '../../../../lib/wiki.mjs';
@@ -38,8 +38,6 @@ function mealView(planned, recipe, householdServings) {
     ...(planned.note && { note: planned.note }),
   };
 }
-
-const mealKey = ({ date, slot }) => `${date} ${slot}`;
 
 // The recipe each planned meal eats: its own, its cooking meal's for leftovers, none for food.
 function recipeSlugs(ordered) {

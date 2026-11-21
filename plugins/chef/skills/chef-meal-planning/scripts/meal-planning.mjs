@@ -8580,9 +8580,8 @@ function mealProblems(meal, at, week, weekStart) {
     problems.push(`${at}.note: must be text`);
   return problems;
 }
-var mealKey2 = ({ date, slot }) => `${date} ${slot}`;
 function leftoversProblem(meal, at, byKey) {
-  const key = mealKey2(meal.leftovers_of);
+  const key = mealKey(meal.leftovers_of);
   const target = byKey.get(key);
   if (!target)
     return `${at}.leftovers_of: no planned meal at ${key} in this plan`;
@@ -8606,7 +8605,7 @@ function plannedMealProblems(meals, weekStart) {
     const problems = mealProblems(meal, at, week, weekStart);
     if (problems.length)
       return problems;
-    const key = mealKey2(meal);
+    const key = mealKey(meal);
     if (byKey.has(key))
       return [`${at}: ${key} is already planned`];
     byKey.set(key, meal);
@@ -8639,14 +8638,13 @@ function mealView(planned, recipe, householdServings) {
     ...planned.note && { note: planned.note }
   };
 }
-var mealKey3 = ({ date, slot }) => `${date} ${slot}`;
 function recipeSlugs(ordered) {
-  const byKey = new Map(ordered.map((entry) => [mealKey3(entry), entry]));
+  const byKey = new Map(ordered.map((entry) => [mealKey(entry), entry]));
   return ordered.map((entry) => {
     const kind = mealKind(entry);
     if (kind === "food")
       return null;
-    return kind === "leftovers" ? byKey.get(mealKey3(entry.leftovers_of)).recipe : entry.recipe;
+    return kind === "leftovers" ? byKey.get(mealKey(entry.leftovers_of)).recipe : entry.recipe;
   });
 }
 function nutritionInput(meal, recipe) {
