@@ -40,3 +40,12 @@ absolute or `~/` file path, long digit runs) over every case, every tier1 and ag
 Findings name the file, line and rule, never the matched text.
 
 `testdata/` holds the synthetic example case and row that `example.test.mjs` runs end to end.
+
+## Overlap review gate
+
+A PR that touches `evals/repro/` needs a passing overlap review: the maintainer enters the PR
+number in feedback intake, which posts the `chef-feedback-intake/overlap-review` commit status
+on the head commit. The `overlap-review-gate` CI job (required on `main`) reads that status.
+A status belongs to one commit, so rerun the review after each push, then re-run the gate job.
+A case with no `provenance_refs` should say in the PR that no report is behind it.
+
