@@ -8146,6 +8146,41 @@ function dietaryNotes(ruleset) {
   return notes;
 }
 
+// src/lib/list-edits.mjs
+function mergeList(current = [], change = {}) {
+  if (Object.hasOwn(change, "replace") && (change.add?.length || change.remove?.length)) {
+    return { status: "invalid-input", problems: ["replace and add/remove flags cannot be combined for the same list"] };
+  }
+  const value = [...new Set(Array.isArray(current) ? current : [])];
+  const added = [];
+  const removed = [];
+  const unchanged = [];
+  for (const item of change.add ?? []) {
+    const trimmed = typeof item === "string" ? item.trim() : item;
+    if (!trimmed)
+      continue;
+    if (value.includes(trimmed))
+      unchanged.push(trimmed);
+    else {
+      value.push(trimmed);
+      added.push(trimmed);
+    }
+  }
+  for (const item of change.remove ?? []) {
+    const trimmed = typeof item === "string" ? item.trim() : item;
+    if (!trimmed)
+      continue;
+    const index = value.indexOf(trimmed);
+    if (index === -1)
+      unchanged.push(trimmed);
+    else {
+      value.splice(index, 1);
+      removed.push(trimmed);
+    }
+  }
+  return { value, added, removed, unchanged: [...new Set(unchanged)] };
+}
+
 // src/lib/fdc-cache.mjs
 import fs10 from "node:fs";
 import path10 from "node:path";
@@ -10178,22 +10213,38 @@ ${rules.join(`
 `)}
 `;
 }
-function nextMembers(members, { member, hard, avoid }) {
+function nextMembers(members, { member, hard, avoid, addHard, removeHard, addAvoid, removeAvoid }) {
   const current = members.find((m) => m.name === member) ?? { name: member };
+  const normalizedAddHard = normalizeConstraints(addHard ?? []);
+  const normalizedRemoveHard = normalizeConstraints(removeHard ?? []);
+  const normalizedAddAvoid = (addAvoid ?? []).map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const normalizedRemoveAvoid = (removeAvoid ?? []).map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const hardMerge = mergeList(current.hard_constraints ?? [], hard ? { replace: hard } : { add: normalizedAddHard, remove: normalizedRemoveHard });
+  const avoidMerge = mergeList(current.avoidances ?? [], avoid ? { replace: avoid } : { add: normalizedAddAvoid, remove: normalizedRemoveAvoid });
   const updated = {
     name: member,
-    hard_constraints: hard ? normalizeConstraints(hard) : current.hard_constraints ?? [],
-    avoidances: avoid ? [...new Set(avoid.map((a) => a.trim().toLowerCase()).filter(Boolean))] : current.avoidances ?? []
+    hard_constraints: hard ? normalizeConstraints(hard) : normalizeConstraints(hardMerge.value),
+    avoidances: avoid ? [...new Set(avoid.map((a) => a.trim().toLowerCase()).filter(Boolean))] : avoidMerge.value
   };
-  const others = members.filter((m) => m.name !== member);
-  return updated.hard_constraints.length || updated.avoidances.length ? [...others, updated] : others;
+  const index = members.findIndex((m) => m.name === member);
+  if (index === -1) {
+    return updated.hard_constraints.length || updated.avoidances.length ? [...members, updated] : members;
+  }
+  if (!updated.hard_constraints.length && !updated.avoidances.length) {
+    return members.filter((_, memberIndex) => memberIndex !== index);
+  }
+  return members.map((existing, memberIndex) => memberIndex === index ? updated : existing);
 }
-function inputProblems({ none, member, hard, avoid }) {
+function inputProblems({ none, member, hard, avoid, addHard, removeHard, addAvoid, removeAvoid }) {
   if (none)
-    return member || hard || avoid ? ["--none cannot be combined with member rules"] : [];
+    return member || hard || avoid || addHard || removeHard || addAvoid || removeAvoid ? ["--none cannot be combined with member rules"] : [];
   if (!member?.trim())
     return ["give --member <name> (or --none)"];
-  return hard || avoid ? [] : ["give --hard and/or --avoid for the member"];
+  if (hard && (addHard?.length || removeHard?.length))
+    return ["--hard cannot be combined with --add-hard or --remove-hard"];
+  if (avoid && (addAvoid?.length || removeAvoid?.length))
+    return ["--avoid cannot be combined with --add-avoid or --remove-avoid"];
+  return hard || avoid || addHard?.length || removeHard?.length || addAvoid?.length || removeAvoid?.length ? [] : ["give --hard, --avoid, or an add/remove flag for the member"];
 }
 function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
   const problems = inputProblems(change);
@@ -10210,6 +10261,9 @@ function writeRuleset(root, change, { date, rewrite: rewrite2 = false }) {
     return { status: "refused", data_root: root, reason: "dietary constraints are declared; remove them one member at a time instead" };
   }
   const members = change.none ? [] : nextMembers(current.members, { ...change, member: change.member.trim() });
+  if (!change.none && JSON.stringify(members) === JSON.stringify(current.members)) {
+    return { status: "unchanged", data_root: root, ruleset: { status: current.status, members } };
+  }
   const frontmatter = { type: RULESET_TYPE, title: "Dietary ruleset", members, updated: date };
   const saved = rulesetFromPage(frontmatter);
   const notice = saved.hard.length ? noticeToRecord(root, "training-setting", date) : null;
@@ -10316,6 +10370,18 @@ var { values, positionals } = parseArgs({
     member: { type: "string" },
     hard: { type: "string" },
     avoid: { type: "string" },
+    "add-hard": { type: "string", multiple: true },
+    "remove-hard": { type: "string", multiple: true },
+    "add-avoid": { type: "string", multiple: true },
+    "remove-avoid": { type: "string", multiple: true },
+    "add-household-recipient": { type: "string", multiple: true },
+    "remove-household-recipient": { type: "string", multiple: true },
+    "add-household-recipients": { type: "string", multiple: true },
+    "remove-household-recipients": { type: "string", multiple: true },
+    "add-trusted-receipt-sender": { type: "string", multiple: true },
+    "remove-trusted-receipt-sender": { type: "string", multiple: true },
+    "add-trusted-receipt-senders": { type: "string", multiple: true },
+    "remove-trusted-receipt-senders": { type: "string", multiple: true },
     none: { type: "boolean" },
     ...REPORT_FLAGS
   },
@@ -10323,6 +10389,29 @@ var { values, positionals } = parseArgs({
 });
 function set(root) {
   const changes = changesFromFlags(values);
+  const current = readSettings(root);
+  if (current.status === "invalid" || current.status === "unknown-version") {
+    if (!values.rewrite)
+      return { status: "refused", data_root: root, reason: current.warning, content: current.content };
+  }
+  for (const [key, replacementFlag, addFlags, removeFlags] of [
+    ["household_recipients", "household-recipients", ["add-household-recipient", "add-household-recipients"], ["remove-household-recipient", "remove-household-recipients"]],
+    ["trusted_receipt_senders", "trusted-receipt-senders", ["add-trusted-receipt-sender", "add-trusted-receipt-senders"], ["remove-trusted-receipt-sender", "remove-trusted-receipt-senders"]]
+  ]) {
+    const add = addFlags.flatMap((flag) => values[flag] ?? []);
+    const remove = removeFlags.flatMap((flag) => values[flag] ?? []);
+    if (values[replacementFlag] !== undefined && (add.length || remove.length)) {
+      return { status: "invalid-input", data_root: root, problems: [`--${replacementFlag} cannot be combined with add/remove flags for ${key}`] };
+    }
+    if (add.length || remove.length) {
+      const split = (raw) => raw?.split(",").map((item) => item.trim()).filter(Boolean) ?? [];
+      const merged = mergeList(current.settings[key], { add: split(add.join(",")), remove: split(remove.join(",")) });
+      changes[key] = merged.value;
+      if (merged.added.length === 0 && merged.removed.length === 0) {
+        return { status: "unchanged", data_root: root, settings: current.settings, unchanged: merged.unchanged };
+      }
+    }
+  }
   if (Object.keys(changes).length === 0)
     return { status: "invalid-input", data_root: root, problems: ["no settings given"] };
   const saved = writeSettings(root, changes, { rewrite: values.rewrite ?? false });
@@ -10354,7 +10443,16 @@ function dietary(root) {
   return { data_root: root, ...dietaryNotes(ruleset), members: ruleset.members };
 }
 function setDietary(root) {
-  const change = { none: values.none, member: values.member, hard: list(values.hard), avoid: list(values.avoid) };
+  const change = {
+    none: values.none,
+    member: values.member,
+    hard: list(values.hard),
+    avoid: list(values.avoid),
+    addHard: values["add-hard"]?.flatMap(list),
+    removeHard: values["remove-hard"]?.flatMap(list),
+    addAvoid: values["add-avoid"]?.flatMap(list),
+    removeAvoid: values["remove-avoid"]?.flatMap(list)
+  };
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
 function showTraceMode(root) {

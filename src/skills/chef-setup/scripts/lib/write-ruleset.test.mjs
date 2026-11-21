@@ -65,6 +65,35 @@ test('"none" never wipes declared rules, and removals are reported', () => {
   assert.deepEqual(removed.removed_hard_constraints, ['egg']);
 });
 
+test('add and remove flags merge one member list without dropping existing entries', () => {
+  const root = dataRoot();
+  writeRuleset(root, { member: 'Alex Example', hard: ['gluten', 'egg'], avoid: ['olives'] }, { date: DATE });
+  const result = writeRuleset(root, {
+    member: 'Alex Example',
+    addHard: ['sesame'],
+    removeHard: ['egg'],
+    addAvoid: ['cilantro'],
+    removeAvoid: ['olives'],
+  }, { date: DATE });
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(readRuleset(root).members.find((member) => member.name === 'Alex Example'), {
+    name: 'Alex Example',
+    hard_constraints: ['gluten', 'sesame'],
+    avoidances: ['cilantro'],
+  });
+
+  test('dietary edits preserve member order and duplicate or missing edits are unchanged', () => {
+    const root = dataRoot();
+    writeRuleset(root, { member: 'Alex Example', hard: ['egg'] }, { date: DATE });
+    writeRuleset(root, { member: 'Sam Example', hard: ['mustard'] }, { date: DATE });
+    const duplicate = writeRuleset(root, { member: 'Alex Example', addHard: ['egg'] }, { date: DATE });
+    assert.equal(duplicate.status, 'unchanged');
+    assert.deepEqual(readRuleset(root).members.map((member) => member.name), ['Alex Example', 'Sam Example']);
+    const missing = writeRuleset(root, { member: 'Alex Example', removeHard: ['sesame'] }, { date: DATE });
+    assert.equal(missing.status, 'unchanged');
+  });
+});
+
 test('invalid input and an unreadable page', () => {
   const root = dataRoot();
   assert.equal(writeRuleset(root, { member: 'Alex Example' }, { date: DATE }).status, 'invalid-input');

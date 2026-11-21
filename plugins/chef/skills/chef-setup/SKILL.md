@@ -149,7 +149,7 @@ When the user asks to change a setting, run `set` with only that flag:
 | Invocation trace of script runs (`on` or `off`) | `--trace off` | `--trace default` (on) |
 | Offer to report an internal error right after it happens (`on` or `off`) | `--post-error-offers off` | `--post-error-offers default` (on) |
 
-A list flag replaces the whole list, so to add one address, pass the current list plus the new one. Read the current values with `node scripts/setup.mjs settings`.
+Replace a whole address list with `--household-recipients` or `--trusted-receipt-senders`. Add or remove individual addresses with `--add-household-recipient`, `--remove-household-recipient`, `--add-trusted-receipt-sender`, or `--remove-trusted-receipt-sender`. A replace flag cannot be combined with an add/remove flag for the same list.
 
 Act on the `set` output:
 
@@ -165,11 +165,13 @@ When another chef- skill reports a settings warning, run `node scripts/setup.mjs
 
 The household's hard constraints (allergies, celiac disease, anything someone must never eat) and avoidances (dislikes) live on one data-root page. The rules Chef follows are in `references/dietary-safety.md`. Show the current ruleset with `node scripts/setup.mjs dietary`.
 
-Record or change one person at a time. A flag replaces that person's whole list, so pass their current list plus the change:
+Record or change one person at a time. Replace a person's whole list with `--hard` or `--avoid`, or merge one item at a time:
 
 ```sh
-node scripts/setup.mjs set-dietary --member "Alex Example" --hard "peanuts,tree nuts" --avoid "olives"
+node scripts/setup.mjs set-dietary --member "Alex Example" --add-hard "sesame" --add-avoid "cilantro"
 ```
+
+Use `--remove-hard` or `--remove-avoid` to remove individual entries. A replace flag cannot be combined with an add/remove flag for the same list.
 
 Use the name the user gives for each person. Pass hard constraints in the user's own words (`peanut allergy`, `celiac`, `tree-nut`, `dairy-free`); Chef maps any allergen wording to its flags, and leans toward more flags when unsure.
 

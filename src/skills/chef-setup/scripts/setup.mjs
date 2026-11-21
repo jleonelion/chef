@@ -12,6 +12,7 @@ import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture, traceEnabled } from '../../../lib/diagnostics/capture.mjs';
 import { clearTrace, DAY_MS, readTrace, TRACE_BOUNDS } from '../../../lib/diagnostics/trace.mjs';
 import { dietaryNotes, readRuleset } from '../../../lib/dietary-ruleset.mjs';
+import { mergeList } from '../../../lib/list-edits.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
 import { today } from '../../../lib/recipes.mjs';
 import { SAFETY_SCREEN } from '../../../lib/safety-text.mjs';
@@ -46,6 +47,18 @@ const { values, positionals } = parseArgs({
     member: { type: 'string' },
     hard: { type: 'string' },
     avoid: { type: 'string' },
+    'add-hard': { type: 'string', multiple: true },
+    'remove-hard': { type: 'string', multiple: true },
+    'add-avoid': { type: 'string', multiple: true },
+    'remove-avoid': { type: 'string', multiple: true },
+    'add-household-recipient': { type: 'string', multiple: true },
+    'remove-household-recipient': { type: 'string', multiple: true },
+    'add-household-recipients': { type: 'string', multiple: true },
+    'remove-household-recipients': { type: 'string', multiple: true },
+    'add-trusted-receipt-sender': { type: 'string', multiple: true },
+    'remove-trusted-receipt-sender': { type: 'string', multiple: true },
+    'add-trusted-receipt-senders': { type: 'string', multiple: true },
+    'remove-trusted-receipt-senders': { type: 'string', multiple: true },
     none: { type: 'boolean' },
     ...REPORT_FLAGS,
   },
@@ -54,6 +67,28 @@ const { values, positionals } = parseArgs({
 
 function set(root) {
   const changes = changesFromFlags(values);
+  const current = readSettings(root);
+  if (current.status === 'invalid' || current.status === 'unknown-version') {
+    if (!values.rewrite) return { status: 'refused', data_root: root, reason: current.warning, content: current.content };
+  }
+  for (const [key, replacementFlag, addFlags, removeFlags] of [
+    ['household_recipients', 'household-recipients', ['add-household-recipient', 'add-household-recipients'], ['remove-household-recipient', 'remove-household-recipients']],
+    ['trusted_receipt_senders', 'trusted-receipt-senders', ['add-trusted-receipt-sender', 'add-trusted-receipt-senders'], ['remove-trusted-receipt-sender', 'remove-trusted-receipt-senders']],
+  ]) {
+    const add = addFlags.flatMap((flag) => values[flag] ?? []);
+    const remove = removeFlags.flatMap((flag) => values[flag] ?? []);
+    if (values[replacementFlag] !== undefined && (add.length || remove.length)) {
+      return { status: 'invalid-input', data_root: root, problems: [`--${replacementFlag} cannot be combined with add/remove flags for ${key}`] };
+    }
+    if (add.length || remove.length) {
+      const split = (raw) => raw?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+      const merged = mergeList(current.settings[key], { add: split(add.join(',')), remove: split(remove.join(',')) });
+      changes[key] = merged.value;
+      if (merged.added.length === 0 && merged.removed.length === 0) {
+        return { status: 'unchanged', data_root: root, settings: current.settings, unchanged: merged.unchanged };
+      }
+    }
+  }
   if (Object.keys(changes).length === 0) return { status: 'invalid-input', data_root: root, problems: ['no settings given'] };
   const saved = writeSettings(root, changes, { rewrite: values.rewrite ?? false });
   // The generated inventory page shows amounts in the household's units, so redraw it now.
@@ -88,7 +123,16 @@ function dietary(root) {
 }
 
 function setDietary(root) {
-  const change = { none: values.none, member: values.member, hard: list(values.hard), avoid: list(values.avoid) };
+  const change = {
+    none: values.none,
+    member: values.member,
+    hard: list(values.hard),
+    avoid: list(values.avoid),
+    addHard: values['add-hard']?.flatMap(list),
+    removeHard: values['remove-hard']?.flatMap(list),
+    addAvoid: values['add-avoid']?.flatMap(list),
+    removeAvoid: values['remove-avoid']?.flatMap(list),
+  };
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
 

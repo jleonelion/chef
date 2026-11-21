@@ -14,6 +14,13 @@ const { values, positionals } = parseArgs({
     goal: { type: 'string' },
     min: many,
     max: many,
+    'add-min': many,
+    'remove-min': many,
+    'add-max': many,
+    'remove-max': many,
+    'set-min': many,
+    'set-max': many,
+    'remove-target': many,
     rewrite: { type: 'boolean' },
     'week-start': { type: 'string' },
   },
@@ -30,9 +37,30 @@ function status() {
 }
 
 function set() {
+  const replace = (values.min?.length || values.max?.length) ?? false;
+  const edits = [
+    ...(values['add-min'] ?? []),
+    ...(values['remove-min'] ?? []),
+    ...(values['add-max'] ?? []),
+    ...(values['remove-max'] ?? []),
+    ...(values['set-min'] ?? []),
+    ...(values['set-max'] ?? []),
+    ...(values['remove-target'] ?? []),
+  ];
+  if (replace && edits.length) return invalid([`replace and add/remove/set flags cannot be combined for health targets`]);
   const { targets, problems } = parseTargets(values);
   if (problems.length) return invalid(problems);
-  return setGoal(root, { goal: values.goal, targets }, { date: today(), rewrite: values.rewrite });
+  return setGoal(root, {
+    goal: values.goal,
+    targets,
+    addMin: values['add-min'],
+    removeMin: values['remove-min'],
+    addMax: values['add-max'],
+    removeMax: values['remove-max'],
+    setMin: values['set-min'],
+    setMax: values['set-max'],
+    removeTarget: values['remove-target'],
+  }, { date: today(), rewrite: values.rewrite, mergeTargets: edits.length > 0 });
 }
 
 const commands = {

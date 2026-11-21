@@ -74,3 +74,54 @@ test('parseTargets reads min and max pairs and rejects unknown nutrients and bad
   ]);
   assert.deepEqual(parseTargets({ min: ['protein=200'], max: ['protein=100'] }).problems, ['protein: min is above max']);
 });
+
+test('setGoal preserves targets not included in a partial edit', () => {
+  const root = dataRoot();
+  setGoal(root, sodium, { date: '2026-01-15' });
+  const result = setGoal(root, {
+    goal: 'Lower sodium',
+    targets: {},
+    addMin: ['protein=90'],
+  }, { date: '2026-01-20', mergeTargets: true });
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(readGoal(root).targets, {
+    sodium: { max: 2300 },
+    protein: { min: 90 },
+  });
+});
+
+test('setGoal removes only one target bound or target', () => {
+  const root = dataRoot();
+  setGoal(root, { goal: 'Lower sodium', targets: { sodium: { max: 2300 }, protein: { min: 90 } } }, { date: '2026-01-15' });
+  const removeBound = setGoal(root, {
+    goal: 'Lower sodium',
+    targets: {},
+    removeMax: ['sodium'],
+  }, { date: '2026-01-20', mergeTargets: true });
+  assert.equal(removeBound.status, 'saved');
+  assert.deepEqual(readGoal(root).targets, { protein: { min: 90 } });
+  const removeTarget = setGoal(root, {
+    goal: 'Lower sodium',
+    targets: {},
+    removeTarget: ['protein'],
+  }, { date: '2026-01-21', mergeTargets: true });
+  assert.equal(removeTarget.status, 'saved');
+  assert.deepEqual(readGoal(root).targets, {});
+});
+
+test('add target leaves an existing bound unchanged and set target changes it', () => {
+  const root = dataRoot();
+  setGoal(root, sodium, { date: '2026-01-15' });
+  assert.equal(setGoal(root, {
+    goal: 'Lower sodium',
+    targets: {},
+    addMax: ['sodium=2000'],
+  }, { date: '2026-01-20', mergeTargets: true }).status, 'unchanged');
+  assert.deepEqual(readGoal(root).targets, sodium.targets);
+  assert.equal(setGoal(root, {
+    goal: 'Lower sodium',
+    targets: {},
+    setMax: ['sodium=2000'],
+  }, { date: '2026-01-21', mergeTargets: true }).status, 'saved');
+  assert.deepEqual(readGoal(root).targets, { sodium: { max: 2000 } });
+});

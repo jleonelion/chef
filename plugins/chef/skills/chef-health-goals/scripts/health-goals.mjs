@@ -7957,7 +7957,39 @@ function parseTargets({ min = [], max = [] }) {
 }
 var storeFile = (value) => ({ path: GOALS_PATH, content: `${JSON.stringify(value, null, 2)}
 ` });
-function setGoal(root, { goal, targets }, { date, rewrite: rewrite2 = false }) {
+function mergeTargets(current = {}, edit = {}) {
+  const targets = Object.fromEntries(Object.entries(current).map(([nutrient, bounds]) => [nutrient, { ...bounds }]));
+  const setPairs = [...(edit.setMin ?? []).map((pair) => ["min", pair]), ...(edit.setMax ?? []).map((pair) => ["max", pair])];
+  for (const [bound, pair] of setPairs) {
+    const [nutrient, raw] = pair.split("=").map((part) => part.trim());
+    if (!FIELDS.includes(nutrient) || !raw)
+      continue;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value <= 0)
+      continue;
+    targets[nutrient] = { ...targets[nutrient], [bound]: value };
+  }
+  const addPairs = [...(edit.addMin ?? []).map((pair) => ["min", pair]), ...(edit.addMax ?? []).map((pair) => ["max", pair])];
+  for (const [bound, pair] of addPairs) {
+    const [nutrient, raw] = pair.split("=").map((part) => part.trim());
+    if (!FIELDS.includes(nutrient) || !raw)
+      continue;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value <= 0)
+      continue;
+    if (targets[nutrient]?.[bound] === undefined)
+      targets[nutrient] = { ...targets[nutrient], [bound]: value };
+  }
+  for (const nutrient of edit.removeTarget ?? []) {
+    delete targets[nutrient.trim()];
+  }
+  for (const nutrient of edit.removeMin ?? [])
+    delete targets[nutrient.trim()]?.min;
+  for (const nutrient of edit.removeMax ?? [])
+    delete targets[nutrient.trim()]?.max;
+  return Object.fromEntries(Object.entries(targets).filter(([, bounds]) => bounds && Object.keys(bounds).length));
+}
+function setGoal(root, { goal, targets, addMin, removeMin, addMax, removeMax, setMin, setMax, removeTarget }, { date, rewrite: rewrite2 = false, mergeTargets: partial = false } = {}) {
   const text = goal?.trim();
   if (!text)
     return { status: "invalid-input", data_root: root, problems: ["give --goal with a short description of the goal"] };
@@ -7969,14 +8001,39 @@ function setGoal(root, { goal, targets }, { date, rewrite: rewrite2 = false }) {
     return { status: "refused", data_root: root, reason: current.reason, content: fs9.readFileSync(path9.join(root, GOALS_PATH), "utf8") };
   }
   const set = current.status === "active" ? current.set : date;
+  const finalTargets = partial ? mergeTargets(current.status === "active" ? current.targets : {}, {
+    addMin,
+    removeMin,
+    addMax,
+    removeMax,
+    setMin,
+    setMax,
+    removeTarget
+  }) : targets;
+  if (partial) {
+    const pairs = [...setMin ?? [], ...setMax ?? [], ...addMin ?? [], ...addMax ?? []];
+    const problems = [];
+    for (const pair of pairs) {
+      const [nutrient, raw] = pair.split("=").map((part) => part.trim());
+      if (!FIELDS.includes(nutrient))
+        problems.push(`unknown nutrient "${nutrient}"; use one of ${FIELDS.join(", ")}`);
+      else if (!raw || !Number.isFinite(Number(raw)) || Number(raw) <= 0)
+        problems.push(`${nutrient}: target must be a positive number`);
+    }
+    if (problems.length)
+      return { status: "invalid-input", data_root: root, problems };
+  }
+  if (partial && JSON.stringify(finalTargets) === JSON.stringify(current.status === "active" ? current.targets : {})) {
+    return { status: "unchanged", data_root: root, goal: text, targets: finalTargets };
+  }
   const notice = noticeToRecord(root, "training-setting", date);
   const written = writeWiki(root, {
-    data: [storeFile({ goal: text, targets, set, updated: date }), ...notice ? [notice] : []],
+    data: [storeFile({ goal: text, targets: finalTargets, set, updated: date }), ...notice ? [notice] : []],
     message: "chef-health-goals: set goal"
   });
   if (written.status !== "written")
     return written;
-  return { status: "saved", data_root: root, goal: text, targets, ...notice && { notice: TRAINING_NOTICE }, footer: NOT_MEDICAL_ADVICE };
+  return { status: "saved", data_root: root, goal: text, targets: finalTargets, ...notice && { notice: TRAINING_NOTICE }, footer: NOT_MEDICAL_ADVICE };
 }
 function clearGoal(root, { date }) {
   if (readGoal(root).status !== "active")
@@ -8080,6 +8137,13 @@ var { values, positionals } = parseArgs({
     goal: { type: "string" },
     min: many,
     max: many,
+    "add-min": many,
+    "remove-min": many,
+    "add-max": many,
+    "remove-max": many,
+    "set-min": many,
+    "set-max": many,
+    "remove-target": many,
     rewrite: { type: "boolean" },
     "week-start": { type: "string" }
   },
@@ -8093,10 +8157,32 @@ function status() {
   return goal.status === "active" ? { ...goal, data_root: root, footer: NOT_MEDICAL_ADVICE } : { ...goal, data_root: root };
 }
 function set() {
+  const replace = (values.min?.length || values.max?.length) ?? false;
+  const edits = [
+    ...values["add-min"] ?? [],
+    ...values["remove-min"] ?? [],
+    ...values["add-max"] ?? [],
+    ...values["remove-max"] ?? [],
+    ...values["set-min"] ?? [],
+    ...values["set-max"] ?? [],
+    ...values["remove-target"] ?? []
+  ];
+  if (replace && edits.length)
+    return invalid([`replace and add/remove/set flags cannot be combined for health targets`]);
   const { targets, problems } = parseTargets(values);
   if (problems.length)
     return invalid(problems);
-  return setGoal(root, { goal: values.goal, targets }, { date: today(), rewrite: values.rewrite });
+  return setGoal(root, {
+    goal: values.goal,
+    targets,
+    addMin: values["add-min"],
+    removeMin: values["remove-min"],
+    addMax: values["add-max"],
+    removeMax: values["remove-max"],
+    setMin: values["set-min"],
+    setMax: values["set-max"],
+    removeTarget: values["remove-target"]
+  }, { date: today(), rewrite: values.rewrite, mergeTargets: edits.length > 0 });
 }
 var commands = {
   status,
