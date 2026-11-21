@@ -139,6 +139,9 @@ A rule has `id`, `reason`, `created` and at least one of `title_includes` and `t
 type: household-profile
 title: Household profile
 portions_per_meal: 3
+members:
+  - name: Alex Example
+  - name: Sam Example
 updated: 2026-01-15
 ---
 # Household profile
@@ -149,6 +152,7 @@ updated: 2026-01-15
 | `type` | yes | `household-profile` |
 | `title` | yes | Text |
 | `portions_per_meal` | no | Whole number greater than zero. Meal planning uses this as household servings; missing or invalid means the default of 1 |
+| `members` | no | Named household members. Each entry has a required `name`; with a roster, each meal's default servings is the number of eaters and defaults to all roster members |
 | `updated` | yes | `YYYY-MM-DD` |
 
 The body may describe household members and preferences, but scripts never parse servings from prose.
@@ -188,8 +192,9 @@ A page Chef cannot read leaves every recipe out of suggestions until `chef-setup
 | `week_start`, `created` | yes | `YYYY-MM-DD` |
 | `household_profile` | yes | The profile path used, or `null` when none exists |
 | `servings_source` | yes | `profile` when `portions_per_meal` supplied the servings, otherwise `default` |
-| `meals` | yes | The planned meals, in date and meal-slot order: `date`, `slot` (`breakfast`, `lunch`, `dinner` or `snack`), `servings` (servings eaten at that meal) and an optional `note`, plus one kind. A **recipe** meal has recipe `slug` and `title`. A **leftovers** meal has `leftovers_of: {date, slot}`, naming an earlier recipe meal in the same plan, plus that meal's `slug` and `title`, copied when saved. A **free-text food** meal has `food` text and no recipe. The kind is read from the fields: `leftovers_of` first, then `food`, else recipe. At most one per date and slot, all inside the week. A slot with no entry is not planned. An entry with no `slot`, as in every v1 one-per-day plan, reads as `dinner` |
+| `meals` | yes | The planned meals, in date and meal-slot order: `date`, `slot` (`breakfast`, `lunch`, `dinner` or `snack`), `servings` (servings eaten at that meal), optional `eaters` names and optional `note`, plus one kind. A **recipe** meal has recipe `slug` and `title`. A **leftovers** meal has `leftovers_of: {date, slot}`, naming an earlier recipe meal in the same plan, plus that meal's `slug` and `title`, copied when saved. A **free-text food** meal has `food` text and no recipe. The kind is read from the fields: `leftovers_of` first, then `food`, else recipe. At most one per date and slot, all inside the week. A slot with no entry is not planned. An entry with no `slot`, as in every v1 one-per-day plan, reads as `dinner` |
 | `nutrition` | yes | The shared nutrition engine's rollup of recipe and leftovers meals at servings eaten. `complete` has per-planned-meal (date, slot, recipe) and weekly `totals`; `incomplete` lists planned meals whose recipe nutrition is unavailable and never estimates totals. `unmeasured`, when present, lists free-text food meals as `{date, slot, food}`; they are not estimated and do not make the rollup `incomplete` |
+| `nutrition_by_member` | when the household profile has a roster | One rollup per roster name, each with the same `status`, `meals`, `missing` and `totals` shape as `nutrition`. Only meals naming that member in `eaters`, or all meals when `eaters` is omitted, add one eaten serving. An optional `unattributed_servings` number reports household servings not assigned to roster members |
 | `dietary` | yes | Ruleset status plus the applicable `nudge`, `footer`, `caveats` or unreadable-ruleset `problem` |
 | `inventory` | yes | `items_considered`: how many inventory items were on hand when the plan was saved |
 | `avoidance_notes` | when a planned meal matches an avoidance | Meal date, slot and recipe slug plus the affected member, avoidance and matching ingredient text |
