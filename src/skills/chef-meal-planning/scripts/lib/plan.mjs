@@ -75,8 +75,7 @@ function planNutrition(meals, selected) {
 function planNutritionByMember(meals, selected, members) {
   const rollups = {};
   let unattributed = 0;
-  for (const [index, meal] of meals.entries()) {
-    if (!selected[index]) continue;
+  for (const meal of meals) {
     const eaters = meal.eaters ?? members;
     unattributed += Math.max(0, meal.servings - eaters.length);
   }
@@ -138,6 +137,19 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
         data_root: root,
         week_start: weekStart,
         problems: unknown.map((name) => `meals: unknown household member "${name}"`),
+      };
+    }
+    const belowEaters = planned.flatMap((meal, index) => {
+      if (meal.servings === undefined) return [];
+      const eaterCount = meal.eaters?.length ?? profile.members.length;
+      return meal.servings < eaterCount ? [`meals[${index}].servings: must be at least the ${eaterCount} named eaters`] : [];
+    });
+    if (belowEaters.length) {
+      return {
+        status: 'invalid-input',
+        data_root: root,
+        week_start: weekStart,
+        problems: belowEaters,
       };
     }
   } else if (planned.some((meal) => meal.eaters !== undefined)) {

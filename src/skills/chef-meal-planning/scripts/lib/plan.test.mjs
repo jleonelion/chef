@@ -269,6 +269,44 @@ test('subset eaters change default servings and only their member rollups', () =
   assert.equal(result.nutrition_by_member['Jo Example'].totals.calories, 0);
 });
 
+test('explicit servings below the eater count return invalid-input', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', members: [{ name: 'Alex Example' }, { name: 'Sam Example' }], updated: '2026-01-15' },
+      '# Household profile\n',
+    ),
+  };
+  const root = makeRoot([measured('soup', 500), profile]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', servings: 1, eaters: ['Alex Example', 'Sam Example'] }],
+  });
+
+  assert.equal(result.status, 'invalid-input');
+  assert.deepEqual(result.problems, ['meals[0].servings: must be at least the 2 named eaters']);
+});
+
+test('free-text meals contribute unattributed servings', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', members: [{ name: 'Alex Example' }, { name: 'Sam Example' }, { name: 'Jo Example' }], updated: '2026-01-15' },
+      '# Household profile\n',
+    ),
+  };
+  const root = makeRoot([profile]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', food: 'Dinner out', servings: 5 }],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.nutrition_by_member.unattributed_servings, 2);
+});
+
 test('unknown eater names return invalid-input and save nothing', () => {
   const profile = {
     path: 'knowledge/wiki/household/profile.md',

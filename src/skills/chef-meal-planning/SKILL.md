@@ -28,9 +28,8 @@ This reads the saved plan containing that day's meals and writes nothing. Withou
 ```sh
 echo '[
   {"date": "2026-01-19", "slot": "breakfast", "recipe": "overnight-oats"},
-  {"date": "2026-01-19", "slot": "lunch", "recipe": "lentil-soup", "servings": 1, "note": "pack for work"},
+  {"date": "2026-01-19", "slot": "lunch", "recipe": "lentil-soup", "eaters": ["Alex Example", "Sam Example"], "note": "pack for work"},
   {"date": "2026-01-19", "slot": "dinner", "recipe": "tacos", "servings": 2},
-  {"date": "2026-01-19", "slot": "lunch", "recipe": "lentil-soup", "eaters": ["Alex Example", "Sam Example"]},
   {"date": "2026-01-20", "slot": "lunch", "leftovers_of": {"date": "2026-01-19", "slot": "dinner"}, "servings": 2},
   {"date": "2026-01-20", "slot": "dinner", "food": "Dinner out: Thai"}
 ]' | node scripts/meal-planning.mjs plan --week-start 2026-01-19
@@ -44,7 +43,7 @@ Each planned meal needs `date` (inside the week that starts on `--week-start`), 
 
 `servings` is servings eaten at that meal. It is optional and defaults to the household servings; `note` is optional text. One date can hold several planned meals, but only one per slot. Bad JSON, an unknown slot, a bad or out-of-week date, non-positive servings, a repeated date and slot, none or more than one of `recipe`/`food`/`leftovers_of`, empty `food`, or a `leftovers_of` that is missing from the list, not earlier, free-text food or itself leftovers return `invalid-input` with `problems`; nothing was saved. Fix the input and rerun.
 
-`eaters` is optional. When the household profile has a roster, it is a non-empty list of roster names; omitted means every roster member. It must not name unknown members or repeat a name. Omitted `servings` defaults to the eaters count; an explicit `servings` is still honored for household totals and shopping. One serving is assigned to each eater, and explicit servings beyond the eater count are reported as `unattributed_servings`. With no roster, `eaters` is invalid and behavior is unchanged.
+`eaters` is optional. When the household profile has a roster, it is a non-empty list of roster names; omitted means every roster member. It must not name unknown members or repeat a name. Omitted `servings` defaults to the eater count; an explicit `servings` must be at least the eater count. The explicit value is honored for household totals and shopping. One serving is assigned to each eater, and explicit servings beyond the eater count are reported as `unattributed_servings`. Free-text meals contribute extra servings too, but no member nutrition. With no roster, `eaters` is invalid and behavior is unchanged.
 
 Planned meals come back in three shapes. A recipe meal has `slug`, `title`, `servings` and `cook_servings`, the amount to cook: its servings plus those of every leftovers meal pointing to it. A leftovers meal has `leftovers_of`, the cooking meal's `slug` and `title`, and `servings`. A free-text food meal has `food` and `servings`.
 
