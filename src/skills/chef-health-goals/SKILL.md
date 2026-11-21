@@ -19,7 +19,7 @@ node scripts/health-goals.mjs status
 
 ## Set or change the goal
 
-Confirm the goal and every target with the user first. Targets are daily, per person: `--min` for a floor (such as protein or fiber), `--max` for a ceiling (such as sodium). Units: calories in kcal; sodium and cholesterol in mg; everything else in g. Each `set` replaces the goal and all targets, so run `status` first and pass every target the user wants to keep.
+Confirm the goal and every target with the user first. Targets are daily, per person: `--min` for a floor (such as protein or fiber), `--max` for a ceiling (such as sodium). Units: calories in kcal; sodium and cholesterol in mg; everything else in g. Each `set` with `--min` or `--max` replaces the goal and all targets. To change only one target, use `--add-min`, `--add-max`, `--set-min`, `--set-max`, `--remove-min`, `--remove-max`, or `--remove-target`. Replacement and partial-edit flags cannot be combined.
 
 ```sh
 node scripts/health-goals.mjs set --goal "Lower sodium" --max sodium=2300 --min protein=90

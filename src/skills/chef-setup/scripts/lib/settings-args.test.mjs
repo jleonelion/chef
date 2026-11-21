@@ -38,3 +38,13 @@ test('--convert-recipe-units takes true, false or default; anything else is left
 test('omitted flags are left unchanged', () => {
   assert.deepEqual(changesFromFlags({ 'data-root': '/x' }), {});
 });
+
+test('add and remove list flags are preserved for each replaceable list', () => {
+  assert.deepEqual(changesFromFlags({
+    'household-recipients': 'a@example.com',
+    'add-household-recipient': ['b@example.com'],
+    'remove-household-recipient': ['c@example.com'],
+  }), {
+    household_recipients: ['a@example.com'],
+  });
+});

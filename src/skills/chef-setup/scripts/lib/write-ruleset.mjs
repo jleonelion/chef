@@ -6,6 +6,7 @@ import { constraintReadings, dietaryNotes, normalizeConstraints, readRuleset, ru
 import { noticeToRecord } from '../../../../lib/notices.mjs';
 import { TRAINING_NOTICE } from '../../../../lib/safety-text.mjs';
 import { writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
+import { mergeList } from '../../../../lib/list-edits.mjs';
 
 const line = (m) => {
   const parts = [m.hard_constraints?.length && `must never eat ${m.hard_constraints.join(', ')}`, m.avoidances?.length && `avoids ${m.avoidances.join(', ')}`];
@@ -17,21 +18,41 @@ function body(members) {
   return `# Dietary ruleset\n\nHard constraints never appear in a suggestion. Avoidances are steered around.\n\n${rules.join('\n')}\n`;
 }
 
-function nextMembers(members, { member, hard, avoid }) {
+function nextMembers(members, { member, hard, avoid, addHard, removeHard, addAvoid, removeAvoid }) {
   const current = members.find((m) => m.name === member) ?? { name: member };
+  const normalizedAddHard = normalizeConstraints(addHard ?? []);
+  const normalizedRemoveHard = normalizeConstraints(removeHard ?? []);
+  const normalizedAddAvoid = (addAvoid ?? []).map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const normalizedRemoveAvoid = (removeAvoid ?? []).map((item) => item.trim().toLowerCase()).filter(Boolean);
+  const hardMerge = mergeList(
+    current.hard_constraints ?? [],
+    hard ? { replace: hard } : { add: normalizedAddHard, remove: normalizedRemoveHard },
+  );
+  const avoidMerge = mergeList(
+    current.avoidances ?? [],
+    avoid ? { replace: avoid } : { add: normalizedAddAvoid, remove: normalizedRemoveAvoid },
+  );
   const updated = {
     name: member,
-    hard_constraints: hard ? normalizeConstraints(hard) : current.hard_constraints ?? [],
-    avoidances: avoid ? [...new Set(avoid.map((a) => a.trim().toLowerCase()).filter(Boolean))] : current.avoidances ?? [],
+    hard_constraints: hard ? normalizeConstraints(hard) : normalizeConstraints(hardMerge.value),
+    avoidances: avoid ? [...new Set(avoid.map((a) => a.trim().toLowerCase()).filter(Boolean))] : avoidMerge.value,
   };
-  const others = members.filter((m) => m.name !== member);
-  return updated.hard_constraints.length || updated.avoidances.length ? [...others, updated] : others;
+  const index = members.findIndex((m) => m.name === member);
+  if (index === -1) {
+    return updated.hard_constraints.length || updated.avoidances.length ? [...members, updated] : members;
+  }
+  if (!updated.hard_constraints.length && !updated.avoidances.length) {
+    return members.filter((_, memberIndex) => memberIndex !== index);
+  }
+  return members.map((existing, memberIndex) => (memberIndex === index ? updated : existing));
 }
 
-function inputProblems({ none, member, hard, avoid }) {
-  if (none) return member || hard || avoid ? ['--none cannot be combined with member rules'] : [];
+function inputProblems({ none, member, hard, avoid, addHard, removeHard, addAvoid, removeAvoid }) {
+  if (none) return member || hard || avoid || addHard || removeHard || addAvoid || removeAvoid ? ['--none cannot be combined with member rules'] : [];
   if (!member?.trim()) return ['give --member <name> (or --none)'];
-  return hard || avoid ? [] : ['give --hard and/or --avoid for the member'];
+  if (hard && (addHard?.length || removeHard?.length)) return ['--hard cannot be combined with --add-hard or --remove-hard'];
+  if (avoid && (addAvoid?.length || removeAvoid?.length)) return ['--avoid cannot be combined with --add-avoid or --remove-avoid'];
+  return hard || avoid || addHard?.length || removeHard?.length || addAvoid?.length || removeAvoid?.length ? [] : ['give --hard, --avoid, or an add/remove flag for the member'];
 }
 
 export function writeRuleset(root, change, { date, rewrite = false }) {
@@ -48,6 +69,9 @@ export function writeRuleset(root, change, { date, rewrite = false }) {
   }
 
   const members = change.none ? [] : nextMembers(current.members, { ...change, member: change.member.trim() });
+  if (!change.none && JSON.stringify(members) === JSON.stringify(current.members)) {
+    return { status: 'unchanged', data_root: root, ruleset: { status: current.status, members } };
+  }
   const frontmatter = { type: RULESET_TYPE, title: 'Dietary ruleset', members, updated: date };
   const saved = rulesetFromPage(frontmatter);
   const notice = saved.hard.length ? noticeToRecord(root, 'training-setting', date) : null;
