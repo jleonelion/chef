@@ -71,6 +71,12 @@ export function lintDatasets({ suites, skillNames, exists = () => true }) {
       if (suite === 'agentic' && row?.gate === true && row?.known_failure) {
         errors.push(`${label}: known_failure rows cannot be gated`);
       }
+      if (suite === 'agentic' && row?.candidate === true && row?.gate === true) {
+        errors.push(`${label}: candidate rows cannot be gated`);
+      }
+      if (suite === 'agentic' && row?.candidate === true && row?.known_failure) {
+        errors.push(`${label}: candidate rows cannot be known failures`);
+      }
       const evaluated = evaluatedSkills(suite, row ?? {});
       if (typeof row?.id === 'string' && evaluated.length && !evaluated.some((skill) => row.id.startsWith(`${skill}-`))) {
         errors.push(`${label}: id must start with an evaluated skill (${[...new Set(evaluated)].join(', ')}) as <skill>-<scenario>`);

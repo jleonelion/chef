@@ -13,6 +13,7 @@
   "properties": {
     "id": { "$ref": "#/$defs/id" },
     "gate": { "type": "boolean", "description": "Whether this row blocks scheduled and patch-release agentic checks." },
+    "candidate": { "type": "boolean", "description": "Whether this row is run in scheduled checks to collect promotion evidence without blocking." },
     "flow": { "enum": ["core", "should-not-act"] },
     "description": { "type": "string", "minLength": 1 },
     "turns": { "type": "array", "minItems": 1, "items": { "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "object", "additionalProperties": false, "required": ["turnFile"], "properties": { "turnFile": { "$ref": "#/$defs/inputPath" } } }] } },

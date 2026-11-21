@@ -145,6 +145,15 @@ test('agentic rows must carry an explicit gate flag', () => {
   assert.match(lint({ agentic: [agentic({ gate: 'yes' })] }).join('\n'), /gate/);
 });
 
+test('agentic candidate rows are valid unless gated or known failures', () => {
+  assert.deepEqual(lint({ agentic: [agentic({ candidate: true })] }), []);
+  assert.match(lint({ agentic: [agentic({ candidate: true, gate: true })] }).join('\n'), /candidate rows cannot be gated/);
+  assert.match(
+    lint({ agentic: [agentic({ candidate: true, known_failure: 'case-one', expect_failure: 'response' })] }).join('\n'),
+    /candidate rows cannot be known failures/,
+  );
+});
+
 test('agentic dataset covers every skill and negative routing', () => {
   const repo = path.resolve(import.meta.dirname, '..');
   const rows = JSON.parse(fs.readFileSync(path.join(repo, 'evals', 'agentic', 'rows.json'), 'utf8'));

@@ -346,6 +346,40 @@ test('exitCodeFor distinguishes behavioral failures from invalid executions', ()
   assert.equal(exitCodeFor({ passed: false, invalid: true }), 2);
 });
 
+test('exitCodeFor depends only on gated rows', () => {
+  assert.equal(exitCodeFor({
+    passed: false,
+    invalid: true,
+    rows: [
+      { gate: false, candidate: true, pass: false, invalid_reps: 1 },
+    ],
+  }), 0);
+  assert.equal(exitCodeFor({
+    passed: false,
+    invalid: false,
+    rows: [
+      { gate: false, candidate: true, pass: false },
+      { gate: true, candidate: false, pass: true },
+    ],
+  }), 0);
+  assert.equal(exitCodeFor({
+    passed: false,
+    invalid: false,
+    rows: [
+      { gate: false, candidate: true, pass: true },
+      { gate: true, candidate: false, pass: false },
+    ],
+  }), 1);
+  assert.equal(exitCodeFor({
+    passed: false,
+    invalid: true,
+    rows: [
+      { gate: false, candidate: true, invalid_reps: 0 },
+      { gate: true, candidate: false, invalid_reps: 1 },
+    ],
+  }), 2);
+});
+
 test('failureDigest emits compact row, rep, check, message lines', () => {
   const digest = failureDigest({
     rows: [{

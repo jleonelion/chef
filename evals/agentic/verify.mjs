@@ -13,10 +13,11 @@ const { values, positionals } = parseArgs({
     rows: { type: 'string' },
     'known-failures': { type: 'boolean' },
     'gates-only': { type: 'boolean' },
+    candidates: { type: 'boolean' },
     harness: { type: 'string' },
   },
 });
-if (positionals.length !== 1) throw new Error('usage: bun run agentic:verify <result.json> [--reps N] [--rows id,id] [--known-failures] [--gates-only] [--harness name]');
+if (positionals.length !== 1) throw new Error('usage: bun run agentic:verify <result.json> [--reps N] [--rows id,id] [--known-failures] [--gates-only] [--candidates] [--harness name]');
 
 const resultFile = path.resolve(positionals[0]);
 const result = JSON.parse(fs.readFileSync(resultFile, 'utf8'));
@@ -26,11 +27,14 @@ if (requested) {
   const unknown = requested.filter((id) => !allRows.some((row) => row.id === id));
   if (unknown.length) throw new Error(`unknown row id(s): ${unknown.join(', ')}`);
 }
-const expectedRows = allRows
-  .filter((row) => !requested || requested.includes(row.id))
-  .filter((row) => !values['known-failures'] || row.known_failure)
-  .filter((row) => !values['gates-only'] || row.gate === true)
-  .map((row) => row.id);
+import { selectRows } from './selection.mjs';
+
+const expectedRows = selectRows(allRows, {
+  requestedRows: requested,
+  knownFailures: values['known-failures'],
+  gatesOnly: values['gates-only'],
+  candidates: values.candidates,
+}).map((row) => row.id);
 const current = { ...currentProvenance(repo), rows_total: allRows.length };
 const problems = [
   ...validateResult(result).map((problem) => `schema: ${problem}`),

@@ -47,6 +47,7 @@
           "id": { "type": "string", "minLength": 1 },
           "flow": { "type": "string", "minLength": 1 },
           "gate": { "type": "boolean" },
+          "candidate": { "type": "boolean" },
           "passes": { "type": "string", "pattern": "^[0-9]+/[0-9]+$" },
           "pass_rate": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
           "valid_reps": { "type": "integer", "minimum": 0 },
