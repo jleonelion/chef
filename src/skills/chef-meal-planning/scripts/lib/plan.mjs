@@ -22,19 +22,30 @@ function household(root) {
   const page = parsePage(fs.readFileSync(file, 'utf8'));
   const portions = page.frontmatter.portions_per_meal;
   const fromProfile = Number.isInteger(portions) && portions > 0;
-  return { path: PROFILE_PATH, servings: fromProfile ? portions : 1, servings_source: fromProfile ? 'profile' : 'default' };
+  const members = Array.isArray(page.frontmatter.members)
+    ? [...new Set(page.frontmatter.members.flatMap((member) => (member && typeof member.name === 'string' && member.name.trim() ? [member.name.trim()] : [])))]
+    : [];
+  return {
+    path: PROFILE_PATH,
+    servings: fromProfile ? portions : 1,
+    servings_source: fromProfile ? 'profile' : 'default',
+    ...(members.length && { members }),
+  };
 }
 
 // The saved planned meal. Leftovers copy the cooking meal's slug and title so readers need not
 // resolve another date; free-text food has no recipe.
-function mealView(planned, recipe, householdServings) {
+function mealView(planned, recipe, profile) {
   const kind = mealKind(planned);
+  const eaters = planned.eaters ?? (profile.members ?? []);
+  const servings = planned.servings ?? (profile.members ? eaters.length : profile.servings);
   return {
     date: planned.date,
     slot: planned.slot,
     ...(kind === 'leftovers' && { leftovers_of: { date: planned.leftovers_of.date, slot: planned.leftovers_of.slot } }),
     ...(kind === 'food' ? { food: planned.food.trim() } : { slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug }),
-    servings: planned.servings ?? householdServings,
+    servings,
+    ...(planned.eaters && { eaters: planned.eaters }),
     ...(planned.note && { note: planned.note }),
   };
 }
@@ -59,6 +70,25 @@ function planNutrition(meals, selected) {
   const eaten = meals.flatMap((meal, index) => (selected[index] ? [nutritionInput(meal, selected[index])] : []));
   const unmeasured = meals.filter((meal) => mealKind(meal) === 'food').map(({ date, slot, food }) => ({ date, slot, food }));
   return { ...rollupNutrition(eaten), ...(unmeasured.length && { unmeasured }) };
+}
+
+function planNutritionByMember(meals, selected, members) {
+  const rollups = {};
+  let unattributed = 0;
+  for (const [index, meal] of meals.entries()) {
+    if (!selected[index]) continue;
+    const eaters = meal.eaters ?? members;
+    unattributed += Math.max(0, meal.servings - eaters.length);
+  }
+  for (const member of members) {
+    const eaten = meals.flatMap((meal, index) => {
+      if (!selected[index]) return [];
+      const eaters = meal.eaters ?? members;
+      return eaters.includes(member) ? [{ ...nutritionInput(meal, selected[index]), servings: 1 }] : [];
+    });
+    rollups[member] = rollupNutrition(eaten);
+  }
+  return { ...rollups, ...(unattributed > 0 && { unattributed_servings: unattributed }) };
 }
 
 function calendarPayload(calendar, meals) {
@@ -98,7 +128,39 @@ export function applyHealthSuggestions(plan, goal) {
 export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   const problems = plannedMealProblems(planned, weekStart);
   if (problems.length) return { status: 'invalid-input', data_root: root, week_start: weekStart, problems };
+  const profile = household(root);
+  if (profile.members) {
+    const known = new Set(profile.members);
+    const unknown = [...new Set(planned.flatMap((meal) => meal.eaters ?? []))].filter((name) => !known.has(name));
+    if (unknown.length) {
+      return {
+        status: 'invalid-input',
+        data_root: root,
+        week_start: weekStart,
+        problems: unknown.map((name) => `meals: unknown household member "${name}"`),
+      };
+    }
+  } else if (planned.some((meal) => meal.eaters !== undefined)) {
+    return {
+      status: 'invalid-input',
+      data_root: root,
+      week_start: weekStart,
+      problems: ['meals: eaters requires a household profile roster'],
+    };
+  }
   const ruleset = readRuleset(root);
+  if (profile.members) {
+    const known = new Set(profile.members);
+    const unknown = ruleset.members.filter((member) => !known.has(member.name)).map((member) => member.name);
+    if (unknown.length) {
+      return {
+        status: 'invalid-input',
+        data_root: root,
+        week_start: weekStart,
+        problems: [...new Set(unknown)].map((name) => `dietary-ruleset: unknown household member "${name}"`),
+      };
+    }
+  }
   const { recipes, unreadable } = listRecipes(root);
   const candidates = recipes.filter((recipe) => recipe.frontmatter.type === 'recipe');
   const judged = candidates.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset, { overrides }) }));
@@ -127,9 +189,8 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     };
   }
   const inventoryItems = listItems(loadInventory(root));
-  const profile = household(root);
   const selected = recipeSlugs(ordered).map((slug) => slug && bySlug.get(slug).recipe);
-  const meals = ordered.map((entry, index) => mealView(entry, selected[index], profile.servings));
+  const meals = ordered.map((entry, index) => mealView(entry, selected[index], profile));
   const cooked = withAmountToCook(meals);
   const recipeMeals = meals.filter((meal) => mealKind(meal) === 'recipe');
   const overridden = [...new Set(recipeMeals.map((meal) => meal.slug))].flatMap((slug) => {
@@ -141,6 +202,7 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     return avoidances.length ? [{ date: meal.date, slot: meal.slot, slug: meal.slug, avoidances }] : [];
   });
   const nutrition = planNutrition(meals, selected);
+  const nutritionByMember = profile.members ? planNutritionByMember(meals, selected, profile.members) : undefined;
   const dietary = dietaryNotes(ruleset);
   const inventory = { items_considered: inventoryItems.length };
   const frontmatter = {
@@ -152,6 +214,7 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     servings_source: profile.servings_source,
     meals,
     nutrition,
+    ...(nutritionByMember && { nutrition_by_member: nutritionByMember }),
     dietary,
     inventory,
     ...(avoidanceNotes.length && { avoidance_notes: avoidanceNotes }),
@@ -174,6 +237,7 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     servings_source: profile.servings_source,
     inventory,
     nutrition,
+    ...(nutritionByMember && { nutrition_by_member: nutritionByMember }),
     dietary,
     ...(overridden.length && { overridden }),
     ...(avoidanceNotes.length && { avoidance_notes: avoidanceNotes }),

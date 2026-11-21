@@ -71,6 +71,8 @@ Confirm what was saved from the `settings` field of the output. If the user skip
    - **Yes:** record each person as in **Dietary ruleset** below.
    - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.
 
+6. **Household roster.** Optionally ask: "Who in your household eats planned meals? I can use names for per-person nutrition without changing the household total." Record names only. If the user gives names, add `members: [{name: ...}]` to `knowledge/wiki/household/profile.md` beside `portions_per_meal`, if present. Never require a roster. Skipped names leave existing behavior unchanged.
+
 Then offer **Connect USDA nutrition**, then **Connect Chef feedback** (Muse only), then **Recurring tasks**, and finish onboarding with **Verify install**.
 
 ## Connect USDA nutrition

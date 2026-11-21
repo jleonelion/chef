@@ -207,6 +207,113 @@ test('household servings from profile frontmatter apply when a planned meal give
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.meals.map((meal) => meal.servings), [4, 2]);
   assert.equal(result.servings_source, 'profile');
+  assert.equal(result.nutrition_by_member, undefined);
+});
+
+test('a household roster adds per-member nutrition and preserves unattributed servings', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      {
+        type: 'household-profile',
+        title: 'Household profile',
+        members: [{ name: 'Alex Example' }, { name: 'Sam Example' }, { name: 'Jo Example' }],
+        updated: '2026-01-15',
+      },
+      '# Household profile\n',
+    ),
+  };
+  const root = makeRoot([
+    measured('soup', 500),
+    profile,
+  ]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'soup', servings: 5 },
+    ],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.meals[0].servings, 5);
+  assert.equal(result.nutrition.totals.calories, 2000);
+  assert.deepEqual(result.nutrition_by_member.unattributed_servings, 2);
+  for (const name of ['Alex Example', 'Sam Example', 'Jo Example']) {
+    assert.deepEqual(result.nutrition_by_member[name].meals, [
+      { date: '2026-01-19', slot: 'dinner', slug: 'soup', servings: 1, totals: perServing(500) },
+    ]);
+  }
+});
+
+test('subset eaters change default servings and only their member rollups', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', members: [{ name: 'Alex Example' }, { name: 'Sam Example' }, { name: 'Jo Example' }], updated: '2026-01-15' },
+      '# Household profile\n',
+    ),
+  };
+  const root = makeRoot([measured('soup', 500), profile]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Alex Example', 'Sam Example'] }],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.meals[0].servings, 2);
+  assert.deepEqual(result.meals[0].eaters, ['Alex Example', 'Sam Example']);
+  assert.deepEqual(result.nutrition_by_member['Alex Example'].totals.calories, 400);
+  assert.deepEqual(result.nutrition_by_member['Sam Example'].totals.calories, 400);
+  assert.equal(result.nutrition_by_member['Jo Example'].totals.calories, 0);
+});
+
+test('unknown eater names return invalid-input and save nothing', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', members: [{ name: 'Alex Example' }], updated: '2026-01-15' },
+      '# Household profile\n',
+    ),
+  };
+  const root = makeRoot([measured('soup', 500), profile]);
+  const before = fs.readdirSync(root);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Sam Example'] }],
+  });
+
+  assert.equal(result.status, 'invalid-input');
+  assert.deepEqual(result.problems, ['meals: unknown household member "Sam Example"']);
+  assert.deepEqual(fs.readdirSync(root), before);
+});
+
+test('incomplete nutrition blocks only members who eat the affected meal', () => {
+  const profile = {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', members: [{ name: 'Alex Example' }, { name: 'Sam Example' }], updated: '2026-01-15' },
+      '# Household profile\n',
+    ),
+  };
+  const incomplete = recipe('soup', { frontmatter: { nutrition_status: 'incomplete' } });
+  const root = makeRoot([incomplete, profile]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Alex Example'] }],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.nutrition.status, 'incomplete');
+  assert.equal(result.nutrition_by_member['Alex Example'].status, 'incomplete');
+  assert.deepEqual(result.nutrition_by_member['Alex Example'].missing, [
+    { date: '2026-01-19', slot: 'dinner', slug: 'soup', reason: 'recipe nutrition is not complete' },
+  ]);
+  assert.equal(result.nutrition_by_member['Sam Example'].status, 'complete');
+  assert.equal(result.nutrition_by_member['Sam Example'].totals.calories, 0);
 });
 
 test('a one-plan override allows the chosen recipe and reports lifted reasons', () => {
