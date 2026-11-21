@@ -6951,6 +6951,15 @@ import os3 from "node:os";
 import path13 from "node:path";
 import { parseArgs } from "node:util";
 
+// src/lib/cli-entry.mjs
+import { fileURLToPath } from "node:url";
+var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var invalidMode = (mode, modes, dataRoot) => ({
+  status: "invalid-input",
+  ...dataRoot && { data_root: dataRoot },
+  problems: [`unsupported command "${mode ?? ""}"; supported commands: ${modes.join(", ")}`]
+});
+
 // src/lib/data-root.mjs
 import os2 from "node:os";
 import path2 from "node:path";
@@ -7316,13 +7325,14 @@ var facts_v1_default = {
     "chef-recipe-search/recipe-search": {
       operations: ["search", "show"],
       facts: {
+        status: { type: "enum", values: ["ok"], description: "Top-level result status of an ok run." },
         results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "feedback", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline", "report-delete"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -9165,19 +9175,21 @@ function readSource(file, kind) {
 }
 
 // src/skills/chef-add-recipe/scripts/add-recipe.mjs
+var OPTIONS = {
+  "data-root": { type: "string" },
+  url: { type: "string" },
+  html: { type: "string" },
+  draft: { type: "string" },
+  kind: { type: "string" },
+  source: { type: "string" },
+  "dry-run": { type: "boolean" },
+  slug: { type: "string", multiple: true },
+  unenriched: { type: "boolean" },
+  constraint: { type: "string", multiple: true }
+};
 var { values, positionals } = parseArgs({
-  options: {
-    "data-root": { type: "string" },
-    url: { type: "string" },
-    html: { type: "string" },
-    draft: { type: "string" },
-    kind: { type: "string" },
-    source: { type: "string" },
-    "dry-run": { type: "boolean" },
-    slug: { type: "string", multiple: true },
-    unenriched: { type: "boolean" },
-    constraint: { type: "string", multiple: true }
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true
 });
 var root = resolveDataRoot({ flag: values["data-root"] });
@@ -9245,13 +9257,22 @@ function verify() {
   return verifyRecipe(root, { slug: values.slug[0], constraints: values.constraint ?? [], date: today() });
 }
 var MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich, verify };
+var SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: {
+    ok: ["added", "would-add", "exists", "needs-draft", "enriched", "unchanged", "verified"],
+    errors: ["refused", "invalid-input", "fetch-failed", "not-found"]
+  }
+});
 var mode = positionals[0];
-if (!Object.hasOwn(MODES, mode)) {
-  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(", ")}`);
-  process.exit(64);
+if (isDirectExecution(import.meta.url)) {
+  const failures = { "fetch-failed": "page-fetch-failed", "not-found": "recipe-not-found" };
+  const result = Object.hasOwn(MODES, mode) ? await chefCapture({ root, skill: "chef-add-recipe", script: "add-recipe", operation: mode, failures }, () => MODES[mode]()) : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (["refused", "invalid-input", "fetch-failed", "not-found"].includes(result.status))
+    process.exitCode = 2;
 }
-var failures = { "fetch-failed": "page-fetch-failed", "not-found": "recipe-not-found" };
-var result = await chefCapture({ root, skill: "chef-add-recipe", script: "add-recipe", operation: mode, failures }, () => MODES[mode]());
-console.log(JSON.stringify(result));
-if (["refused", "invalid-input", "fetch-failed", "not-found"].includes(result.status))
-  process.exitCode = 2;
+export {
+  SCRIPT_CONTRACT
+};

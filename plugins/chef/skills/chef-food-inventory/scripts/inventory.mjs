@@ -6948,6 +6948,15 @@ var require_public_api = __commonJS((exports) => {
 // src/skills/chef-food-inventory/scripts/inventory.mjs
 import { parseArgs } from "node:util";
 
+// src/lib/cli-entry.mjs
+import { fileURLToPath } from "node:url";
+var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var invalidMode = (mode, modes, dataRoot) => ({
+  status: "invalid-input",
+  ...dataRoot && { data_root: dataRoot },
+  problems: [`unsupported command "${mode ?? ""}"; supported commands: ${modes.join(", ")}`]
+});
+
 // src/lib/data-root.mjs
 import os2 from "node:os";
 import path2 from "node:path";
@@ -7313,13 +7322,14 @@ var facts_v1_default = {
     "chef-recipe-search/recipe-search": {
       operations: ["search", "show"],
       facts: {
+        status: { type: "enum", values: ["ok"], description: "Top-level result status of an ok run." },
         results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "feedback", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline", "report-delete"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -8792,7 +8802,7 @@ function addReceipt(root, { transcript, source, from, authenticated, id: givenId
 }
 
 // src/skills/chef-food-inventory/scripts/inventory.mjs
-var { values, positionals } = parseArgs({ options: OPTIONS, allowPositionals: true });
+var { values, positionals } = parseArgs({ args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [], options: OPTIONS, allowPositionals: true });
 var now = new Date().toISOString();
 var days = () => {
   const value = Number(values.days ?? 3);
@@ -8845,11 +8855,15 @@ var MODES = {
   health: (root) => checkHealth(root, window()),
   rollup: (root) => regenerateRollup(root, now)
 };
+var SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: {
+    ok: ["ok", "trusted", "added", "duplicate", "saved", "deducted", "regenerated", "healthy", "problems"],
+    errors: ["refused", "invalid-input"]
+  }
+});
 var mode = positionals[0];
-if (!Object.hasOwn(MODES, mode ?? "")) {
-  console.error(`Usage: inventory.mjs <${Object.keys(MODES).join("|")}> [options]`);
-  process.exit(64);
-}
 var root = resolveDataRoot({ flag: values["data-root"] });
 function run() {
   if (readSchemaVersion(root) === null)
@@ -8857,7 +8871,12 @@ function run() {
   const { settings, warning } = readSettings(root);
   return { data_root: root, ...MODES[mode](root, settings), ...warning ? { settings_warning: warning } : {} };
 }
-var result = await chefCapture({ root, skill: "chef-food-inventory", script: "inventory", operation: mode }, run);
-console.log(JSON.stringify(result));
-if (result.status === "refused" || result.status === "invalid-input")
-  process.exitCode = 2;
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(MODES, mode ?? "") ? await chefCapture({ root, skill: "chef-food-inventory", script: "inventory", operation: mode }, run) : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status))
+    process.exitCode = 2;
+}
+export {
+  SCRIPT_CONTRACT
+};

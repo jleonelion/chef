@@ -28184,6 +28184,15 @@ var require_public_api = __commonJS((exports) => {
 // src/skills/chef-batch-prep-planning/scripts/batch-prep.mjs
 import { parseArgs } from "node:util";
 
+// src/lib/cli-entry.mjs
+import { fileURLToPath } from "node:url";
+var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var invalidMode = (mode, modes, dataRoot) => ({
+  status: "invalid-input",
+  ...dataRoot && { data_root: dataRoot },
+  problems: [`unsupported command "${mode ?? ""}"; supported commands: ${modes.join(", ")}`]
+});
+
 // src/lib/data-root.mjs
 import os2 from "node:os";
 import path2 from "node:path";
@@ -28549,13 +28558,14 @@ var facts_v1_default = {
     "chef-recipe-search/recipe-search": {
       operations: ["search", "show"],
       facts: {
+        status: { type: "enum", values: ["ok"], description: "Top-level result status of an ok run." },
         results: { type: "integer", minimum: 0, maximum: 1e4, description: "Recipes returned by a search." }
       }
     },
     "chef-setup/setup": {
-      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline"],
+      operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "feedback", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline", "report-delete"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {
@@ -29586,25 +29596,33 @@ async function renderBatchPrep(root, weekStart) {
 }
 
 // src/skills/chef-batch-prep-planning/scripts/batch-prep.mjs
+var OPTIONS = { "data-root": { type: "string" }, "week-start": { type: "string" } };
 var { values, positionals } = parseArgs({
-  options: {
-    "data-root": { type: "string" },
-    "week-start": { type: "string" }
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true
 });
 var root = resolveDataRoot({ flag: values["data-root"] });
 var weekStart = values["week-start"];
 function render() {
-  if (positionals[0] !== "render")
-    return { status: "invalid-input", data_root: root, problems: ["supported command: render"] };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(weekStart ?? "") || Number.isNaN(Date.parse(`${weekStart}T00:00:00Z`))) {
     return { status: "invalid-input", data_root: root, problems: ["--week-start must be YYYY-MM-DD"] };
   }
   return renderBatchPrep(root, weekStart);
 }
-var capture = { root, skill: "chef-batch-prep-planning", script: "batch-prep", operation: positionals[0], failures: { "not-found": "no-plan", unreadable: "store-unreadable" } };
-var result = await chefCapture(capture, render);
-console.log(JSON.stringify(result));
-if (["invalid-input", "refused", "not-found", "unreadable"].includes(result.status))
-  process.exitCode = 2;
+var SCRIPT_CONTRACT = Object.freeze({
+  modes: ["render"],
+  flags: Object.keys(OPTIONS),
+  statuses: { ok: ["rendered"], errors: ["invalid-input", "refused", "not-found", "unreadable"] }
+});
+if (isDirectExecution(import.meta.url)) {
+  const mode = positionals[0];
+  const capture = { root, skill: "chef-batch-prep-planning", script: "batch-prep", operation: mode, failures: { "not-found": "no-plan", unreadable: "store-unreadable" } };
+  const result = SCRIPT_CONTRACT.modes.includes(mode) ? await chefCapture(capture, render) : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status))
+    process.exitCode = 2;
+}
+export {
+  SCRIPT_CONTRACT
+};
