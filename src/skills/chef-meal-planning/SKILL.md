@@ -5,7 +5,7 @@ description: Plan and save a week of meals from the user's recipe book, househol
 
 # Chef meal planning
 
-Plan from Chef's saved recipes, household profile, dietary ruleset and inventory. A meal plan is a list of planned meals, each with a date, a meal slot (`breakfast`, `lunch`, `dinner` or `snack`), a recipe and servings. Only the meals the user confirms are saved; a slot nobody listed is not planned, and Chef never fills it. Every saved plan includes its nutrition rollup. Retired, conflicting and unverified recipes are never planned. Avoidances are reported but never block a meal.
+Plan from Chef's saved recipes, household profile, dietary ruleset and inventory. A meal plan is a list of planned meals, each with a date, a meal slot (`breakfast`, `lunch`, `dinner` or `snack`), servings eaten, and what is eaten: a saved recipe, free-text food (a meal out, a simple food with no recipe) or leftovers of an earlier planned meal. Only the meals the user confirms are saved; a slot nobody listed is not planned, and Chef never fills it. Every saved plan includes its nutrition rollup. Retired, conflicting and unverified recipes are never planned. Avoidances are reported but never block a meal.
 
 Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input` or `refused`; the read-only `today` mode exits 0 when nothing is planned.
 
@@ -16,33 +16,42 @@ node scripts/meal-planning.mjs today
 node scripts/meal-planning.mjs today --date 2026-01-20
 ```
 
-This reads the saved plan containing that day's meals and writes nothing. Without `--date` it reads today; pass `--date YYYY-MM-DD` to read any other day, past or future. `planned` returns `meals` in slot order (breakfast, lunch, dinner, snack), each with its `slot`, recipe `slug`, `title` and `servings`, plus `dietary.footer` when the saved plan has one. `no-plan` prints one clear message and exits successfully.
+This reads the saved plan containing that day's meals and writes nothing. Without `--date` it reads today; pass `--date YYYY-MM-DD` to read any other day, past or future. `planned` returns `meals` in slot order (breakfast, lunch, dinner, snack), each with its `slot` and `servings` in one of the three shapes below, plus `dietary.footer` when the saved plan has one. `no-plan` prints one clear message and exits successfully.
 
 ## Plan meals
 
 1. Ask which meals the user wants planned this week: which days, and which of breakfast, lunch, dinner and snack on each. Plan only those.
 2. Use `chef-recipe-search` to find candidates. Propose a schedule by date and meal slot using only recipes it returned, and mention any avoidances it reports.
-3. Ask the user to confirm the schedule. Repeat a slug when they want that recipe at more than one meal. Meals they will eat out or skip stay off the list.
+3. Ask the user to confirm the schedule. Repeat a slug when they want that recipe cooked fresh at more than one meal. When a meal eats food cooked at an earlier meal, plan it as leftovers of that meal so it is cooked and bought once. Plan meals out and simple foods with no recipe as free-text food. Skipped meals stay off the list.
 4. After confirmation, pipe the planned meals to the script as a JSON list:
 
 ```sh
 echo '[
   {"date": "2026-01-19", "slot": "breakfast", "recipe": "overnight-oats"},
   {"date": "2026-01-19", "slot": "lunch", "recipe": "lentil-soup", "servings": 1, "note": "pack for work"},
-  {"date": "2026-01-19", "slot": "dinner", "recipe": "tacos"},
-  {"date": "2026-01-20", "slot": "dinner", "recipe": "lentil-soup"}
+  {"date": "2026-01-19", "slot": "dinner", "recipe": "tacos", "servings": 2},
+  {"date": "2026-01-20", "slot": "lunch", "leftovers_of": {"date": "2026-01-19", "slot": "dinner"}, "servings": 2},
+  {"date": "2026-01-20", "slot": "dinner", "food": "Dinner out: Thai"}
 ]' | node scripts/meal-planning.mjs plan --week-start 2026-01-19
 ```
 
-Each planned meal needs `date` (inside the week that starts on `--week-start`), `slot` and `recipe` (a slug). `servings` is optional and defaults to the household servings; `note` is optional text. One date can hold several planned meals, but only one per slot. Bad JSON, an unknown slot, a bad or out-of-week date, non-positive servings or a repeated date and slot return `invalid-input` with `problems`; nothing was saved. Fix the input and rerun.
+Each planned meal needs `date` (inside the week that starts on `--week-start`), `slot` and exactly one of:
 
-Report `meals`, `nutrition`, `dietary`, `avoidance_notes`, `overridden`, and any `excluded` recipes present in the result. Pass `dietary.nudge`, `dietary.footer`, `dietary.caveats` or `dietary.problem` on exactly as provided. Completion means the confirmed planned meals have `status: saved` and its path is reported.
+- `recipe`: a saved recipe slug.
+- `food`: non-empty text for a meal with no recipe. It is not shopped for, prepped or nutrition-estimated, and the dietary gate does not check it. Say so when you plan one. Never offer a refused recipe again as free text.
+- `leftovers_of: {date, slot}`: an earlier recipe meal in this list. The leftovers eat that recipe. Point to the meal that cooked the dish, never to another leftovers meal.
+
+`servings` is servings eaten at that meal. It is optional and defaults to the household servings; `note` is optional text. One date can hold several planned meals, but only one per slot. Bad JSON, an unknown slot, a bad or out-of-week date, non-positive servings, a repeated date and slot, none or more than one of `recipe`/`food`/`leftovers_of`, empty `food`, or a `leftovers_of` that is missing from the list, not earlier, free-text food or itself leftovers return `invalid-input` with `problems`; nothing was saved. Fix the input and rerun.
+
+Planned meals come back in three shapes. A recipe meal has `slug`, `title`, `servings` and `cook_servings`, the amount to cook: its servings plus those of every leftovers meal pointing to it. A leftovers meal has `leftovers_of`, the cooking meal's `slug` and `title`, and `servings`. A free-text food meal has `food` and `servings`.
+
+Report `meals` (with the amount to cook where it exceeds servings eaten), `nutrition`, `dietary`, `avoidance_notes`, `overridden`, and any `excluded` recipes present in the result. Pass `dietary.nudge`, `dietary.footer`, `dietary.caveats` or `dietary.problem` on exactly as provided. Completion means the confirmed planned meals have `status: saved` and its path is reported.
 
 The script uses structured household portions when present and reports `servings_source` as `profile` or `default`. It saves `knowledge/wiki/meal-plans/<week-start>.md` through Chef's guarded wiki writer.
 
 ## Refused choices and overrides
 
-Every planned recipe passes the dietary gate, in any slot. A gated, retired or unknown recipe returns `status: refused` with `refused_choices`, each naming its `date`, `slot` and `slug`; explain each reason and ask the user to choose again. Nothing was saved.
+Every planned recipe passes the dietary gate, in any slot. Leftovers share their cooking meal's verdict, so a refused recipe is named once, at the meal that cooks it. A gated, retired or unknown recipe returns `status: refused` with `refused_choices`, each naming its `date`, `slot` and `slug`; explain each reason and ask the user to choose again. Nothing was saved.
 
 Only when the member who declared a constraint asks to set it aside for this plan, rerun with their one-plan override:
 
@@ -51,6 +60,8 @@ echo '[{"date": "2026-01-19", "slot": "dinner", "recipe": "tacos"}]' | node scri
 ```
 
 Pass each requested override separately. Report `overridden`. Overrides affect this invocation only and are never saved.
+
+`nutrition` counts recipe and leftovers meals at servings eaten. Free-text food is listed in `nutrition.unmeasured` and is not estimated; mention that those meals are not counted.
 
 ## Calendar adapter
 

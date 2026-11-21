@@ -369,14 +369,16 @@
             "slot": "breakfast",
             "slug": "overnight-oats",
             "title": "Overnight Oats",
-            "servings": 3
+            "servings": 3,
+            "cook_servings": 3
           },
           {
             "date": "2026-01-20",
             "slot": "lunch",
             "slug": "chickpea-spinach-stew",
             "title": "Chickpea Spinach Stew",
-            "servings": 1
+            "servings": 1,
+            "cook_servings": 1
           },
           {
             "date": "2026-01-20",
@@ -384,7 +386,8 @@
             "slug": "lemon-garlic-pasta",
             "title": "Lemon Garlic Pasta",
             "servings": 3,
-            "note": "dinner at home before the game"
+            "note": "dinner at home before the game",
+            "cook_servings": 3
           }
         ]
       }
@@ -400,6 +403,182 @@
           {
             "path": "$.content",
             "includes": "| 2026-01-22 | dinner | Chickpea Spinach Stew | 3 |"
+          }
+        ]
+      }
+    ],
+    "git": {
+      "clean": true
+    }
+  },
+  {
+    "id": "chef-meal-planning-leftovers-and-free-text-food-shop-once",
+    "description": "A week with a leftover chain (Monday dinner for 2 feeds Tuesday lunch for 2) and a free-text dinner out saves; today reports the amount to cook on Monday and the leftovers and food shapes on Tuesday; the shopping list buys the stew once at 4 servings and nothing for the dinner out.",
+    "seed": [
+      {
+        "path": "knowledge/wiki/recipes/chickpea-spinach-stew.md",
+        "seedFile": "evals/tier1/inputs/chef-meal-planning-saves-safe-week-with-rollup/chickpea-spinach-stew.md"
+      }
+    ],
+    "steps": [
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+          "plan",
+          "--week-start",
+          "2026-01-19"
+        ],
+        "stdin": [
+          {
+            "date": "2026-01-19",
+            "slot": "dinner",
+            "recipe": "chickpea-spinach-stew",
+            "servings": 2
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "lunch",
+            "leftovers_of": {
+              "date": "2026-01-19",
+              "slot": "dinner"
+            },
+            "servings": 2
+          },
+          {
+            "date": "2026-01-20",
+            "slot": "dinner",
+            "food": "Dinner out: Thai",
+            "servings": 2
+          }
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.status",
+            "equals": "saved"
+          },
+          {
+            "path": "$.meals[0].cook_servings",
+            "equals": 4
+          },
+          {
+            "path": "$.nutrition.status",
+            "equals": "complete"
+          },
+          {
+            "path": "$.nutrition.unmeasured",
+            "equals": [
+              {
+                "date": "2026-01-20",
+                "slot": "dinner",
+                "food": "Dinner out: Thai"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+          "today",
+          "--date",
+          "2026-01-19"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.meals",
+            "equals": [
+              {
+                "date": "2026-01-19",
+                "slot": "dinner",
+                "slug": "chickpea-spinach-stew",
+                "title": "Chickpea Spinach Stew",
+                "servings": 2,
+                "cook_servings": 4
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "command": [
+          "node",
+          "{skills}/chef-meal-planning/scripts/meal-planning.mjs",
+          "today",
+          "--date",
+          "2026-01-20"
+        ],
+        "parse": "json",
+        "assertions": [
+          {
+            "path": "$.meals",
+            "equals": [
+              {
+                "date": "2026-01-20",
+                "slot": "lunch",
+                "leftovers_of": {
+                  "date": "2026-01-19",
+                  "slot": "dinner"
+                },
+                "slug": "chickpea-spinach-stew",
+                "title": "Chickpea Spinach Stew",
+                "servings": 2
+              },
+              {
+                "date": "2026-01-20",
+                "slot": "dinner",
+                "food": "Dinner out: Thai",
+                "servings": 2
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "command": [
+      "node",
+      "{skills}/chef-shopping-lists/scripts/shopping-lists.mjs",
+      "build",
+      "--week-start",
+      "2026-01-19"
+    ],
+    "parse": "json",
+    "assertions": [
+      {
+        "path": "$.status",
+        "equals": "built"
+      },
+      {
+        "path": "$.meals",
+        "equals": [
+          {
+            "date": "2026-01-19",
+            "slot": "dinner",
+            "slug": "chickpea-spinach-stew",
+            "servings": 2,
+            "cook_servings": 4
+          }
+        ]
+      },
+      {
+        "path": "$.text",
+        "includes": "- 2 can chickpeas"
+      }
+    ],
+    "files": [
+      {
+        "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "assertions": [
+          {
+            "path": "$.content",
+            "includes": "| 2026-01-19 | dinner | Chickpea Spinach Stew | 2 (cook 4) |"
+          },
+          {
+            "path": "$.content",
+            "includes": "| 2026-01-20 | lunch | Leftovers: Chickpea Spinach Stew (from 2026-01-19 dinner) | 2 |"
           }
         ]
       }
@@ -528,7 +707,8 @@
             "slot": "dinner",
             "slug": "lemon-garlic-pasta",
             "title": "Lemon Garlic Pasta",
-            "servings": 2
+            "servings": 2,
+            "cook_servings": 2
           }
         ]
       },

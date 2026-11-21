@@ -29413,6 +29413,25 @@ var slotOf = (meal) => meal.slot ?? "dinner";
 var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
 var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
 
+// src/lib/planned-meal.mjs
+function mealKind(meal) {
+  if (meal.leftovers_of)
+    return "leftovers";
+  if (meal.food !== undefined)
+    return "food";
+  return "recipe";
+}
+var mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
+var leftoversFeeding = (meals, cooking) => meals.filter((meal) => mealKind(meal) === "leftovers" && mealKey(meal.leftovers_of) === mealKey(cooking));
+function withAmountToCook(meals) {
+  return meals.map((meal) => {
+    if (mealKind(meal) !== "recipe")
+      return meal;
+    const leftovers = leftoversFeeding(meals, meal).reduce((sum, { servings }) => sum + servings, 0);
+    return { ...meal, cook_servings: meal.servings + leftovers };
+  });
+}
+
 // src/skills/chef-batch-prep-planning/scripts/lib/render.mjs
 var PLAN_DIR = "knowledge/wiki/meal-plans";
 var OUTPUT_DIR = "data/batch-prep-plans";
@@ -29440,6 +29459,10 @@ function wrap(text, font, size, width) {
     lines.push(line);
   return lines;
 }
+function cookLine(meal) {
+  const leftovers = meal.leftovers.map((entry) => `${entry.date} ${entry.slot}`).join(", ");
+  return `${meal.date} ${meal.slot}: cook ${meal.cook_servings} servings${leftovers ? `, including leftovers for ${leftovers}` : ""}`;
+}
 function drawRecipePage(pdf, fonts, group, dietary) {
   const page = pdf.addPage(import_pdf_lib.PageSizes.Letter);
   const { width, height } = page.getSize();
@@ -29452,7 +29475,10 @@ function drawRecipePage(pdf, fonts, group, dietary) {
   }
   page.drawText(`Planned: ${group.meals.map((meal) => `${meal.date} ${meal.slot}`).join(", ")}`, { x: MARGIN, y, size: 10, font: fonts.regular });
   y -= 16;
-  page.drawText(`Servings: ${group.meals.map((meal) => meal.servings).join(", ")}`, { x: MARGIN, y, size: 10, font: fonts.regular });
+  for (const line of group.meals.flatMap((meal) => wrap(cookLine(meal), fonts.regular, 10, width - MARGIN * 2))) {
+    y -= 16;
+    page.drawText(line, { x: MARGIN, y, size: 10, font: fonts.regular });
+  }
   y -= 30;
   page.drawText("PREP STEPS", { x: MARGIN, y, size: 12, font: fonts.bold });
   y -= 24;
@@ -29502,7 +29528,11 @@ function loadPlan(root, weekStart) {
     const plan = parsePage(fs11.readFileSync(file, "utf8")).frontmatter;
     if (plan.type !== "meal-plan" || !Array.isArray(plan.meals) || !plan.meals.length)
       throw new Error("meal plan has no meals");
-    return { plan: { ...plan, meals: plan.meals.map(withSlot).sort(byDateAndSlot) }, relative };
+    const meals = withAmountToCook(plan.meals.map(withSlot));
+    const cooking = meals.filter((meal) => mealKind(meal) === "recipe").map((meal) => ({ ...meal, leftovers: leftoversFeeding(meals, meal) }));
+    if (!cooking.length)
+      return { problem: { status: "not-found", reason: `saved meal plan for ${weekStart} has no recipe meals to prep` } };
+    return { plan: { ...plan, meals: cooking.sort(byDateAndSlot) }, relative };
   } catch (error) {
     return { problem: { status: "unreadable", reason: `saved meal plan cannot be read: ${error.message}` } };
   }

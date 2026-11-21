@@ -15,7 +15,7 @@ Run commands from this skill's directory. Each prints one JSON object. Exit code
 node scripts/batch-prep.mjs render --week-start 2026-01-19
 ```
 
-The script reads `knowledge/wiki/meal-plans/<week-start>.md`, re-checks every planned recipe, and writes `data/batch-prep-plans/<week-start>.pdf` through Chef's guarded writer. The PDF has one page per unique recipe, in the order the recipe first appears in the plan, with its planned dates and meal slots, servings and prep steps as a checklist.
+The script reads `knowledge/wiki/meal-plans/<week-start>.md`, re-checks every planned recipe, and writes `data/batch-prep-plans/<week-start>.pdf` through Chef's guarded writer. The PDF has one page per unique recipe of the plan's recipe meals, in the order the recipe first appears in the plan, with its planned dates and meal slots, the amount to cook at each (naming the leftovers meals it feeds) and prep steps as a checklist. Leftovers and free-text food get no page. A plan with only free-text food returns `not-found`: there is nothing to prep.
 
 On `status: rendered`:
 
