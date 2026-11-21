@@ -164,8 +164,10 @@ Tests never call USDA. Tier1 runs off Muse with `CHEF_USDA_FDC_KEY` cleared; on 
 a USDA connector, the connector takes precedence and tier1 would reach the live API.
 
 The skill-format lint only accepts the 10 v1 skill names (`V1_SKILLS` in
-`scripts/lib/skill-format.mjs`) and reports which are still missing. Missing skills become an
-error once the plugin version reaches 1.0.0, or with `node scripts/lint-skills.mjs --release`.
+`scripts/lib/skill-format.mjs`) and reports which are still missing. It imports each source and
+built entry script after dependencies are installed, then checks its exported modes, flags and
+statuses against SKILL.md and the invocation fact registry. Missing skills become an error once
+the plugin version reaches 1.0.0, or with `node scripts/lint-skills.mjs --release`.
 
 Contributions: no real names, addresses or personal emails anywhere. Use `example.com`.
 
