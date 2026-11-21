@@ -3,6 +3,7 @@ import { parseArgs } from 'node:util';
 import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
+import { logFromPlan } from './lib/log-from-plan.mjs';
 import { deleteMeal, editMeal, logMeal } from './lib/log.mjs';
 
 const OPTIONS = {
@@ -14,6 +15,8 @@ const OPTIONS = {
     food: { type: 'string' },
     servings: { type: 'string' },
     cooked: { type: 'boolean' },
+    'from-plan': { type: 'boolean' },
+    'cooked-slots': { type: 'string' },
     'not-cooked': { type: 'boolean' },
     'logged-at': { type: 'string' },
 };
@@ -25,8 +28,20 @@ const { values, positionals } = parseArgs({
 
 const root = resolveDataRoot({ flag: values['data-root'] });
 const operation = positionals[0];
+const MANUAL_ENTRY_FLAGS = ['id', 'recipe', 'food', 'servings', 'cooked', 'not-cooked'];
+function fromPlan() {
+  if (MANUAL_ENTRY_FLAGS.some((flag) => values[flag] !== undefined)) {
+    return { status: 'invalid-input', problems: ['--from-plan takes only --date, --slot and --cooked-slots; use --cooked-slots, not --cooked'] };
+  }
+  return logFromPlan(root, {
+    date: values.date,
+    slot: values.slot,
+    cookedSlots: (values['cooked-slots'] ?? '').split(',').filter(Boolean),
+    loggedAt: values['logged-at'] ?? new Date().toISOString(),
+  });
+}
 const MODES = {
-  log: () => logMeal(root, {
+  log: () => values['from-plan'] ? fromPlan() : logMeal(root, {
     date: values.date,
     slot: values.slot,
     recipe: values.recipe,

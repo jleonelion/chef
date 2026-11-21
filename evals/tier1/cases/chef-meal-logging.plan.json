@@ -1,0 +1,74 @@
+[
+  {
+    "id": "chef-meal-logging-plan-recipe-servings-eaten",
+    "description": "A cooked planned recipe with leftovers logs the servings eaten and deducts the amount to cook.",
+    "grounding": { "recipes": ["lemon-garlic-pasta"] },
+    "steps": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta", "servings": 2 },
+          { "date": "2026-01-20", "slot": "lunch", "leftovers_of": { "date": "2026-01-19", "slot": "dinner" }, "servings": 1 }
+        ]
+      }
+    ],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-19", "--slot", "dinner", "--cooked-slots", "dinner"],
+    "parse": "json",
+    "assertions": [
+      { "path": "$.status", "equals": "logged" },
+      { "path": "$.results[0].entry.recipe", "equals": "lemon-garlic-pasta" },
+      { "path": "$.results[0].entry.servings", "equals": 2 },
+      { "path": "$.results[0].inventory.status", "equals": "deducted" }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "chef-meal-logging-plan-leftovers-and-food",
+    "description": "A day of leftovers and food out logs both without cooking or changing inventory.",
+    "grounding": { "recipes": ["lemon-garlic-pasta"] },
+    "steps": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta", "servings": 2 },
+          { "date": "2026-01-20", "slot": "lunch", "leftovers_of": { "date": "2026-01-19", "slot": "dinner" }, "servings": 1 },
+          { "date": "2026-01-20", "slot": "dinner", "food": "Thai dinner out", "servings": 2 }
+        ]
+      }
+    ],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20"],
+    "parse": "json",
+    "assertions": [
+      { "path": "$.results[0].entry.recipe", "equals": "lemon-garlic-pasta" },
+      { "path": "$.results[0].entry.servings", "equals": 1 },
+      { "path": "$.results[0].entry.cooked", "equals": false },
+      { "path": "$.results[1].entry.food", "equals": "Thai dinner out" },
+      { "path": "$.results[1].entry.cooked", "equals": false },
+      { "path": "$.results[0].inventory.status", "equals": "not-requested" }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "id": "chef-meal-logging-plan-leftovers-cooked-refused",
+    "description": "A request to mark leftovers cooked is refused before logging any selected meal.",
+    "grounding": { "recipes": ["lemon-garlic-pasta"] },
+    "steps": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "plan", "--week-start", "2026-01-19"],
+        "stdin": [
+          { "date": "2026-01-19", "slot": "dinner", "recipe": "lemon-garlic-pasta", "servings": 2 },
+          { "date": "2026-01-20", "slot": "lunch", "leftovers_of": { "date": "2026-01-19", "slot": "dinner" }, "servings": 1 },
+          { "date": "2026-01-20", "slot": "dinner", "food": "Thai dinner out", "servings": 2 }
+        ]
+      }
+    ],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--cooked-slots", "lunch"],
+    "expectedStatus": 2,
+    "parse": "json",
+    "assertions": [
+      { "path": "$.status", "equals": "invalid-input" },
+      { "path": "$.problems[0]", "equals": "leftovers were cooked by their source meal and cannot be logged as cooked" }
+    ],
+    "git": { "clean": true }
+  }
+]

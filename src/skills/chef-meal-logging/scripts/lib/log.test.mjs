@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { serializePage } from '../../../../lib/frontmatter.mjs';
 import { writeWiki } from '../../../../lib/wiki.mjs';
 import { initDataRoot } from '../../../chef-setup/scripts/lib/init-data-root.mjs';
 import { commitInventory } from '../../../chef-food-inventory/scripts/lib/commit.mjs';
@@ -12,6 +13,62 @@ import { loadInventory, STORE } from '../../../chef-food-inventory/scripts/lib/s
 import { logMeal, MEAL_LOG_FILE } from './log.mjs';
 
 const script = fileURLToPath(new URL('../meal-logging.mjs', import.meta.url));
+
+function writePlan(root, meals) {
+  const planDir = path.join(root, 'knowledge/wiki/meal-plans');
+  fs.mkdirSync(planDir, { recursive: true });
+  fs.writeFileSync(path.join(planDir, '2026-01-19.md'), serializePage({ type: 'meal-plan', meals }, '# Plan\n'));
+}
+
+const planDinner = { date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 };
+const planLeftovers = { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1, leftovers_of: { date: '2026-01-19', slot: 'dinner' } };
+
+function logFromPlan(root, ...args) {
+  const result = spawnSync(process.execPath, [script, 'log', '--data-root', root, '--from-plan', ...args], { encoding: 'utf8' });
+  return { exitCode: result.status, output: JSON.parse(result.stdout) };
+}
+
+test('logging cooked leftovers is refused without logging or changing inventory', () => {
+  const root = dataRoot();
+  writePlan(root, [planDinner, planLeftovers]);
+  const before = fs.readFileSync(path.join(root, STORE.inventory), 'utf8');
+  const { exitCode, output } = logFromPlan(root, '--date', '2026-01-20', '--cooked-slots', 'lunch');
+  assert.equal(exitCode, 2);
+  assert.equal(output.status, 'invalid-input');
+  assert.equal(fs.readFileSync(path.join(root, STORE.inventory), 'utf8'), before);
+  assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
+});
+
+test('a cooked planned recipe logs servings eaten and deducts its amount to cook', () => {
+  const root = dataRoot();
+  writePlan(root, [planDinner, planLeftovers]);
+  const { exitCode } = logFromPlan(root, '--date', '2026-01-19', '--cooked-slots', 'dinner');
+  assert.equal(exitCode, 0);
+  const entries = JSON.parse(fs.readFileSync(path.join(root, MEAL_LOG_FILE), 'utf8')).entries;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].servings, 2);
+  assert.equal(loadInventory(root).pantry.grains.pasta.amount, 0.7);
+});
+
+test('a day with an unknown recipe logs nothing', () => {
+  const root = dataRoot();
+  writePlan(root, [
+    { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1 },
+    { date: '2026-01-20', slot: 'dinner', slug: 'missing-recipe', servings: 1 },
+  ]);
+  const { exitCode, output } = logFromPlan(root, '--date', '2026-01-20');
+  assert.equal(exitCode, 2);
+  assert.match(output.problems[0], /recipe not found/);
+  assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
+});
+
+test('--from-plan rejects manual entry flags and a bare --cooked', () => {
+  const root = dataRoot();
+  writePlan(root, [planDinner]);
+  const { exitCode, output } = logFromPlan(root, '--date', '2026-01-19', '--cooked');
+  assert.equal(exitCode, 2);
+  assert.equal(output.status, 'invalid-input');
+});
 
 function dataRoot() {
   const root = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'chef-meal-log-')), 'root');

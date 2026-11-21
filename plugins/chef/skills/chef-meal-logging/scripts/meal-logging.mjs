@@ -7773,13 +7773,35 @@ async function chefCapture({ root, skill, script, operation, classify: classify2
   }
 }
 
-// src/lib/meal-log.mjs
+// src/lib/meal-slots.mjs
+var MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
+var slotOf = (meal) => meal.slot ?? "dinner";
+var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
+var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
+
+// src/lib/planned-meal.mjs
+function mealKind(meal) {
+  if (meal.leftovers_of)
+    return "leftovers";
+  if (meal.food !== undefined)
+    return "food";
+  return "recipe";
+}
+var mealSubject = (meal) => meal.food === undefined ? { recipe: meal.slug } : { food: meal.food };
+var mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
+var leftoversFeeding = (meals, cooking) => meals.filter((meal) => mealKind(meal) === "leftovers" && mealKey(meal.leftovers_of) === mealKey(cooking));
+function withAmountToCook(meals) {
+  return meals.map((meal) => {
+    if (mealKind(meal) !== "recipe")
+      return meal;
+    const leftovers = leftoversFeeding(meals, meal).reduce((sum, { servings }) => sum + servings, 0);
+    return { ...meal, cook_servings: meal.servings + leftovers };
+  });
+}
+
+// src/skills/chef-meal-planning/scripts/lib/today.mjs
 import fs9 from "node:fs";
 import path9 from "node:path";
-
-// src/lib/wiki.mjs
-import fs8 from "node:fs";
-import path8 from "node:path";
 
 // node_modules/yaml/dist/index.js
 var composer = require_composer();
@@ -7844,6 +7866,10 @@ function serializePage(frontmatter, body) {
 ${yaml}---
 ${body}`;
 }
+
+// src/lib/wiki.mjs
+import fs8 from "node:fs";
+import path8 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -7911,7 +7937,38 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   return { status: "written", data_root: root, pages: pageFiles.map((f) => f.path), raw: rawFiles.map((f) => f.path), data: dataFiles.map((f) => f.path) };
 }
 
+// src/skills/chef-meal-planning/scripts/lib/today.mjs
+var PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS["meal-plan"]}`;
+function plans(root) {
+  const dir = path9.join(root, PLANS_DIR);
+  const files = fs9.existsSync(dir) ? fs9.readdirSync(dir).filter((file) => file.endsWith(".md")).sort().reverse() : [];
+  return files.flatMap((file) => {
+    try {
+      const frontmatter = parsePage(fs9.readFileSync(path9.join(dir, file), "utf8")).frontmatter;
+      return frontmatter.type === "meal-plan" && Array.isArray(frontmatter.meals) ? [{ path: `${PLANS_DIR}/${file}`, frontmatter }] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+function todayPlan(root, date) {
+  const plan = plans(root).find(({ frontmatter }) => frontmatter.meals.some((meal) => meal.date === date));
+  if (!plan)
+    return { status: "no-plan", data_root: root, date, message: `No meal plan covers ${date}.` };
+  const footer = plan.frontmatter.dietary?.footer;
+  return {
+    status: "planned",
+    data_root: root,
+    date,
+    meal_plan: plan.path,
+    meals: withAmountToCook(plan.frontmatter.meals.map(withSlot)).filter((meal) => meal.date === date).sort(byDateAndSlot),
+    ...typeof footer === "string" && footer ? { dietary: { footer } } : {}
+  };
+}
+
 // src/lib/meal-log.mjs
+import fs10 from "node:fs";
+import path10 from "node:path";
 var MEAL_LOG_PATH = "data/meal-log/log.json";
 function mealEntryId(entry) {
   return `${entry.date}-${entry.slot}-${entry.recipe ?? slugify(entry.food ?? "")}`;
@@ -7930,11 +7987,11 @@ function entriesWithIds(entries) {
   });
 }
 function readMealLog(root) {
-  const file = path9.join(root, MEAL_LOG_PATH);
-  if (!fs9.existsSync(file))
+  const file = path10.join(root, MEAL_LOG_PATH);
+  if (!fs10.existsSync(file))
     return { entries: [] };
   try {
-    const log = JSON.parse(fs9.readFileSync(file, "utf8"));
+    const log = JSON.parse(fs10.readFileSync(file, "utf8"));
     if (!Array.isArray(log?.entries))
       throw new Error("no entries list");
     return { entries: entriesWithIds(log.entries) };
@@ -7943,22 +8000,19 @@ function readMealLog(root) {
   }
 }
 
-// src/lib/meal-slots.mjs
-var MEAL_SLOTS = ["breakfast", "lunch", "dinner", "snack"];
-
 // src/lib/recipes.mjs
-import fs10 from "node:fs";
-import path10 from "node:path";
+import fs11 from "node:fs";
+import path11 from "node:path";
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
-  const dir = path10.join(root, RECIPES_DIR);
-  const files = fs10.existsSync(dir) ? fs10.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const dir = path11.join(root, RECIPES_DIR);
+  const files = fs11.existsSync(dir) ? fs11.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs10.readFileSync(path10.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs11.readFileSync(path11.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });
@@ -8209,8 +8263,8 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
 
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
-import fs11 from "node:fs";
-import path11 from "node:path";
+import fs12 from "node:fs";
+import path12 from "node:path";
 
 // src/skills/chef-food-inventory/scripts/lib/dates.mjs
 function isIsoDate(value) {
@@ -8276,8 +8330,8 @@ function listItems(inventory) {
   return LOCATIONS.flatMap((location) => Object.entries(inventory[location] ?? {}).flatMap(([category, items]) => Object.entries(items).map(([key, item]) => ({ ...item, name: item.name ?? key.replaceAll("_", " "), path: `${location}.${category}.${key}`, location, category, key }))));
 }
 var readText = (root, relative) => {
-  const file = path11.join(root, relative);
-  return fs11.existsSync(file) ? fs11.readFileSync(file, "utf8") : null;
+  const file = path12.join(root, relative);
+  return fs12.existsSync(file) ? fs12.readFileSync(file, "utf8") : null;
 };
 function loadInventory(root) {
   const text = readText(root, STORE.inventory);
@@ -8518,7 +8572,7 @@ function logMeal(root, input) {
       return written;
     status = "logged";
   }
-  const inventory = entry.cooked && entry.recipe ? deductRecipe(root, { recipe: entry.recipe, servings: entry.servings, deductionId: entry.id, now: entry.logged_at }) : { status: "not-requested" };
+  const inventory = entry.cooked && entry.recipe ? deductRecipe(root, { recipe: entry.recipe, servings: input.servingsCooked ?? entry.servings, deductionId: entry.id, now: entry.logged_at }) : { status: "not-requested" };
   return { status, entry: existing ?? entry, inventory };
 }
 function editMeal(root, input) {
@@ -8584,6 +8638,39 @@ function deleteMeal(root, input) {
   return result;
 }
 
+// src/skills/chef-meal-logging/scripts/lib/log-from-plan.mjs
+var invalid = (...problems) => ({ status: "invalid-input", problems });
+function logFromPlan(root, { date, slot, cookedSlots, loggedAt }) {
+  if (slot !== undefined && !MEAL_SLOTS.includes(slot))
+    return invalid("slot: must be breakfast, lunch, dinner or snack");
+  const plan = todayPlan(root, date ?? "");
+  const meals = (plan.meals ?? []).filter((meal) => !slot || meal.slot === slot);
+  if (!meals.length)
+    return { status: "not-found", reason: `no planned meal for ${date}${slot ? ` ${slot}` : ""}` };
+  const cooked = (meal) => cookedSlots.includes(meal.slot);
+  if (cookedSlots.some((name) => !meals.some((meal) => meal.slot === name))) {
+    return invalid("--cooked-slots must name selected planned meals");
+  }
+  if (meals.some((meal) => cooked(meal) && mealKind(meal) === "leftovers")) {
+    return invalid("leftovers were cooked by their source meal and cannot be logged as cooked");
+  }
+  const inputs = meals.map((meal) => ({
+    date: meal.date,
+    slot: meal.slot,
+    ...mealSubject(meal),
+    servings: meal.servings,
+    servingsCooked: meal.cook_servings,
+    cooked: cooked(meal),
+    loggedAt
+  }));
+  const problems = inputs.flatMap((input) => validate(root, input));
+  if (problems.length)
+    return invalid(...problems);
+  const results = inputs.map((input) => logMeal(root, input));
+  const failure = results.find((result) => ["invalid-input", "refused"].includes(result.status));
+  return { status: failure?.status ?? "logged", results };
+}
+
 // src/skills/chef-meal-logging/scripts/meal-logging.mjs
 var OPTIONS = {
   "data-root": { type: "string" },
@@ -8594,6 +8681,8 @@ var OPTIONS = {
   food: { type: "string" },
   servings: { type: "string" },
   cooked: { type: "boolean" },
+  "from-plan": { type: "boolean" },
+  "cooked-slots": { type: "string" },
   "not-cooked": { type: "boolean" },
   "logged-at": { type: "string" }
 };
@@ -8604,8 +8693,20 @@ var { values, positionals } = parseArgs({
 });
 var root = resolveDataRoot({ flag: values["data-root"] });
 var operation = positionals[0];
+var MANUAL_ENTRY_FLAGS = ["id", "recipe", "food", "servings", "cooked", "not-cooked"];
+function fromPlan() {
+  if (MANUAL_ENTRY_FLAGS.some((flag) => values[flag] !== undefined)) {
+    return { status: "invalid-input", problems: ["--from-plan takes only --date, --slot and --cooked-slots; use --cooked-slots, not --cooked"] };
+  }
+  return logFromPlan(root, {
+    date: values.date,
+    slot: values.slot,
+    cookedSlots: (values["cooked-slots"] ?? "").split(",").filter(Boolean),
+    loggedAt: values["logged-at"] ?? new Date().toISOString()
+  });
+}
 var MODES = {
-  log: () => logMeal(root, {
+  log: () => values["from-plan"] ? fromPlan() : logMeal(root, {
     date: values.date,
     slot: values.slot,
     recipe: values.recipe,
