@@ -6,7 +6,8 @@ An agentic row starts with `gate: false`. Promote it to `gate: true` only when a
 
 - A normalizer emits valid result metadata, `evals:lint` passes, and the row has fixture-grounding metadata for every declared fixture fact.
 - The row has a verified grounding review for the scenario, including exact fixture refs and fixed dates.
-- The latest scheduled run is a `3/3` pass for at least three consecutive runs on the default model.
+- Candidate rows collect the scheduled evidence: the scheduled run executes gated and candidate rows.
+- The latest scheduled run is a `3/3` pass for at least three consecutive runs on the Claude harness with its default model.
 - The passing summary is archived under `evals/agentic/archive/` and verifies against the evaluated tree.
 - The row has no invalid reps and no unrelated behavioral failures.
 
@@ -14,7 +15,7 @@ Do not gate a known-failure row. Reassess gated rows after harness, Projector, d
 
 ## Scheduled workflow
 
-`.github/workflows/agentic.yml` runs weekly and supports manual dispatch. It runs `bun run agentic --gates-only --reps 3` for a selected harness. It must never run agentic evals in PR CI or push CI.
+`.github/workflows/agentic.yml` runs weekly and supports manual dispatch. It runs `bun run agentic --gates-only --candidates --reps 3 --harness claude` on the schedule, using the Claude harness's default model. Manual dispatch retains its selected harness and repetitions. Candidate failures are reported but do not fail the job; gated failures and invalid gated reps fail it. It must never run agentic evals in PR CI or push CI.
 
 Configure repository Actions secrets:
 

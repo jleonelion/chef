@@ -170,6 +170,7 @@ export function aggregate({ meta, reps, rows, runs }) {
       id: row.id,
       flow: row.flow,
       gate: row.gate === true,
+      ...(row.candidate === true && { candidate: true }),
       passes: `${passes}/${valid.length}`,
       pass_rate: valid.length ? passes / valid.length : null,
       valid_reps: valid.length,
@@ -204,20 +205,30 @@ export function aggregate({ meta, reps, rows, runs }) {
       })),
     };
   });
+  const gatedIndexes = rows.flatMap((row, index) => row.gate === true || row.gate === undefined ? [index] : []);
   return {
     suite: 'chef-agentic',
     format: 3,
     ...meta,
     models: [...new Set(completedRuns.map((run) => run.model).filter(Boolean))],
     reps,
-    passed: summaries.every((row) => row.pass),
-    invalid: summaries.some((row) => row.invalid_reps > 0),
+    passed: gatedIndexes.length === 0 ? true : gatedIndexes.every((index) => summaries[index].pass),
+    invalid: gatedIndexes.some((index) => summaries[index].invalid_reps > 0),
     cost_usd: Math.round(completedRuns.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) * 100) / 100,
     rows: summaries,
   };
 }
 
 export function exitCodeFor(result) {
+  if (Array.isArray(result.rows)) {
+    const gated = result.rows.filter((row) => row.gate);
+    const hasGatedRows = result.rows.some((row) => row.gate);
+    if (!hasGatedRows) return 0;
+    if (gated.length) {
+      if (gated.some((row) => row.invalid_reps > 0)) return 2;
+      return gated.every((row) => row.pass) ? 0 : 1;
+    }
+  }
   if (result.invalid) return 2;
   return result.passed ? 0 : 1;
 }

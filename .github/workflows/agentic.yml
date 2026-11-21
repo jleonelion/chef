@@ -62,6 +62,7 @@ jobs:
           RESULT: evals/agentic/archive/agentic-gates-${{ github.run_id }}.json
         run: |
           args=(bun run agentic --gates-only --harness "$HARNESS" --reps "$REPS" --out "$RESULT")
+          if [ "${{ github.event_name }}" = "schedule" ]; then args+=(--candidates); fi
           if [ -n "$MODEL" ]; then args+=(--model "$MODEL"); fi
           "${args[@]}"
       - name: Upload agentic result

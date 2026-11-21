@@ -13,7 +13,7 @@
 //   Turns, commands and stdin expand {skills}, {data_root} and {tmp}; rows must not depend on the wall-clock date (the lint rejects {today}).
 //   repro / known_failure / expect_failure (see evals/repro/README.md): a known_failure row passes
 //   only when a valid rep fails the named behavioral check. --known-failures runs only marked rows.
-//   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--gates-only] [--harness claude] [--model <id>] [--concurrency 4] [--out <file>]
+//   bun run agentic [--reps 3] [--rows id,id] [--known-failures] [--gates-only] [--candidates] [--harness claude] [--model <id>] [--concurrency 4] [--out <file>]
 import { execFileSync, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
@@ -28,6 +28,7 @@ import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 import { judgeReply, openAIJudgeCall } from './judge.mjs';
+import { selectRows } from './selection.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const TURN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -160,6 +161,7 @@ async function main() {
       rows: { type: 'string' },
       'known-failures': { type: 'boolean' },
       'gates-only': { type: 'boolean' },
+      candidates: { type: 'boolean' },
       harness: { type: 'string', default: 'claude' },
       model: { type: 'string' },
       concurrency: { type: 'string', default: '4' },
@@ -174,10 +176,12 @@ async function main() {
     const unknown = requestedRows.filter((id) => !allRows.some((row) => row.id === id));
     if (unknown.length) throw new Error(`unknown row id(s): ${unknown.join(', ')}`);
   }
-  const rows = allRows
-    .filter((row) => !requestedRows || requestedRows.includes(row.id))
-    .filter((row) => !values['known-failures'] || row.known_failure)
-    .filter((row) => !values['gates-only'] || row.gate === true);
+  const rows = selectRows(allRows, {
+    requestedRows,
+    knownFailures: values['known-failures'],
+    gatesOnly: values['gates-only'],
+    candidates: values.candidates,
+  });
   for (const row of allRows) {
     assertScriptPaths(row.scripts);
     for (const scripts of row.turnScripts ?? []) assertScriptPaths(scripts);

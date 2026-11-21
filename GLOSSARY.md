@@ -72,6 +72,10 @@ _Avoid_: adapter, driver, runner
 An agentic eval row promoted into scheduled and release checks after meeting the written promotion criteria.
 _Avoid_: stable row, CI row
 
+**Candidate eval row**:
+An agentic eval row that is not gated yet but runs in scheduled checks to collect promotion evidence; candidate failures are reported and do not block the job.
+_Avoid_: experimental row, canary row
+
 **Semantic target**:
 The user-visible facts and qualities a judge-scored reply should satisfy without prescribing its wording.
 _Avoid_: expected answer, answer template
