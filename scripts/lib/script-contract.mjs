@@ -4,9 +4,25 @@ const STATUS_DECLARATION = /`status` is ((?:`[^`]+`(?:,\s*|\s+or\s+)?)+)/g;
 const STATUS_SECTION = /^(?:## )?Act on `status`:?[^\n]*\n/gm;
 const STATUS_BULLET = /^- `([^`]+)`:/gm;
 const STATUS_LABEL = /`status:\s*([a-z][a-z0-9-]*)`/g;
-const STATUS_INLINE = /Act on `status`:\s*([^\n]+)/g;
+const STATUS_INLINE = /Act on `status`:[ \t]+([^\n]+)/g;
 const COMMAND_STATUS_LINE = /`node scripts\/[^`]+`\.\s*([^\n]+)/g;
 const CODE_LABEL = /`([a-z][a-z0-9-]*)`:/g;
+
+function topLevelCodeSpans(text) {
+  const values = [];
+  let depth = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    if (text[index] === '(') depth += 1;
+    else if (text[index] === ')') depth = Math.max(0, depth - 1);
+    else if (text[index] === '`') {
+      const end = text.indexOf('`', index + 1);
+      if (end === -1) break;
+      if (depth === 0) values.push(text.slice(index + 1, end));
+      index = end;
+    }
+  }
+  return values;
+}
 
 function documentedStatuses(skillMd) {
   const statuses = [];
@@ -20,8 +36,7 @@ function documentedStatuses(skillMd) {
   }
   statuses.push(...[...skillMd.matchAll(STATUS_LABEL)].map((match) => match[1]));
   for (const handling of skillMd.matchAll(STATUS_INLINE)) {
-    const first = handling[1].match(/^`([^`]+)`/);
-    if (first) statuses.push(first[1]);
+    statuses.push(...topLevelCodeSpans(handling[1]));
   }
   for (const command of skillMd.matchAll(COMMAND_STATUS_LINE)) {
     statuses.push(...[...command[1].matchAll(CODE_LABEL)].map((match) => match[1]));
