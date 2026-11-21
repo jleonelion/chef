@@ -10,6 +10,53 @@ test('no goals file means dormant', () => {
   assert.deepEqual(readGoal(dataRoot()), { status: 'dormant' });
 });
 
+test('goals list preserves member goals alongside legacy goals', () => {
+  const root = dataRoot();
+  writeFile(root, 'knowledge/wiki/household/profile.md', '---\ntype: household-profile\nmembers:\n  - name: Alex Example\n  - name: Sam Example\nupdated: 2026-01-10\n---\n');
+  writeFile(root, GOALS_PATH, JSON.stringify({
+    goal: 'Household lower sodium',
+    targets: { sodium: { max: 2300 } },
+    goals: [
+      { member: 'Alex Example', goal: 'Higher protein', targets: { protein: { min: 90 } } },
+      { member: 'Sam Example', goal: 'Lower sodium', targets: { sodium: { max: 2000 } } },
+    ],
+    set: '2026-01-10',
+  }));
+  assert.deepEqual(readGoal(root), {
+    status: 'active',
+    goal: 'Household lower sodium',
+    targets: { sodium: { max: 2300 } },
+    goals: [
+      { member: 'Alex Example', goal: 'Higher protein', targets: { protein: { min: 90 } } },
+      { member: 'Sam Example', goal: 'Lower sodium', targets: { sodium: { max: 2000 } } },
+    ],
+    set: '2026-01-10',
+  });
+});
+
+test('a legacy goal edit preserves existing member goals', () => {
+  const root = dataRoot();
+  writeFile(root, 'knowledge/wiki/household/profile.md', '---\ntype: household-profile\nmembers:\n  - name: Alex Example\nupdated: 2026-01-10\n---\n');
+  writeFile(root, GOALS_PATH, JSON.stringify({
+    goals: [{ member: 'Alex Example', goal: 'Higher protein', targets: { protein: { min: 90 } } }],
+  }));
+  assert.equal(setGoal(root, sodium, { date: '2026-01-15' }).status, 'saved');
+  assert.deepEqual(readJson(root, GOALS_PATH).goals, [
+    { member: 'Alex Example', goal: 'Higher protein', targets: { protein: { min: 90 } } },
+  ]);
+});
+
+test('unknown member is invalid and writes no goal', () => {
+  const root = dataRoot();
+  const result = setGoal(root, {
+    member: 'Unknown Example',
+    goal: 'Higher protein',
+    targets: { protein: { min: 90 } },
+  }, { date: '2026-01-15' });
+  assert.equal(result.status, 'invalid-input');
+  assert.equal(exists(root, GOALS_PATH), false);
+});
+
 test('setting a goal writes the one store in one commit and shows the training notice once', () => {
   const root = dataRoot();
   const before = commits(root);

@@ -25,6 +25,14 @@ Confirm the goal and every target with the user first. Targets are daily, per pe
 node scripts/health-goals.mjs set --goal "Lower sodium" --max sodium=2300 --min protein=90
 ```
 
+To give a target to one household member, add `--member "Alex Example"`:
+
+```sh
+node scripts/health-goals.mjs set --member "Alex Example" --goal "Higher protein" --min protein=90
+```
+
+Unknown member names are rejected. A goal without `--member` keeps the legacy behavior: it applies to the sole household member, or to the household when no roster exists.
+
 If the output has `notice`, show it once, exactly as given, with its link. Never describe Meta's terms yourself.
 
 Only take targets the user states; never propose numbers. Chef does not handle clinician-prescribed nutrient limits. If the user describes one, say so and that their clinician's guidance comes first.
