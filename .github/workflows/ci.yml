@@ -63,6 +63,8 @@ jobs:
       - name: Built output must match a fresh build
         run: |
           git status --porcelain plugins/
+          git diff --stat -- plugins/
+          git diff --no-ext-diff -- plugins/chef/skills/chef-health-goals/scripts/health-goals.mjs | head -80
           test -z "$(git status --porcelain plugins/)"
 
   bundle-smoke:
