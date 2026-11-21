@@ -176,7 +176,7 @@ export const SCRIPT_CONTRACT = Object.freeze({
   modes: Object.keys(MODES),
   flags: Object.keys(OPTIONS),
   statuses: {
-    ok: ['created', 'exists', 'adopted', 'ok', 'missing', 'invalid', 'unknown-version', 'saved', 'sent', 'failed', 'contact-question', 'contact-pending', 'contact-updated', 'confirmation-required', 'updated', 'pass', 'connected', 'declared', 'none-declared', 'never-asked', 'unreadable', 'proposal', 'update-available', 'current', 'draft', 'discarded', 'empty', 'declined', 'choose', 'deleted', 'expired-or-deleted', 'unsupported'],
+    ok: ['created', 'exists', 'adopted', 'ok', 'missing', 'invalid', 'unknown-version', 'saved', 'sent', 'failed', 'contact-question', 'contact-pending', 'contact-updated', 'confirmation-required', 'updated', 'pass', 'connected', 'declared', 'none-declared', 'never-asked', 'unreadable', 'proposal', 'update-available', 'current', 'draft', 'discarded', 'empty', 'cleared', 'declined', 'choose', 'deleted', 'expired-or-deleted', 'unsupported'],
     errors: ['refused', 'invalid-input', 'fail'],
   },
 });

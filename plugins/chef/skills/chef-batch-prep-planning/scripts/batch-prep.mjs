@@ -28565,7 +28565,7 @@ var facts_v1_default = {
     "chef-setup/setup": {
       operations: ["init", "adopt", "settings", "set", "update", "verify", "usda", "feedback", "safety", "dietary", "set-dietary", "schedule", "check-update", "report-draft", "report-preview", "report-edit", "report-remove", "report-send", "report-contact-retry", "report-discard", "report-offer-decline", "report-delete"],
       facts: {
-        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
+        status: { type: "enum", values: ["created", "exists", "adopted", "ok", "missing", "invalid", "unknown-version", "saved", "sent", "failed", "contact-question", "contact-pending", "contact-updated", "confirmation-required", "updated", "pass", "connected", "declared", "none-declared", "never-asked", "unreadable", "proposal", "update-available", "current", "draft", "discarded", "empty", "cleared", "declined", "choose", "deleted", "expired-or-deleted", "unsupported"], description: "Top-level result status of an ok run." }
       }
     },
     "chef-shopping-lists/shopping-lists": {

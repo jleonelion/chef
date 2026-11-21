@@ -40,6 +40,18 @@ test('rejects a documented status the script does not export', () => {
   assert.deepEqual(scriptContractErrors(skill, contract, ['ok']), ['documented status "refused" is not exported by the script']);
 });
 
+test('parses inline status handling forms used by real skills', () => {
+  const skills = [
+    'On `status: refused`: stop.\n',
+    'Act on `status`: `refused` (stop).\n',
+    '- **Clear trace**: run `node scripts/setup.mjs clear-trace`. `refused`: stop.\n',
+  ];
+
+  for (const skill of skills) {
+    assert.deepEqual(scriptContractErrors(skill, contract, ['ok']), ['documented status "refused" is not exported by the script']);
+  }
+});
+
 test('rejects an ok script status missing from the facts registry', () => {
   assert.deepEqual(scriptContractErrors('', contract, []), ['ok status "ok" is missing from the facts registry']);
 });
