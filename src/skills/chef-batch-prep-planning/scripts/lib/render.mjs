@@ -5,6 +5,7 @@ import { gateRecipe } from '../../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
+import { leftoversFeeding, mealKind, withAmountToCook } from '../../../../lib/planned-meal.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { muse } from '../../../../runtime/muse.mjs';
 import { writeWiki } from '../../../../lib/wiki.mjs';
@@ -35,6 +36,11 @@ function wrap(text, font, size, width) {
   return lines;
 }
 
+function cookLine(meal) {
+  const leftovers = meal.leftovers.map((entry) => `${entry.date} ${entry.slot}`).join(', ');
+  return `${meal.date} ${meal.slot}: cook ${meal.cook_servings} servings${leftovers ? `, including leftovers for ${leftovers}` : ''}`;
+}
+
 function drawRecipePage(pdf, fonts, group, dietary) {
   const page = pdf.addPage(PageSizes.Letter);
   const { width, height } = page.getSize();
@@ -47,7 +53,10 @@ function drawRecipePage(pdf, fonts, group, dietary) {
   }
   page.drawText(`Planned: ${group.meals.map((meal) => `${meal.date} ${meal.slot}`).join(', ')}`, { x: MARGIN, y, size: 10, font: fonts.regular });
   y -= 16;
-  page.drawText(`Servings: ${group.meals.map((meal) => meal.servings).join(', ')}`, { x: MARGIN, y, size: 10, font: fonts.regular });
+  for (const line of group.meals.flatMap((meal) => wrap(cookLine(meal), fonts.regular, 10, width - MARGIN * 2))) {
+    y -= 16;
+    page.drawText(line, { x: MARGIN, y, size: 10, font: fonts.regular });
+  }
   y -= 30;
   page.drawText('PREP STEPS', { x: MARGIN, y, size: 12, font: fonts.bold });
   y -= 24;
@@ -96,7 +105,12 @@ function loadPlan(root, weekStart) {
   try {
     const plan = parsePage(fs.readFileSync(file, 'utf8')).frontmatter;
     if (plan.type !== 'meal-plan' || !Array.isArray(plan.meals) || !plan.meals.length) throw new Error('meal plan has no meals');
-    return { plan: { ...plan, meals: plan.meals.map(withSlot).sort(byDateAndSlot) }, relative };
+    // Only recipe meals are prepped, each at its amount to cook; leftovers and free-text food get no page.
+    const meals = withAmountToCook(plan.meals.map(withSlot));
+    const cooking = meals.filter((meal) => mealKind(meal) === 'recipe')
+      .map((meal) => ({ ...meal, leftovers: leftoversFeeding(meals, meal) }));
+    if (!cooking.length) return { problem: { status: 'not-found', reason: `saved meal plan for ${weekStart} has no recipe meals to prep` } };
+    return { plan: { ...plan, meals: cooking.sort(byDateAndSlot) }, relative };
   } catch (error) {
     return { problem: { status: 'unreadable', reason: `saved meal plan cannot be read: ${error.message}` } };
   }

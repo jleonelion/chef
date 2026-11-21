@@ -36,7 +36,12 @@ function recipe(slug, title, steps, extra = {}) {
   };
 }
 
-function makeRoot({ riceExtra } = {}) {
+const twoMeals = [
+  { date: '2026-01-19', slug: 'tomato-soup', title: 'Tomato Soup', servings: 2 },
+  { date: '2026-01-20', slug: 'herbed-rice', title: 'Herbed Rice', servings: 2 },
+];
+
+function makeRoot({ riceExtra, meals = twoMeals } = {}) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-batch-prep-test-'));
   roots.push(root);
   const files = [
@@ -52,10 +57,7 @@ function makeRoot({ riceExtra } = {}) {
           created: '2026-01-15',
           household_profile: null,
           servings_source: 'default',
-          meals: [
-            { date: '2026-01-19', slug: 'tomato-soup', title: 'Tomato Soup', servings: 2 },
-            { date: '2026-01-20', slug: 'herbed-rice', title: 'Herbed Rice', servings: 2 },
-          ],
+          meals,
           nutrition: { status: 'incomplete', missing: [] },
           dietary: { status: 'none-declared' },
           inventory: { items_considered: 0 },
@@ -121,4 +123,34 @@ test('a v1 one-per-day plan renders each planned date as dinner', async () => {
   const { text } = await readPdf(fs.readFileSync(path.join(root, output.path)));
   assert.ok(text.includes('Planned: 2026-01-19 dinner'));
   assert.ok(text.includes('Planned: 2026-01-20 dinner'));
+});
+
+test('a leftover chain gets one page showing the amount to cook and the leftovers it feeds; free-text food gets none', async () => {
+  const root = makeRoot({
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', slug: 'tomato-soup', title: 'Tomato Soup', servings: 2 },
+      { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' }, slug: 'tomato-soup', title: 'Tomato Soup', servings: 2 },
+      { date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai', servings: 2 },
+    ],
+  });
+
+  const { output } = run(root);
+
+  assert.equal(output.status, 'rendered');
+  assert.equal(output.pages, 1);
+  const { text } = await readPdf(fs.readFileSync(path.join(root, output.path)));
+  assert.ok(text.includes('Planned: 2026-01-19 dinner'), text);
+  assert.ok(text.includes('2026-01-19 dinner: cook 4 servings, including leftovers for 2026-01-20 lunch'), text);
+  assert.ok(!text.includes('Dinner out'), text);
+});
+
+test('a plan with only free-text food has nothing to prep and writes nothing', () => {
+  const root = makeRoot({ meals: [{ date: '2026-01-19', slot: 'dinner', food: 'Dinner out', servings: 2 }] });
+
+  const { code, output } = run(root);
+
+  assert.equal(code, 2);
+  assert.equal(output.status, 'not-found');
+  assert.match(output.reason, /no recipe meals to prep/);
+  assert.equal(fs.existsSync(path.join(root, 'data/batch-prep-plans')), false);
 });

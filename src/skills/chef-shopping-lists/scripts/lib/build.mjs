@@ -6,6 +6,7 @@ import { gateRecipe } from '../../../../lib/dietary-gate.mjs';
 import { dietaryNotes, readRuleset } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
+import { mealKind, withAmountToCook } from '../../../../lib/planned-meal.mjs';
 import { ingredientLines, listRecipes, today as localToday } from '../../../../lib/recipes.mjs';
 import { WIKI_DIR, WIKI_FOLDERS } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
@@ -37,12 +38,14 @@ function readPlan(root, weekStart) {
   const file = path.join(root, rel);
   if (!fs.existsSync(file)) return null;
   const meals = parsePage(fs.readFileSync(file, 'utf8')).frontmatter.meals ?? [];
-  return { path: rel, meals: meals.map(withSlot).sort(byDateAndSlot) };
+  // Only recipe meals are shopped for, at their amount to cook; leftovers and free-text food buy nothing.
+  const cooking = withAmountToCook(meals.map(withSlot)).filter((meal) => mealKind(meal) === 'recipe');
+  return { path: rel, meals: cooking.sort(byDateAndSlot) };
 }
 
 const multiplier = (meal, recipe) => {
   const base = Number(recipe.frontmatter.servings);
-  return Number.isFinite(base) && base > 0 && Number(meal.servings) > 0 ? meal.servings / base : 1;
+  return Number.isFinite(base) && base > 0 && Number(meal.cook_servings) > 0 ? meal.cook_servings / base : 1;
 };
 
 function listText(weekStart, { items, unquantified }, dietary) {
@@ -91,7 +94,7 @@ export function buildList(root, { weekStart, upcoming = false, today = localToda
     data_root: root,
     week_start: week,
     plan: plan.path,
-    meals: plan.meals.map(({ date, slot, slug, servings }) => ({ date, slot, slug, servings })),
+    meals: plan.meals.map(({ date, slot, slug, servings, cook_servings }) => ({ date, slot, slug, servings, cook_servings })),
     ...list,
     covered: displayItems(covered, units),
     excluded,
