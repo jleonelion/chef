@@ -59,5 +59,6 @@ export function checkHealth(root, window) {
   const rollup = rollupCheck(root, inventory);
   const problems = [...auditProblems(root, readText(root, STORE.inventory)), ...ledgerProblems(root, ledger), ...rollup.problems];
   const redrawn = rollup.stale_page && redrawPage(root, inventory);
-  return { status: problems.length ? 'problems' : 'healthy', problems, ...(redrawn && { regenerated: true }), stats: stats(inventory, ledger, window) };
+  const stale = rollup.stale_page && !redrawn && { stale_page: true };
+  return { status: problems.length ? 'problems' : 'healthy', problems, ...(redrawn && { regenerated: true }), ...stale, stats: stats(inventory, ledger, window) };
 }
