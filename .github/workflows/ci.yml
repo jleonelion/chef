@@ -54,12 +54,6 @@ jobs:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
       - run: bun scripts/build.mjs
-      - name: Capture build drift
-        run: git diff --binary -- plugins/ > build-drift.patch
-      - uses: actions/upload-artifact@v4
-        with:
-          name: build-drift
-          path: build-drift.patch
       - name: Built output must match a fresh build
         run: |
           git status --porcelain plugins/
