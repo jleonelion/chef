@@ -59,7 +59,7 @@ test('household recipient reply assertions accept equivalent wording and reject 
   const row = rows.find(({ id }) => id === 'chef-setup-household-recipients');
   const assertions = row.responses[0];
   const rewordedTranscript =
-    'I’ll use these people as the default shopping-list recipients. A recurring shopping task needs explicit approval, and this does not prevent you from asking Chef to email anyone else.';
+    'I’ll use these people as the default shopping-list recipients. An approved recurring shopping task will be set up, and this does not prevent you from asking Chef to email anyone else.';
   const wrongTranscript =
     'The household addresses are the mandatory default recipients for shopping lists. The recurring task does not need approval, and anyone else is forbidden.';
   const maxInvariantLength = 9;
