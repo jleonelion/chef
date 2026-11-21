@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { readSettings } from '../../../../lib/settings.mjs';
+import { writeWiki } from '../../../../lib/wiki.mjs';
 import { expiringItems } from './expiration.mjs';
 import { loadLedger } from './ledger.mjs';
 import { renderRollup, ROLLUP_PATH } from './rollup.mjs';
@@ -40,6 +41,12 @@ function stats(inventory, ledger, window) {
   return { items: items.length, empty: items.filter((i) => i.amount === 0).length, expired: expired.length, expiring_soon: soon.length, receipts: Object.keys(ledger.receipts).length };
 }
 
+// A stale page is the one write health makes: the page only, never the store or audit trail.
+function redrawPage(root, inventory) {
+  const written = writeWiki(root, { pages: [renderRollup(inventory, readSettings(root).settings.units)], message: 'chef-food-inventory: regenerate stale rollup page' });
+  return written.status === 'written';
+}
+
 export function checkHealth(root, window) {
   let inventory;
   let ledger;
@@ -51,6 +58,6 @@ export function checkHealth(root, window) {
   }
   const rollup = rollupCheck(root, inventory);
   const problems = [...auditProblems(root, readText(root, STORE.inventory)), ...ledgerProblems(root, ledger), ...rollup.problems];
-  const stale = rollup.stale_page && { stale_page: true };
-  return { status: problems.length ? 'problems' : 'healthy', problems, ...stale, stats: stats(inventory, ledger, window) };
+  const redrawn = rollup.stale_page && redrawPage(root, inventory);
+  return { status: problems.length ? 'problems' : 'healthy', problems, ...(redrawn && { regenerated: true }), stats: stats(inventory, ledger, window) };
 }

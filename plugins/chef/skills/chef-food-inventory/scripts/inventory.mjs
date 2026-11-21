@@ -8574,6 +8574,10 @@ function stats(inventory, ledger, window) {
   const { expired, soon } = expiringItems(inventory, window);
   return { items: items.length, empty: items.filter((i) => i.amount === 0).length, expired: expired.length, expiring_soon: soon.length, receipts: Object.keys(ledger.receipts).length };
 }
+function redrawPage(root, inventory) {
+  const written = writeWiki(root, { pages: [renderRollup(inventory, readSettings(root).settings.units)], message: "chef-food-inventory: regenerate stale rollup page" });
+  return written.status === "written";
+}
 function checkHealth(root, window) {
   let inventory;
   let ledger;
@@ -8585,8 +8589,8 @@ function checkHealth(root, window) {
   }
   const rollup = rollupCheck(root, inventory);
   const problems = [...auditProblems(root, readText(root, STORE.inventory)), ...ledgerProblems(root, ledger), ...rollup.problems];
-  const stale = rollup.stale_page && { stale_page: true };
-  return { status: problems.length ? "problems" : "healthy", problems, ...stale, stats: stats(inventory, ledger, window) };
+  const redrawn = rollup.stale_page && redrawPage(root, inventory);
+  return { status: problems.length ? "problems" : "healthy", problems, ...redrawn && { regenerated: true }, stats: stats(inventory, ledger, window) };
 }
 
 // src/skills/chef-food-inventory/scripts/lib/placement.mjs

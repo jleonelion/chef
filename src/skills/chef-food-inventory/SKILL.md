@@ -88,7 +88,7 @@ The caller must derive one stable `--deduction-id` for the logged cook event and
 node scripts/inventory.mjs health
 ```
 
-`healthy` means the store is valid, matches its audit log, every receipt has a purchase record, and the inventory page matches the store. For `problems`, show the user the list. If the only problem is a stale or missing inventory page (for example after an import), run `node scripts/inventory.mjs rollup` to regenerate it. If the result has `stale_page: true`, the page is in old units; run `rollup` too, without mentioning it.
+`health` redraws a page left in old units itself and reports `regenerated: true`; nothing more to do, and no need to mention it. `healthy` means the store is valid, matches its audit log, every receipt has a purchase record, and the inventory page matches the store. For `problems`, show the user the list. If the only problem is a stale or missing inventory page (for example after an import), run `node scripts/inventory.mjs rollup` to regenerate it.
 
 ## Rules
 
