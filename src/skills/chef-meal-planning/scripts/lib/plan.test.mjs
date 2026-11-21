@@ -90,7 +90,7 @@ test('a breakfast, lunch and dinner week saves every planned meal with its slot,
     { date: '2026-01-20', slot: 'dinner', slug: 'lentil-salad', title: 'Lentil Salad', servings: 1 },
     { date: '2026-01-21', slot: 'dinner', slug: 'bean-chili', title: 'Bean Chili', servings: 1 },
   ]);
-  assert.deepEqual(result.meals, saved);
+  assert.deepEqual(result.meals, saved.map((meal) => ({ ...meal, cook_servings: meal.servings })));
 });
 
 const invalidInputs = [
@@ -100,7 +100,26 @@ const invalidInputs = [
   ['a day past the end of the month', [{ date: '2026-02-30', slot: 'dinner', recipe: 'bean-chili' }], 'meals[0].date: must be a real YYYY-MM-DD date'],
   ['a day no month has', [{ date: '2026-01-32', slot: 'dinner', recipe: 'bean-chili' }], 'meals[0].date: must be a real YYYY-MM-DD date'],
   ['a date outside the week', [{ date: '2026-01-26', slot: 'dinner', recipe: 'bean-chili' }], 'meals[0].date: must fall in the week starting 2026-01-19'],
-  ['a missing recipe', [{ date: '2026-01-19', slot: 'dinner' }], 'meals[0].recipe: must be a recipe slug'],
+  ['no recipe, food or leftovers', [{ date: '2026-01-19', slot: 'dinner' }], 'meals[0]: must name exactly one of recipe, food or leftovers_of'],
+  ['both a recipe and food', [{ date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili', food: 'Pizza' }], 'meals[0]: must name exactly one of recipe, food or leftovers_of'],
+  ['a recipe that is not a slug', [{ date: '2026-01-19', slot: 'dinner', recipe: 3 }], 'meals[0].recipe: must be a recipe slug'],
+  ['empty food', [{ date: '2026-01-19', slot: 'dinner', food: '  ' }], 'meals[0].food: must be non-empty text'],
+  ['leftovers_of that is not a meal', [{ date: '2026-01-19', slot: 'dinner', leftovers_of: { date: '2026-01-19', slot: 'brunch' } }], 'meals[0].leftovers_of: must be {date, slot} with a real YYYY-MM-DD date and a known slot'],
+  ['leftovers of a meal not in the plan', [{ date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' } }], 'meals[0].leftovers_of: no planned meal at 2026-01-19 dinner in this plan'],
+  ['leftovers of the same meal', [{ date: '2026-01-19', slot: 'dinner', leftovers_of: { date: '2026-01-19', slot: 'dinner' } }], 'meals[0].leftovers_of: 2026-01-19 dinner must be an earlier planned meal'],
+  ['leftovers of a later meal', [
+    { date: '2026-01-19', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
+    { date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili' },
+  ], 'meals[0].leftovers_of: 2026-01-19 dinner must be an earlier planned meal'],
+  ['leftovers of free-text food', [
+    { date: '2026-01-19', slot: 'dinner', food: 'Dinner out' },
+    { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
+  ], 'meals[1].leftovers_of: 2026-01-19 dinner is free-text food, not a saved recipe'],
+  ['leftovers of leftovers', [
+    { date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili' },
+    { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
+    { date: '2026-01-20', slot: 'dinner', leftovers_of: { date: '2026-01-20', slot: 'lunch' } },
+  ], 'meals[2].leftovers_of: 2026-01-20 lunch is itself leftovers; point to the meal that cooked the dish'],
   ['non-positive servings', [{ date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili', servings: 0 }], 'meals[0].servings: must be a number greater than zero'],
   ['a note that is not text', [{ date: '2026-01-19', slot: 'dinner', recipe: 'bean-chili', note: 3 }], 'meals[0].note: must be text'],
   ['two meals in one date and slot', [
@@ -238,8 +257,8 @@ test('unknown and retired recipes are refused per planned meal', () => {
 });
 
 const perServing = (sodium) => ({ calories: 400, protein: 20, fat: 10, saturated_fat: 2, carbs: 50, fiber: 5, sugar: 5, sodium, cholesterol: 0 });
-const measured = (slug, sodium, { ingredients, frontmatter } = {}) =>
-  recipe(slug, { ingredients, frontmatter: { nutrition_status: 'complete', nutrition_per_serving: perServing(sodium), ...frontmatter } });
+const measured = (slug, sodium, { title, ingredients, frontmatter } = {}) =>
+  recipe(slug, { title, ingredients, frontmatter: { nutrition_status: 'complete', nutrition_per_serving: perServing(sodium), ...frontmatter } });
 const goalsFile = { path: 'data/health-goals/goals.json', content: '{"goal":"Lower sodium","targets":{"sodium":{"max":2300}},"set":"2026-01-10","updated":"2026-01-10"}\n' };
 
 test('with no declared goal, planning has no health output', () => {
@@ -279,4 +298,89 @@ test('nutrition and health suggestions are per planned meal, so one recipe at tw
     { date: '2026-01-19', slot: 'lunch', slug: 'soup', per_serving: 2500 },
     { date: '2026-01-19', slot: 'dinner', slug: 'soup', per_serving: 2500 },
   ]);
+});
+
+// The leftover chain and a dinner out: Monday dinner eats 2 and cooks 2 more for Tuesday lunch.
+const chainMeals = [
+  { date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai', servings: 2 },
+  { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' }, servings: 2 },
+  { date: '2026-01-19', slot: 'dinner', recipe: 'chili', servings: 2 },
+];
+
+test('free-text food and leftovers save in their own shapes; the cooking meal reports its amount to cook', () => {
+  const root = makeRoot([measured('chili', 500, { title: 'Chili' })]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: chainMeals });
+
+  assert.equal(result.status, 'saved');
+  const page = parsePage(fs.readFileSync(path.join(root, result.path), 'utf8'));
+  assert.deepEqual(page.frontmatter.meals, [
+    { date: '2026-01-19', slot: 'dinner', slug: 'chili', title: 'Chili', servings: 2 },
+    { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' }, slug: 'chili', title: 'Chili', servings: 2 },
+    { date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai', servings: 2 },
+  ]);
+  assert.deepEqual(result.meals.map((meal) => meal.cook_servings), [4, undefined, undefined]);
+  assert.match(page.body, /\| 2026-01-19 \| dinner \| Chili \| 2 \(cook 4\) \|/);
+  assert.match(page.body, /\| 2026-01-20 \| lunch \| Leftovers: Chili \(from 2026-01-19 dinner\) \| 2 \|/);
+  assert.match(page.body, /\| 2026-01-20 \| dinner \| Dinner out: Thai \| 2 \|/);
+});
+
+test('nutrition counts leftovers at servings eaten and lists free-text food as unmeasured without going incomplete', () => {
+  const root = makeRoot([measured('chili', 500, { title: 'Chili' }), goalsFile]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: chainMeals });
+
+  assert.equal(result.nutrition.status, 'complete');
+  assert.deepEqual(result.nutrition.meals.map(({ date, slot, slug, servings }) => [date, slot, slug, servings]), [
+    ['2026-01-19', 'dinner', 'chili', 2],
+    ['2026-01-20', 'lunch', 'chili', 2],
+  ]);
+  assert.equal(result.nutrition.totals.calories, 1600);
+  assert.deepEqual(result.nutrition.unmeasured, [{ date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai' }]);
+  assert.equal(result.health_suggestions.status, 'advisory');
+  assert.match(result.health_suggestions.basis, /free-text meals are not counted/);
+});
+
+test('a refused recipe with leftovers is refused once, at the cooking meal', () => {
+  const root = makeRoot([
+    recipe('dairy', { frontmatter: { dietary_flags: ['contains-dairy'] } }),
+    ruleset([{ name: 'Alex Example', hard_constraints: ['dairy'] }]),
+  ]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'dairy' },
+      { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
+      { date: '2026-01-20', slot: 'dinner', food: 'Cheese pizza out' },
+    ],
+  });
+
+  assert.equal(result.status, 'refused');
+  assert.deepEqual(result.refused_choices.map(({ date, slot, slug }) => [date, slot, slug]), [['2026-01-19', 'dinner', 'dairy']]);
+});
+
+test('the calendar payload titles free-text food by its text and leftovers by their recipe', () => {
+  const root = makeRoot([
+    measured('chili', 500, { title: 'Chili' }),
+    { path: 'settings.json', content: '{"settings_version":1,"calendar":"Household meals"}\n' },
+  ]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: chainMeals });
+
+  assert.deepEqual(result.calendar.events, [
+    { date: '2026-01-19', slot: 'dinner', title: 'Chili', recipe_slug: 'chili' },
+    { date: '2026-01-20', slot: 'lunch', title: 'Leftovers: Chili', recipe_slug: 'chili' },
+    { date: '2026-01-20', slot: 'dinner', title: 'Dinner out: Thai' },
+  ]);
+});
+
+test('a week of only free-text food saves, and health suggestions say there is nothing to compare', () => {
+  const root = makeRoot([goalsFile]);
+
+  const result = planWeek(root, { weekStart: '2026-01-19', meals: [{ date: '2026-01-19', slot: 'dinner', food: 'Dinner out' }] });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.health_suggestions.status, 'unavailable');
+  assert.match(result.health_suggestions.reason, /no planned recipe meals/);
 });

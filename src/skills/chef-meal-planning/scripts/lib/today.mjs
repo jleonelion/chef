@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parsePage } from '../../../../lib/frontmatter.mjs';
 import { byDateAndSlot, withSlot } from '../../../../lib/meal-slots.mjs';
+import { withAmountToCook } from '../../../../lib/planned-meal.mjs';
 import { WIKI_DIR, WIKI_FOLDERS } from '../../../../lib/wiki.mjs';
 
 const PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS['meal-plan']}`;
@@ -31,7 +32,7 @@ export function todayPlan(root, date) {
     data_root: root,
     date,
     meal_plan: plan.path,
-    meals: plan.frontmatter.meals.filter((meal) => meal.date === date).map(withSlot).sort(byDateAndSlot),
+    meals: withAmountToCook(plan.frontmatter.meals.map(withSlot)).filter((meal) => meal.date === date).sort(byDateAndSlot),
     ...(typeof footer === 'string' && footer ? { dietary: { footer } } : {}),
   };
 }
