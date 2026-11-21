@@ -8683,9 +8683,9 @@ function recipeSlugs(ordered) {
 function nutritionInput(meal, recipe) {
   return { ...meal, nutrition_status: recipe.frontmatter.nutrition_status, nutrition_per_serving: recipe.frontmatter.nutrition_per_serving };
 }
-function nutritionRollup(mealRecipes, { includes = () => true, servings = (meal) => meal.servings } = {}) {
-  const eaten = mealRecipes.flatMap(({ meal, recipe }) => recipe && includes(meal) ? [nutritionInput({ ...meal, servings: servings(meal) }, recipe)] : []);
-  const unmeasured = mealRecipes.filter(({ meal, recipe }) => !recipe && includes(meal) && mealKind(meal) === "food").map(({ meal: { date, slot, food } }) => ({ date, slot, food }));
+function nutritionRollup(mealRecipes, { servings = (meal) => meal.servings } = {}) {
+  const eaten = mealRecipes.flatMap(({ meal, recipe }) => recipe ? [nutritionInput({ ...meal, servings: servings(meal) }, recipe)] : []);
+  const unmeasured = mealRecipes.filter(({ meal, recipe }) => !recipe && mealKind(meal) === "food").map(({ meal: { date, slot, food } }) => ({ date, slot, food }));
   return { ...rollupNutrition(eaten), ...unmeasured.length && { unmeasured } };
 }
 function memberRollup(name, mealRecipes) {

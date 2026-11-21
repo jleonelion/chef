@@ -44,12 +44,12 @@ function nutritionInput(meal, recipe) {
 
 // Counts what is eaten: recipe and leftovers meals at their servings. Free-text food is not
 // estimated; it is listed as unmeasured and does not make the rollup incomplete.
-function nutritionRollup(mealRecipes, { includes = () => true, servings = (meal) => meal.servings } = {}) {
-  const eaten = mealRecipes.flatMap(({ meal, recipe }) => recipe && includes(meal)
+function nutritionRollup(mealRecipes, { servings = (meal) => meal.servings } = {}) {
+  const eaten = mealRecipes.flatMap(({ meal, recipe }) => recipe
     ? [nutritionInput({ ...meal, servings: servings(meal) }, recipe)]
     : []);
   const unmeasured = mealRecipes
-    .filter(({ meal, recipe }) => !recipe && includes(meal) && mealKind(meal) === 'food')
+    .filter(({ meal, recipe }) => !recipe && mealKind(meal) === 'food')
     .map(({ meal: { date, slot, food } }) => ({ date, slot, food }));
   return { ...rollupNutrition(eaten), ...(unmeasured.length && { unmeasured }) };
 }
