@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { constraintReadings, dietaryNotes, normalizeConstraints, readRuleset, rulesetFromPage, RULESET_PATH, RULESET_SLUG, RULESET_TYPE } from '../../../../lib/dietary-ruleset.mjs';
+import { readHouseholdProfile } from '../../../../lib/household-profile.mjs';
 import { noticeToRecord } from '../../../../lib/notices.mjs';
 import { TRAINING_NOTICE } from '../../../../lib/safety-text.mjs';
 import { writeRefusal, writeWiki } from '../../../../lib/wiki.mjs';
@@ -58,6 +59,10 @@ function inputProblems({ none, member, hard, avoid, addHard, removeHard, addAvoi
 export function writeRuleset(root, change, { date, rewrite = false }) {
   const problems = inputProblems(change);
   if (problems.length) return { status: 'invalid-input', data_root: root, problems };
+  const roster = readHouseholdProfile(root).members;
+  if (change.member && roster.length && !roster.some(({ name }) => name === change.member.trim())) {
+    return { status: 'invalid-input', data_root: root, problems: [`--member: unknown household member ${JSON.stringify(change.member.trim())}`] };
+  }
   const refusal = writeRefusal(root);
   if (refusal) return refusal;
   const current = readRuleset(root);

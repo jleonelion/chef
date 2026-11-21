@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 var __commonJS = (cb, mod) => () => (mod || cb((mod = { exports: {} }).exports, mod), mod.exports);
 var __require = /* @__PURE__ */ createRequire(import.meta.url);
 
-// node_modules/yaml/dist/nodes/identity.js
+// ../../node_modules/yaml/dist/nodes/identity.js
 var require_identity = __commonJS((exports) => {
   var ALIAS = Symbol.for("yaml.alias");
   var DOC = Symbol.for("yaml.document");
@@ -57,7 +57,7 @@ var require_identity = __commonJS((exports) => {
   exports.isSeq = isSeq;
 });
 
-// node_modules/yaml/dist/visit.js
+// ../../node_modules/yaml/dist/visit.js
 var require_visit = __commonJS((exports) => {
   var identity = require_identity();
   var BREAK = Symbol("break visit");
@@ -75,17 +75,17 @@ var require_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  function visit_(key, node, visitor, path9) {
-    const ctrl = callVisitor(key, node, visitor, path9);
+  function visit_(key, node, visitor, path10) {
+    const ctrl = callVisitor(key, node, visitor, path10);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path9, ctrl);
-      return visit_(key, ctrl, visitor, path9);
+      replaceNode(key, path10, ctrl);
+      return visit_(key, ctrl, visitor, path10);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path9 = Object.freeze(path9.concat(node));
+        path10 = Object.freeze(path10.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = visit_(i, node.items[i], visitor, path9);
+          const ci = visit_(i, node.items[i], visitor, path10);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -96,13 +96,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path9 = Object.freeze(path9.concat(node));
-        const ck = visit_("key", node.key, visitor, path9);
+        path10 = Object.freeze(path10.concat(node));
+        const ck = visit_("key", node.key, visitor, path10);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = visit_("value", node.value, visitor, path9);
+        const cv = visit_("value", node.value, visitor, path10);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -123,17 +123,17 @@ var require_visit = __commonJS((exports) => {
   visitAsync.BREAK = BREAK;
   visitAsync.SKIP = SKIP;
   visitAsync.REMOVE = REMOVE;
-  async function visitAsync_(key, node, visitor, path9) {
-    const ctrl = await callVisitor(key, node, visitor, path9);
+  async function visitAsync_(key, node, visitor, path10) {
+    const ctrl = await callVisitor(key, node, visitor, path10);
     if (identity.isNode(ctrl) || identity.isPair(ctrl)) {
-      replaceNode(key, path9, ctrl);
-      return visitAsync_(key, ctrl, visitor, path9);
+      replaceNode(key, path10, ctrl);
+      return visitAsync_(key, ctrl, visitor, path10);
     }
     if (typeof ctrl !== "symbol") {
       if (identity.isCollection(node)) {
-        path9 = Object.freeze(path9.concat(node));
+        path10 = Object.freeze(path10.concat(node));
         for (let i = 0;i < node.items.length; ++i) {
-          const ci = await visitAsync_(i, node.items[i], visitor, path9);
+          const ci = await visitAsync_(i, node.items[i], visitor, path10);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -144,13 +144,13 @@ var require_visit = __commonJS((exports) => {
           }
         }
       } else if (identity.isPair(node)) {
-        path9 = Object.freeze(path9.concat(node));
-        const ck = await visitAsync_("key", node.key, visitor, path9);
+        path10 = Object.freeze(path10.concat(node));
+        const ck = await visitAsync_("key", node.key, visitor, path10);
         if (ck === BREAK)
           return BREAK;
         else if (ck === REMOVE)
           node.key = null;
-        const cv = await visitAsync_("value", node.value, visitor, path9);
+        const cv = await visitAsync_("value", node.value, visitor, path10);
         if (cv === BREAK)
           return BREAK;
         else if (cv === REMOVE)
@@ -177,23 +177,23 @@ var require_visit = __commonJS((exports) => {
     }
     return visitor;
   }
-  function callVisitor(key, node, visitor, path9) {
+  function callVisitor(key, node, visitor, path10) {
     if (typeof visitor === "function")
-      return visitor(key, node, path9);
+      return visitor(key, node, path10);
     if (identity.isMap(node))
-      return visitor.Map?.(key, node, path9);
+      return visitor.Map?.(key, node, path10);
     if (identity.isSeq(node))
-      return visitor.Seq?.(key, node, path9);
+      return visitor.Seq?.(key, node, path10);
     if (identity.isPair(node))
-      return visitor.Pair?.(key, node, path9);
+      return visitor.Pair?.(key, node, path10);
     if (identity.isScalar(node))
-      return visitor.Scalar?.(key, node, path9);
+      return visitor.Scalar?.(key, node, path10);
     if (identity.isAlias(node))
-      return visitor.Alias?.(key, node, path9);
+      return visitor.Alias?.(key, node, path10);
     return;
   }
-  function replaceNode(key, path9, node) {
-    const parent = path9[path9.length - 1];
+  function replaceNode(key, path10, node) {
+    const parent = path10[path10.length - 1];
     if (identity.isCollection(parent)) {
       parent.items[key] = node;
     } else if (identity.isPair(parent)) {
@@ -212,7 +212,7 @@ var require_visit = __commonJS((exports) => {
   exports.visitAsync = visitAsync;
 });
 
-// node_modules/yaml/dist/doc/directives.js
+// ../../node_modules/yaml/dist/doc/directives.js
 var require_directives = __commonJS((exports) => {
   var identity = require_identity();
   var visit = require_visit();
@@ -364,7 +364,7 @@ var require_directives = __commonJS((exports) => {
   exports.Directives = Directives;
 });
 
-// node_modules/yaml/dist/doc/anchors.js
+// ../../node_modules/yaml/dist/doc/anchors.js
 var require_anchors = __commonJS((exports) => {
   var identity = require_identity();
   var visit = require_visit();
@@ -426,7 +426,7 @@ var require_anchors = __commonJS((exports) => {
   exports.findNewAnchor = findNewAnchor;
 });
 
-// node_modules/yaml/dist/doc/applyReviver.js
+// ../../node_modules/yaml/dist/doc/applyReviver.js
 var require_applyReviver = __commonJS((exports) => {
   function applyReviver(reviver, obj, key, val) {
     if (val && typeof val === "object") {
@@ -473,7 +473,7 @@ var require_applyReviver = __commonJS((exports) => {
   exports.applyReviver = applyReviver;
 });
 
-// node_modules/yaml/dist/nodes/toJS.js
+// ../../node_modules/yaml/dist/nodes/toJS.js
 var require_toJS = __commonJS((exports) => {
   var identity = require_identity();
   function toJS(value, arg, ctx) {
@@ -500,7 +500,7 @@ var require_toJS = __commonJS((exports) => {
   exports.toJS = toJS;
 });
 
-// node_modules/yaml/dist/nodes/Node.js
+// ../../node_modules/yaml/dist/nodes/Node.js
 var require_Node = __commonJS((exports) => {
   var applyReviver = require_applyReviver();
   var identity = require_identity();
@@ -537,7 +537,7 @@ var require_Node = __commonJS((exports) => {
   exports.NodeBase = NodeBase;
 });
 
-// node_modules/yaml/dist/nodes/Alias.js
+// ../../node_modules/yaml/dist/nodes/Alias.js
 var require_Alias = __commonJS((exports) => {
   var anchors = require_anchors();
   var visit = require_visit();
@@ -649,7 +649,7 @@ var require_Alias = __commonJS((exports) => {
   exports.Alias = Alias;
 });
 
-// node_modules/yaml/dist/nodes/Scalar.js
+// ../../node_modules/yaml/dist/nodes/Scalar.js
 var require_Scalar = __commonJS((exports) => {
   var identity = require_identity();
   var Node = require_Node();
@@ -677,7 +677,7 @@ var require_Scalar = __commonJS((exports) => {
   exports.isScalarValue = isScalarValue;
 });
 
-// node_modules/yaml/dist/doc/createNode.js
+// ../../node_modules/yaml/dist/doc/createNode.js
 var require_createNode = __commonJS((exports) => {
   var Alias = require_Alias();
   var identity = require_identity();
@@ -749,15 +749,15 @@ var require_createNode = __commonJS((exports) => {
   exports.createNode = createNode;
 });
 
-// node_modules/yaml/dist/nodes/Collection.js
+// ../../node_modules/yaml/dist/nodes/Collection.js
 var require_Collection = __commonJS((exports) => {
   var createNode = require_createNode();
   var identity = require_identity();
   var Node = require_Node();
-  function collectionFromPath(schema, path9, value) {
+  function collectionFromPath(schema, path10, value) {
     let v = value;
-    for (let i = path9.length - 1;i >= 0; --i) {
-      const k = path9[i];
+    for (let i = path10.length - 1;i >= 0; --i) {
+      const k = path10[i];
       if (typeof k === "number" && Number.isInteger(k) && k >= 0) {
         const a = [];
         a[k] = v;
@@ -776,7 +776,7 @@ var require_Collection = __commonJS((exports) => {
       sourceObjects: new Map
     });
   }
-  var isEmptyPath = (path9) => path9 == null || typeof path9 === "object" && !!path9[Symbol.iterator]().next().done;
+  var isEmptyPath = (path10) => path10 == null || typeof path10 === "object" && !!path10[Symbol.iterator]().next().done;
 
   class Collection extends Node.NodeBase {
     constructor(type, schema) {
@@ -797,11 +797,11 @@ var require_Collection = __commonJS((exports) => {
         copy.range = this.range.slice();
       return copy;
     }
-    addIn(path9, value) {
-      if (isEmptyPath(path9))
+    addIn(path10, value) {
+      if (isEmptyPath(path10))
         this.add(value);
       else {
-        const [key, ...rest] = path9;
+        const [key, ...rest] = path10;
         const node = this.get(key, true);
         if (identity.isCollection(node))
           node.addIn(rest, value);
@@ -811,8 +811,8 @@ var require_Collection = __commonJS((exports) => {
           throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
       }
     }
-    deleteIn(path9) {
-      const [key, ...rest] = path9;
+    deleteIn(path10) {
+      const [key, ...rest] = path10;
       if (rest.length === 0)
         return this.delete(key);
       const node = this.get(key, true);
@@ -821,8 +821,8 @@ var require_Collection = __commonJS((exports) => {
       else
         throw new Error(`Expected YAML collection at ${key}. Remaining path: ${rest}`);
     }
-    getIn(path9, keepScalar) {
-      const [key, ...rest] = path9;
+    getIn(path10, keepScalar) {
+      const [key, ...rest] = path10;
       const node = this.get(key, true);
       if (rest.length === 0)
         return !keepScalar && identity.isScalar(node) ? node.value : node;
@@ -837,15 +837,15 @@ var require_Collection = __commonJS((exports) => {
         return n == null || allowScalar && identity.isScalar(n) && n.value == null && !n.commentBefore && !n.comment && !n.tag;
       });
     }
-    hasIn(path9) {
-      const [key, ...rest] = path9;
+    hasIn(path10) {
+      const [key, ...rest] = path10;
       if (rest.length === 0)
         return this.has(key);
       const node = this.get(key, true);
       return identity.isCollection(node) ? node.hasIn(rest) : false;
     }
-    setIn(path9, value) {
-      const [key, ...rest] = path9;
+    setIn(path10, value) {
+      const [key, ...rest] = path10;
       if (rest.length === 0) {
         this.set(key, value);
       } else {
@@ -864,7 +864,7 @@ var require_Collection = __commonJS((exports) => {
   exports.isEmptyPath = isEmptyPath;
 });
 
-// node_modules/yaml/dist/stringify/stringifyComment.js
+// ../../node_modules/yaml/dist/stringify/stringifyComment.js
 var require_stringifyComment = __commonJS((exports) => {
   var stringifyComment = (str) => str.replace(/^(?!$)(?: $)?/gm, "#");
   function indentComment(comment, indent) {
@@ -881,7 +881,7 @@ var require_stringifyComment = __commonJS((exports) => {
   exports.stringifyComment = stringifyComment;
 });
 
-// node_modules/yaml/dist/stringify/foldFlowLines.js
+// ../../node_modules/yaml/dist/stringify/foldFlowLines.js
 var require_foldFlowLines = __commonJS((exports) => {
   var FOLD_FLOW = "flow";
   var FOLD_BLOCK = "block";
@@ -1018,7 +1018,7 @@ ${indent}${text.slice(fold + 1, end2)}`;
   exports.foldFlowLines = foldFlowLines;
 });
 
-// node_modules/yaml/dist/stringify/stringifyString.js
+// ../../node_modules/yaml/dist/stringify/stringifyString.js
 var require_stringifyString = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var foldFlowLines = require_foldFlowLines();
@@ -1316,7 +1316,7 @@ ${indent}`);
   exports.stringifyString = stringifyString;
 });
 
-// node_modules/yaml/dist/stringify/stringify.js
+// ../../node_modules/yaml/dist/stringify/stringify.js
 var require_stringify = __commonJS((exports) => {
   var anchors = require_anchors();
   var identity = require_identity();
@@ -1437,7 +1437,7 @@ ${ctx.indent}${str}`;
   exports.stringify = stringify;
 });
 
-// node_modules/yaml/dist/stringify/stringifyPair.js
+// ../../node_modules/yaml/dist/stringify/stringifyPair.js
 var require_stringifyPair = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -1573,7 +1573,7 @@ ${ctx.indent}`;
   exports.stringifyPair = stringifyPair;
 });
 
-// node_modules/yaml/dist/log.js
+// ../../node_modules/yaml/dist/log.js
 var require_log = __commonJS((exports) => {
   var node_process = __require("process");
   function debug(logLevel, ...messages) {
@@ -1592,7 +1592,7 @@ var require_log = __commonJS((exports) => {
   exports.warn = warn2;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/merge.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/merge.js
 var require_merge = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -1649,7 +1649,7 @@ var require_merge = __commonJS((exports) => {
   exports.merge = merge;
 });
 
-// node_modules/yaml/dist/nodes/addPairToJSMap.js
+// ../../node_modules/yaml/dist/nodes/addPairToJSMap.js
 var require_addPairToJSMap = __commonJS((exports) => {
   var log = require_log();
   var merge = require_merge();
@@ -1710,7 +1710,7 @@ var require_addPairToJSMap = __commonJS((exports) => {
   exports.addPairToJSMap = addPairToJSMap;
 });
 
-// node_modules/yaml/dist/nodes/Pair.js
+// ../../node_modules/yaml/dist/nodes/Pair.js
 var require_Pair = __commonJS((exports) => {
   var createNode = require_createNode();
   var stringifyPair = require_stringifyPair();
@@ -1748,7 +1748,7 @@ var require_Pair = __commonJS((exports) => {
   exports.createPair = createPair;
 });
 
-// node_modules/yaml/dist/stringify/stringifyCollection.js
+// ../../node_modules/yaml/dist/stringify/stringifyCollection.js
 var require_stringifyCollection = __commonJS((exports) => {
   var identity = require_identity();
   var stringify = require_stringify();
@@ -1900,7 +1900,7 @@ ${indent}${end}`;
   exports.stringifyCollection = stringifyCollection;
 });
 
-// node_modules/yaml/dist/nodes/YAMLMap.js
+// ../../node_modules/yaml/dist/nodes/YAMLMap.js
 var require_YAMLMap = __commonJS((exports) => {
   var stringifyCollection = require_stringifyCollection();
   var addPairToJSMap = require_addPairToJSMap();
@@ -2027,7 +2027,7 @@ var require_YAMLMap = __commonJS((exports) => {
   exports.findPair = findPair;
 });
 
-// node_modules/yaml/dist/schema/common/map.js
+// ../../node_modules/yaml/dist/schema/common/map.js
 var require_map = __commonJS((exports) => {
   var identity = require_identity();
   var YAMLMap = require_YAMLMap();
@@ -2046,7 +2046,7 @@ var require_map = __commonJS((exports) => {
   exports.map = map;
 });
 
-// node_modules/yaml/dist/nodes/YAMLSeq.js
+// ../../node_modules/yaml/dist/nodes/YAMLSeq.js
 var require_YAMLSeq = __commonJS((exports) => {
   var createNode = require_createNode();
   var stringifyCollection = require_stringifyCollection();
@@ -2139,7 +2139,7 @@ var require_YAMLSeq = __commonJS((exports) => {
   exports.YAMLSeq = YAMLSeq;
 });
 
-// node_modules/yaml/dist/schema/common/seq.js
+// ../../node_modules/yaml/dist/schema/common/seq.js
 var require_seq = __commonJS((exports) => {
   var identity = require_identity();
   var YAMLSeq = require_YAMLSeq();
@@ -2158,7 +2158,7 @@ var require_seq = __commonJS((exports) => {
   exports.seq = seq;
 });
 
-// node_modules/yaml/dist/schema/common/string.js
+// ../../node_modules/yaml/dist/schema/common/string.js
 var require_string = __commonJS((exports) => {
   var stringifyString = require_stringifyString();
   var string = {
@@ -2174,7 +2174,7 @@ var require_string = __commonJS((exports) => {
   exports.string = string;
 });
 
-// node_modules/yaml/dist/schema/common/null.js
+// ../../node_modules/yaml/dist/schema/common/null.js
 var require_null = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var nullTag = {
@@ -2189,7 +2189,7 @@ var require_null = __commonJS((exports) => {
   exports.nullTag = nullTag;
 });
 
-// node_modules/yaml/dist/schema/core/bool.js
+// ../../node_modules/yaml/dist/schema/core/bool.js
 var require_bool = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var boolTag = {
@@ -2210,7 +2210,7 @@ var require_bool = __commonJS((exports) => {
   exports.boolTag = boolTag;
 });
 
-// node_modules/yaml/dist/stringify/stringifyNumber.js
+// ../../node_modules/yaml/dist/stringify/stringifyNumber.js
 var require_stringifyNumber = __commonJS((exports) => {
   function stringifyNumber({ format, minFractionDigits, tag, value }) {
     if (typeof value === "bigint")
@@ -2234,7 +2234,7 @@ var require_stringifyNumber = __commonJS((exports) => {
   exports.stringifyNumber = stringifyNumber;
 });
 
-// node_modules/yaml/dist/schema/core/float.js
+// ../../node_modules/yaml/dist/schema/core/float.js
 var require_float = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var stringifyNumber = require_stringifyNumber();
@@ -2277,7 +2277,7 @@ var require_float = __commonJS((exports) => {
   exports.floatNaN = floatNaN;
 });
 
-// node_modules/yaml/dist/schema/core/int.js
+// ../../node_modules/yaml/dist/schema/core/int.js
 var require_int = __commonJS((exports) => {
   var stringifyNumber = require_stringifyNumber();
   var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2319,7 +2319,7 @@ var require_int = __commonJS((exports) => {
   exports.intOct = intOct;
 });
 
-// node_modules/yaml/dist/schema/core/schema.js
+// ../../node_modules/yaml/dist/schema/core/schema.js
 var require_schema = __commonJS((exports) => {
   var map = require_map();
   var _null = require_null();
@@ -2344,7 +2344,7 @@ var require_schema = __commonJS((exports) => {
   exports.schema = schema;
 });
 
-// node_modules/yaml/dist/schema/json/schema.js
+// ../../node_modules/yaml/dist/schema/json/schema.js
 var require_schema2 = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var map = require_map();
@@ -2408,7 +2408,7 @@ var require_schema2 = __commonJS((exports) => {
   exports.schema = schema;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/binary.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/binary.js
 var require_binary = __commonJS((exports) => {
   var node_buffer = __require("buffer");
   var Scalar = require_Scalar();
@@ -2463,7 +2463,7 @@ var require_binary = __commonJS((exports) => {
   exports.binary = binary;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/pairs.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/pairs.js
 var require_pairs = __commonJS((exports) => {
   var identity = require_identity();
   var Pair = require_Pair();
@@ -2538,7 +2538,7 @@ ${cn.comment}` : item.comment;
   exports.resolvePairs = resolvePairs;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/omap.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/omap.js
 var require_omap = __commonJS((exports) => {
   var identity = require_identity();
   var toJS = require_toJS();
@@ -2610,7 +2610,7 @@ var require_omap = __commonJS((exports) => {
   exports.omap = omap;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/bool.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/bool.js
 var require_bool2 = __commonJS((exports) => {
   var Scalar = require_Scalar();
   function boolStringify({ value, source }, ctx) {
@@ -2639,7 +2639,7 @@ var require_bool2 = __commonJS((exports) => {
   exports.trueTag = trueTag;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/float.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/float.js
 var require_float2 = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var stringifyNumber = require_stringifyNumber();
@@ -2685,7 +2685,7 @@ var require_float2 = __commonJS((exports) => {
   exports.floatNaN = floatNaN;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/int.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/int.js
 var require_int2 = __commonJS((exports) => {
   var stringifyNumber = require_stringifyNumber();
   var intIdentify = (value) => typeof value === "bigint" || Number.isInteger(value);
@@ -2761,7 +2761,7 @@ var require_int2 = __commonJS((exports) => {
   exports.intOct = intOct;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/set.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/set.js
 var require_set = __commonJS((exports) => {
   var identity = require_identity();
   var Pair = require_Pair();
@@ -2844,7 +2844,7 @@ var require_set = __commonJS((exports) => {
   exports.set = set;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/timestamp.js
 var require_timestamp = __commonJS((exports) => {
   var stringifyNumber = require_stringifyNumber();
   function parseSexagesimal(str, asBigInt) {
@@ -2926,7 +2926,7 @@ var require_timestamp = __commonJS((exports) => {
   exports.timestamp = timestamp;
 });
 
-// node_modules/yaml/dist/schema/yaml-1.1/schema.js
+// ../../node_modules/yaml/dist/schema/yaml-1.1/schema.js
 var require_schema3 = __commonJS((exports) => {
   var map = require_map();
   var _null = require_null();
@@ -2967,7 +2967,7 @@ var require_schema3 = __commonJS((exports) => {
   exports.schema = schema;
 });
 
-// node_modules/yaml/dist/schema/tags.js
+// ../../node_modules/yaml/dist/schema/tags.js
 var require_tags = __commonJS((exports) => {
   var map = require_map();
   var _null = require_null();
@@ -3058,7 +3058,7 @@ var require_tags = __commonJS((exports) => {
   exports.getTags = getTags;
 });
 
-// node_modules/yaml/dist/schema/Schema.js
+// ../../node_modules/yaml/dist/schema/Schema.js
 var require_Schema = __commonJS((exports) => {
   var identity = require_identity();
   var map = require_map();
@@ -3088,7 +3088,7 @@ var require_Schema = __commonJS((exports) => {
   exports.Schema = Schema;
 });
 
-// node_modules/yaml/dist/stringify/stringifyDocument.js
+// ../../node_modules/yaml/dist/stringify/stringifyDocument.js
 var require_stringifyDocument = __commonJS((exports) => {
   var identity = require_identity();
   var stringify = require_stringify();
@@ -3168,7 +3168,7 @@ var require_stringifyDocument = __commonJS((exports) => {
   exports.stringifyDocument = stringifyDocument;
 });
 
-// node_modules/yaml/dist/doc/Document.js
+// ../../node_modules/yaml/dist/doc/Document.js
 var require_Document = __commonJS((exports) => {
   var Alias = require_Alias();
   var Collection = require_Collection();
@@ -3238,9 +3238,9 @@ var require_Document = __commonJS((exports) => {
       if (assertCollection(this.contents))
         this.contents.add(value);
     }
-    addIn(path9, value) {
+    addIn(path10, value) {
       if (assertCollection(this.contents))
-        this.contents.addIn(path9, value);
+        this.contents.addIn(path10, value);
     }
     createAlias(node, name) {
       if (!node.anchor) {
@@ -3289,30 +3289,30 @@ var require_Document = __commonJS((exports) => {
     delete(key) {
       return assertCollection(this.contents) ? this.contents.delete(key) : false;
     }
-    deleteIn(path9) {
-      if (Collection.isEmptyPath(path9)) {
+    deleteIn(path10) {
+      if (Collection.isEmptyPath(path10)) {
         if (this.contents == null)
           return false;
         this.contents = null;
         return true;
       }
-      return assertCollection(this.contents) ? this.contents.deleteIn(path9) : false;
+      return assertCollection(this.contents) ? this.contents.deleteIn(path10) : false;
     }
     get(key, keepScalar) {
       return identity.isCollection(this.contents) ? this.contents.get(key, keepScalar) : undefined;
     }
-    getIn(path9, keepScalar) {
-      if (Collection.isEmptyPath(path9))
+    getIn(path10, keepScalar) {
+      if (Collection.isEmptyPath(path10))
         return !keepScalar && identity.isScalar(this.contents) ? this.contents.value : this.contents;
-      return identity.isCollection(this.contents) ? this.contents.getIn(path9, keepScalar) : undefined;
+      return identity.isCollection(this.contents) ? this.contents.getIn(path10, keepScalar) : undefined;
     }
     has(key) {
       return identity.isCollection(this.contents) ? this.contents.has(key) : false;
     }
-    hasIn(path9) {
-      if (Collection.isEmptyPath(path9))
+    hasIn(path10) {
+      if (Collection.isEmptyPath(path10))
         return this.contents !== undefined;
-      return identity.isCollection(this.contents) ? this.contents.hasIn(path9) : false;
+      return identity.isCollection(this.contents) ? this.contents.hasIn(path10) : false;
     }
     set(key, value) {
       if (this.contents == null) {
@@ -3321,13 +3321,13 @@ var require_Document = __commonJS((exports) => {
         this.contents.set(key, value);
       }
     }
-    setIn(path9, value) {
-      if (Collection.isEmptyPath(path9)) {
+    setIn(path10, value) {
+      if (Collection.isEmptyPath(path10)) {
         this.contents = value;
       } else if (this.contents == null) {
-        this.contents = Collection.collectionFromPath(this.schema, Array.from(path9), value);
+        this.contents = Collection.collectionFromPath(this.schema, Array.from(path10), value);
       } else if (assertCollection(this.contents)) {
-        this.contents.setIn(path9, value);
+        this.contents.setIn(path10, value);
       }
     }
     setSchema(version, options = {}) {
@@ -3403,7 +3403,7 @@ var require_Document = __commonJS((exports) => {
   exports.Document = Document;
 });
 
-// node_modules/yaml/dist/errors.js
+// ../../node_modules/yaml/dist/errors.js
 var require_errors = __commonJS((exports) => {
   class YAMLError extends Error {
     constructor(name, pos, code, message) {
@@ -3468,7 +3468,7 @@ ${pointer}
   exports.prettifyError = prettifyError;
 });
 
-// node_modules/yaml/dist/compose/resolve-props.js
+// ../../node_modules/yaml/dist/compose/resolve-props.js
 var require_resolve_props = __commonJS((exports) => {
   function resolveProps(tokens, { flow, indicator, next, offset, onError, parentIndent, startOnNewline }) {
     let spaceBefore = false;
@@ -3598,7 +3598,7 @@ var require_resolve_props = __commonJS((exports) => {
   exports.resolveProps = resolveProps;
 });
 
-// node_modules/yaml/dist/compose/util-contains-newline.js
+// ../../node_modules/yaml/dist/compose/util-contains-newline.js
 var require_util_contains_newline = __commonJS((exports) => {
   function containsNewline(key) {
     if (!key)
@@ -3638,7 +3638,7 @@ var require_util_contains_newline = __commonJS((exports) => {
   exports.containsNewline = containsNewline;
 });
 
-// node_modules/yaml/dist/compose/util-flow-indent-check.js
+// ../../node_modules/yaml/dist/compose/util-flow-indent-check.js
 var require_util_flow_indent_check = __commonJS((exports) => {
   var utilContainsNewline = require_util_contains_newline();
   function flowIndentCheck(indent, fc, onError) {
@@ -3653,7 +3653,7 @@ var require_util_flow_indent_check = __commonJS((exports) => {
   exports.flowIndentCheck = flowIndentCheck;
 });
 
-// node_modules/yaml/dist/compose/util-map-includes.js
+// ../../node_modules/yaml/dist/compose/util-map-includes.js
 var require_util_map_includes = __commonJS((exports) => {
   var identity = require_identity();
   function mapIncludes(ctx, items, search) {
@@ -3666,7 +3666,7 @@ var require_util_map_includes = __commonJS((exports) => {
   exports.mapIncludes = mapIncludes;
 });
 
-// node_modules/yaml/dist/compose/resolve-block-map.js
+// ../../node_modules/yaml/dist/compose/resolve-block-map.js
 var require_resolve_block_map = __commonJS((exports) => {
   var Pair = require_Pair();
   var YAMLMap = require_YAMLMap();
@@ -3773,7 +3773,7 @@ var require_resolve_block_map = __commonJS((exports) => {
   exports.resolveBlockMap = resolveBlockMap;
 });
 
-// node_modules/yaml/dist/compose/resolve-block-seq.js
+// ../../node_modules/yaml/dist/compose/resolve-block-seq.js
 var require_resolve_block_seq = __commonJS((exports) => {
   var YAMLSeq = require_YAMLSeq();
   var resolveProps = require_resolve_props();
@@ -3821,7 +3821,7 @@ var require_resolve_block_seq = __commonJS((exports) => {
   exports.resolveBlockSeq = resolveBlockSeq;
 });
 
-// node_modules/yaml/dist/compose/resolve-end.js
+// ../../node_modules/yaml/dist/compose/resolve-end.js
 var require_resolve_end = __commonJS((exports) => {
   function resolveEnd(end, offset, reqSpace, onError) {
     let comment = "";
@@ -3861,7 +3861,7 @@ var require_resolve_end = __commonJS((exports) => {
   exports.resolveEnd = resolveEnd;
 });
 
-// node_modules/yaml/dist/compose/resolve-flow-collection.js
+// ../../node_modules/yaml/dist/compose/resolve-flow-collection.js
 var require_resolve_flow_collection = __commonJS((exports) => {
   var identity = require_identity();
   var Pair = require_Pair();
@@ -4052,7 +4052,7 @@ var require_resolve_flow_collection = __commonJS((exports) => {
   exports.resolveFlowCollection = resolveFlowCollection;
 });
 
-// node_modules/yaml/dist/compose/compose-collection.js
+// ../../node_modules/yaml/dist/compose/compose-collection.js
 var require_compose_collection = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -4114,7 +4114,7 @@ var require_compose_collection = __commonJS((exports) => {
   exports.composeCollection = composeCollection;
 });
 
-// node_modules/yaml/dist/compose/resolve-block-scalar.js
+// ../../node_modules/yaml/dist/compose/resolve-block-scalar.js
 var require_resolve_block_scalar = __commonJS((exports) => {
   var Scalar = require_Scalar();
   function resolveBlockScalar(ctx, scalar, onError) {
@@ -4307,7 +4307,7 @@ var require_resolve_block_scalar = __commonJS((exports) => {
   exports.resolveBlockScalar = resolveBlockScalar;
 });
 
-// node_modules/yaml/dist/compose/resolve-flow-scalar.js
+// ../../node_modules/yaml/dist/compose/resolve-flow-scalar.js
 var require_resolve_flow_scalar = __commonJS((exports) => {
   var Scalar = require_Scalar();
   var resolveEnd = require_resolve_end();
@@ -4523,7 +4523,7 @@ var require_resolve_flow_scalar = __commonJS((exports) => {
   exports.resolveFlowScalar = resolveFlowScalar;
 });
 
-// node_modules/yaml/dist/compose/compose-scalar.js
+// ../../node_modules/yaml/dist/compose/compose-scalar.js
 var require_compose_scalar = __commonJS((exports) => {
   var identity = require_identity();
   var Scalar = require_Scalar();
@@ -4601,7 +4601,7 @@ var require_compose_scalar = __commonJS((exports) => {
   exports.composeScalar = composeScalar;
 });
 
-// node_modules/yaml/dist/compose/util-empty-scalar-position.js
+// ../../node_modules/yaml/dist/compose/util-empty-scalar-position.js
 var require_util_empty_scalar_position = __commonJS((exports) => {
   function emptyScalarPosition(offset, before, pos) {
     if (before) {
@@ -4628,7 +4628,7 @@ var require_util_empty_scalar_position = __commonJS((exports) => {
   exports.emptyScalarPosition = emptyScalarPosition;
 });
 
-// node_modules/yaml/dist/compose/compose-node.js
+// ../../node_modules/yaml/dist/compose/compose-node.js
 var require_compose_node = __commonJS((exports) => {
   var Alias = require_Alias();
   var identity = require_identity();
@@ -4731,7 +4731,7 @@ var require_compose_node = __commonJS((exports) => {
   exports.composeNode = composeNode;
 });
 
-// node_modules/yaml/dist/compose/compose-doc.js
+// ../../node_modules/yaml/dist/compose/compose-doc.js
 var require_compose_doc = __commonJS((exports) => {
   var Document = require_Document();
   var composeNode = require_compose_node();
@@ -4771,7 +4771,7 @@ var require_compose_doc = __commonJS((exports) => {
   exports.composeDoc = composeDoc;
 });
 
-// node_modules/yaml/dist/compose/composer.js
+// ../../node_modules/yaml/dist/compose/composer.js
 var require_composer = __commonJS((exports) => {
   var node_process = __require("process");
   var directives = require_directives();
@@ -4962,7 +4962,7 @@ ${end.comment}` : end.comment;
   exports.Composer = Composer;
 });
 
-// node_modules/yaml/dist/parse/cst-scalar.js
+// ../../node_modules/yaml/dist/parse/cst-scalar.js
 var require_cst_scalar = __commonJS((exports) => {
   var resolveBlockScalar = require_resolve_block_scalar();
   var resolveFlowScalar = require_resolve_flow_scalar();
@@ -5152,7 +5152,7 @@ var require_cst_scalar = __commonJS((exports) => {
   exports.setScalarValue = setScalarValue;
 });
 
-// node_modules/yaml/dist/parse/cst-stringify.js
+// ../../node_modules/yaml/dist/parse/cst-stringify.js
 var require_cst_stringify = __commonJS((exports) => {
   var stringify = (cst) => ("type" in cst) ? stringifyToken(cst) : stringifyItem(cst);
   function stringifyToken(token) {
@@ -5210,7 +5210,7 @@ var require_cst_stringify = __commonJS((exports) => {
   exports.stringify = stringify;
 });
 
-// node_modules/yaml/dist/parse/cst-visit.js
+// ../../node_modules/yaml/dist/parse/cst-visit.js
 var require_cst_visit = __commonJS((exports) => {
   var BREAK = Symbol("break visit");
   var SKIP = Symbol("skip children");
@@ -5223,9 +5223,9 @@ var require_cst_visit = __commonJS((exports) => {
   visit.BREAK = BREAK;
   visit.SKIP = SKIP;
   visit.REMOVE = REMOVE;
-  visit.itemAtPath = (cst, path9) => {
+  visit.itemAtPath = (cst, path10) => {
     let item = cst;
-    for (const [field, index] of path9) {
+    for (const [field, index] of path10) {
       const tok = item?.[field];
       if (tok && "items" in tok) {
         item = tok.items[index];
@@ -5234,23 +5234,23 @@ var require_cst_visit = __commonJS((exports) => {
     }
     return item;
   };
-  visit.parentCollection = (cst, path9) => {
-    const parent = visit.itemAtPath(cst, path9.slice(0, -1));
-    const field = path9[path9.length - 1][0];
+  visit.parentCollection = (cst, path10) => {
+    const parent = visit.itemAtPath(cst, path10.slice(0, -1));
+    const field = path10[path10.length - 1][0];
     const coll = parent?.[field];
     if (coll && "items" in coll)
       return coll;
     throw new Error("Parent collection not found");
   };
-  function _visit(path9, item, visitor) {
-    let ctrl = visitor(item, path9);
+  function _visit(path10, item, visitor) {
+    let ctrl = visitor(item, path10);
     if (typeof ctrl === "symbol")
       return ctrl;
     for (const field of ["key", "value"]) {
       const token = item[field];
       if (token && "items" in token) {
         for (let i = 0;i < token.items.length; ++i) {
-          const ci = _visit(Object.freeze(path9.concat([[field, i]])), token.items[i], visitor);
+          const ci = _visit(Object.freeze(path10.concat([[field, i]])), token.items[i], visitor);
           if (typeof ci === "number")
             i = ci - 1;
           else if (ci === BREAK)
@@ -5261,15 +5261,15 @@ var require_cst_visit = __commonJS((exports) => {
           }
         }
         if (typeof ctrl === "function" && field === "key")
-          ctrl = ctrl(item, path9);
+          ctrl = ctrl(item, path10);
       }
     }
-    return typeof ctrl === "function" ? ctrl(item, path9) : ctrl;
+    return typeof ctrl === "function" ? ctrl(item, path10) : ctrl;
   }
   exports.visit = visit;
 });
 
-// node_modules/yaml/dist/parse/cst.js
+// ../../node_modules/yaml/dist/parse/cst.js
 var require_cst = __commonJS((exports) => {
   var cstScalar = require_cst_scalar();
   var cstStringify = require_cst_stringify();
@@ -5370,7 +5370,7 @@ var require_cst = __commonJS((exports) => {
   exports.tokenType = tokenType;
 });
 
-// node_modules/yaml/dist/parse/lexer.js
+// ../../node_modules/yaml/dist/parse/lexer.js
 var require_lexer = __commonJS((exports) => {
   var cst = require_cst();
   function isEmpty(ch) {
@@ -5967,7 +5967,7 @@ var require_lexer = __commonJS((exports) => {
   exports.Lexer = Lexer;
 });
 
-// node_modules/yaml/dist/parse/line-counter.js
+// ../../node_modules/yaml/dist/parse/line-counter.js
 var require_line_counter = __commonJS((exports) => {
   class LineCounter {
     constructor() {
@@ -5995,7 +5995,7 @@ var require_line_counter = __commonJS((exports) => {
   exports.LineCounter = LineCounter;
 });
 
-// node_modules/yaml/dist/parse/parser.js
+// ../../node_modules/yaml/dist/parse/parser.js
 var require_parser = __commonJS((exports) => {
   var node_process = __require("process");
   var cst = require_cst();
@@ -6551,14 +6551,14 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs9 = this.flowScalar(this.type);
+            const fs10 = this.flowScalar(this.type);
             if (atNextItem || it.value) {
-              map.items.push({ start, key: fs9, sep: [] });
+              map.items.push({ start, key: fs10, sep: [] });
               this.onKeyLine = true;
             } else if (it.sep) {
-              this.stack.push(fs9);
+              this.stack.push(fs10);
             } else {
-              Object.assign(it, { key: fs9, sep: [] });
+              Object.assign(it, { key: fs10, sep: [] });
               this.onKeyLine = true;
             }
             return;
@@ -6686,13 +6686,13 @@ var require_parser = __commonJS((exports) => {
           case "scalar":
           case "single-quoted-scalar":
           case "double-quoted-scalar": {
-            const fs9 = this.flowScalar(this.type);
+            const fs10 = this.flowScalar(this.type);
             if (!it || it.value)
-              fc.items.push({ start: [], key: fs9, sep: [] });
+              fc.items.push({ start: [], key: fs10, sep: [] });
             else if (it.sep)
-              this.stack.push(fs9);
+              this.stack.push(fs10);
             else
-              Object.assign(it, { key: fs9, sep: [] });
+              Object.assign(it, { key: fs10, sep: [] });
             return;
           }
           case "flow-map-end":
@@ -6851,7 +6851,7 @@ var require_parser = __commonJS((exports) => {
   exports.Parser = Parser;
 });
 
-// node_modules/yaml/dist/public-api.js
+// ../../node_modules/yaml/dist/public-api.js
 var require_public_api = __commonJS((exports) => {
   var composer = require_composer();
   var Document = require_Document();
@@ -6946,14 +6946,23 @@ var require_public_api = __commonJS((exports) => {
 });
 
 // src/skills/chef-add-recipe/scripts/add-recipe.mjs
-import fs13 from "node:fs";
+import fs14 from "node:fs";
 import os3 from "node:os";
-import path13 from "node:path";
+import path14 from "node:path";
 import { parseArgs } from "node:util";
 
 // src/lib/cli-entry.mjs
+import fs from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
-var isDirectExecution = (url) => process.argv[1] !== undefined && process.argv[1] === fileURLToPath(url);
+var canonicalPath = (file) => {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return path.resolve(file);
+  }
+};
+var isDirectExecution = (url, entry = process.argv[1]) => entry !== undefined && canonicalPath(entry) === canonicalPath(fileURLToPath(url));
 var invalidMode = (mode, modes, dataRoot) => ({
   status: "invalid-input",
   ...dataRoot && { data_root: dataRoot },
@@ -6962,13 +6971,13 @@ var invalidMode = (mode, modes, dataRoot) => ({
 
 // src/lib/data-root.mjs
 import os2 from "node:os";
-import path2 from "node:path";
+import path3 from "node:path";
 
 // src/runtime/muse.mjs
 import { execFileSync } from "node:child_process";
-import fs from "node:fs";
+import fs2 from "node:fs";
 import os from "node:os";
-import path from "node:path";
+import path2 from "node:path";
 
 // src/lib/recurring-tasks.json
 var recurring_tasks_default = [
@@ -7097,32 +7106,32 @@ async function unprocessableReason(response) {
     return "schema-invalid";
   }
 }
-var pluginManifest = (repository) => path.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
+var pluginManifest = (repository) => path2.join(repository, "plugins", "chef", ".claude-plugin", "plugin.json");
 function findPluginRepository(skillDir) {
-  for (let candidate = path.resolve(skillDir);candidate !== path.dirname(candidate); candidate = path.dirname(candidate)) {
-    if (fs.existsSync(pluginManifest(candidate)))
+  for (let candidate = path2.resolve(skillDir);candidate !== path2.dirname(candidate); candidate = path2.dirname(candidate)) {
+    if (fs2.existsSync(pluginManifest(candidate)))
       return candidate;
   }
   return null;
 }
 function findWorkspaceRepository(skillsDir) {
-  const workspace = path.dirname(skillsDir);
-  const where = `next to ${path.basename(skillsDir)}/ in ${workspace}`;
-  const names = fs.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs.existsSync(pluginManifest(path.join(workspace, entry.name)))).map((entry) => entry.name).sort();
+  const workspace = path2.dirname(skillsDir);
+  const where = `next to ${path2.basename(skillsDir)}/ in ${workspace}`;
+  const names = fs2.readdirSync(workspace, { withFileTypes: true }).filter((entry) => entry.isDirectory() && fs2.existsSync(pluginManifest(path2.join(workspace, entry.name)))).map((entry) => entry.name).sort();
   if (names.length === 0)
     throw new Error(`no Chef repository found ${where}; clone Chef there or reinstall`);
   if (names.length > 1) {
     throw new Error(`found ${names.length} Chef repositories ${where}: ${names.join(", ")}; keep one and remove the others`);
   }
-  return path.join(workspace, names[0]);
+  return path2.join(workspace, names[0]);
 }
 function updateInstall({ skillDir, repository }) {
-  const skillsDir = path.dirname(skillDir);
-  const customSkills = path.basename(skillsDir) === "custom-skills";
+  const skillsDir = path2.dirname(skillDir);
+  const customSkills = path2.basename(skillsDir) === "custom-skills";
   return {
     repository: repository ?? (customSkills ? findWorkspaceRepository(skillsDir) : findPluginRepository(skillDir)),
     skillsDir,
-    installedName: path.basename(skillDir),
+    installedName: path2.basename(skillDir),
     nameForSkill: customSkills ? "underscores" : "hyphens"
   };
 }
@@ -7133,19 +7142,19 @@ var muse = {
   adapterContractVersion: 1,
   feedback: {
     destination: { host: new URL(FEEDBACK_URL).host },
-    status({ exists = fs.existsSync, run = runFile } = {}) {
+    status({ exists = fs2.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC))
         return { ok: false, reason: "not-connected" };
       const { ok, reason } = fromConnector(PROVIDERS["chef-feedback"], run);
       return ok ? { ok } : { ok, reason };
     },
-    capabilities({ exists = fs.existsSync, run = runFile } = {}) {
+    capabilities({ exists = fs2.existsSync, run = runFile } = {}) {
       if (!exists(AUTHDC))
         return [];
       const credential = fromConnector(PROVIDERS["chef-feedback"], run);
       return credential.ok ? ["submit.connector", "contact.opaque", "delete.receipt"] : [];
     },
-    async submit(bytes, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+    async submit(bytes, { exists = fs2.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
       if (!credential.ok)
         return { ok: false, reason: "unsupported" };
@@ -7173,7 +7182,7 @@ var muse = {
       }
       return isReceipt(receipt) ? { ok: true, ...receipt } : { ok: false, reason: "invalid-receipt" };
     },
-    async submitContact(receipt, choice, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+    async submitContact(receipt, choice, { exists = fs2.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
       if (!credential.ok)
         return { ok: false, reason: credential.reason };
@@ -7188,7 +7197,7 @@ var muse = {
         return { ok: true };
       return { ok: false, reason: response.status === 409 ? "contact-already-set" : "contact-rejected" };
     },
-    async deleteReport(receipt, { exists = fs.existsSync, run = runFile, fetchImpl = fetch } = {}) {
+    async deleteReport(receipt, { exists = fs2.existsSync, run = runFile, fetchImpl = fetch } = {}) {
       const credential = muse.credential("chef-feedback", { exists, run });
       if (!credential.ok)
         return { ok: false, reason: credential.reason };
@@ -7203,7 +7212,7 @@ var muse = {
       return { ok: false, reason: response.status === 404 ? "not-found" : "intake-rejected" };
     }
   },
-  isMuse: ({ exists = fs.existsSync } = {}) => exists(AUTHDC),
+  isMuse: ({ exists = fs2.existsSync } = {}) => exists(AUTHDC),
   householdEmail({ to, subject, body }) {
     return {
       connector: "gmail",
@@ -7229,13 +7238,13 @@ var muse = {
     };
   },
   scheduleSetup: () => ({ scheduler: "muse-recurring-tasks", instruction: SCHEDULE_SETUP }),
-  defaultDataRoot: () => path.join(os.homedir(), "workspace", "chef"),
+  defaultDataRoot: () => path2.join(os.homedir(), "workspace", "chef"),
   updateInstall,
   locale(env = process.env) {
     const fromEnv = LOCALE_VARS.map((name) => env[name]).find(isUsable);
     return fromEnv ?? Intl.DateTimeFormat().resolvedOptions().locale;
   },
-  credential(provider, { env = process.env, exists = fs.existsSync, run = runFile } = {}) {
+  credential(provider, { env = process.env, exists = fs2.existsSync, run = runFile } = {}) {
     const spec = PROVIDERS[provider];
     if (!spec)
       throw new Error(`unknown credential provider: ${provider}`);
@@ -7244,7 +7253,7 @@ var muse = {
     const value = env[spec.env]?.trim();
     return value ? { ok: true, value, placement: placementOf(spec.placement), source: "env" } : { ok: false, reason: "not-connected" };
   },
-  attachment(file, { exists = fs.existsSync } = {}) {
+  attachment(file, { exists = fs2.existsSync } = {}) {
     return muse.isMuse({ exists }) ? { attachment: { action: "send-chat-attachment", path: file, instruction: ATTACHMENT_INSTRUCTION } } : {};
   }
 };
@@ -7252,7 +7261,7 @@ var muse = {
 // src/lib/data-root.mjs
 function resolveDataRoot({ flag, env = process.env, adapter = muse } = {}) {
   const raw = flag ?? env.CHEF_DATA_ROOT ?? adapter.defaultDataRoot();
-  return path2.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
+  return path3.resolve(raw.replace(/^~(?=$|\/)/, os2.homedir()));
 }
 
 // src/lib/diagnostics/capture.mjs
@@ -7354,7 +7363,7 @@ var plugin_default = {
 };
 
 // src/runtime/contract.mjs
-import fs2 from "node:fs";
+import fs3 from "node:fs";
 // src/runtime/generic.mjs
 var unsupported = async () => ({ ok: false, reason: "unsupported" });
 var generic = {
@@ -7369,18 +7378,18 @@ var generic = {
 };
 
 // src/runtime/contract.mjs
-var currentRuntime = ({ exists = fs2.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
+var currentRuntime = ({ exists = fs3.existsSync } = {}) => muse.isMuse({ exists }) ? muse : generic;
 
 // src/lib/schema.mjs
-import fs3 from "node:fs";
-import path3 from "node:path";
+import fs4 from "node:fs";
+import path4 from "node:path";
 var SCHEMA_VERSION = 1;
 var SCHEMA_FILE = "schema-version.json";
 function readSchemaVersion(root) {
-  const file = path3.join(root, SCHEMA_FILE);
-  if (!fs3.existsSync(file))
+  const file = path4.join(root, SCHEMA_FILE);
+  if (!fs4.existsSync(file))
     return null;
-  return JSON.parse(fs3.readFileSync(file, "utf8")).schema_version;
+  return JSON.parse(fs4.readFileSync(file, "utf8")).schema_version;
 }
 function storedVersion(root) {
   try {
@@ -7408,8 +7417,8 @@ function schemaWriteBlocker(root) {
 }
 
 // src/lib/settings.mjs
-import fs4 from "node:fs";
-import path4 from "node:path";
+import fs5 from "node:fs";
+import path5 from "node:path";
 var SETTINGS_FILE = "settings.json";
 var SETTINGS_VERSION = 2;
 var SETTING_KEYS = ["household_recipients", "trusted_receipt_senders", "units", "calendar", "convert_recipe_units", "diagnostics", "post_error_offers"];
@@ -7474,10 +7483,10 @@ function classify(stored) {
 }
 function readSettings(root, { locale } = {}) {
   const defaults = defaultSettings({ locale });
-  const file = path4.join(root, SETTINGS_FILE);
-  if (!fs4.existsSync(file))
+  const file = path5.join(root, SETTINGS_FILE);
+  if (!fs5.existsSync(file))
     return { status: "missing", settings: defaults };
-  const content = fs4.readFileSync(file, "utf8");
+  const content = fs5.readFileSync(file, "utf8");
   const stored = upgraded(parse(content));
   const { status, reason } = classify(stored);
   if (status !== "ok")
@@ -7487,12 +7496,12 @@ function readSettings(root, { locale } = {}) {
 }
 
 // src/lib/diagnostics/offers.mjs
-import fs6 from "node:fs";
-import path6 from "node:path";
+import fs7 from "node:fs";
+import path7 from "node:path";
 
 // src/lib/diagnostics/trace.mjs
-import fs5 from "node:fs";
-import path5 from "node:path";
+import fs6 from "node:fs";
+import path6 from "node:path";
 // schemas/feedback/invocation-trace.v1.json
 var invocation_trace_v1_default = {
   $schema: "https://json-schema.org/draft/2020-12/schema",
@@ -7530,19 +7539,19 @@ var PRIVATE_FILE = { mode: 384 };
 var lineOf = (event) => `${JSON.stringify(event)}
 `;
 function ensureDiagnosticsDir(root) {
-  const dir = path5.join(root, DIAGNOSTICS_DIR);
-  fs5.mkdirSync(dir, { recursive: true, mode: 448 });
-  fs5.chmodSync(dir, 448);
-  const ignore = path5.join(dir, ".gitignore");
-  if (!fs5.existsSync(ignore))
-    fs5.writeFileSync(ignore, `*
+  const dir = path6.join(root, DIAGNOSTICS_DIR);
+  fs6.mkdirSync(dir, { recursive: true, mode: 448 });
+  fs6.chmodSync(dir, 448);
+  const ignore = path6.join(dir, ".gitignore");
+  if (!fs6.existsSync(ignore))
+    fs6.writeFileSync(ignore, `*
 `, PRIVATE_FILE);
-  fs5.chmodSync(ignore, 384);
+  fs6.chmodSync(ignore, 384);
 }
 function storedEvents(file) {
   let text;
   try {
-    text = fs5.readFileSync(file, "utf8");
+    text = fs6.readFileSync(file, "utf8");
   } catch {
     return [];
   }
@@ -7570,19 +7579,19 @@ function withinBounds(events, now, { maxEvents, maxBytes, maxAgeMs }) {
 }
 function writePrivate(file, text) {
   const temp = `${file}.${process.pid}.tmp`;
-  fs5.writeFileSync(temp, text, PRIVATE_FILE);
-  fs5.chmodSync(temp, 384);
-  fs5.renameSync(temp, file);
+  fs6.writeFileSync(temp, text, PRIVATE_FILE);
+  fs6.chmodSync(temp, 384);
+  fs6.renameSync(temp, file);
 }
 var rewrite = (file, events) => writePrivate(file, events.map(lineOf).join(""));
 function appendEvent(root, event, { now = new Date, bounds = TRACE_BOUNDS } = {}) {
   ensureDiagnosticsDir(root);
-  const file = path5.join(root, TRACE_FILE);
+  const file = path6.join(root, TRACE_FILE);
   const stored = storedEvents(file);
   const kept = withinBounds([...stored, event], now, bounds);
-  const onlyAppended = kept.length === stored.length + 1 && fs5.existsSync(file);
+  const onlyAppended = kept.length === stored.length + 1 && fs6.existsSync(file);
   if (onlyAppended)
-    fs5.appendFileSync(file, lineOf(event), PRIVATE_FILE);
+    fs6.appendFileSync(file, lineOf(event), PRIVATE_FILE);
   else
     rewrite(file, kept);
 }
@@ -7593,7 +7602,7 @@ var OFFER_INTERVAL_MS = 60 * 60 * 1000;
 var keyOf = ({ skill, code }) => `${skill}/${code}`;
 function readErrors(root) {
   try {
-    const { errors } = JSON.parse(fs6.readFileSync(path6.join(root, OFFERS_FILE), "utf8"));
+    const { errors } = JSON.parse(fs7.readFileSync(path7.join(root, OFFERS_FILE), "utf8"));
     return errors !== null && typeof errors === "object" ? errors : {};
   } catch {
     return {};
@@ -7601,7 +7610,7 @@ function readErrors(root) {
 }
 function writeErrors(root, errors) {
   ensureDiagnosticsDir(root);
-  writePrivate(path6.join(root, OFFERS_FILE), `${JSON.stringify({ errors })}
+  writePrivate(path7.join(root, OFFERS_FILE), `${JSON.stringify({ errors })}
 `);
 }
 function claimOffer(root, error, { now = new Date } = {}) {
@@ -7614,13 +7623,13 @@ function claimOffer(root, error, { now = new Date } = {}) {
 }
 
 // src/lib/notices.mjs
-import fs7 from "node:fs";
-import path7 from "node:path";
+import fs8 from "node:fs";
+import path8 from "node:path";
 var NOTICES_PATH = "data/notices.json";
 var LOCAL_NOTICES_PATH = `${DIAGNOSTICS_DIR}/notices.json`;
 function readNotices(root, file = NOTICES_PATH) {
   try {
-    return JSON.parse(fs7.readFileSync(path7.join(root, file), "utf8"));
+    return JSON.parse(fs8.readFileSync(path8.join(root, file), "utf8"));
   } catch {
     return {};
   }
@@ -7632,7 +7641,7 @@ function takeLocalNotice(root, key, date) {
   if (notices[key])
     return false;
   ensureDiagnosticsDir(root);
-  writePrivate(path7.join(root, LOCAL_NOTICES_PATH), withKey(notices, key, date));
+  writePrivate(path8.join(root, LOCAL_NOTICES_PATH), withKey(notices, key, date));
   return true;
 }
 
@@ -7777,16 +7786,16 @@ async function chefCapture({ root, skill, script, operation, classify: classify2
 }
 
 // src/lib/fdc-cache.mjs
-import fs8 from "node:fs";
-import path8 from "node:path";
+import fs9 from "node:fs";
+import path9 from "node:path";
 var CACHE_DIR = "cache";
 function fdcReplyCache(root) {
-  const cacheRoot = path8.join(root, CACHE_DIR);
-  const file = (fdcId) => path8.join(cacheRoot, "fdc", "food", `${fdcId}.json`);
+  const cacheRoot = path9.join(root, CACHE_DIR);
+  const file = (fdcId) => path9.join(cacheRoot, "fdc", "food", `${fdcId}.json`);
   return {
     read(fdcId) {
       try {
-        const body = JSON.parse(fs8.readFileSync(file(fdcId), "utf8"));
+        const body = JSON.parse(fs9.readFileSync(file(fdcId), "utf8"));
         return body?.fdcId === fdcId ? body : null;
       } catch {
         return null;
@@ -7794,14 +7803,14 @@ function fdcReplyCache(root) {
     },
     write(fdcId, body) {
       try {
-        fs8.mkdirSync(path8.dirname(file(fdcId)), { recursive: true });
-        const ignore = path8.join(cacheRoot, ".gitignore");
-        if (!fs8.existsSync(ignore))
-          fs8.writeFileSync(ignore, `*
+        fs9.mkdirSync(path9.dirname(file(fdcId)), { recursive: true });
+        const ignore = path9.join(cacheRoot, ".gitignore");
+        if (!fs9.existsSync(ignore))
+          fs9.writeFileSync(ignore, `*
 `);
         const temp = `${file(fdcId)}.${process.pid}.tmp`;
-        fs8.writeFileSync(temp, JSON.stringify(body));
-        fs8.renameSync(temp, file(fdcId));
+        fs9.writeFileSync(temp, JSON.stringify(body));
+        fs9.renameSync(temp, file(fdcId));
       } catch {}
     }
   };
@@ -7878,10 +7887,10 @@ function fdcClient({ credential, fetchImpl = fetch, cache = null }) {
 }
 
 // src/lib/recipes.mjs
-import fs10 from "node:fs";
-import path10 from "node:path";
+import fs11 from "node:fs";
+import path11 from "node:path";
 
-// node_modules/yaml/dist/index.js
+// ../../node_modules/yaml/dist/index.js
 var composer = require_composer();
 var Document = require_Document();
 var Schema = require_Schema();
@@ -7946,8 +7955,8 @@ ${body}`;
 }
 
 // src/lib/wiki.mjs
-import fs9 from "node:fs";
-import path9 from "node:path";
+import fs10 from "node:fs";
+import path10 from "node:path";
 
 // src/lib/git.mjs
 import { execFileSync as execFileSync2 } from "node:child_process";
@@ -7981,7 +7990,7 @@ function wikiPath(type, slug) {
   return `${WIKI_DIR}/${WIKI_FOLDERS[type]}/${slug}.md`;
 }
 function pathUnder(dir, relative, kind) {
-  const normalized = path9.posix.normalize(relative);
+  const normalized = path10.posix.normalize(relative);
   if (!normalized.startsWith(`${dir}/`))
     throw new Error(`${kind} files must live under ${dir}/: ${relative}`);
   return normalized;
@@ -7990,7 +7999,7 @@ function writeRefusal(root) {
   const blocked = schemaWriteBlocker(root);
   if (blocked)
     return { status: "refused", data_root: root, ...blocked };
-  if (!fs9.existsSync(path9.join(root, ".git")))
+  if (!fs10.existsSync(path10.join(root, ".git")))
     return { status: "refused", data_root: root, reason: "data root has no git history; run chef-setup to repair it" };
   return null;
 }
@@ -8001,14 +8010,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
   const refusal = writeRefusal(root);
   if (refusal)
     return refusal;
-  const taken = rawFiles.find((file) => fs9.existsSync(path9.join(root, file.path)));
+  const taken = rawFiles.find((file) => fs10.existsSync(path10.join(root, file.path)));
   if (taken)
     return { status: "refused", data_root: root, reason: `raw files are append-only and ${taken.path} already exists` };
   const files = [...rawFiles, ...dataFiles, ...pageFiles];
   for (const file of files) {
-    const abs = path9.join(root, file.path);
-    fs9.mkdirSync(path9.dirname(abs), { recursive: true });
-    fs9.writeFileSync(abs, file.content);
+    const abs = path10.join(root, file.path);
+    fs10.mkdirSync(path10.dirname(abs), { recursive: true });
+    fs10.writeFileSync(abs, file.content);
   }
   git(root, ["add", "--", ...files.map((file) => file.path)]);
   commit(root, message);
@@ -8018,14 +8027,14 @@ function writeWiki(root, { pages = [], raw = [], data = [], message }) {
 // src/lib/recipes.mjs
 var RECIPES_DIR = `${WIKI_DIR}/${WIKI_FOLDERS.recipe}`;
 function listRecipes(root) {
-  const dir = path10.join(root, RECIPES_DIR);
-  const files = fs10.existsSync(dir) ? fs10.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
+  const dir = path11.join(root, RECIPES_DIR);
+  const files = fs11.existsSync(dir) ? fs11.readdirSync(dir).filter((f) => f.endsWith(".md")).sort() : [];
   const recipes = [];
   const unreadable = [];
   for (const file of files) {
     const rel = `${RECIPES_DIR}/${file}`;
     try {
-      const { frontmatter, body } = parsePage(fs10.readFileSync(path10.join(root, rel), "utf8"));
+      const { frontmatter, body } = parsePage(fs11.readFileSync(path11.join(root, rel), "utf8"));
       recipes.push({ slug: file.slice(0, -3), path: rel, frontmatter, body });
     } catch (error) {
       unreadable.push({ path: rel, reason: error.message });
@@ -8056,8 +8065,8 @@ function today(date = new Date) {
 }
 
 // src/skills/chef-add-recipe/scripts/lib/add.mjs
-import fs11 from "node:fs";
-import path11 from "node:path";
+import fs12 from "node:fs";
+import path12 from "node:path";
 
 // src/lib/ingredient-line.mjs
 var FRACTIONS = { "½": " 1/2", "¼": " 1/4", "¾": " 3/4", "⅓": " 1/3", "⅔": " 2/3", "⅛": " 1/8" };
@@ -8248,7 +8257,7 @@ function findExisting(root, slug, url) {
 function rawName(root, stem, ext) {
   for (let n = 1;; n += 1) {
     const rel = `${RAW_RECIPES}/${stem}${n === 1 ? "" : `-${n}`}${ext}`;
-    if (!fs11.existsSync(path11.join(root, rel)))
+    if (!fs12.existsSync(path12.join(root, rel)))
       return rel;
   }
 }
@@ -9155,8 +9164,8 @@ function htmlToText(html) {
 }
 
 // src/skills/chef-add-recipe/scripts/lib/source-file.mjs
-import fs12 from "node:fs";
-import path12 from "node:path";
+import fs13 from "node:fs";
+import path13 from "node:path";
 var SOURCE_TYPES = {
   text: [".txt", ".md"],
   photo: [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif", ".gif"],
@@ -9164,14 +9173,14 @@ var SOURCE_TYPES = {
 };
 var MAX_BYTES = 20 * 1024 * 1024;
 function readSource(file, kind) {
-  const ext = path12.extname(file ?? "").toLowerCase();
+  const ext = path13.extname(file ?? "").toLowerCase();
   if (!SOURCE_TYPES[kind]?.includes(ext))
     return { problem: `--source for kind ${kind} must be one of ${SOURCE_TYPES[kind]?.join(" ") ?? "(none)"}` };
-  if (!fs12.existsSync(file) || !fs12.statSync(file).isFile())
+  if (!fs13.existsSync(file) || !fs13.statSync(file).isFile())
     return { problem: `--source ${file} is not a file` };
-  if (fs12.statSync(file).size > MAX_BYTES)
+  if (fs13.statSync(file).size > MAX_BYTES)
     return { problem: `--source ${file} is larger than 20 MB` };
-  return { source: { ext: ext === ".htm" ? ".html" : ext, content: fs12.readFileSync(file) } };
+  return { source: { ext: ext === ".htm" ? ".html" : ext, content: fs13.readFileSync(file) } };
 }
 
 // src/skills/chef-add-recipe/scripts/add-recipe.mjs
@@ -9202,8 +9211,8 @@ async function loadPage(url) {
   return problem ? { ok: false, reason: problem } : { ok: true, html: source.content.toString("utf8") };
 }
 function needsDraft(url, html, problems) {
-  const pageFile = path13.join(fs13.mkdtempSync(path13.join(os3.tmpdir(), "chef-page-")), "page.html");
-  fs13.writeFileSync(pageFile, html);
+  const pageFile = path14.join(fs14.mkdtempSync(path14.join(os3.tmpdir(), "chef-page-")), "page.html");
+  fs14.writeFileSync(pageFile, html);
   const text = htmlToText(html);
   return { status: "needs-draft", data_root: root, url, page_file: pageFile, problems, page_text: text.slice(0, PAGE_TEXT_LIMIT), page_text_truncated: text.length > PAGE_TEXT_LIMIT };
 }
@@ -9233,7 +9242,7 @@ function fromDraft() {
     return invalid(problem);
   let draft;
   try {
-    draft = JSON.parse(fs13.readFileSync(values.draft ?? "", "utf8"));
+    draft = JSON.parse(fs14.readFileSync(values.draft ?? "", "utf8"));
   } catch (error) {
     return invalid(`--draft must be a readable JSON file: ${error.message}`);
   }

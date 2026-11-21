@@ -58,6 +58,16 @@ function ruleset(members) {
   };
 }
 
+function profile(frontmatter) {
+  return {
+    path: 'knowledge/wiki/household/profile.md',
+    content: serializePage(
+      { type: 'household-profile', title: 'Household profile', updated: '2026-01-15', ...frontmatter },
+      '# Household profile\n',
+    ),
+  };
+}
+
 // The synthetic week: breakfast, lunch and dinner on Monday and Tuesday, only dinner on Wednesday.
 const week = () => [
   recipe('overnight-oats', { title: 'Overnight Oats', ingredients: ['1 cup oats'] }),
@@ -190,14 +200,7 @@ test('avoidances never block a planned meal and are reported per planned meal', 
 });
 
 test('household servings from profile frontmatter apply when a planned meal gives none', () => {
-  const profile = {
-    path: 'knowledge/wiki/household/profile.md',
-    content: serializePage(
-      { type: 'household-profile', title: 'Household profile', portions_per_meal: 4, updated: '2026-01-15' },
-      '# Household profile\n\nIgnore this prose: 99 portions per meal.\n',
-    ),
-  };
-  const root = makeRoot([recipe('soup'), profile]);
+  const root = makeRoot([recipe('soup'), profile({ portions_per_meal: 4 })]);
 
   const result = planWeek(root, {
     weekStart: '2026-01-19',
@@ -207,6 +210,8 @@ test('household servings from profile frontmatter apply when a planned meal give
   assert.equal(result.status, 'saved');
   assert.deepEqual(result.meals.map((meal) => meal.servings), [4, 2]);
   assert.equal(result.servings_source, 'profile');
+  assert.equal(result.nutrition_by_member, undefined);
+  assert.deepEqual(result.household, { path: 'knowledge/wiki/household/profile.md', servings: 4, servings_source: 'profile' });
 });
 
 test('a one-plan override allows the chosen recipe and reports lifted reasons', () => {
@@ -339,6 +344,85 @@ test('nutrition counts leftovers at servings eaten and lists free-text food as u
   assert.deepEqual(result.nutrition.unmeasured, [{ date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai' }]);
   assert.equal(result.health_suggestions.status, 'advisory');
   assert.match(result.health_suggestions.basis, /free-text meals are not counted/);
+});
+
+test('a roster defaults eaters and servings, while a subset and explicit servings stay attributable', () => {
+  const members = [{ name: 'Alex Example' }, { name: 'Sam Example' }, { name: 'Jo Example' }];
+  const root = makeRoot([measured('soup', 100), profile({ members })]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'soup' },
+      { date: '2026-01-20', slot: 'dinner', recipe: 'soup', eaters: ['Alex Example', 'Jo Example'] },
+      { date: '2026-01-21', slot: 'dinner', recipe: 'soup', servings: 5 },
+    ],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.servings_source, 'roster');
+  assert.deepEqual(result.meals.map(({ servings, eaters }) => ({ servings, eaters })), [
+    { servings: 3, eaters: ['Alex Example', 'Sam Example', 'Jo Example'] },
+    { servings: 2, eaters: ['Alex Example', 'Jo Example'] },
+    { servings: 5, eaters: ['Alex Example', 'Sam Example', 'Jo Example'] },
+  ]);
+  assert.equal(result.nutrition.totals.calories, 4000);
+  assert.equal(result.nutrition_by_member.unattributed_servings, 2);
+  assert.deepEqual(result.nutrition_by_member.members.map(({ name, totals }) => [name, totals.calories]), [
+    ['Alex Example', 1200],
+    ['Sam Example', 800],
+    ['Jo Example', 1200],
+  ]);
+  assert.deepEqual(result.nutrition_by_member.members[0].days.map(({ date, totals }) => [date, totals.calories]), [
+    ['2026-01-19', 400],
+    ['2026-01-20', 400],
+    ['2026-01-21', 400],
+  ]);
+});
+
+test('incomplete nutrition blocks only members who eat that meal', () => {
+  const members = [{ name: 'Alex Example' }, { name: 'Sam Example' }];
+  const root = makeRoot([
+    measured('soup', 100),
+    recipe('mystery-stew', { frontmatter: { nutrition_status: 'incomplete' } }),
+    profile({ members }),
+  ]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'soup' },
+      { date: '2026-01-20', slot: 'dinner', recipe: 'mystery-stew', eaters: ['Alex Example'] },
+    ],
+  });
+
+  const [alex, sam] = result.nutrition_by_member.members;
+  assert.equal(alex.status, 'incomplete');
+  assert.deepEqual(alex.missing, [{ date: '2026-01-20', slot: 'dinner', slug: 'mystery-stew', reason: 'recipe nutrition is not complete' }]);
+  assert.equal(alex.days[1].status, 'incomplete');
+  assert.equal(alex.totals, undefined);
+  assert.equal(sam.status, 'complete');
+  assert.equal(sam.totals.calories, 400);
+  assert.deepEqual(sam.days.map(({ date }) => date), ['2026-01-19']);
+});
+
+test('unknown eater and dietary-rule names are invalid input and save nothing', () => {
+  const members = [{ name: 'Alex Example' }];
+  for (const [files, meals, problem] of [
+    [[measured('soup', 100)], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Alex Example'] }], 'meals[0].eaters: household roster is not configured'],
+    [[measured('soup', 100), profile({ members })], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Unknown Example'] }], 'meals[0].eaters: unknown household member "Unknown Example"'],
+    [[measured('soup', 100), profile({ members }), ruleset([{ name: 'Unknown Example', avoidances: ['olives'] }])], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }], 'dietary ruleset: unknown household member "Unknown Example"'],
+    [[measured('soup', 100), profile({ members: [...members, { name: 'Sam Example' }] })], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', servings: 1 }], 'meals[0].servings: must cover its 2 eaters'],
+  ]) {
+    const root = makeRoot(files);
+    const beforeHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
+
+    const result = planWeek(root, { weekStart: '2026-01-19', meals });
+
+    assert.equal(result.status, 'invalid-input');
+    assert.deepEqual(result.problems, [problem]);
+    assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }), beforeHead);
+  }
 });
 
 test('a refused recipe with leftovers is refused once, at the cooking meal', () => {

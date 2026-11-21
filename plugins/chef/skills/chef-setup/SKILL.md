@@ -1,6 +1,6 @@
 ---
 name: chef-setup
-description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong) or delete a report they sent, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch, a USDA connection hint or a `report_offer` after an internal error.
+description: Create, adopt, update and verify Chef, onboard the user, and change Chef settings. Use when the user installs Chef or asks to set it up or update it, restores Chef from a backup or moves it to a new machine, wants to change units, household members, household recipients, receipt senders or the calendar, tells Chef about an allergy, celiac disease, a food someone must never eat or a dislike, wants nutrition computed or asks to connect, rotate or remove USDA FoodData Central, wants Chef recurring tasks (morning briefing, weekly report, shopping-list delivery, update notice, receipt check) set up, asks to show or clear Chef's invocation trace ("Chef's log") or turn it off, wants to report a problem with Chef (a bug, something that went wrong) or delete a report they sent, asks to check that Chef works, or when another chef- skill reports a missing data root, a settings warning, a schema mismatch, a USDA connection hint or a `report_offer` after an internal error.
 ---
 
 # Chef setup
@@ -66,7 +66,14 @@ node scripts/setup.mjs set --units metric --convert-recipe-units true --househol
 
 Confirm what was saved from the `settings` field of the output. If the user skipped everything, do not run `set`.
 
-5. **Allergies.** Ask: "Does anyone in your household have allergies or foods they must never eat?" This is household data, not a setting.
+5. **Household roster.** Ask: "Do you want to record the names of your household members? This is optional and enables per-person nutrition in meal plans." Names only: never ask for ages or other details. On yes, save the full list at once:
+
+   ```sh
+   node scripts/setup.mjs set-household --members "Alex Example,Sam Example"
+   ```
+
+   An empty `--members ""` clears the roster. `saved` returns the names recorded. To show it without writing, run `node scripts/setup.mjs household`.
+6. **Allergies.** Ask: "Does anyone in your household have allergies or foods they must never eat?" This is household data, not a setting. With a roster, use those exact names; the meal planner refuses dietary-rule names outside it.
    - **No:** run `node scripts/setup.mjs set-dietary --none`.
    - **Yes:** record each person as in **Dietary ruleset** below.
    - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.

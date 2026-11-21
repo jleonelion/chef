@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { readRuleset, RULESET_PATH } from '../../../../lib/dietary-ruleset.mjs';
+import { HOUSEHOLD_PROFILE_PATH } from '../../../../lib/household-profile.mjs';
+import { serializePage } from '../../../../lib/frontmatter.mjs';
 import { git } from '../../../../lib/git.mjs';
 import { NOTICES_PATH } from '../../../../lib/notices.mjs';
 import { TRAINING_NOTICE } from '../../../../lib/safety-text.mjs';
@@ -55,6 +57,22 @@ test('a first hard constraint saves the ruleset and shows the training notice on
 test('avoidances alone never trigger the notice', () => {
   const root = dataRoot();
   assert.equal(writeRuleset(root, { member: 'Sam Example', avoid: ['olives'] }, { date: DATE }).notice, undefined);
+});
+
+test('a roster rejects dietary rules for an unknown member without writing', () => {
+  const root = dataRoot();
+  const profile = path.join(root, HOUSEHOLD_PROFILE_PATH);
+  fs.mkdirSync(path.dirname(profile), { recursive: true });
+  fs.writeFileSync(profile, serializePage(
+    { type: 'household-profile', title: 'Household profile', members: [{ name: 'Alex Example' }], updated: DATE },
+    '# Household profile\n',
+  ));
+
+  const result = writeRuleset(root, { member: 'Unknown Example', hard: ['egg'] }, { date: DATE });
+
+  assert.equal(result.status, 'invalid-input');
+  assert.deepEqual(result.problems, ['--member: unknown household member "Unknown Example"']);
+  assert.equal(fs.existsSync(path.join(root, RULESET_PATH)), false);
 });
 
 test('"none" never wipes declared rules, and removals are reported', () => {
