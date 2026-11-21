@@ -9,7 +9,7 @@
   "scenario": { "fixture": "data-root" },
   "steps": [
     "Start from the shared synthetic data root.",
-    "Tuesday was empty after generating the weekly plan."
+    "Seed a household of two and request a seven day plan."
   ],
   "expected": "Smoke test only; never merge.",
   "target": "none",
