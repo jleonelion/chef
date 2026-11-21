@@ -2,6 +2,7 @@
 // chef-food-inventory entry point; the only reader and writer of data/food-inventory/.
 // Modes: view, check-sender, add-receipt, edit, deduct, expiring, health, rollup. Prints one JSON object.
 import { parseArgs } from 'node:util';
+import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { displayQuantity } from '../../../lib/quantity.mjs';
@@ -17,7 +18,7 @@ import { addReceipt } from './lib/receipt.mjs';
 import { checkSender } from './lib/sender.mjs';
 import { listItems, loadInventory } from './lib/store.mjs';
 
-const { values, positionals } = parseArgs({ options: OPTIONS, allowPositionals: true });
+const { values, positionals } = parseArgs({ args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [], options: OPTIONS, allowPositionals: true });
 const now = new Date().toISOString();
 const days = () => {
   const value = Number(values.days ?? 3);
@@ -69,18 +70,26 @@ const MODES = {
   health: (root) => checkHealth(root, window()),
   rollup: (root) => regenerateRollup(root, now),
 };
+export const SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: {
+    ok: ['ok', 'trusted', 'added', 'duplicate', 'saved', 'deducted', 'regenerated', 'healthy', 'problems'],
+    errors: ['refused', 'invalid-input'],
+  },
+});
 
 const mode = positionals[0];
-if (!Object.hasOwn(MODES, mode ?? '')) {
-  console.error(`Usage: inventory.mjs <${Object.keys(MODES).join('|')}> [options]`);
-  process.exit(64);
-}
 const root = resolveDataRoot({ flag: values['data-root'] });
 function run() {
   if (readSchemaVersion(root) === null) return { status: 'refused', reason: 'not a Chef data root; run chef-setup first' };
   const { settings, warning } = readSettings(root);
   return { data_root: root, ...MODES[mode](root, settings), ...(warning ? { settings_warning: warning } : {}) };
 }
-const result = await chefCapture({ root, skill: 'chef-food-inventory', script: 'inventory', operation: mode }, run);
-console.log(JSON.stringify(result));
-if (result.status === 'refused' || result.status === 'invalid-input') process.exitCode = 2;
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(MODES, mode ?? '')
+    ? await chefCapture({ root, skill: 'chef-food-inventory', script: 'inventory', operation: mode }, run)
+    : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status)) process.exitCode = 2;
+}

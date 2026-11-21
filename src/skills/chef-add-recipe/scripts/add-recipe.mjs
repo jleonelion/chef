@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
@@ -18,8 +19,7 @@ import { verifyRecipe } from './lib/verify.mjs';
 import { draftFromHtml, htmlToText } from './lib/jsonld.mjs';
 import { readSource, SOURCE_TYPES } from './lib/source-file.mjs';
 
-const { values, positionals } = parseArgs({
-  options: {
+const OPTIONS = {
     'data-root': { type: 'string' },
     url: { type: 'string' },
     html: { type: 'string' },
@@ -30,7 +30,10 @@ const { values, positionals } = parseArgs({
     slug: { type: 'string', multiple: true },
     unenriched: { type: 'boolean' },
     constraint: { type: 'string', multiple: true },
-  },
+};
+const { values, positionals } = parseArgs({
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true,
 });
 const root = resolveDataRoot({ flag: values['data-root'] });
@@ -96,12 +99,20 @@ function verify() {
 }
 
 const MODES = { url: async () => enrichAdded(await fromUrl()), draft: () => enrichAdded(fromDraft()), enrich, verify };
+export const SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: {
+    ok: ['added', 'would-add', 'exists', 'needs-draft', 'enriched', 'unchanged', 'verified'],
+    errors: ['refused', 'invalid-input', 'fetch-failed', 'not-found'],
+  },
+});
 const mode = positionals[0];
-if (!Object.hasOwn(MODES, mode)) {
-  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(', ')}`);
-  process.exit(64);
+if (isDirectExecution(import.meta.url)) {
+  const failures = { 'fetch-failed': 'page-fetch-failed', 'not-found': 'recipe-not-found' };
+  const result = Object.hasOwn(MODES, mode)
+    ? await chefCapture({ root, skill: 'chef-add-recipe', script: 'add-recipe', operation: mode, failures }, () => MODES[mode]())
+    : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (['refused', 'invalid-input', 'fetch-failed', 'not-found'].includes(result.status)) process.exitCode = 2;
 }
-const failures = { 'fetch-failed': 'page-fetch-failed', 'not-found': 'recipe-not-found' };
-const result = await chefCapture({ root, skill: 'chef-add-recipe', script: 'add-recipe', operation: mode, failures }, () => MODES[mode]());
-console.log(JSON.stringify(result));
-if (['refused', 'invalid-input', 'fetch-failed', 'not-found'].includes(result.status)) process.exitCode = 2;

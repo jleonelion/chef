@@ -4,6 +4,7 @@
 // then published as its own step, so a failed publication never loses the decision.
 import fs from 'node:fs';
 import { parseArgs } from 'node:util';
+import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { usdaClient } from '../../../lib/fdc.mjs';
@@ -17,22 +18,24 @@ import { addRule, removeRule } from './lib/rules.mjs';
 import { proposalState, readProposals, readRules, summary } from './lib/store.mjs';
 
 const many = { type: 'string', multiple: true };
+const OPTIONS = {
+  'data-root': { type: 'string' },
+  draft: { type: 'string' },
+  url: { type: 'string' },
+  note: { type: 'string' },
+  id: many,
+  outcome: { type: 'string' },
+  reason: { type: 'string' },
+  state: { type: 'string' },
+  slug: { type: 'string' },
+  action: { type: 'string' },
+  confirm: { type: 'boolean' },
+  title: many,
+  text: many,
+};
 const { values, positionals } = parseArgs({
-  options: {
-    'data-root': { type: 'string' },
-    draft: { type: 'string' },
-    url: { type: 'string' },
-    note: { type: 'string' },
-    id: many,
-    outcome: { type: 'string' },
-    reason: { type: 'string' },
-    state: { type: 'string' },
-    slug: { type: 'string' },
-    action: { type: 'string' },
-    confirm: { type: 'boolean' },
-    title: many,
-    text: many,
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true,
 });
 const root = resolveDataRoot({ flag: values['data-root'] });
@@ -87,14 +90,22 @@ const MODES = {
   'rule-add': () => addRule(root, { action: values.action, id: values.id?.[0], reason: values.reason, title: values.title, text: values.text, date }),
   'rule-remove': () => removeRule(root, { id: values.id?.[0] }),
 };
+export const SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: {
+    ok: ['proposed', 'auto-accepted', 'auto-rejected', 'already-proposed', 'already-accepted', 'already-rejected', 'exists', 'decided', 'unchanged', 'published', 'ok', 'retired', 'restored', 'added', 'replaced', 'removed'],
+    errors: ['refused', 'invalid-input', 'not-found'],
+  },
+});
 const mode = positionals[0];
-if (!Object.hasOwn(MODES, mode)) {
-  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(', ')}`);
-  process.exit(64);
-}
 
 const run = () => (readSchemaVersion(root) === null ? { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' } : MODES[mode]());
 const failures = { 'not-found': 'record-not-found' };
-const result = await chefCapture({ root, skill: 'chef-recipe-decisions', script: 'recipe-decisions', operation: mode, failures }, run);
-console.log(JSON.stringify(result));
-if (['refused', 'invalid-input', 'not-found'].includes(result.status)) process.exitCode = 2;
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(MODES, mode)
+    ? await chefCapture({ root, skill: 'chef-recipe-decisions', script: 'recipe-decisions', operation: mode, failures }, run)
+    : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status)) process.exitCode = 2;
+}

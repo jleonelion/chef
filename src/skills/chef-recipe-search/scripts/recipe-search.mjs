@@ -2,6 +2,7 @@
 // chef-recipe-search entry point, read-only. Modes: search (facets), show (one recipe).
 // Search runs every match through the dietary gate; --override lifts one constraint for this call only.
 import { parseArgs } from 'node:util';
+import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { gateRecipe, parseOverrides } from '../../../lib/dietary-gate.mjs';
@@ -13,21 +14,23 @@ import { readSettings } from '../../../lib/settings.mjs';
 import { searchRecipes } from './lib/search.mjs';
 
 const many = { type: 'string', multiple: true };
+const OPTIONS = {
+  'data-root': { type: 'string' },
+  query: { type: 'string' },
+  ingredient: many,
+  'exclude-ingredient': many,
+  cuisine: { type: 'string' },
+  tag: many,
+  flag: many,
+  'max-minutes': { type: 'string' },
+  limit: { type: 'string' },
+  slug: { type: 'string' },
+  override: many,
+  'include-retired': { type: 'boolean' },
+};
 const { values, positionals } = parseArgs({
-  options: {
-    'data-root': { type: 'string' },
-    query: { type: 'string' },
-    ingredient: many,
-    'exclude-ingredient': many,
-    cuisine: { type: 'string' },
-    tag: many,
-    flag: many,
-    'max-minutes': { type: 'string' },
-    limit: { type: 'string' },
-    slug: { type: 'string' },
-    override: many,
-    'include-retired': { type: 'boolean' },
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true,
 });
 const root = resolveDataRoot({ flag: values['data-root'] });
@@ -68,11 +71,12 @@ function show(recipes) {
 }
 
 const MODES = { search, show };
+export const SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: { ok: ['ok'], errors: ['refused', 'invalid-input', 'not-found'] },
+});
 const mode = positionals[0];
-if (!Object.hasOwn(MODES, mode)) {
-  console.error(`Unknown mode "${mode}". Supported: ${Object.keys(MODES).join(', ')}`);
-  process.exit(64);
-}
 
 function runMode() {
   if (readSchemaVersion(root) === null) return { status: 'refused', data_root: root, reason: 'not a Chef data root; run chef-setup first' };
@@ -91,6 +95,10 @@ function classify(result) {
     : { outcome: 'internal-error', error_code: 'unclassified' };
 }
 
-const result = await chefCapture({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: mode, classify }, runMode);
-console.log(JSON.stringify(result));
-if (['refused', 'invalid-input'].includes(result.status)) process.exitCode = 2;
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(MODES, mode)
+    ? await chefCapture({ root, skill: 'chef-recipe-search', script: 'recipe-search', operation: mode, classify }, runMode)
+    : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (['refused', 'invalid-input'].includes(result.status)) process.exitCode = 2;
+}

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import { parseArgs } from 'node:util';
+import { invalidMode, isDirectExecution } from '../../../lib/cli-entry.mjs';
 import { resolveDataRoot } from '../../../lib/data-root.mjs';
 import { chefCapture } from '../../../lib/diagnostics/capture.mjs';
 import { parseOverrides } from '../../../lib/dietary-gate.mjs';
@@ -10,13 +11,15 @@ import { planWeek } from './lib/plan.mjs';
 import { todayPlan } from './lib/today.mjs';
 
 const many = { type: 'string', multiple: true };
+const OPTIONS = {
+  'data-root': { type: 'string' },
+  'week-start': { type: 'string' },
+  date: { type: 'string' },
+  override: many,
+};
 const { values, positionals } = parseArgs({
-  options: {
-    'data-root': { type: 'string' },
-    'week-start': { type: 'string' },
-    date: { type: 'string' },
-    override: many,
-  },
+  args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
+  options: OPTIONS,
   allowPositionals: true,
 });
 
@@ -48,8 +51,17 @@ function plan() {
 }
 
 const MODES = { plan, today };
-const run = () => (Object.hasOwn(MODES, mode) ? MODES[mode]() : invalid('supported commands: plan, today'));
-const result = await chefCapture({ root, skill: 'chef-meal-planning', script: 'meal-planning', operation: mode }, run);
+export const SCRIPT_CONTRACT = Object.freeze({
+  modes: Object.keys(MODES),
+  flags: Object.keys(OPTIONS),
+  statuses: { ok: ['saved', 'planned', 'no-plan'], errors: ['invalid-input', 'refused'] },
+});
+const run = () => MODES[mode]();
 
-console.log(JSON.stringify(result));
-if (['invalid-input', 'refused'].includes(result.status)) process.exitCode = 2;
+if (isDirectExecution(import.meta.url)) {
+  const result = Object.hasOwn(MODES, mode)
+    ? await chefCapture({ root, skill: 'chef-meal-planning', script: 'meal-planning', operation: mode }, run)
+    : invalidMode(mode, SCRIPT_CONTRACT.modes, root);
+  console.log(JSON.stringify(result));
+  if (SCRIPT_CONTRACT.statuses.errors.includes(result.status)) process.exitCode = 2;
+}
