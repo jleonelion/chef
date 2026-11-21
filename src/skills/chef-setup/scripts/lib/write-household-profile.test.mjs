@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { readHouseholdProfile, HOUSEHOLD_PROFILE_PATH } from '../../../../lib/household-profile.mjs';
+import { RULESET_PATH } from '../../../../lib/dietary-ruleset.mjs';
 import { parsePage, serializePage } from '../../../../lib/frontmatter.mjs';
 import { initDataRoot } from './init-data-root.mjs';
 import { writeHouseholdProfile } from './write-household-profile.mjs';
@@ -46,4 +47,20 @@ test('rejects blank or duplicate member names without writing', () => {
     assert.deepEqual(result.problems, [problem]);
     assert.equal(fs.existsSync(path.join(dataRoot, HOUSEHOLD_PROFILE_PATH)), false);
   }
+});
+
+test('rejects a roster that would orphan an existing dietary-rule member', () => {
+  const dataRoot = root();
+  const ruleset = path.join(dataRoot, RULESET_PATH);
+  fs.mkdirSync(path.dirname(ruleset), { recursive: true });
+  fs.writeFileSync(ruleset, serializePage(
+    { type: 'dietary-ruleset', title: 'Dietary ruleset', members: [{ name: 'Alex Example', avoidances: ['olives'] }], updated: '2026-01-10' },
+    '# Dietary ruleset\n',
+  ));
+
+  const result = writeHouseholdProfile(dataRoot, { members: ['Sam Example'], date: '2026-01-20' });
+
+  assert.equal(result.status, 'invalid-input');
+  assert.deepEqual(result.problems, ['members: dietary rules name unknown household member "Alex Example"']);
+  assert.equal(fs.existsSync(path.join(dataRoot, HOUSEHOLD_PROFILE_PATH)), false);
 });

@@ -8683,34 +8683,33 @@ function recipeSlugs(ordered) {
 function nutritionInput(meal, recipe) {
   return { ...meal, nutrition_status: recipe.frontmatter.nutrition_status, nutrition_per_serving: recipe.frontmatter.nutrition_per_serving };
 }
-function planNutrition(meals, selected) {
-  const eaten = meals.flatMap((meal, index) => selected[index] ? [nutritionInput(meal, selected[index])] : []);
-  const unmeasured = meals.filter((meal) => mealKind(meal) === "food").map(({ date, slot, food }) => ({ date, slot, food }));
+function nutritionRollup(mealRecipes, { includes = () => true, servings = (meal) => meal.servings } = {}) {
+  const eaten = mealRecipes.flatMap(({ meal, recipe }) => recipe && includes(meal) ? [nutritionInput({ ...meal, servings: servings(meal) }, recipe)] : []);
+  const unmeasured = mealRecipes.filter(({ meal, recipe }) => !recipe && includes(meal) && mealKind(meal) === "food").map(({ meal: { date, slot, food } }) => ({ date, slot, food }));
   return { ...rollupNutrition(eaten), ...unmeasured.length && { unmeasured } };
 }
-function memberRollup(name, meals, selected) {
-  const eaten = meals.flatMap((meal, index) => selected[index] && meal.eaters.includes(name) ? [nutritionInput({ ...meal, servings: 1 }, selected[index])] : []);
-  const weekly = rollupNutrition(eaten);
-  const days = [...new Set(eaten.map(({ date }) => date))].map((date) => {
-    const rollup = rollupNutrition(eaten.filter((meal) => meal.date === date));
+function memberRollup(name, mealRecipes) {
+  const memberMeals = mealRecipes.filter(({ meal }) => meal.eaters.includes(name));
+  const weekly = nutritionRollup(memberMeals, { servings: () => 1 });
+  const days = [...new Set(memberMeals.filter(({ recipe }) => recipe).map(({ meal }) => meal.date))].map((date) => {
+    const rollup = nutritionRollup(memberMeals.filter(({ meal }) => meal.date === date), { servings: () => 1 });
     return { date, status: rollup.status, ...rollup.totals && { totals: rollup.totals }, ...rollup.missing && { missing: rollup.missing } };
   });
-  const unmeasured = meals.filter((meal) => mealKind(meal) === "food" && meal.eaters.includes(name)).map(({ date, slot, food }) => ({ date, slot, food }));
   return {
     name,
     status: weekly.status,
     days,
     ...weekly.totals && { totals: weekly.totals },
     ...weekly.missing && { missing: weekly.missing },
-    ...unmeasured.length && { unmeasured }
+    ...weekly.unmeasured && { unmeasured: weekly.unmeasured }
   };
 }
-function planNutritionByMember(meals, selected, members) {
+function planNutritionByMember(mealRecipes, members) {
   if (!members.length)
     return null;
   return {
-    members: members.map(({ name }) => memberRollup(name, meals, selected)),
-    unattributed_servings: meals.reduce((sum, meal, index) => sum + (selected[index] ? Math.max(0, meal.servings - meal.eaters.length) : 0), 0)
+    members: members.map(({ name }) => memberRollup(name, mealRecipes)),
+    unattributed_servings: mealRecipes.reduce((sum, { meal }) => sum + Math.max(0, meal.servings - meal.eaters.length), 0)
   };
 }
 function rosterProblems(planned, profile, ruleset) {
@@ -8719,11 +8718,7 @@ function rosterProblems(planned, profile, ruleset) {
   const names = new Set(profile.members.map(({ name }) => name));
   const eaterProblems = planned.flatMap((meal, index) => (meal.eaters ?? []).filter((name) => !names.has(name)).map((name) => `meals[${index}].eaters: unknown household member ${JSON.stringify(name)}`));
   const dietaryProblems = ruleset.members.filter(({ name }) => !names.has(name)).map(({ name }) => `dietary ruleset: unknown household member ${JSON.stringify(name)}`);
-  const servingsProblems = planned.flatMap((meal, index) => {
-    const eaters = meal.eaters ?? profile.members;
-    return meal.servings !== undefined && meal.servings < eaters.length ? [`meals[${index}].servings: must cover its ${eaters.length} eaters`] : [];
-  });
-  return [...eaterProblems, ...dietaryProblems, ...servingsProblems];
+  return [...eaterProblems, ...dietaryProblems];
 }
 function householdView(profile) {
   const view = { path: profile.path, servings: profile.servings, servings_source: profile.servings_source };
@@ -8801,6 +8796,7 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   const inventoryItems = listItems(loadInventory(root));
   const selected = recipeSlugs(ordered).map((slug) => slug && bySlug.get(slug).recipe);
   const meals = ordered.map((entry, index) => mealView(entry, selected[index], profile));
+  const mealRecipes = meals.map((meal, index) => ({ meal, recipe: selected[index] }));
   const cooked = withAmountToCook(meals);
   const recipeMeals = meals.filter((meal) => mealKind(meal) === "recipe");
   const overridden = [...new Set(recipeMeals.map((meal) => meal.slug))].flatMap((slug) => {
@@ -8811,8 +8807,8 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     const avoidances = bySlug.get(meal.slug).verdict.avoidances;
     return avoidances.length ? [{ date: meal.date, slot: meal.slot, slug: meal.slug, avoidances }] : [];
   });
-  const nutrition = planNutrition(meals, selected);
-  const nutritionByMember = planNutritionByMember(meals, selected, profile.members);
+  const nutrition = nutritionRollup(mealRecipes);
+  const nutritionByMember = planNutritionByMember(mealRecipes, profile.members);
   const dietary = dietaryNotes(ruleset);
   const inventory = { items_considered: inventoryItems.length };
   const frontmatter = {

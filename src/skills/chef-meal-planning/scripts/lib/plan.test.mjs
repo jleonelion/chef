@@ -406,13 +406,30 @@ test('incomplete nutrition blocks only members who eat that meal', () => {
   assert.deepEqual(sam.days.map(({ date }) => date), ['2026-01-19']);
 });
 
+test('explicit servings stay the household amount even below the eater count, and free-text surplus is reported', () => {
+  const members = [{ name: 'Alex Example' }, { name: 'Sam Example' }];
+  const root = makeRoot([measured('soup', 100), profile({ members })]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'soup', servings: 1 },
+      { date: '2026-01-20', slot: 'dinner', food: 'Dinner out', servings: 4 },
+    ],
+  });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(result.nutrition.totals.calories, 400);
+  assert.deepEqual(result.nutrition_by_member.members.map(({ totals }) => totals.calories), [400, 400]);
+  assert.equal(result.nutrition_by_member.unattributed_servings, 2);
+});
+
 test('unknown eater and dietary-rule names are invalid input and save nothing', () => {
   const members = [{ name: 'Alex Example' }];
   for (const [files, meals, problem] of [
     [[measured('soup', 100)], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Alex Example'] }], 'meals[0].eaters: household roster is not configured'],
     [[measured('soup', 100), profile({ members })], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Unknown Example'] }], 'meals[0].eaters: unknown household member "Unknown Example"'],
     [[measured('soup', 100), profile({ members }), ruleset([{ name: 'Unknown Example', avoidances: ['olives'] }])], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }], 'dietary ruleset: unknown household member "Unknown Example"'],
-    [[measured('soup', 100), profile({ members: [...members, { name: 'Sam Example' }] })], [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', servings: 1 }], 'meals[0].servings: must cover its 2 eaters'],
   ]) {
     const root = makeRoot(files);
     const beforeHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });

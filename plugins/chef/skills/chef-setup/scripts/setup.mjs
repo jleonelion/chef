@@ -10432,6 +10432,12 @@ function writeHouseholdProfile(root, { members, date, rewrite: rewrite2 = false 
     }
   }
   const roster = members.map((name) => ({ name: name.trim() }));
+  if (roster.length) {
+    const names = new Set(roster.map(({ name }) => name));
+    const unknown = readRuleset(root).members.find(({ name }) => !names.has(name));
+    if (unknown)
+      return { status: "invalid-input", data_root: root, problems: [`members: dietary rules name unknown household member ${JSON.stringify(unknown.name)}`] };
+  }
   const frontmatter = {
     ...page.frontmatter,
     type: "household-profile",
