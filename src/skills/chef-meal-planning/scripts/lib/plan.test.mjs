@@ -243,6 +243,9 @@ test('a household roster adds per-member nutrition and preserves unattributed se
     assert.deepEqual(result.nutrition_by_member[name].meals, [
       { date: '2026-01-19', slot: 'dinner', slug: 'soup', servings: 1, totals: perServing(500) },
     ]);
+    assert.deepEqual(result.nutrition_by_member[name].daily_totals, [
+      { date: '2026-01-19', totals: perServing(500) },
+    ]);
   }
 });
 
@@ -305,6 +308,11 @@ test('free-text meals contribute unattributed servings', () => {
 
   assert.equal(result.status, 'saved');
   assert.equal(result.nutrition_by_member.unattributed_servings, 2);
+  for (const name of ['Alex Example', 'Sam Example', 'Jo Example']) {
+    assert.deepEqual(result.nutrition_by_member[name].unmeasured, [
+      { date: '2026-01-19', slot: 'dinner', food: 'Dinner out' },
+    ]);
+  }
 });
 
 test('unknown eater names return invalid-input and save nothing', () => {

@@ -73,7 +73,7 @@ function planNutrition(meals, selected) {
 }
 
 function planNutritionByMember(meals, selected, members) {
-  const rollups = {};
+  const rollups = Object.create(null);
   let unattributed = 0;
   for (const meal of meals) {
     const eaters = meal.eaters ?? members;
@@ -85,7 +85,22 @@ function planNutritionByMember(meals, selected, members) {
       const eaters = meal.eaters ?? members;
       return eaters.includes(member) ? [{ ...nutritionInput(meal, selected[index]), servings: 1 }] : [];
     });
-    rollups[member] = rollupNutrition(eaten);
+    const rollup = rollupNutrition(eaten);
+    const dates = [...new Set(eaten.map((meal) => meal.date))].sort();
+    const dailyTotals = dates.map((date) => {
+      const day = rollupNutrition(eaten.filter((meal) => meal.date === date));
+      return day.status === 'complete'
+        ? { date, totals: day.totals }
+        : { date, status: 'incomplete', missing: day.missing };
+    });
+    const unmeasured = meals.filter((meal) => mealKind(meal) === 'food'
+      && (meal.eaters ?? members).includes(member))
+      .map(({ date, slot, food }) => ({ date, slot, food }));
+    rollups[member] = {
+      ...rollup,
+      daily_totals: dailyTotals,
+      ...(unmeasured.length && { unmeasured }),
+    };
   }
   return { ...rollups, ...(unattributed > 0 && { unattributed_servings: unattributed }) };
 }
@@ -130,6 +145,15 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   const profile = household(root);
   if (profile.members) {
     const known = new Set(profile.members);
+    const reserved = [...new Set(profile.members.filter((name) => ['unattributed_servings', '__proto__', 'constructor', 'prototype'].includes(name)))];
+    if (reserved.length) {
+      return {
+        status: 'invalid-input',
+        data_root: root,
+        week_start: weekStart,
+        problems: reserved.map((name) => `household profile: member name "${name}" is reserved`),
+      };
+    }
     const unknown = [...new Set(planned.flatMap((meal) => meal.eaters ?? []))].filter((name) => !known.has(name));
     if (unknown.length) {
       return {

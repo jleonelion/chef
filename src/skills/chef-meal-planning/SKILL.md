@@ -7,6 +7,8 @@ description: Plan and save a week of meals from the user's recipe book, househol
 
 Plan from Chef's saved recipes, household profile, dietary ruleset and inventory. A meal plan is a list of planned meals, each with a date, a meal slot (`breakfast`, `lunch`, `dinner` or `snack`), servings eaten, and what is eaten: a saved recipe, free-text food (a meal out, a simple food with no recipe) or leftovers of an earlier planned meal. Only the meals the user confirms are saved; a slot nobody listed is not planned, and Chef never fills it. Every saved plan includes its nutrition rollup. Retired, conflicting and unverified recipes are never planned. Avoidances are reported but never block a meal.
 
+Once, when proposing a plan for a household with no roster, mention that `chef-setup` can record names to enable per-member nutrition. Do not require it or repeat the offer every plan.
+
 Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input` or `refused`; the read-only `today` mode exits 0 when nothing is planned.
 
 ## Show a day's meals

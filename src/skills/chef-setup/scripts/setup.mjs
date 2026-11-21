@@ -33,6 +33,7 @@ import { updateChef } from './lib/update-chef.mjs';
 import { verifyInstall } from './lib/verify-install.mjs';
 import { writeRuleset } from './lib/write-ruleset.mjs';
 import { writeSettings } from './lib/write-settings.mjs';
+import { writeProfile } from './lib/write-profile.mjs';
 
 // Installed layout: <skills>/chef-setup/scripts/setup.mjs, fixture in chef-setup/fixture/.
 const skillDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -59,6 +60,8 @@ const { values, positionals } = parseArgs({
     'remove-trusted-receipt-sender': { type: 'string', multiple: true },
     'add-trusted-receipt-senders': { type: 'string', multiple: true },
     'remove-trusted-receipt-senders': { type: 'string', multiple: true },
+    'household-member': { type: 'string', multiple: true },
+    'clear-household-members': { type: 'boolean' },
     none: { type: 'boolean' },
     ...REPORT_FLAGS,
   },
@@ -136,6 +139,13 @@ function setDietary(root) {
   return writeRuleset(root, change, { date: today(), rewrite: values.rewrite ?? false });
 }
 
+function setHousehold(root) {
+  return writeProfile(root, values['household-member'], {
+    date: today(),
+    clear: values['clear-household-members'] ?? false,
+  });
+}
+
 function showTraceMode(root) {
   if (readSchemaVersion(root) === null) return { ...NOT_A_ROOT, data_root: root };
   const { maxEvents, maxBytes, maxAgeMs } = TRACE_BOUNDS;
@@ -163,6 +173,7 @@ const MODES = {
   safety: () => ({ status: 'ok', screen: SAFETY_SCREEN }),
   dietary,
   'set-dietary': setDietary,
+  'set-household': setHousehold,
   schedule: scheduleProposal,
   'check-update': () => checkUpdate({ skillDir }),
   trace: showTraceMode,
