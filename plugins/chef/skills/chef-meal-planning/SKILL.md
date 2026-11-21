@@ -7,6 +7,8 @@ description: Plan and save a week of meals from the user's recipe book, househol
 
 Plan from Chef's saved recipes, household profile, dietary ruleset and inventory. A meal plan is a list of planned meals, each with a date, a meal slot (`breakfast`, `lunch`, `dinner` or `snack`), servings eaten, and what is eaten: a saved recipe, free-text food (a meal out, a simple food with no recipe) or leftovers of an earlier planned meal. Only the meals the user confirms are saved; a slot nobody listed is not planned, and Chef never fills it. Every saved plan includes its nutrition rollup. Retired, conflicting and unverified recipes are never planned. Avoidances are reported but never block a meal.
 
+Once, when proposing a plan for a household with no roster, mention that `chef-setup` can record names to enable per-member nutrition. Do not require it or repeat the offer every plan.
+
 Run commands from this skill's directory. Each prints one JSON object. Exit code 2 means `status` is `invalid-input` or `refused`; the read-only `today` mode exits 0 when nothing is planned.
 
 ## Show a day's meals
@@ -28,7 +30,7 @@ This reads the saved plan containing that day's meals and writes nothing. Withou
 ```sh
 echo '[
   {"date": "2026-01-19", "slot": "breakfast", "recipe": "overnight-oats"},
-  {"date": "2026-01-19", "slot": "lunch", "recipe": "lentil-soup", "servings": 1, "note": "pack for work"},
+  {"date": "2026-01-19", "slot": "lunch", "recipe": "lentil-soup", "eaters": ["Alex Example", "Sam Example"], "note": "pack for work"},
   {"date": "2026-01-19", "slot": "dinner", "recipe": "tacos", "servings": 2},
   {"date": "2026-01-20", "slot": "lunch", "leftovers_of": {"date": "2026-01-19", "slot": "dinner"}, "servings": 2},
   {"date": "2026-01-20", "slot": "dinner", "food": "Dinner out: Thai"}
@@ -43,9 +45,11 @@ Each planned meal needs `date` (inside the week that starts on `--week-start`), 
 
 `servings` is servings eaten at that meal. It is optional and defaults to the household servings; `note` is optional text. One date can hold several planned meals, but only one per slot. Bad JSON, an unknown slot, a bad or out-of-week date, non-positive servings, a repeated date and slot, none or more than one of `recipe`/`food`/`leftovers_of`, empty `food`, or a `leftovers_of` that is missing from the list, not earlier, free-text food or itself leftovers return `invalid-input` with `problems`; nothing was saved. Fix the input and rerun.
 
+`eaters` is optional. When the household profile has a roster, it is a non-empty list of roster names; omitted means every roster member. It must not name unknown members or repeat a name. Omitted `servings` defaults to the eater count; an explicit `servings` must be at least the eater count. The explicit value is honored for household totals and shopping. One serving is assigned to each eater, and explicit servings beyond the eater count are reported as `unattributed_servings`. Free-text meals contribute extra servings too, but no member nutrition. With no roster, `eaters` is invalid and behavior is unchanged.
+
 Planned meals come back in three shapes. A recipe meal has `slug`, `title`, `servings` and `cook_servings`, the amount to cook: its servings plus those of every leftovers meal pointing to it. A leftovers meal has `leftovers_of`, the cooking meal's `slug` and `title`, and `servings`. A free-text food meal has `food` and `servings`.
 
-Report `meals` (with the amount to cook where it exceeds servings eaten), `nutrition`, `dietary`, `avoidance_notes`, `overridden`, and any `excluded` recipes present in the result. Pass `dietary.nudge`, `dietary.footer`, `dietary.caveats` or `dietary.problem` on exactly as provided. Completion means the confirmed planned meals have `status: saved` and its path is reported.
+Report `meals` (with the amount to cook where it exceeds servings eaten), `nutrition`, `dietary`, `avoidance_notes`, `overridden`, and any `excluded` recipes present in the result. With a roster, also save and report `nutrition_by_member` beside the unchanged household `nutrition`. Pass `dietary.nudge`, `dietary.footer`, `dietary.caveats` or `dietary.problem` on exactly as provided. Completion means the confirmed planned meals have `status: saved` and its path is reported.
 
 The script uses structured household portions when present and reports `servings_source` as `profile` or `default`. It saves `knowledge/wiki/meal-plans/<week-start>.md` through Chef's guarded wiki writer.
 

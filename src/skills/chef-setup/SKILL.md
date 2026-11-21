@@ -71,6 +71,8 @@ Confirm what was saved from the `settings` field of the output. If the user skip
    - **Yes:** record each person as in **Dietary ruleset** below.
    - **Skipped:** run nothing. Plans and lists will keep nudging the user until they answer.
 
+6. **Household roster.** Optionally ask: "Who in your household eats planned meals? I can use names for per-person nutrition without changing the household total." Record names only. If the user gives names, run `node scripts/setup.mjs set-household --household-member "Alex Example" --household-member "Sam Example"`; omit no names to leave behavior unchanged. Clear a roster with `--clear-household-members`. Never require a roster.
+
 Then offer **Connect USDA nutrition**, then **Connect Chef feedback** (Muse only), then **Recurring tasks**, and finish onboarding with **Verify install**.
 
 ## Connect USDA nutrition
