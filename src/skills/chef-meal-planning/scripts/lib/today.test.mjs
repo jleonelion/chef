@@ -49,5 +49,21 @@ test('a v1 one-per-day plan reads as dinner', () => {
 
   const result = todayPlan(root, '2026-01-20');
 
-  assert.deepEqual(result.meals, [{ date: '2026-01-20', slot: 'dinner', slug: 'lentil-salad', title: 'Lentil Salad', servings: 2 }]);
+  assert.deepEqual(result.meals, [{ date: '2026-01-20', slot: 'dinner', slug: 'lentil-salad', title: 'Lentil Salad', servings: 2, cook_servings: 2 }]);
+});
+
+test('the cooking meal reports the amount to cook for its leftovers; leftovers and free-text food keep their shapes', () => {
+  const root = rootWithPlan([
+    { date: '2026-01-19', slot: 'dinner', slug: 'chili', title: 'Chili', servings: 2 },
+    { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' }, slug: 'chili', title: 'Chili', servings: 2 },
+    { date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai', servings: 2 },
+  ]);
+
+  assert.deepEqual(todayPlan(root, '2026-01-19').meals, [
+    { date: '2026-01-19', slot: 'dinner', slug: 'chili', title: 'Chili', servings: 2, cook_servings: 4 },
+  ]);
+  assert.deepEqual(todayPlan(root, '2026-01-20').meals, [
+    { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' }, slug: 'chili', title: 'Chili', servings: 2 },
+    { date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai', servings: 2 },
+  ]);
 });

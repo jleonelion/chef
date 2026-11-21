@@ -154,14 +154,14 @@ test('a recipe planned at two meals buys for both meals\' servings and the list 
   const list = buildList(root, { units: 'us' });
   assert.deepEqual(list.items.map(({ item, amount, unit }) => [item, amount, unit]), [['rolled oats', 2.5, 'cup']]);
   assert.deepEqual(list.meals, [
-    { date: '2026-01-19', slot: 'breakfast', slug: 'oats', servings: 4 },
-    { date: '2026-01-19', slot: 'snack', slug: 'oats', servings: 1 },
+    { date: '2026-01-19', slot: 'breakfast', slug: 'oats', servings: 4, cook_servings: 4 },
+    { date: '2026-01-19', slot: 'snack', slug: 'oats', servings: 1, cook_servings: 1 },
   ]);
 });
 
 test('a v1 one-per-day plan reads as dinners', () => {
   const root = makeRoot([recipe('stew', ['2 can chickpeas']), plan('2026-01-19', [['stew', 2]])]);
-  assert.deepEqual(buildList(root, {}).meals, [{ date: '2026-01-19', slot: 'dinner', slug: 'stew', servings: 2 }]);
+  assert.deepEqual(buildList(root, {}).meals, [{ date: '2026-01-19', slot: 'dinner', slug: 'stew', servings: 2, cook_servings: 2 }]);
 });
 
 test('quantities show in the household unit system; sources keep each recipe\'s units', () => {
@@ -177,4 +177,21 @@ test('quantities show in the household unit system; sources keep each recipe\'s 
   assert.match(metric.text, /- 500 ml milk/);
   assert.deepEqual(metric.items[0].sources.map((s) => [s.recipe, s.amount, s.unit]), [['soup', 1, 'cup'], ['bake', 250, 'ml']]);
   assert.deepEqual(us.covered.map((c) => [c.item, c.text, c.on_hand.text]), [['tomatoes', '2 lb', '4.5 lb']]);
+});
+
+test('a leftover chain is bought once at the amount to cook; leftovers and free-text food add nothing', () => {
+  const root = makeRoot([
+    recipe('chili', ['1 can beans']),
+    slottedPlan('2026-01-19', [
+      { date: '2026-01-19', slot: 'dinner', slug: 'chili', title: 'chili', servings: 2 },
+      { date: '2026-01-20', slot: 'lunch', leftovers_of: { date: '2026-01-19', slot: 'dinner' }, slug: 'chili', title: 'chili', servings: 2 },
+      { date: '2026-01-20', slot: 'dinner', food: 'Dinner out: Thai', servings: 2 },
+    ]),
+  ]);
+
+  const list = buildList(root, { units: 'us' });
+
+  assert.deepEqual(list.items.map(({ item, amount, unit }) => [item, amount, unit]), [['beans', 2, 'can']]);
+  assert.deepEqual(list.meals, [{ date: '2026-01-19', slot: 'dinner', slug: 'chili', servings: 2, cook_servings: 4 }]);
+  assert.deepEqual(list.missing_recipes, []);
 });

@@ -19,14 +19,14 @@ function targetView(nutrient, bounds, servings) {
   };
 }
 
+const unavailable = (goal, reason) => ({ status: 'unavailable', goal: goal.goal, reason, footer: NOT_MEDICAL_ADVICE });
+
 export function healthSuggestions(plan, goal) {
   if (plan.nutrition?.status !== 'complete') {
-    return {
-      status: 'unavailable',
-      goal: goal.goal,
-      reason: 'some planned recipes have no complete nutrition, so Chef cannot compare the plan with your targets',
-      footer: NOT_MEDICAL_ADVICE,
-    };
+    return unavailable(goal, 'some planned recipes have no complete nutrition, so Chef cannot compare the plan with your targets');
+  }
+  if (!plan.nutrition.meals.length) {
+    return unavailable(goal, 'there are no planned recipe meals, so Chef has nothing to compare with your targets');
   }
   const servings = plan.nutrition.meals.map((m) => ({
     meal: { date: m.date, ...(m.slot && { slot: m.slot }), slug: m.slug },
@@ -35,7 +35,7 @@ export function healthSuggestions(plan, goal) {
   return {
     status: 'advisory',
     goal: goal.goal,
-    basis: 'one serving of each planned meal against your daily targets; the rest of each day is not counted',
+    basis: `one serving of each planned meal against your daily targets; the rest of each day is not counted${plan.nutrition.unmeasured?.length ? '; free-text meals are not counted' : ''}`,
     targets: Object.entries(goal.targets).map(([nutrient, bounds]) => targetView(nutrient, bounds, servings)),
     footer: NOT_MEDICAL_ADVICE,
   };

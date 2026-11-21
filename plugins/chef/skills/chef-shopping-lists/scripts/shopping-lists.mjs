@@ -8195,6 +8195,25 @@ var slotOf = (meal) => meal.slot ?? "dinner";
 var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
 var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
 
+// src/lib/planned-meal.mjs
+function mealKind(meal) {
+  if (meal.leftovers_of)
+    return "leftovers";
+  if (meal.food !== undefined)
+    return "food";
+  return "recipe";
+}
+var mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
+var leftoversFeeding = (meals, cooking) => meals.filter((meal) => mealKind(meal) === "leftovers" && mealKey(meal.leftovers_of) === mealKey(cooking));
+function withAmountToCook(meals) {
+  return meals.map((meal) => {
+    if (mealKind(meal) !== "recipe")
+      return meal;
+    const leftovers = leftoversFeeding(meals, meal).reduce((sum, { servings }) => sum + servings, 0);
+    return { ...meal, cook_servings: meal.servings + leftovers };
+  });
+}
+
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import fs11 from "node:fs";
 import path11 from "node:path";
@@ -8593,11 +8612,12 @@ function readPlan(root, weekStart) {
   if (!fs12.existsSync(file))
     return null;
   const meals = parsePage(fs12.readFileSync(file, "utf8")).frontmatter.meals ?? [];
-  return { path: rel, meals: meals.map(withSlot).sort(byDateAndSlot) };
+  const cooking = withAmountToCook(meals.map(withSlot)).filter((meal) => mealKind(meal) === "recipe");
+  return { path: rel, meals: cooking.sort(byDateAndSlot) };
 }
 var multiplier = (meal, recipe) => {
   const base = Number(recipe.frontmatter.servings);
-  return Number.isFinite(base) && base > 0 && Number(meal.servings) > 0 ? meal.servings / base : 1;
+  return Number.isFinite(base) && base > 0 && Number(meal.cook_servings) > 0 ? meal.cook_servings / base : 1;
 };
 function listText(weekStart, { items, unquantified }, dietary) {
   const rows = items.map((row) => `- ${row.text} ${row.item}${row.on_hand ? ` (on hand: ${row.on_hand.text})` : ""}`);
@@ -8648,7 +8668,7 @@ function buildList(root, { weekStart, upcoming = false, today: today2 = today(),
     data_root: root,
     week_start: week,
     plan: plan.path,
-    meals: plan.meals.map(({ date, slot, slug, servings }) => ({ date, slot, slug, servings })),
+    meals: plan.meals.map(({ date, slot, slug, servings, cook_servings }) => ({ date, slot, slug, servings, cook_servings })),
     ...list,
     covered: displayItems(covered, units),
     excluded,

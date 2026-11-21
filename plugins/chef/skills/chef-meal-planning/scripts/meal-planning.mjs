@@ -8381,6 +8381,25 @@ var slotOf = (meal) => meal.slot ?? "dinner";
 var withSlot = (meal) => ({ ...meal, slot: slotOf(meal) });
 var byDateAndSlot = (a, b) => a.date.localeCompare(b.date) || MEAL_SLOTS.indexOf(slotOf(a)) - MEAL_SLOTS.indexOf(slotOf(b));
 
+// src/lib/planned-meal.mjs
+function mealKind(meal) {
+  if (meal.leftovers_of)
+    return "leftovers";
+  if (meal.food !== undefined)
+    return "food";
+  return "recipe";
+}
+var mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
+var leftoversFeeding = (meals, cooking) => meals.filter((meal) => mealKind(meal) === "leftovers" && mealKey(meal.leftovers_of) === mealKey(cooking));
+function withAmountToCook(meals) {
+  return meals.map((meal) => {
+    if (mealKind(meal) !== "recipe")
+      return meal;
+    const leftovers = leftoversFeeding(meals, meal).reduce((sum, { servings }) => sum + servings, 0);
+    return { ...meal, cook_servings: meal.servings + leftovers };
+  });
+}
+
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import fs11 from "node:fs";
 import path11 from "node:path";
@@ -8498,14 +8517,13 @@ function targetView(nutrient, bounds, servings) {
     ...over.length && { over_daily_max: over }
   };
 }
+var unavailable = (goal, reason) => ({ status: "unavailable", goal: goal.goal, reason, footer: NOT_MEDICAL_ADVICE });
 function healthSuggestions(plan, goal) {
   if (plan.nutrition?.status !== "complete") {
-    return {
-      status: "unavailable",
-      goal: goal.goal,
-      reason: "some planned recipes have no complete nutrition, so Chef cannot compare the plan with your targets",
-      footer: NOT_MEDICAL_ADVICE
-    };
+    return unavailable(goal, "some planned recipes have no complete nutrition, so Chef cannot compare the plan with your targets");
+  }
+  if (!plan.nutrition.meals.length) {
+    return unavailable(goal, "there are no planned recipe meals, so Chef has nothing to compare with your targets");
   }
   const servings = plan.nutrition.meals.map((m) => ({
     meal: { date: m.date, ...m.slot && { slot: m.slot }, slug: m.slug },
@@ -8514,7 +8532,7 @@ function healthSuggestions(plan, goal) {
   return {
     status: "advisory",
     goal: goal.goal,
-    basis: "one serving of each planned meal against your daily targets; the rest of each day is not counted",
+    basis: `one serving of each planned meal against your daily targets; the rest of each day is not counted${plan.nutrition.unmeasured?.length ? "; free-text meals are not counted" : ""}`,
     targets: Object.entries(goal.targets).map(([nutrient, bounds]) => targetView(nutrient, bounds, servings)),
     footer: NOT_MEDICAL_ADVICE
   };
@@ -8522,13 +8540,30 @@ function healthSuggestions(plan, goal) {
 
 // src/skills/chef-meal-planning/scripts/lib/planned-meals.mjs
 var DATE = /^\d{4}-\d{2}-\d{2}$/;
+var KIND_FIELDS = ["recipe", "food", "leftovers_of"];
 var isRealDate = (value) => typeof value === "string" && DATE.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
+var isObject2 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+var isText = (value) => typeof value === "string" && value.trim() !== "";
+var isMealRef = (ref) => isObject2(ref) && isRealDate(ref.date) && MEAL_SLOTS.includes(ref.slot);
 function weekDates(weekStart) {
   const start = Date.parse(`${weekStart}T00:00:00Z`);
   return new Set(Array.from({ length: 7 }, (_, day) => new Date(start + day * 86400000).toISOString().slice(0, 10)));
 }
+function kindProblems(meal, at) {
+  if (KIND_FIELDS.filter((field) => meal[field] !== undefined).length !== 1) {
+    return [`${at}: must name exactly one of recipe, food or leftovers_of`];
+  }
+  if (meal.recipe !== undefined && !isText(meal.recipe))
+    return [`${at}.recipe: must be a recipe slug`];
+  if (meal.food !== undefined && !isText(meal.food))
+    return [`${at}.food: must be non-empty text`];
+  if (meal.leftovers_of !== undefined && !isMealRef(meal.leftovers_of)) {
+    return [`${at}.leftovers_of: must be {date, slot} with a real YYYY-MM-DD date and a known slot`];
+  }
+  return [];
+}
 function mealProblems(meal, at, week, weekStart) {
-  if (meal === null || typeof meal !== "object" || Array.isArray(meal))
+  if (!isObject2(meal))
     return [`${at}: must be an object`];
   const problems = [];
   if (!isRealDate(meal.date))
@@ -8537,8 +8572,7 @@ function mealProblems(meal, at, week, weekStart) {
     problems.push(`${at}.date: must fall in the week starting ${weekStart}`);
   if (!MEAL_SLOTS.includes(meal.slot))
     problems.push(`${at}.slot: must be breakfast, lunch, dinner or snack`);
-  if (typeof meal.recipe !== "string" || !meal.recipe.trim())
-    problems.push(`${at}.recipe: must be a recipe slug`);
+  problems.push(...kindProblems(meal, at));
   if (meal.servings !== undefined && !(typeof meal.servings === "number" && meal.servings > 0)) {
     problems.push(`${at}.servings: must be a number greater than zero`);
   }
@@ -8546,24 +8580,40 @@ function mealProblems(meal, at, week, weekStart) {
     problems.push(`${at}.note: must be text`);
   return problems;
 }
+function leftoversProblem(meal, at, byKey) {
+  const key = mealKey(meal.leftovers_of);
+  const target = byKey.get(key);
+  if (!target)
+    return `${at}.leftovers_of: no planned meal at ${key} in this plan`;
+  if (byDateAndSlot(target, meal) >= 0)
+    return `${at}.leftovers_of: ${key} must be an earlier planned meal`;
+  if (mealKind(target) === "food")
+    return `${at}.leftovers_of: ${key} is free-text food, not a saved recipe`;
+  if (mealKind(target) === "leftovers")
+    return `${at}.leftovers_of: ${key} is itself leftovers; point to the meal that cooked the dish`;
+  return null;
+}
 function plannedMealProblems(meals, weekStart) {
   if (!Array.isArray(meals))
     return ["meals: must be a list of planned meals"];
   if (!meals.length)
     return ["meals: must list at least one planned meal"];
   const week = weekDates(weekStart);
-  const taken = new Set;
-  return meals.flatMap((meal, index) => {
+  const byKey = new Map;
+  const shapeProblems = meals.flatMap((meal, index) => {
     const at = `meals[${index}]`;
     const problems = mealProblems(meal, at, week, weekStart);
     if (problems.length)
       return problems;
-    const key = `${meal.date} ${meal.slot}`;
-    if (taken.has(key))
+    const key = mealKey(meal);
+    if (byKey.has(key))
       return [`${at}: ${key} is already planned`];
-    taken.add(key);
+    byKey.set(key, meal);
     return [];
   });
+  if (shapeProblems.length)
+    return shapeProblems;
+  return meals.flatMap((meal, index) => mealKind(meal) === "leftovers" ? [leftoversProblem(meal, `meals[${index}]`, byKey)] : []).filter(Boolean);
 }
 
 // src/skills/chef-meal-planning/scripts/lib/plan.mjs
@@ -8578,17 +8628,32 @@ function household(root) {
   return { path: PROFILE_PATH, servings: fromProfile ? portions : 1, servings_source: fromProfile ? "profile" : "default" };
 }
 function mealView(planned, recipe, householdServings) {
+  const kind = mealKind(planned);
   return {
     date: planned.date,
     slot: planned.slot,
-    slug: recipe.slug,
-    title: recipe.frontmatter.title ?? recipe.slug,
+    ...kind === "leftovers" && { leftovers_of: { date: planned.leftovers_of.date, slot: planned.leftovers_of.slot } },
+    ...kind === "food" ? { food: planned.food.trim() } : { slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug },
     servings: planned.servings ?? householdServings,
     ...planned.note && { note: planned.note }
   };
 }
+function recipeSlugs(ordered) {
+  const byKey = new Map(ordered.map((entry) => [mealKey(entry), entry]));
+  return ordered.map((entry) => {
+    const kind = mealKind(entry);
+    if (kind === "food")
+      return null;
+    return kind === "leftovers" ? byKey.get(mealKey(entry.leftovers_of)).recipe : entry.recipe;
+  });
+}
 function nutritionInput(meal, recipe) {
   return { ...meal, nutrition_status: recipe.frontmatter.nutrition_status, nutrition_per_serving: recipe.frontmatter.nutrition_per_serving };
+}
+function planNutrition(meals, selected) {
+  const eaten = meals.flatMap((meal, index) => selected[index] ? [nutritionInput(meal, selected[index])] : []);
+  const unmeasured = meals.filter((meal) => mealKind(meal) === "food").map(({ date, slot, food }) => ({ date, slot, food }));
+  return { ...rollupNutrition(eaten), ...unmeasured.length && { unmeasured } };
 }
 function calendarPayload(calendar, meals) {
   if (!calendar)
@@ -8597,13 +8662,21 @@ function calendarPayload(calendar, meals) {
     calendar: {
       action: "create-events",
       calendar,
-      events: meals.map((meal) => ({ date: meal.date, slot: meal.slot, title: meal.title, recipe_slug: meal.slug })),
+      events: meals.map((meal) => mealKind(meal) === "food" ? { date: meal.date, slot: meal.slot, title: meal.food } : { date: meal.date, slot: meal.slot, title: mealTitle(meal), recipe_slug: meal.slug }),
       instruction: "Use the runtime calendar connector to create these events; this script does not call a calendar API."
     }
   };
 }
+var mealTitle = (meal) => mealKind(meal) === "leftovers" ? `Leftovers: ${meal.title}` : meal.title;
+function recipeCell(meal) {
+  const kind = mealKind(meal);
+  if (kind === "food")
+    return meal.food;
+  return kind === "leftovers" ? `${mealTitle(meal)} (from ${meal.leftovers_of.date} ${meal.leftovers_of.slot})` : meal.title;
+}
+var servingsCell = (meal) => meal.cook_servings > meal.servings ? `${meal.servings} (cook ${meal.cook_servings})` : `${meal.servings}`;
 function planBody(weekStart, meals) {
-  const rows = meals.map((meal) => `| ${meal.date} | ${meal.slot} | ${meal.title} | ${meal.servings} | ${meal.note ?? ""} |`).join(`
+  const rows = meals.map((meal) => `| ${meal.date} | ${meal.slot} | ${recipeCell(meal)} | ${servingsCell(meal)} | ${meal.note ?? ""} |`).join(`
 `);
   return `# Meal plan: week of ${weekStart}
 
@@ -8627,7 +8700,7 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   const excluded = active.filter(({ verdict }) => verdict.excluded).map(({ recipe, verdict }) => ({ slug: recipe.slug, title: recipe.frontmatter.title ?? recipe.slug, reasons: verdict.reasons }));
   const bySlug = new Map(judged.map((entry) => [entry.recipe.slug, entry]));
   const ordered = [...planned].sort(byDateAndSlot);
-  const refusedChoices = ordered.flatMap(({ date, slot, recipe: slug }) => {
+  const refusedChoices = ordered.filter((entry) => mealKind(entry) === "recipe").flatMap(({ date, slot, recipe: slug }) => {
     const entry = bySlug.get(slug);
     if (!entry)
       return [{ date, slot, slug, reasons: [{ why: "not-found" }] }];
@@ -8649,17 +8722,19 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   }
   const inventoryItems = listItems(loadInventory(root));
   const profile = household(root);
-  const selected = ordered.map(({ recipe: slug }) => bySlug.get(slug).recipe);
+  const selected = recipeSlugs(ordered).map((slug) => slug && bySlug.get(slug).recipe);
   const meals = ordered.map((entry, index) => mealView(entry, selected[index], profile.servings));
-  const overridden = [...new Set(selected.map((recipe) => recipe.slug))].flatMap((slug) => {
+  const cooked = withAmountToCook(meals);
+  const recipeMeals = meals.filter((meal) => mealKind(meal) === "recipe");
+  const overridden = [...new Set(recipeMeals.map((meal) => meal.slug))].flatMap((slug) => {
     const reasons = bySlug.get(slug).verdict.overridden;
     return reasons.length ? [{ slug, reasons }] : [];
   });
-  const avoidanceNotes = meals.flatMap((meal) => {
+  const avoidanceNotes = recipeMeals.flatMap((meal) => {
     const avoidances = bySlug.get(meal.slug).verdict.avoidances;
     return avoidances.length ? [{ date: meal.date, slot: meal.slot, slug: meal.slug, avoidances }] : [];
   });
-  const nutrition = rollupNutrition(meals.map((meal, index) => nutritionInput(meal, selected[index])));
+  const nutrition = planNutrition(meals, selected);
   const dietary = dietaryNotes(ruleset);
   const inventory = { items_considered: inventoryItems.length };
   const frontmatter = {
@@ -8676,7 +8751,7 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     ...avoidanceNotes.length && { avoidance_notes: avoidanceNotes }
   };
   const write = writeWiki(root, {
-    pages: [{ slug: weekStart, frontmatter, body: planBody(weekStart, meals) }],
+    pages: [{ slug: weekStart, frontmatter, body: planBody(weekStart, cooked) }],
     message: `Plan meals for week of ${weekStart}`
   });
   if (write.status !== "written")
@@ -8687,7 +8762,7 @@ function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
     data_root: root,
     path: write.pages[0],
     week_start: weekStart,
-    meals,
+    meals: cooked,
     excluded,
     unreadable,
     household: profile,
@@ -8728,7 +8803,7 @@ function todayPlan(root, date) {
     data_root: root,
     date,
     meal_plan: plan.path,
-    meals: plan.frontmatter.meals.filter((meal) => meal.date === date).map(withSlot).sort(byDateAndSlot),
+    meals: withAmountToCook(plan.frontmatter.meals.map(withSlot)).filter((meal) => meal.date === date).sort(byDateAndSlot),
     ...typeof footer === "string" && footer ? { dietary: { footer } } : {}
   };
 }
