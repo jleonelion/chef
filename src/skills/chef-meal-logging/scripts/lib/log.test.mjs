@@ -20,122 +20,54 @@ function writePlan(root, meals) {
   fs.writeFileSync(path.join(planDir, '2026-01-19.md'), serializePage({ type: 'meal-plan', meals }, '# Plan\n'));
 }
 
-function previewHash(root, date, slot) {
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', date, '--preview',
-    ...(slot ? ['--slot', slot] : []),
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-  return JSON.parse(result.stdout).plan_hash;
+const planDinner = { date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 };
+const planLeftovers = { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1, leftovers_of: { date: '2026-01-19', slot: 'dinner' } };
+
+function logFromPlan(root, ...args) {
+  const result = spawnSync(process.execPath, [script, 'log', '--data-root', root, '--from-plan', ...args], { encoding: 'utf8' });
+  return { exitCode: result.status, output: JSON.parse(result.stdout) };
 }
 
-test('preview never logs a manual meal', () => {
+test('logging cooked leftovers is refused without logging or changing inventory', () => {
   const root = dataRoot();
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--date', '2026-01-19', '--slot', 'dinner',
-    '--food', 'soup', '--servings', '1', '--preview',
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 2, result.stderr);
-  assert.equal(JSON.parse(result.stdout).status, 'invalid-input');
-  assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
-});
-
-test('a changed plan is not logged after its earlier preview was confirmed', () => {
-  const root = dataRoot();
-  writePlan(root, [{ date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 }]);
-  const preview = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', '2026-01-19', '--preview',
-  ], { encoding: 'utf8' });
-  assert.equal(preview.status, 0, preview.stderr);
-  const { plan_hash: hash, status, report_offer: offer } = JSON.parse(preview.stdout);
-  assert.equal(status, 'planned');
-  assert.equal(offer, undefined);
-  writePlan(root, [{ date: '2026-01-19', slot: 'dinner', food: 'Changed meal', servings: 2 }]);
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', '2026-01-19', '--plan-hash', hash,
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 2, result.stderr);
-  const output = JSON.parse(result.stdout);
-  assert.equal(output.status, 'invalid-input');
-  assert.match(output.problems[0], /plan changed/);
-  assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
-});
-
-test('logging planned leftovers as cooked is refused without changing inventory', () => {
-  const root = dataRoot();
-  writePlan(root, [
-    { date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 },
-    { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1, leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
-  ]);
+  writePlan(root, [planDinner, planLeftovers]);
   const before = fs.readFileSync(path.join(root, STORE.inventory), 'utf8');
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', '2026-01-20',
-    '--slot', 'lunch', '--cooked', 'lunch', '--plan-hash', previewHash(root, '2026-01-20', 'lunch'),
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 2, result.stderr);
-  const output = JSON.parse(result.stdout);
+  const { exitCode, output } = logFromPlan(root, '--date', '2026-01-20', '--cooked-slots', 'lunch');
+  assert.equal(exitCode, 2);
   assert.equal(output.status, 'invalid-input');
-  assert.match(output.problems[0], /non-leftovers/);
   assert.equal(fs.readFileSync(path.join(root, STORE.inventory), 'utf8'), before);
   assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
 });
 
-test('logging a planned recipe records servings eaten and deducts the confirmed amount cooked', () => {
+test('a cooked planned recipe logs servings eaten and deducts its amount to cook', () => {
   const root = dataRoot();
-  writePlan(root, [
-    { date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 },
-    { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1, leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
-  ]);
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', '2026-01-19',
-    '--slot', 'dinner', '--cooked', 'dinner', '--cooked-servings', 'dinner=3',
-    '--plan-hash', previewHash(root, '2026-01-19', 'dinner'),
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
+  writePlan(root, [planDinner, planLeftovers]);
+  const { exitCode } = logFromPlan(root, '--date', '2026-01-19', '--cooked-slots', 'dinner');
+  assert.equal(exitCode, 0);
   const entries = JSON.parse(fs.readFileSync(path.join(root, MEAL_LOG_FILE), 'utf8')).entries;
   assert.equal(entries.length, 1);
   assert.equal(entries[0].servings, 2);
-  assert.equal(entries[0].cooked, true);
   assert.equal(loadInventory(root).pantry.grains.pasta.amount, 0.7);
 });
 
-test('a cooked meal with planned leftovers requires a confirmed cooked amount', () => {
+test('a day with an unknown recipe logs nothing', () => {
   const root = dataRoot();
   writePlan(root, [
-    { date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 },
-    { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1, leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
+    { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1 },
+    { date: '2026-01-20', slot: 'dinner', slug: 'missing-recipe', servings: 1 },
   ]);
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', '2026-01-19',
-    '--slot', 'dinner', '--cooked', 'dinner', '--plan-hash', previewHash(root, '2026-01-19', 'dinner'),
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 2, result.stderr);
-  const output = JSON.parse(result.stdout);
-  assert.equal(output.status, 'invalid-input');
-  assert.match(output.problems[0], /confirm the amount cooked/);
+  const { exitCode, output } = logFromPlan(root, '--date', '2026-01-20');
+  assert.equal(exitCode, 2);
+  assert.match(output.problems[0], /recipe not found/);
   assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
-  assert.equal(loadInventory(root).pantry.grains.pasta.amount, 1);
 });
 
-test('logging a day with leftovers and food leaves inventory unchanged', () => {
+test('--from-plan rejects manual entry flags and a bare --cooked', () => {
   const root = dataRoot();
-  writePlan(root, [
-    { date: '2026-01-19', slot: 'dinner', slug: 'test-pasta', servings: 2 },
-    { date: '2026-01-20', slot: 'lunch', slug: 'test-pasta', servings: 1, leftovers_of: { date: '2026-01-19', slot: 'dinner' } },
-    { date: '2026-01-20', slot: 'dinner', food: 'Thai dinner out', servings: 2 },
-  ]);
-  const before = fs.readFileSync(path.join(root, STORE.inventory), 'utf8');
-  const result = spawnSync(process.execPath, [
-    script, 'log', '--data-root', root, '--from-plan', '--date', '2026-01-20',
-    '--plan-hash', previewHash(root, '2026-01-20'),
-  ], { encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-  const entries = JSON.parse(fs.readFileSync(path.join(root, MEAL_LOG_FILE), 'utf8')).entries;
-  assert.deepEqual(entries.map(({ slot, recipe, food, servings, cooked }) => ({ slot, recipe, food, servings, cooked })), [
-    { slot: 'lunch', recipe: 'test-pasta', food: null, servings: 1, cooked: false },
-    { slot: 'dinner', recipe: null, food: 'Thai dinner out', servings: 2, cooked: false },
-  ]);
-  assert.equal(fs.readFileSync(path.join(root, STORE.inventory), 'utf8'), before);
+  writePlan(root, [planDinner]);
+  const { exitCode, output } = logFromPlan(root, '--date', '2026-01-19', '--cooked');
+  assert.equal(exitCode, 2);
+  assert.equal(output.status, 'invalid-input');
 });
 
 function dataRoot() {

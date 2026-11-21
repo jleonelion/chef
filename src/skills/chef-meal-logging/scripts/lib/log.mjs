@@ -26,7 +26,7 @@ function entryFor(root, input, id = null) {
   };
 }
 
-function validate(root, input) {
+export function validate(root, input) {
   const problems = [];
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date ?? '') || Number.isNaN(Date.parse(`${input.date}T00:00:00Z`))) problems.push('date: must be YYYY-MM-DD');
   if (!MEAL_SLOTS.includes(input.slot)) problems.push('slot: must be breakfast, lunch, dinner or snack');
@@ -64,7 +64,7 @@ export function logMeal(root, input) {
     status = 'logged';
   }
   const inventory = entry.cooked && entry.recipe
-    ? deductRecipe(root, { recipe: entry.recipe, servings: input.inventoryServings ?? entry.servings, deductionId: entry.id, now: entry.logged_at })
+    ? deductRecipe(root, { recipe: entry.recipe, servings: input.servingsCooked ?? entry.servings, deductionId: entry.id, now: entry.logged_at })
     : { status: 'not-requested' };
   return { status, entry: existing ?? entry, inventory };
 }

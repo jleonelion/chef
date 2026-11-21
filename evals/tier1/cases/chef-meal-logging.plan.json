@@ -1,7 +1,7 @@
 [
   {
     "id": "chef-meal-logging-plan-recipe-servings-eaten",
-    "description": "A planned recipe with leftovers logs the servings eaten, not the amount cooked.",
+    "description": "A cooked planned recipe with leftovers logs the servings eaten and deducts the amount to cook.",
     "grounding": { "recipes": ["lemon-garlic-pasta"] },
     "steps": [
       {
@@ -12,12 +12,13 @@
         ]
       }
     ],
-    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-19", "--slot", "dinner", "--plan-hash", "e2b873b2e160edc85379f14426b88f5ebf0f47ec4acdd3e31c8f43b577de5acc"],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-19", "--slot", "dinner", "--cooked-slots", "dinner"],
     "parse": "json",
     "assertions": [
       { "path": "$.status", "equals": "logged" },
       { "path": "$.results[0].entry.recipe", "equals": "lemon-garlic-pasta" },
-      { "path": "$.results[0].entry.servings", "equals": 2 }
+      { "path": "$.results[0].entry.servings", "equals": 2 },
+      { "path": "$.results[0].inventory.status", "equals": "deducted" }
     ],
     "git": { "clean": true }
   },
@@ -35,7 +36,7 @@
         ]
       }
     ],
-    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--plan-hash", "240a2c6a86512e7e7f90586ed6e4cc0be9de2abd6e9ebd3df5c57d3922bec561"],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20"],
     "parse": "json",
     "assertions": [
       { "path": "$.results[0].entry.recipe", "equals": "lemon-garlic-pasta" },
@@ -61,12 +62,12 @@
         ]
       }
     ],
-    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--cooked", "lunch", "--plan-hash", "240a2c6a86512e7e7f90586ed6e4cc0be9de2abd6e9ebd3df5c57d3922bec561"],
+    "command": ["node", "{skills}/chef-meal-logging/scripts/meal-logging.mjs", "log", "--from-plan", "--date", "2026-01-20", "--cooked-slots", "lunch"],
     "expectedStatus": 2,
     "parse": "json",
     "assertions": [
       { "path": "$.status", "equals": "invalid-input" },
-      { "path": "$.problems[0]", "equals": "--cooked requires selected non-leftovers slots" }
+      { "path": "$.problems[0]", "equals": "leftovers were cooked by their source meal and cannot be logged as cooked" }
     ],
     "git": { "clean": true }
   }

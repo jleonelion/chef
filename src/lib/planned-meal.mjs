@@ -9,6 +9,9 @@ export function mealKind(meal) {
   return 'recipe';
 }
 
+// What a planned meal is, as the `recipe` or `food` field of a meal-log entry. Leftovers keep the copied recipe.
+export const mealSubject = (meal) => (meal.food === undefined ? { recipe: meal.slug } : { food: meal.food });
+
 export const mealKey = (meal) => `${meal.date} ${slotOf(meal)}`;
 
 export const leftoversFeeding = (meals, cooking) =>
