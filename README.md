@@ -169,7 +169,7 @@ built entry script after dependencies are installed, then checks its exported mo
 statuses against SKILL.md and the invocation fact registry. Missing skills become an error once
 the plugin version reaches 1.0.0, or with `node scripts/lint-skills.mjs --release`.
 
-Contributions: no real names, addresses or personal emails anywhere. Use `example.com`.
+Contributions: see `CONTRIBUTING.md`. No real names, addresses or personal emails anywhere. Use `example.com`.
 
 ## License
 
