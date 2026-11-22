@@ -57,6 +57,8 @@ Covers seven days from `--week-start`, from the meal log (logged with `chef-meal
 
 `chef-meal-planning` adds `health_suggestions` to a saved plan when a goal is declared. They compare one serving of each planned meal with the daily targets and never change which meals were planned or what the dietary gate allowed. Pass them on as advice the user can act on, never as a reason to plan a recipe the gate left out.
 
+Saved plans with a household roster also add per-member nutrition rollups. A member with a specific goal gets per-day and weekly target comparisons: `met` at `min` or `max`, `under` below `min`, or `over` above `max`. Days with no planned food do not count. If incomplete recipe nutrition blocks a member, report `incomplete` and list the blocking meals; never estimate them.
+
 ## Rules
 
 - End every report, suggestion and goal confirmation with `footer` exactly as given.

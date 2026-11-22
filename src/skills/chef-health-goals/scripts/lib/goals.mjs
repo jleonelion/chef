@@ -90,7 +90,7 @@ function mergeTargets(current = {}, edit = {}) {
 
 export function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax, removeMax, setMin, setMax, removeTarget }, { date, rewrite = false, mergeTargets: partial = false } = {}) {
   const text = goal?.trim();
-  if (!text && !Array.isArray(goals)) return { status: 'invalid-input', data_root: root, problems: ['give --goal with a short description of the goal'] };
+  if (!text && !Array.isArray(goals) && !partial) return { status: 'invalid-input', data_root: root, problems: ['give --goal with a short description of the goal'] };
   const refusal = writeRefusal(root);
   if (refusal) return refusal;
   const roster = readHouseholdProfile(root).members;
@@ -107,9 +107,20 @@ export function setGoal(root, { goal, member, goals, targets, addMin, removeMin,
   if (current.status === 'unreadable' && !rewrite) {
     return { status: 'refused', data_root: root, reason: current.reason, content: fs.readFileSync(path.join(root, GOALS_PATH), 'utf8') };
   }
+  const memberName = member?.trim();
+  const existingMember = memberName
+    ? current.status === 'active' ? current.goals?.find((entry) => entry.member === memberName) : null
+    : null;
+  const existingGoalText = memberName
+    ? existingMember?.goal
+    : current.status === 'active' ? current.goal : null;
+  const goalText = text || existingGoalText;
+  if (partial && !goalText) {
+    return { status: 'invalid-input', data_root: root, problems: ['give --goal with a short description of the goal'] };
+  }
   const set = current.status === 'active' ? current.set : date;
-  const memberTargetSet = member && current.status === 'active'
-    ? current.goals?.find((entry) => entry.member === member.trim())?.targets ?? {}
+  const memberTargetSet = memberName && current.status === 'active'
+    ? existingMember?.targets ?? {}
     : current.status === 'active' ? current.targets ?? {} : {};
   const finalTargets = partial ? mergeTargets(memberTargetSet, {
     addMin, removeMin, addMax, removeMax, setMin, setMax, removeTarget,
@@ -124,23 +135,23 @@ export function setGoal(root, { goal, member, goals, targets, addMin, removeMin,
     }
     if (problems.length) return { status: 'invalid-input', data_root: root, problems };
   }
-  if (partial && JSON.stringify(finalTargets) === JSON.stringify(
-    member
-      ? (current.status === 'active' ? current.goals?.find((entry) => entry.member === member.trim())?.targets ?? {} : {})
+  const targetsUnchanged = JSON.stringify(finalTargets) === JSON.stringify(
+    memberName
+      ? existingMember?.targets ?? {}
       : (current.status === 'active' ? current.targets ?? {} : {}),
-  )) {
-    return member
-      ? { status: 'unchanged', data_root: root, member: member.trim(), goal: text, targets: finalTargets }
-      : { status: 'unchanged', data_root: root, goal: text, targets: finalTargets };
+  );
+  if (partial && targetsUnchanged && existingGoalText === goalText) {
+    return memberName
+      ? { status: 'unchanged', data_root: root, member: memberName, goal: goalText, targets: finalTargets }
+      : { status: 'unchanged', data_root: root, goal: goalText, targets: finalTargets };
   }
   const notice = noticeToRecord(root, 'training-setting', date);
   let value;
   if (Array.isArray(goals)) {
     value = { goals, set: current.status === 'active' ? current.set : date, updated: date };
-  } else if (member) {
-    const memberName = member.trim();
+  } else if (memberName) {
     const existingGoals = current.status === 'active' && Array.isArray(current.goals) ? current.goals : [];
-    const nextGoals = [...existingGoals.filter((entry) => entry.member !== memberName), { member: memberName, goal: text, targets: finalTargets }];
+    const nextGoals = [...existingGoals.filter((entry) => entry.member !== memberName), { member: memberName, goal: goalText, targets: finalTargets }];
     value = {
       ...(current.status === 'active' && current.goal ? { goal: current.goal, targets: current.targets ?? {} } : {}),
       goals: nextGoals,
@@ -149,7 +160,7 @@ export function setGoal(root, { goal, member, goals, targets, addMin, removeMin,
     };
   } else {
     value = {
-      goal: text,
+      goal: goalText,
       targets: finalTargets,
       ...(current.status === 'active' && Array.isArray(current.goals) && { goals: current.goals }),
       set,
@@ -161,7 +172,7 @@ export function setGoal(root, { goal, member, goals, targets, addMin, removeMin,
     message: 'chef-health-goals: set goal',
   });
   if (written.status !== 'written') return written;
-  return { status: 'saved', data_root: root, goal: text, targets: finalTargets, ...(notice && { notice: TRAINING_NOTICE }), footer: NOT_MEDICAL_ADVICE };
+  return { status: 'saved', data_root: root, goal: goalText, targets: finalTargets, ...(notice && { notice: TRAINING_NOTICE }), footer: NOT_MEDICAL_ADVICE };
 }
 
 export function clearGoal(root, { date }) {

@@ -8053,7 +8053,7 @@ function mergeTargets(current = {}, edit = {}) {
 }
 function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax, removeMax, setMin, setMax, removeTarget }, { date, rewrite: rewrite2 = false, mergeTargets: partial = false } = {}) {
   const text = goal?.trim();
-  if (!text && !Array.isArray(goals))
+  if (!text && !Array.isArray(goals) && !partial)
     return { status: "invalid-input", data_root: root, problems: ["give --goal with a short description of the goal"] };
   const refusal = writeRefusal(root);
   if (refusal)
@@ -8065,7 +8065,7 @@ function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax
     }
   }
   if (Array.isArray(goals)) {
-    const unknown = goals.map(({ member: name }) => name).filter((name) => !roster.some(({ name: memberName }) => memberName === name));
+    const unknown = goals.map(({ member: name }) => name).filter((name) => !roster.some(({ name: memberName2 }) => memberName2 === name));
     if (unknown.length)
       return { status: "invalid-input", data_root: root, problems: [`unknown household member "${unknown[0]}"; add the member to the household profile first`] };
   }
@@ -8073,8 +8073,15 @@ function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax
   if (current.status === "unreadable" && !rewrite2) {
     return { status: "refused", data_root: root, reason: current.reason, content: fs11.readFileSync(path11.join(root, GOALS_PATH), "utf8") };
   }
+  const memberName = member?.trim();
+  const existingMember = memberName ? current.status === "active" ? current.goals?.find((entry) => entry.member === memberName) : null : null;
+  const existingGoalText = memberName ? existingMember?.goal : current.status === "active" ? current.goal : null;
+  const goalText = text || existingGoalText;
+  if (partial && !goalText) {
+    return { status: "invalid-input", data_root: root, problems: ["give --goal with a short description of the goal"] };
+  }
   const set = current.status === "active" ? current.set : date;
-  const memberTargetSet = member && current.status === "active" ? current.goals?.find((entry) => entry.member === member.trim())?.targets ?? {} : current.status === "active" ? current.targets ?? {} : {};
+  const memberTargetSet = memberName && current.status === "active" ? existingMember?.targets ?? {} : current.status === "active" ? current.targets ?? {} : {};
   const finalTargets = partial ? mergeTargets(memberTargetSet, {
     addMin,
     removeMin,
@@ -8097,17 +8104,17 @@ function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax
     if (problems.length)
       return { status: "invalid-input", data_root: root, problems };
   }
-  if (partial && JSON.stringify(finalTargets) === JSON.stringify(member ? current.status === "active" ? current.goals?.find((entry) => entry.member === member.trim())?.targets ?? {} : {} : current.status === "active" ? current.targets ?? {} : {})) {
-    return member ? { status: "unchanged", data_root: root, member: member.trim(), goal: text, targets: finalTargets } : { status: "unchanged", data_root: root, goal: text, targets: finalTargets };
+  const targetsUnchanged = JSON.stringify(finalTargets) === JSON.stringify(memberName ? existingMember?.targets ?? {} : current.status === "active" ? current.targets ?? {} : {});
+  if (partial && targetsUnchanged && existingGoalText === goalText) {
+    return memberName ? { status: "unchanged", data_root: root, member: memberName, goal: goalText, targets: finalTargets } : { status: "unchanged", data_root: root, goal: goalText, targets: finalTargets };
   }
   const notice = noticeToRecord(root, "training-setting", date);
   let value;
   if (Array.isArray(goals)) {
     value = { goals, set: current.status === "active" ? current.set : date, updated: date };
-  } else if (member) {
-    const memberName = member.trim();
+  } else if (memberName) {
     const existingGoals = current.status === "active" && Array.isArray(current.goals) ? current.goals : [];
-    const nextGoals = [...existingGoals.filter((entry) => entry.member !== memberName), { member: memberName, goal: text, targets: finalTargets }];
+    const nextGoals = [...existingGoals.filter((entry) => entry.member !== memberName), { member: memberName, goal: goalText, targets: finalTargets }];
     value = {
       ...current.status === "active" && current.goal ? { goal: current.goal, targets: current.targets ?? {} } : {},
       goals: nextGoals,
@@ -8116,7 +8123,7 @@ function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax
     };
   } else {
     value = {
-      goal: text,
+      goal: goalText,
       targets: finalTargets,
       ...current.status === "active" && Array.isArray(current.goals) && { goals: current.goals },
       set,
@@ -8129,7 +8136,7 @@ function setGoal(root, { goal, member, goals, targets, addMin, removeMin, addMax
   });
   if (written.status !== "written")
     return written;
-  return { status: "saved", data_root: root, goal: text, targets: finalTargets, ...notice && { notice: TRAINING_NOTICE }, footer: NOT_MEDICAL_ADVICE };
+  return { status: "saved", data_root: root, goal: goalText, targets: finalTargets, ...notice && { notice: TRAINING_NOTICE }, footer: NOT_MEDICAL_ADVICE };
 }
 function clearGoal(root, { date }) {
   const current = readGoal(root);

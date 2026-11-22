@@ -295,7 +295,7 @@ test('member goals give independent per-day and weekly target comparisons', () =
     profile({ members }),
     {
       path: 'data/health-goals/goals.json',
-      content: '{"goals":[{"member":"Alex Example","goal":"Lower sodium","targets":{"sodium":{"max":2300}}},{"member":"Sam Example","goal":"Higher protein","targets":{"protein":{"min":30}}}],"set":"2026-01-10","updated":"2026-01-10"}\n',
+      content: '{"goals":[{"member":"Alex Example","goal":"Lower sodium","targets":{"sodium":{"max":2300},"protein":{"min":20}}},{"member":"Sam Example","goal":"Higher protein","targets":{"protein":{"min":30}}}],"set":"2026-01-10","updated":"2026-01-10"}\n',
     },
   ]);
 
@@ -306,12 +306,41 @@ test('member goals give independent per-day and weekly target comparisons', () =
 
   const [alex, sam, jo] = result.nutrition_by_member.members;
   assert.equal(alex.comparison.status, 'measured');
-  assert.deepEqual(alex.comparison.days[0].targets, { sodium: 'met' });
-  assert.deepEqual(alex.comparison.weekly, { sodium: 'met' });
+  assert.deepEqual(alex.comparison.days[0].targets, { sodium: 'met', protein: 'met' });
+  assert.deepEqual(alex.comparison.weekly, { sodium: 'met', protein: 'met' });
   assert.equal(sam.comparison.status, 'measured');
   assert.deepEqual(sam.comparison.days[0].targets, { protein: 'under' });
   assert.deepEqual(sam.comparison.weekly, { protein: 'under' });
   assert.equal(jo.comparison, undefined);
+});
+
+test('a member with a goal and no planned meal has a no-meals comparison', () => {
+  const members = [{ name: 'Alex Example' }, { name: 'Sam Example' }];
+  const root = makeRoot([
+    measured('soup', 2300),
+    profile({ members }),
+    {
+      path: 'data/health-goals/goals.json',
+      content: '{"goals":[{"member":"Alex Example","goal":"Lower sodium","targets":{"sodium":{"max":2300}}}],"set":"2026-01-10","updated":"2026-01-10"}\n',
+    },
+  ]);
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup', eaters: ['Sam Example'] }],
+  });
+
+  const alex = result.nutrition_by_member.members[0];
+  assert.equal(alex.status, 'complete');
+  assert.equal(alex.totals, undefined);
+  assert.deepEqual(alex.days, []);
+  assert.deepEqual(alex.comparison, {
+    goal: 'Lower sodium',
+    footer: 'Chef gives general information, not medical advice.',
+    status: 'no-meals',
+    days: [],
+    weekly: {},
+  });
 });
 
 test('nutrition and health suggestions are per planned meal, so one recipe at two slots on a day stays two meals', () => {
@@ -433,9 +462,34 @@ test('incomplete nutrition blocks only members who eat that meal', () => {
   assert.equal(alex.totals, undefined);
   assert.equal(alex.comparison.status, 'incomplete');
   assert.equal(alex.comparison.targets, undefined);
+  assert.deepEqual(alex.comparison.missing, [
+    { date: '2026-01-20', slot: 'dinner', slug: 'mystery-stew', reason: 'recipe nutrition is not complete' },
+  ]);
   assert.equal(sam.status, 'complete');
   assert.equal(sam.totals.calories, 400);
   assert.deepEqual(sam.days.map(({ date }) => date), ['2026-01-19']);
+});
+
+test('an unknown member in the goals store is invalid input and saves nothing', () => {
+  const members = [{ name: 'Alex Example' }];
+  const root = makeRoot([
+    measured('soup', 100),
+    profile({ members }),
+    {
+      path: 'data/health-goals/goals.json',
+      content: '{"goals":[{"member":"Unknown Example","goal":"Higher protein","targets":{"protein":{"min":30}}}],"set":"2026-01-10","updated":"2026-01-10"}\n',
+    },
+  ]);
+  const beforeHead = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
+
+  const result = planWeek(root, {
+    weekStart: '2026-01-19',
+    meals: [{ date: '2026-01-19', slot: 'dinner', recipe: 'soup' }],
+  });
+
+  assert.equal(result.status, 'invalid-input');
+  assert.deepEqual(result.problems, ['unknown household member "Unknown Example"; add the member to the household profile first']);
+  assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }), beforeHead);
 });
 
 test('explicit servings stay the household amount even below the eater count, and free-text surplus is reported', () => {
