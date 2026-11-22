@@ -137,6 +137,49 @@ test('setGoal preserves targets not included in a partial edit', () => {
   });
 });
 
+test('setGoal partially edits one member goal without requiring or replacing the goal text', () => {
+  const root = dataRoot();
+  writeFile(root, 'knowledge/wiki/household/profile.md', '---\ntype: household-profile\nmembers:\n  - name: Alex Example\nupdated: 2026-01-10\n---\n');
+  assert.equal(setGoal(root, {
+    member: 'Alex Example',
+    goal: 'Higher protein',
+    targets: { protein: { min: 90 } },
+  }, { date: '2026-01-15' }).status, 'saved');
+
+  const result = setGoal(root, {
+    member: 'Alex Example',
+    targets: {},
+    addMax: ['calories=2200'],
+  }, { date: '2026-01-20', mergeTargets: true });
+
+  assert.equal(result.status, 'saved');
+  assert.deepEqual(readJson(root, GOALS_PATH).goals, [{
+    member: 'Alex Example',
+    goal: 'Higher protein',
+    targets: { protein: { min: 90 }, calories: { max: 2200 } },
+  }]);
+});
+
+test('setGoal saves a changed goal description when the targets are unchanged', () => {
+  const root = dataRoot();
+  writeFile(root, 'knowledge/wiki/household/profile.md', '---\ntype: household-profile\nmembers:\n  - name: Alex Example\nupdated: 2026-01-10\n---\n');
+  setGoal(root, {
+    member: 'Alex Example',
+    goal: 'Higher protein',
+    targets: { protein: { min: 90 } },
+  }, { date: '2026-01-15' });
+
+  const result = setGoal(root, {
+    member: 'Alex Example',
+    goal: 'Build strength',
+    targets: {},
+    setMin: ['protein=90'],
+  }, { date: '2026-01-20', mergeTargets: true });
+
+  assert.equal(result.status, 'saved');
+  assert.equal(readJson(root, GOALS_PATH).goals[0].goal, 'Build strength');
+});
+
 test('setGoal removes only one target bound or target', () => {
   const root = dataRoot();
   setGoal(root, { goal: 'Lower sodium', targets: { sodium: { max: 2300 }, protein: { min: 90 } } }, { date: '2026-01-15' });

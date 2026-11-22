@@ -9,7 +9,7 @@ import { readSettings } from '../../../../lib/settings.mjs';
 import { NOT_MEDICAL_ADVICE } from '../../../../lib/safety-text.mjs';
 import { writeWiki } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
-import { activeGoal } from '../../../chef-health-goals/scripts/lib/goals.mjs';
+import { activeGoal, readGoal } from '../../../chef-health-goals/scripts/lib/goals.mjs';
 import { healthSuggestions } from '../../../chef-health-goals/scripts/lib/suggest.mjs';
 import { plannedMealProblems } from './planned-meals.mjs';
 
@@ -57,9 +57,13 @@ function nutritionRollup(mealRecipes, { servings = (meal) => meal.servings } = {
 
 function memberRollup(name, mealRecipes) {
   const memberMeals = mealRecipes.filter(({ meal }) => meal.eaters.includes(name));
-  const weekly = nutritionRollup(memberMeals, { servings: () => 1 });
-  const days = [...new Set(memberMeals.filter(({ recipe }) => recipe).map(({ meal }) => meal.date))].map((date) => {
-    const rollup = nutritionRollup(memberMeals.filter(({ meal }) => meal.date === date), { servings: () => 1 });
+  const measuredMeals = memberMeals.filter(({ recipe }) => recipe);
+  const weekly = measuredMeals.length ? nutritionRollup(measuredMeals, { servings: () => 1 }) : { status: 'complete' };
+  const unmeasured = memberMeals
+    .filter(({ meal, recipe }) => !recipe && mealKind(meal) === 'food')
+    .map(({ meal: { date, slot, food } }) => ({ date, slot, food }));
+  const days = [...new Set(measuredMeals.map(({ meal }) => meal.date))].map((date) => {
+    const rollup = nutritionRollup(measuredMeals.filter(({ meal }) => meal.date === date), { servings: () => 1 });
     return { date, status: rollup.status, ...(rollup.totals && { totals: rollup.totals }), ...(rollup.missing && { missing: rollup.missing }) };
   });
   return {
@@ -68,7 +72,7 @@ function memberRollup(name, mealRecipes) {
     days,
     ...(weekly.totals && { totals: weekly.totals }),
     ...(weekly.missing && { missing: weekly.missing }),
-    ...(weekly.unmeasured && { unmeasured: weekly.unmeasured }),
+    ...(unmeasured.length && { unmeasured }),
   };
 }
 
@@ -102,7 +106,7 @@ function memberComparison(member, goal) {
     footer: NOT_MEDICAL_ADVICE,
   };
   if (member.status === 'incomplete') {
-    return { comparison: { ...comparison, status: 'incomplete' } };
+    return { comparison: { ...comparison, status: 'incomplete', ...(member.missing && { missing: member.missing }) } };
   }
   if (!member.totals) return { comparison: { ...comparison, status: 'no-meals', days: [], weekly: {} } };
   const weekly = targetStatuses(member.totals, goal.targets);
@@ -197,6 +201,10 @@ export function planWeek(root, { weekStart, meals: planned, overrides = [] }) {
   const profile = readHouseholdProfile(root);
   const memberProblems = rosterProblems(planned, profile, ruleset);
   if (memberProblems.length) return { status: 'invalid-input', data_root: root, week_start: weekStart, problems: memberProblems };
+  const goalStore = readGoal(root);
+  if (goalStore.status === 'invalid-input') {
+    return { status: 'invalid-input', data_root: root, week_start: weekStart, problems: [goalStore.reason] };
+  }
   const { recipes, unreadable } = listRecipes(root);
   const candidates = recipes.filter((recipe) => recipe.frontmatter.type === 'recipe');
   const judged = candidates.map((recipe) => ({ recipe, verdict: gateRecipe(recipe, ruleset, { overrides }) }));
