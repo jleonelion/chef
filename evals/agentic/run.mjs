@@ -27,7 +27,7 @@ import { loadHarness } from './harnesses/index.mjs';
 import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
-import { judgeReply, openAIJudgeCall } from './judge.mjs';
+import { judgeReply, createSubscriptionJudgeCall } from './judge.mjs';
 import { selectRows } from './selection.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
@@ -142,7 +142,7 @@ async function pool(jobs, size) {
   return results;
 }
 
-function meta(harness, rows, totalRows) {
+function meta(harness, rows, totalRows, judge) {
   const cli = harness.detect();
   return {
     date: new Date().toISOString(),
@@ -151,6 +151,7 @@ function meta(harness, rows, totalRows) {
     selected_rows: rows.map((row) => row.id),
     rows_selected: rows.length,
     rows_total: totalRows,
+    ...(judge && { judge }),
   };
 }
 
@@ -167,6 +168,7 @@ async function main() {
       concurrency: { type: 'string', default: '4' },
       out: { type: 'string' },
       'judge-model': { type: 'string' },
+      'judge-harness': { type: 'string', default: 'claude' },
     },
   });
   const reps = Number(values.reps);
@@ -188,10 +190,13 @@ async function main() {
   }
   const harness = loadHarness(values.harness);
   const judgeModel = values['judge-model'] ?? process.env.CHEF_EVAL_JUDGE_MODEL;
+  const judgeHarness = values['judge-harness'] ?? process.env.CHEF_EVAL_JUDGE_HARNESS ?? 'claude';
   const judgeCall = rows.some((row) => row.judge)
-    ? await openAIJudgeCall(judgeModel)
+    ? createSubscriptionJudgeCall({ harness: judgeHarness, model: judgeModel })
     : undefined;
-  const info = meta(harness, rows, allRows.length);
+  const info = meta(harness, rows, allRows.length, rows.some((row) => row.judge)
+    ? { type: 'subscription-cli', harness: judgeHarness, model: judgeModel }
+    : undefined);
   const filename = resultFilename({ harness: harness.name, commit: info.commit, date: new Date(info.date) });
   const out = path.resolve(values.out ?? path.join(repo, 'evals', 'agentic', 'archive', filename));
   const logDir = path.join(repo, 'evals', 'agentic', 'results', 'logs', path.basename(out, '.json'));

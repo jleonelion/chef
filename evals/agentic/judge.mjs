@@ -1,4 +1,5 @@
 const cache = new Map();
+import { spawnSync } from 'node:child_process';
 
 function passesJudge(verdict, threshold) {
   return verdict.passes && verdict.score >= threshold;
@@ -59,22 +60,59 @@ export async function judgeReply(settings) {
   return result;
 }
 
-export async function openAIJudgeCall(model, apiKey = process.env.OPENAI_API_KEY) {
+function extractCLIOutput(harness, stdout) {
+  const text = stdout?.trim();
+  if (!text) throw new Error('malformed judge output');
+  if (harness === 'claude') {
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed.result === 'string') return parsed.result;
+    } catch {}
+  }
+  if (harness === 'codex') {
+    const events = text.split('\n').map((line) => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+    const message = events.findLast((event) => event.type === 'item.completed' && typeof event.item?.text === 'string');
+    if (message) return message.item.text;
+  }
+  if (harness === 'copilot') {
+    const events = text.split('\n').map((line) => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+    const message = events.findLast((event) => event.type === 'assistant.message');
+    if (typeof message?.data?.content === 'string') return message.data.content;
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed.result === 'string') return parsed.result;
+      if (typeof parsed.output === 'string') return parsed.output;
+      if (typeof parsed.response === 'string') return parsed.response;
+    } catch {}
+  }
+  if (/^\s*[\[{]/.test(text)) return text;
+  throw new Error('malformed judge output');
+}
+
+export function createSubscriptionJudgeCall({ harness, model, runCli } = {}) {
+  if (!['claude', 'codex', 'copilot'].includes(harness)) {
+    return async () => { throw new Error(`unsupported judge harness "${harness}"`); };
+  }
   if (!model) throw new Error('judge model is required (use --judge-model or CHEF_EVAL_JUDGE_MODEL)');
-  if (!apiKey) throw new Error('OPENAI_API_KEY is required for the answer-quality judge');
+  const runner = runCli ?? (async (prompt) => {
+    const args = harness === 'claude'
+      ? ['-p', prompt, '--output-format', 'json', '--strict-mcp-config', '--setting-sources', 'user', '--permission-mode', 'dontAsk', '--model', model]
+      : harness === 'codex'
+        ? ['exec', '--json', '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '-c', 'sandbox_mode="read-only"', '-m', model, prompt]
+        : ['-p', prompt, '--output-format', 'json', '--allow-all-tools', '--no-ask-user', '--no-auto-update', '--disable-builtin-mcps', '--no-custom-instructions', '--model', model];
+    const result = spawnSync(harness === 'copilot' ? 'copilot' : harness, args, { encoding: 'utf8', timeout: 10 * 60 * 1000 });
+    if (result.error) throw result.error;
+    if (result.status !== 0) throw new Error(`${harness} judge call failed (${result.status}): ${result.stderr?.trim() || 'no error output'}`);
+    return extractCLIOutput(harness, result.stdout);
+  });
   return async (prompt) => {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!response.ok) throw new Error(`judge call failed (${response.status})`);
-    const body = await response.json();
-    return body?.choices?.[0]?.message?.content ?? '';
+    const output = await runner(prompt);
+    if (typeof output !== 'string' || !output.trim()) throw new Error('malformed judge output');
+    if (!parseJudgeVerdict(output)) throw new Error('malformed judge output');
+    return output;
   };
 }

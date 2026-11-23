@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseJudgeVerdict, judgeReply, createJudgeCacheKey } from './judge.mjs';
+import { parseJudgeVerdict, judgeReply, createJudgeCacheKey, createSubscriptionJudgeCall } from './judge.mjs';
 
 test('parseJudgeVerdict rejects empty and unparseable replies', () => {
   assert.equal(parseJudgeVerdict(''), null);
@@ -74,4 +74,30 @@ test('cache key is based on prompt, semantic target and response', () => {
     createJudgeCacheKey({ prompt: 'p', expected: 'e', response: 'r' }),
     createJudgeCacheKey({ prompt: 'p', expected: 'different', response: 'r' }),
   );
+});
+
+test('subscription CLI judge is fail-closed when unavailable or malformed', async () => {
+  await assert.rejects(
+    createSubscriptionJudgeCall({ harness: 'missing', model: 'test' }),
+    /unsupported judge harness/,
+  );
+
+  let calls = 0;
+  const unavailable = createSubscriptionJudgeCall({
+    harness: 'claude',
+    model: 'test',
+    runCli: async () => {
+      calls += 1;
+      throw new Error('claude not authenticated');
+    },
+  });
+  await assert.rejects(unavailable('judge prompt'), /claude not authenticated/);
+  assert.equal(calls, 1);
+
+  const malformed = createSubscriptionJudgeCall({
+    harness: 'claude',
+    model: 'test',
+    runCli: async () => 'not json',
+  });
+  await assert.rejects(malformed('judge prompt'), /malformed judge output/);
 });

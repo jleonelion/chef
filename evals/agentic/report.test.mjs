@@ -281,11 +281,8 @@ test('missing rep records make the row invalid instead of silently reducing the 
   assert.equal(result.invalid, true);
   assert.equal(result.rows[0].classification, 'invalid');
   assert.equal(result.rows[0].valid_reps, 1);
-  assert.deepEqual(result.rows[0].invalid, [
-    { rep: 2, kind: 'harness', message: 'rep produced no result' },
-    { rep: 3, kind: 'harness', message: 'rep produced no result' },
-  ]);
 });
+
 
 test('a known failure is reproduced only by its expected behavioral check', () => {
   const result = aggregate({

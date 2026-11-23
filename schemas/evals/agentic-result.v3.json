@@ -24,6 +24,16 @@
         "cliVersion": { "type": "string", "minLength": 1 }
       }
     },
+    "judge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "harness"],
+      "properties": {
+        "type": { "const": "subscription-cli" },
+        "harness": { "enum": ["claude", "codex", "copilot"] },
+        "model": { "type": "string", "minLength": 1 }
+      }
+    },
     "selected_rows": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
     "rows_selected": { "type": "integer", "minimum": 0 },
     "rows_total": { "type": "integer", "minimum": 0 },

@@ -13,16 +13,35 @@ An agentic row starts with `gate: false`. Promote it to `gate: true` only when a
 
 Do not gate a known-failure row. Reassess gated rows after harness, Projector, dataset, fixture, or skill changes.
 
-## Scheduled workflow
+## Hosted workflow
 
-`.github/workflows/agentic.yml` runs weekly and supports manual dispatch. It runs `bun run agentic --gates-only --candidates --reps 3 --harness claude` on the schedule, using the Claude harness's default model. Manual dispatch retains its selected harness and repetitions. Candidate failures are reported but do not fail the job; gated failures and invalid gated reps fail it. It must never run agentic evals in PR CI or push CI.
+Scheduled and GitHub-hosted agentic promotion is disabled. The workflow supports manual dispatch only and does not run in PR or push CI. Do not use API credentials or separately billed APIs for release judging.
 
-Configure repository Actions secrets:
+## Local subscription-backed judge
 
-- `CHEF_EVAL_CLAUDE_API_KEY`: Anthropic API key for the Claude harness.
-- `CHEF_EVAL_CODEX_AUTH_JSON`: Base64-encoded Codex `auth.json` for the Codex harness.
-- `CHEF_EVAL_COPILOT_TOKEN`: GitHub token accepted by Copilot for the Copilot harness.
+The answer-quality judge runs through an authenticated CLI subscription. Select it independently from the row host:
 
-Use environment variable names only through the workflow; never commit credentials or raw harness transcripts. The workflow maps secrets to `ANTHROPIC_API_KEY`, `CODEX_HOME/auth.json`, or `GH_TOKEN` inside the runner.
+```sh
+bun run agentic --harness codex --judge-harness claude --judge-model <model> --reps 3
+```
 
-The workflow uploads `evals/agentic/archive/*.json` and fails when any gated row fails or produces an invalid rep.
+Authenticate Claude Code, Codex or Copilot before the run. Supported choices are `claude`, `codex` and `copilot`. There is no `OPENAI_API_KEY` fallback. Empty, malformed, unavailable or errored judge output fails that row; never retry a failed or invalid repetition.
+
+## Release evidence
+
+Use a clean prepared release tree and run the entire agentic dataset 3/3 on each local launcher:
+
+```sh
+bun run agentic --harness codex --judge-harness claude --judge-model <model> --reps 3
+bun run agentic --harness claude --judge-harness claude --judge-model <model> --reps 3
+bun run agentic --harness copilot --judge-harness claude --judge-model <model> --reps 3
+bun run agentic:verify --release <codex.json> <claude.json> <copilot.json> --reps 3
+```
+
+Commit summaries and use an optional exception file only for a maintainer-approved subscription-limit exception:
+
+```json
+[{ "host": "codex", "approved_by": "maintainer", "reason": "subscription limit", "missing_rows": ["row-id"] }]
+```
+
+An exception is not a pass and must identify missing coverage. Raw transcripts and credentials remain local.
