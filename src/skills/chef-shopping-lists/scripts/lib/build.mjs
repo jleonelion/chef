@@ -11,6 +11,7 @@ import { ingredientLines, listRecipes, today as localToday } from '../../../../l
 import { WIKI_DIR, WIKI_FOLDERS } from '../../../../lib/wiki.mjs';
 import { listItems, loadInventory } from '../../../chef-food-inventory/scripts/lib/store.mjs';
 import { combineLines, displayItems, subtractInventory } from './combine.mjs';
+import { parseItemMatches } from '../../../../lib/item-matches.mjs';
 
 const PLANS_DIR = `${WIKI_DIR}/${WIKI_FOLDERS['meal-plan']}`;
 const WEEK = /^\d{4}-\d{2}-\d{2}$/;
@@ -61,7 +62,7 @@ function listText(weekStart, { items, unquantified }, dietary) {
 }
 
 // units: the household's 'us' | 'metric'; shapes displayed quantities only.
-export function buildList(root, { weekStart, upcoming = false, today = localToday(), overrides = [], units }) {
+export function buildList(root, { weekStart, upcoming = false, today = localToday(), overrides = [], units, matches: matchValues = [] }) {
   const week = weekStart ?? (upcoming ? upcomingWeek(root, today) : latestWeek(root));
   const plan = week && readPlan(root, week);
   if (!plan && upcoming) {
@@ -73,6 +74,13 @@ export function buildList(root, { weekStart, upcoming = false, today = localToda
     };
   }
   if (!plan) return { status: 'no-plan', data_root: root, week_start: week, reason: 'no saved meal plan; plan meals with chef-meal-planning first' };
+
+  const parsedMatches = parseItemMatches(matchValues);
+  const stock = listItems(loadInventory(root));
+  if (parsedMatches.problems.length) return { status: 'invalid-input', data_root: root, problems: parsedMatches.problems };
+  for (const path of parsedMatches.matches.values()) {
+    if (!stock.some((item) => item.path === path)) return { status: 'invalid-input', data_root: root, problems: [`match path not found: ${path}`] };
+  }
 
   const ruleset = readRuleset(root);
   const dietary = dietaryNotes(ruleset);
@@ -87,7 +95,7 @@ export function buildList(root, { weekStart, upcoming = false, today = localToda
     return ingredientLines(recipe.body).map((line) => ({ line, multiplier: multiplier(meal, recipe), recipe: meal.slug }));
   });
   const combined = combineLines(uses);
-  const { items, covered } = subtractInventory(combined.items, listItems(loadInventory(root)));
+  const { items, covered } = subtractInventory(combined.items, stock, matchValues);
   const list = { items: displayItems(items, units), unquantified: combined.unquantified };
   return {
     status: 'built',

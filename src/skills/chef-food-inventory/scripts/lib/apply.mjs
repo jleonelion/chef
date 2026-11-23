@@ -7,9 +7,10 @@ const round = (value) => Math.round(value * 1000) / 1000;
 const earliest = (a, b) => [a, b].filter(Boolean).sort()[0];
 
 function resolvePath(item) {
+  const placedBy = item.target ? 'prompt' : 'keyword';
   const parts = (item.target ?? placeItem(item.name)).split('.');
   if (parts.length === 2) parts.push(itemKey(item.name));
-  return parts.slice(1).every((part) => part && isKey(part)) ? parts : null;
+  return parts.slice(1).every((part) => part && isKey(part)) ? { parts, placedBy } : null;
 }
 
 function addTo(entry, item, { date, now }) {
@@ -32,16 +33,17 @@ export function applyItems(inventory, items, when) {
   const changes = [];
   const rejected = [];
   for (const item of items) {
-    const parts = resolvePath(item);
-    if (!parts) {
+    const resolved = resolvePath(item);
+    if (!resolved) {
       rejected.push({ lineNumber: item.lineNumber, reason: 'no valid place for this item; check the name and target' });
       continue;
     }
+    const { parts, placedBy } = resolved;
     const [location, category, key] = parts;
     const bucket = child(child(next, location), category);
     const result = Object.hasOwn(bucket, key) ? addTo(bucket[key], item, when) : create(bucket, key, item, when);
     if (result.reason) rejected.push({ lineNumber: item.lineNumber, reason: `${parts.join('.')}: ${result.reason}` });
-    else changes.push({ path: parts.join('.'), action: result.action, amount: item.quantity, unit: item.unit });
+    else changes.push({ path: parts.join('.'), action: result.action, amount: item.quantity, unit: item.unit, placed_by: placedBy });
   }
   next.lastUpdated = when.now;
   return { inventory: next, changes, rejected };

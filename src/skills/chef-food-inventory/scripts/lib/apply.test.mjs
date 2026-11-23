@@ -10,7 +10,7 @@ const item = (over) => ({ name: 'bananas', quantity: 2, unit: 'lb', price: 1, ex
 test('adds new items at their default place and leaves the input untouched', () => {
   const { inventory, changes, rejected } = applyItems(base, [item()], { date: '2026-01-15', now });
   assert.deepEqual(rejected, []);
-  assert.deepEqual(changes, [{ path: 'pantry.produce.bananas', action: 'added', amount: 2, unit: 'lb' }]);
+  assert.deepEqual(changes, [{ path: 'pantry.produce.bananas', action: 'added', amount: 2, unit: 'lb', placed_by: 'keyword' }]);
   assert.deepEqual(inventory.pantry.produce.bananas, { name: 'bananas', amount: 2, unit: 'lb', purchased: '2026-01-15', updated: now });
   assert.equal(base.pantry, undefined);
   assert.equal(inventory.lastUpdated, now);
@@ -25,9 +25,10 @@ test('adds to an existing entry in the same unit and keeps the earliest expiry',
 });
 
 test('honours an explicit target and a two-part placement', () => {
-  const { inventory } = applyItems(base, [item({ name: 'milk', quantity: 1, unit: 'gal', target: 'fridge.dairy.whole_milk' }), item({ name: 'peas', target: 'freezer.veg' })], { date: '2026-01-15', now });
+  const { inventory, changes } = applyItems(base, [item({ name: 'milk', quantity: 1, unit: 'gal', target: 'fridge.dairy.whole_milk' }), item({ name: 'peas', target: 'freezer.veg' })], { date: '2026-01-15', now });
   assert.equal(inventory.fridge.dairy.whole_milk.amount, 2);
   assert.equal(inventory.freezer.veg.peas.amount, 2);
+  assert.deepEqual(changes.map((change) => change.placed_by), ['prompt', 'prompt']);
 });
 
 test('rejects a unit mismatch instead of converting', () => {

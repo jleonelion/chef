@@ -131,6 +131,25 @@ test('upcoming gets today from the user timezone', (t) => {
   assert.equal(buildList(root, { upcoming: true }).week_start, '2026-01-19');
 });
 
+test('explicit inventory matches subtract the named path and reject missing paths', () => {
+  const wholeMilk = {
+    path: 'data/food-inventory/current.json',
+    content: JSON.stringify({ lastUpdated: '2026-01-14T00:00:00Z', fridge: { dairy: { whole_milk: { name: 'whole milk', amount: 1, unit: 'cup' } } } }),
+  };
+  const root = makeRoot([
+    recipe('milk-recipe', ['2 cup milk']),
+    plan('2026-01-19', [['milk-recipe', 2]]),
+    wholeMilk,
+  ]);
+  const matched = buildList(root, { units: 'us', matches: ['milk=fridge.dairy.whole_milk'] });
+  assert.equal(matched.status, 'built');
+  assert.equal(matched.items[0].item, 'milk');
+  assert.equal(matched.items[0].amount, 1);
+  const missing = buildList(root, { units: 'us', matches: ['milk=fridge.dairy.missing'] });
+  assert.equal(missing.status, 'invalid-input');
+  assert.deepEqual(missing.problems, ['match path not found: fridge.dairy.missing']);
+});
+
 test('a planned recipe that no longer exists is reported, not guessed', () => {
   const root = makeRoot([plan('2026-01-19', [['gone', 2]])]);
   const list = buildList(root, {});

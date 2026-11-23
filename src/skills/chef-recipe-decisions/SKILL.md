@@ -87,6 +87,7 @@ node scripts/recipe-decisions.mjs rule-remove --id no-pork
 ```
 
 A rule matches when every `--title` phrase is in the title and every `--text` phrase is in the title, description, cuisine, tags or ingredients (at the start of a word, any case). Reject rules win over approve rules. Auto-approve rules apply only when the dietary hard-constraint gate allows the draft; otherwise it stays open with the reasons for the user. An existing `--id` is replaced. A rule never touches recipes already in the book.
+Before adding a standing reject or approval rule, expand broad food words into the specific foods the rule covers. For example, expand `pork` into `pork`, `bacon`, `ham` and `prosciutto`; do not rely on code to infer those equivalents. Pass the expanded names with repeated `--title` or `--text` phrases as needed.
 
 ## Rules
 

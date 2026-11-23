@@ -71,6 +71,50 @@ test('deduct applies a converted recipe quantity once per deduction id', () => {
   assert.equal(audit.filter((entry) => entry.action === 'deduct').length, 1);
 });
 
+test('deduct accepts an explicit ingredient-to-inventory match', () => {
+  const root = dataRoot();
+  writeWiki(root, {
+    pages: [{
+      slug: 'test-milk',
+      frontmatter: {
+        type: 'recipe', title: 'Test Milk', servings: 2, source_kind: 'text', source_raw: [], created: '2026-01-15', updated: '2026-01-15',
+      },
+      body: '# Test Milk\n\n## Ingredients\n\n- 1 cup milk\n\n## Steps\n\n1. Cook.\n',
+    }],
+    message: 'test: add milk recipe',
+  });
+  const inventory = loadInventory(root);
+  inventory.fridge = { dairy: { whole_milk: { name: 'whole milk', amount: 2, unit: 'cup' } } };
+  commitInventory(root, { inventory, action: 'seed', details: {}, message: 'test: add whole milk' });
+  const result = JSON.parse(execFileSync(process.execPath, [
+    script,
+    'deduct',
+    '--data-root', root,
+    '--recipe', 'test-milk',
+    '--servings', '2',
+    '--deduction-id', 'cook-test-milk-20260115',
+    '--match', 'milk=fridge.dairy.whole_milk',
+  ], { encoding: 'utf8' }));
+  assert.equal(result.status, 'deducted');
+  assert.equal(result.deductions[0].inventory_path, 'fridge.dairy.whole_milk');
+  assert.equal(loadInventory(root).fridge.dairy.whole_milk.amount, 1);
+});
+
+test('deduct rejects a match whose inventory path does not exist', () => {
+  const root = dataRoot();
+  const result = spawnSync(process.execPath, [
+    script,
+    'deduct',
+    '--data-root', root,
+    '--recipe', 'test-pasta',
+    '--servings', '2',
+    '--deduction-id', 'cook-test-pasta-invalid-match',
+    '--match', 'pasta=fridge.dairy.missing',
+  ], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.equal(JSON.parse(result.stdout).status, 'invalid-input');
+});
+
 test('deduct reports an unconvertible unit mismatch without writing', () => {
   const root = dataRoot();
   writeWiki(root, {
