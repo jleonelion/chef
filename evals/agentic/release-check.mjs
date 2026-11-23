@@ -9,12 +9,20 @@ export function verifyReleaseEvidence({
   const failures = [];
   if (reps !== 3) failures.push('release evidence: repetitions must be exactly 3');
   if (!requiredRows.length) failures.push('release evidence: no required rows selected');
+  const validException = (entry) =>
+    entry?.approved_by &&
+    entry.reason &&
+    Array.isArray(entry.missing_rows) &&
+    entry.missing_rows.length > 0 &&
+    new Set(entry.missing_rows).size === entry.missing_rows.length &&
+    entry.missing_rows.every((id) => requiredRows.includes(id));
 
+  const judgeIdentities = [];
   for (const host of requiredHosts) {
     const exception = exceptions.find((entry) => entry.host === host);
     const matches = evidence.filter((result) => result.harness?.name === host);
     if (!matches.length) {
-      if (exception?.approved_by && exception.reason && Array.isArray(exception.missing_rows)) {
+      if (validException(exception)) {
         failures.push(`${host}: missing evidence recorded as approved subscription-limit exception`);
       } else {
         failures.push(`${host}: missing release evidence`);
@@ -34,14 +42,34 @@ export function verifyReleaseEvidence({
     if (result.rows_selected !== requiredRows.length) {
       failures.push(`${host}: incomplete row count (${result.rows_selected}/${requiredRows.length})`);
     }
+    if (requiredJudgeRows.length) {
+      if (result.judge?.type !== 'subscription-cli' ||
+          !['claude', 'codex', 'copilot'].includes(result.judge.harness) ||
+          typeof result.judge.model !== 'string' ||
+          !result.judge.model.trim()) {
+        failures.push(`${host}: judge identity missing or invalid`);
+      } else {
+        judgeIdentities.push(result.judge);
+      }
+    }
     if (!Array.isArray(result.rows) || result.rows.length !== requiredRows.length) {
       failures.push(`${host}: zero or incomplete row outcomes`);
       continue;
+    }
+    for (const rowId of requiredRows) {
+      const count = result.rows.filter((row) => row.id === rowId).length;
+      if (count !== 1) failures.push(`${host}: missing required row ${rowId}`);
+    }
+    if (new Set(result.rows.map((row) => row.id)).size !== result.rows.length) {
+      failures.push(`${host}: duplicate row outcomes`);
     }
     for (const row of result.rows) {
       if (!requiredRows.includes(row.id)) {
         failures.push(`${host}: unexpected row ${row.id}`);
         continue;
+      }
+      if (row.known_failure && row.known_failure_reproduced !== true) {
+        failures.push(`${host}/${row.id}: known-failure row not reproduced`);
       }
       if (requiredJudgeRows.includes(row.id) && (!row.judge || row.judge.status !== 'passing' || row.judge.passes !== '3/3')) {
         failures.push(`${host}/${row.id}: judge did not pass 3/3`);
@@ -66,10 +94,18 @@ export function verifyReleaseEvidence({
       }
     }
   }
+  if (judgeIdentities.length > 1) {
+    const first = `${judgeIdentities[0].harness}:${judgeIdentities[0].model}`;
+    for (const identity of judgeIdentities.slice(1)) {
+      if (`${identity.harness}:${identity.model}` !== first) {
+        failures.push('release evidence: judge identity differs across hosts');
+        break;
+      }
+    }
+  }
 
   const recordedExceptions = exceptions
-    .filter((entry) => entry.approved_by && entry.reason && Array.isArray(entry.missing_rows) &&
-      entry.missing_rows.length > 0 && requiredHosts.includes(entry.host) &&
+    .filter((entry) => validException(entry) && requiredHosts.includes(entry.host) &&
       !evidence.some((result) => result.harness?.name === entry.host))
     .map((entry) => ({
       host: entry.host,

@@ -212,7 +212,7 @@ export function aggregate({ meta, reps, rows, runs }) {
     ...meta,
     models: [...new Set(completedRuns.map((run) => run.model).filter(Boolean))],
     reps,
-    passed: gatedIndexes.length === 0 ? true : gatedIndexes.every((index) => summaries[index].pass),
+    passed: rows.length > 0 && gatedIndexes.every((index) => summaries[index].pass),
     invalid: gatedIndexes.some((index) => summaries[index].invalid_reps > 0),
     cost_usd: Math.round(completedRuns.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) * 100) / 100,
     rows: summaries,

@@ -283,6 +283,12 @@ test('missing rep records make the row invalid instead of silently reducing the 
   assert.equal(result.rows[0].valid_reps, 1);
 });
 
+test('a zero-row aggregate cannot pass', () => {
+  const result = aggregate({ meta: {}, reps: 3, rows: [], runs: [] });
+  assert.equal(result.passed, false);
+  assert.equal(result.invalid, false);
+});
+
 
 test('a known failure is reproduced only by its expected behavioral check', () => {
   const result = aggregate({

@@ -115,3 +115,87 @@ test('release evidence rejects non-3 repetition counts and incomplete judge cove
   assert.equal(wrongReps.passed, false);
   assert.ok(wrongReps.failures.some((failure) => failure.includes('exactly 3')));
 });
+
+test('release evidence requires recorded subscription CLI judge identity', () => {
+  const ids = ['judged'];
+  const evidence = ['codex', 'claude', 'copilot'].map((host) => ({
+    ...result(host, ids),
+    judge: { type: 'subscription-cli', harness: 'claude', model: 'test-model' },
+    rows: [{
+      id: 'judged',
+      pass: true,
+      valid_reps: 3,
+      invalid_reps: 0,
+      pass_rate: 1,
+      judge: { status: 'passing', passes: '3/3' },
+      runs: [1, 2, 3].map((rep) => ({ rep, outcome: 'pass', skills: [] })),
+    }],
+  }));
+  evidence[1].judge = undefined;
+  const checked = verifyReleaseEvidence({
+    evidence,
+    requiredHosts: ['codex', 'claude', 'copilot'],
+    requiredRows: ids,
+    requiredJudgeRows: ids,
+    reps: 3,
+  });
+  assert.equal(checked.passed, false);
+  assert.ok(checked.failures.some((failure) => failure.includes('claude: judge identity')));
+});
+
+test('release evidence requires every required row ID exactly once', () => {
+  const ids = ['one', 'two'];
+  const evidence = ['codex', 'claude', 'copilot'].map((host) => {
+    const checked = result(host, ids);
+    checked.rows = checked.rows.map((row, index) => ({ ...row, id: index === 1 ? 'one' : row.id }));
+    return checked;
+  });
+  const checked = verifyReleaseEvidence({
+    evidence,
+    requiredHosts: ['codex', 'claude', 'copilot'],
+    requiredRows: ids,
+    reps: 3,
+  });
+  assert.equal(checked.passed, false);
+  assert.ok(checked.failures.some((failure) => failure.includes('missing required row two')));
+});
+
+test('subscription-limit exceptions must name real missing rows', () => {
+  const checked = verifyReleaseEvidence({
+    evidence: [],
+    requiredHosts: ['codex'],
+    requiredRows: ['one', 'two'],
+    reps: 3,
+    exceptions: [{
+      host: 'codex',
+      approved_by: 'maintainer',
+      reason: 'subscription limit',
+      missing_rows: ['unrelated'],
+    }],
+  });
+  assert.equal(checked.passed, false);
+  assert.equal(checked.status, 'fail');
+  assert.equal(checked.exceptions.length, 0);
+});
+
+test('release evidence requires known-failure reproduction', () => {
+  const ids = ['known'];
+  const evidence = ['codex', 'claude', 'copilot'].map((host) => {
+    const checked = result(host, ids);
+    checked.rows[0] = {
+      ...checked.rows[0],
+      known_failure: 'case-one',
+      expect_failure: 'response',
+      known_failure_reproduced: false,
+    };
+    return checked;
+  });
+  const checked = verifyReleaseEvidence({
+    evidence,
+    requiredHosts: ['codex', 'claude', 'copilot'],
+    requiredRows: ids,
+    reps: 3,
+  });
+  assert.equal(checked.passed, false);
+  assert.ok(checked.failures.some((failure) => failure.includes('known-failure row not reproduced')));
+});
