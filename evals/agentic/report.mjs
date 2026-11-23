@@ -206,13 +206,14 @@ export function aggregate({ meta, reps, rows, runs }) {
     };
   });
   const gatedIndexes = rows.flatMap((row, index) => row.gate === true || row.gate === undefined ? [index] : []);
+  const hasRequiredGates = gatedIndexes.length > 0;
   return {
     suite: 'chef-agentic',
     format: 3,
     ...meta,
     models: [...new Set(completedRuns.map((run) => run.model).filter(Boolean))],
     reps,
-    passed: gatedIndexes.length === 0 ? true : gatedIndexes.every((index) => summaries[index].pass),
+    passed: hasRequiredGates && gatedIndexes.every((index) => summaries[index].pass),
     invalid: gatedIndexes.some((index) => summaries[index].invalid_reps > 0),
     cost_usd: Math.round(completedRuns.reduce((sum, run) => sum + (run.cost_usd ?? 0), 0) * 100) / 100,
     rows: summaries,

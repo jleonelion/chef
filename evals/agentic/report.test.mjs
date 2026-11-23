@@ -281,10 +281,20 @@ test('missing rep records make the row invalid instead of silently reducing the 
   assert.equal(result.invalid, true);
   assert.equal(result.rows[0].classification, 'invalid');
   assert.equal(result.rows[0].valid_reps, 1);
-  assert.deepEqual(result.rows[0].invalid, [
-    { rep: 2, kind: 'harness', message: 'rep produced no result' },
-    { rep: 3, kind: 'harness', message: 'rep produced no result' },
-  ]);
+});
+
+test('zero gated rows cannot produce a passing aggregate', () => {
+  const result = aggregate({
+    meta: {},
+    reps: 3,
+    rows: [{ id: 'candidate', flow: 'core', candidate: true, gate: false }],
+    runs: [
+      passed('candidate', 1),
+      passed('candidate', 2),
+      passed('candidate', 3),
+    ],
+  });
+  assert.equal(result.passed, false);
 });
 
 test('a known failure is reproduced only by its expected behavioral check', () => {

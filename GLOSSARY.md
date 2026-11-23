@@ -69,7 +69,7 @@ The per-runtime code that makes an agentic eval run one turn in a headless agent
 _Avoid_: adapter, driver, runner
 
 **Gated eval row**:
-An agentic eval row promoted into scheduled and release checks after meeting the written promotion criteria.
+An agentic eval row promoted into local release checks after meeting the written promotion criteria.
 _Avoid_: stable row, CI row
 
 **Candidate eval row**:
