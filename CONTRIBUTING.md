@@ -1,7 +1,7 @@
 # Contributing
 
 Thanks for helping. Changes land only through pull requests from forks; the maintainer reviews
-and approves each one. Nobody else has push access to this repo.
+and merges each one. Nobody else has push access to this repo.
 
 ## Workflow
 
@@ -18,7 +18,7 @@ and approves each one. Nobody else has push access to this repo.
 4. Push to your fork and open a PR into `jleonelion/chef:main`. Keep it to one logical change.
 5. CI on fork PRs waits for maintainer approval before it runs.
 6. The maintainer reviews. Address comments with new commits and resolve each conversation.
-   A push after approval clears that approval. PRs are squash-merged.
+   All required checks must pass; there is no override. PRs are squash-merged.
 
 ## Rules
 
