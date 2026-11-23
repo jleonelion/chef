@@ -16,6 +16,7 @@ function result(harness, ids, overrides = {}) {
       valid_reps: 3,
       invalid_reps: 0,
       pass_rate: 1,
+      runs: [1, 2, 3].map((rep) => ({ rep, outcome: 'pass', skills: [] })),
       judge: overrides.judgeMissing ? undefined : undefined,
     })),
   };

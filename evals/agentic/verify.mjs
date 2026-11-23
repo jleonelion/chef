@@ -5,6 +5,7 @@ import { parseArgs } from 'node:util';
 import { currentProvenance, relevantChangesSince, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 import { verifyReleaseEvidence } from './release-check.mjs';
+import { selectRows } from './selection.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const { values, positionals } = parseArgs({
@@ -37,7 +38,7 @@ if (values.release) {
   for (const host of missingHosts) {
     if (!exceptionHosts.has(host)) throw new Error(`release evidence for ${host} is missing and has no approved exception`);
   }
-  const requiredRows = allRows.filter((row) => !row.known_failure).map((row) => row.id);
+  const requiredRows = allRows.map((row) => row.id);
   const requiredJudgeRows = allRows.filter((row) => row.judge).map((row) => row.id);
   const current = { ...currentProvenance(repo), rows_total: allRows.length };
   const provenanceProblems = evidence.flatMap((result) => [
@@ -78,8 +79,6 @@ if (requested) {
   const unknown = requested.filter((id) => !allRows.some((row) => row.id === id));
   if (unknown.length) throw new Error(`unknown row id(s): ${unknown.join(', ')}`);
 }
-import { selectRows } from './selection.mjs';
-
 const expectedRows = selectRows(allRows, {
   requestedRows: requested,
   knownFailures: values['known-failures'],

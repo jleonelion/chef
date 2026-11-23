@@ -48,7 +48,16 @@ export function verifyReleaseEvidence({
       }
       if (row.invalid_reps > 0) failures.push(`${host}/${row.id}: ${row.invalid_reps} invalid repetitions`);
       if (row.valid_reps !== reps) failures.push(`${host}/${row.id}: expected ${reps} valid repetitions, found ${row.valid_reps}`);
-      if (!row.pass || row.pass_rate !== 1) failures.push(`${host}/${row.id}: failing or incomplete row`);
+      if (!row.pass) failures.push(`${host}/${row.id}: failing or incomplete row`);
+      if (!row.known_failure && row.pass_rate !== 1) failures.push(`${host}/${row.id}: failing or incomplete row`);
+      const rowRuns = row.runs ?? [];
+      if (rowRuns.length !== reps) failures.push(`${host}/${row.id}: expected ${reps} rep outcomes, found ${rowRuns.length}`);
+      for (const rep of [1, 2, 3]) {
+        const run = rowRuns.find((entry) => entry.rep === rep);
+        if (!run || run.outcome === 'invalid' || (!row.known_failure && run.outcome !== 'pass')) {
+          failures.push(`${host}/${row.id}/rep ${rep}: missing, invalid or failing rep`);
+        }
+      }
       if (row.judge && row.judge.status !== 'passing') failures.push(`${host}/${row.id}: judge did not pass`);
     }
     for (const judgeRow of requiredJudgeRows) {
@@ -59,7 +68,9 @@ export function verifyReleaseEvidence({
   }
 
   const recordedExceptions = exceptions
-    .filter((entry) => entry.approved_by && entry.reason && Array.isArray(entry.missing_rows))
+    .filter((entry) => entry.approved_by && entry.reason && Array.isArray(entry.missing_rows) &&
+      entry.missing_rows.length > 0 && requiredHosts.includes(entry.host) &&
+      !evidence.some((result) => result.harness?.name === entry.host))
     .map((entry) => ({
       host: entry.host,
       approved_by: entry.approved_by,

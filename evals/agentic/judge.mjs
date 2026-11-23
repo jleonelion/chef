@@ -77,6 +77,11 @@ function extractCLIOutput(harness, stdout) {
     if (message) return message.item.text;
   }
   if (harness === 'copilot') {
+    const events = text.split('\n').map((line) => {
+      try { return JSON.parse(line); } catch { return null; }
+    }).filter(Boolean);
+    const message = events.findLast((event) => event.type === 'assistant.message');
+    if (typeof message?.data?.content === 'string') return message.data.content;
     try {
       const parsed = JSON.parse(text);
       if (typeof parsed.result === 'string') return parsed.result;
