@@ -20,6 +20,8 @@ node scripts/meal-logging.mjs log --date 2026-01-16 --slot dinner --recipe lemon
 node scripts/meal-logging.mjs log --date 2026-01-16 --slot snack --food "apple and yogurt" --servings 1
 ```
 
+For a cooked saved recipe, pass exact inventory matches when ingredient names differ: `--match milk=fridge.dairy.whole_milk`. Run inventory `view` for paths. The script rejects missing paths before writing the meal log.
+
 Do not pass `--cooked` for restaurant, takeaway, packaged or otherwise not-cooked-at-home meals. Free-text food can be marked cooked, but without a saved recipe there are no recipe ingredients to deduct.
 
 ## Log from the plan

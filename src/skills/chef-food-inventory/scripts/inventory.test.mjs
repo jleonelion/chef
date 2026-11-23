@@ -115,6 +115,18 @@ test('deduct rejects a match whose inventory path does not exist', () => {
   assert.equal(JSON.parse(result.stdout).status, 'invalid-input');
 });
 
+test('deduct validates every path even for repeated ingredients', () => {
+  const root = dataRoot();
+  const result = spawnSync(process.execPath, [
+    script, 'deduct', '--data-root', root, '--recipe', 'test-pasta', '--servings', '2',
+    '--deduction-id', 'cook-test-pasta-repeated-match',
+    '--match', 'pasta=fridge.dairy.missing',
+    '--match', 'pasta=pantry.grains.pasta',
+  ], { encoding: 'utf8' });
+  assert.equal(result.status, 2);
+  assert.equal(JSON.parse(result.stdout).status, 'invalid-input');
+});
+
 test('deduct reports an unconvertible unit mismatch without writing', () => {
   const root = dataRoot();
   writeWiki(root, {

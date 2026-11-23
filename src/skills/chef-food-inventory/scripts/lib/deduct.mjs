@@ -7,6 +7,16 @@ import { listItems, loadInventory, readText, STORE } from './store.mjs';
 
 const round = (value) => Math.round(value * 1e6) / 1e6;
 
+export function validateInventoryMatches(root, matchValues = []) {
+  const parsed = parseItemMatches(matchValues);
+  const problems = [...parsed.problems];
+  const items = listItems(loadInventory(root));
+  for (const path of parsed.paths) {
+    if (!items.some((item) => item.path === path)) problems.push(`match path not found: ${path}`);
+  }
+  return problems;
+}
+
 export function deductionApplied(root, deductionId) {
   return (readText(root, STORE.audit) ?? '').trim().split('\n').filter(Boolean).some((line) => {
     try {
@@ -51,7 +61,7 @@ export function deductRecipe(root, { recipe: slug, servings, deductionId, matche
 
   const inventory = loadInventory(root);
   const items = listItems(inventory);
-  for (const path of parsed.matches.values()) {
+  for (const path of parsed.paths) {
     if (!items.some((item) => item.path === path)) problems.push(`match path not found: ${path}`);
   }
   if (problems.length) return { status: 'invalid-input', problems };

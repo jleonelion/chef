@@ -3,6 +3,7 @@ export const itemName = (value) =>
 
 export function parseItemMatches(values = []) {
   const matches = new Map();
+  const paths = [];
   const problems = [];
   for (const value of Array.isArray(values) ? values : [values]) {
     const separator = value.indexOf('=');
@@ -17,6 +18,7 @@ export function parseItemMatches(values = []) {
       continue;
     }
     matches.set(ingredient, path);
+    paths.push(path);
   }
-  return { matches, problems };
+  return { matches, paths: [...new Set(paths)], problems };
 }

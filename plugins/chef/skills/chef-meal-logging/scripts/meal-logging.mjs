@@ -8270,6 +8270,30 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
   return { amount: rounded, unit: normalizeUnit(unit), text: `${rounded} ${normalizeUnit(unit)}` };
 }
 
+// src/lib/item-matches.mjs
+var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function parseItemMatches(values = []) {
+  const matches = new Map;
+  const paths = [];
+  const problems = [];
+  for (const value of Array.isArray(values) ? values : [values]) {
+    const separator = value.indexOf("=");
+    if (separator <= 0 || separator === value.length - 1) {
+      problems.push(`--match must use <ingredient>=<inventory path>: ${value}`);
+      continue;
+    }
+    const ingredient = itemName(value.slice(0, separator));
+    const path13 = value.slice(separator + 1).trim();
+    if (!ingredient || !path13) {
+      problems.push(`--match must use <ingredient>=<inventory path>: ${value}`);
+      continue;
+    }
+    matches.set(ingredient, path13);
+    paths.push(path13);
+  }
+  return { matches, paths: [...new Set(paths)], problems };
+}
+
 // src/skills/chef-food-inventory/scripts/lib/store.mjs
 import crypto from "node:crypto";
 import fs13 from "node:fs";
@@ -8411,7 +8435,16 @@ function commitInventory(root, { inventory, action, details, data = [], raw = []
 
 // src/skills/chef-food-inventory/scripts/lib/deduct.mjs
 var round = (value) => Math.round(value * 1e6) / 1e6;
-var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function validateInventoryMatches(root, matchValues = []) {
+  const parsed = parseItemMatches(matchValues);
+  const problems = [...parsed.problems];
+  const items = listItems(loadInventory(root));
+  for (const path14 of parsed.paths) {
+    if (!items.some((item) => item.path === path14))
+      problems.push(`match path not found: ${path14}`);
+  }
+  return problems;
+}
 function deductionApplied(root, deductionId) {
   return (readText(root, STORE.audit) ?? "").trim().split(`
 `).filter(Boolean).some((line) => {
@@ -8423,15 +8456,18 @@ function deductionApplied(root, deductionId) {
     }
   });
 }
-function findItem(items, ingredient) {
+function findItem(items, ingredient, matches) {
   const wanted = itemName(ingredient);
+  const matchedPath = matches.get(wanted);
+  if (matchedPath)
+    return items.find((item) => item.path === matchedPath) ?? null;
   return items.find((item) => itemName(item.name) === wanted || itemName(item.key.replaceAll("_", " ")) === wanted);
 }
 function publicDeduction(entry) {
   const { location, category, key, ...deduction } = entry;
   return deduction;
 }
-function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Date().toISOString() }) {
+function deductRecipe(root, { recipe: slug, servings, deductionId, matches: matchValues = [], now = new Date().toISOString() }) {
   const problems = [];
   if (!slug)
     problems.push("recipe: required");
@@ -8439,6 +8475,8 @@ function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Dat
     problems.push("servings: must be a positive number");
   if (!deductionId?.trim())
     problems.push("deduction_id: required");
+  const parsed = parseItemMatches(matchValues);
+  problems.push(...parsed.problems);
   if (problems.length)
     return { status: "invalid-input", problems };
   if (deductionApplied(root, deductionId))
@@ -8454,13 +8492,19 @@ function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Dat
     return { status: "invalid-input", problems: [`recipe ${slug} has no valid servings`] };
   const inventory = loadInventory(root);
   const items = listItems(inventory);
+  for (const path14 of parsed.paths) {
+    if (!items.some((item) => item.path === path14))
+      problems.push(`match path not found: ${path14}`);
+  }
+  if (problems.length)
+    return { status: "invalid-input", problems };
   const multiplier = servings / baseServings;
   const planned = [];
   const notFound = [];
   const unitMismatches = [];
   for (const line of ingredientLines(recipe.body)) {
     const ingredient = parseIngredientLine(line);
-    const match = findItem(items, ingredient.item);
+    const match = findItem(items, ingredient.item, parsed.matches);
     if (!match) {
       notFound.push(ingredient.item || line);
       continue;
@@ -8563,6 +8607,8 @@ function correctionFor(root, id) {
 }
 function logMeal(root, input) {
   const problems = validate(root, input);
+  if (input.cooked && input.recipe)
+    problems.push(...validateInventoryMatches(root, input.matches));
   if (problems.length)
     return { status: "invalid-input", problems };
   const entry = entryFor(root, input);
@@ -8581,7 +8627,7 @@ function logMeal(root, input) {
       return written;
     status = "logged";
   }
-  const inventory = entry.cooked && entry.recipe ? deductRecipe(root, { recipe: entry.recipe, servings: input.servingsCooked ?? entry.servings, deductionId: entry.id, now: entry.logged_at }) : { status: "not-requested" };
+  const inventory = entry.cooked && entry.recipe ? deductRecipe(root, { recipe: entry.recipe, servings: input.servingsCooked ?? entry.servings, deductionId: entry.id, matches: input.matches, now: entry.logged_at }) : { status: "not-requested" };
   return { status, entry: existing ?? entry, inventory };
 }
 function editMeal(root, input) {
@@ -8649,7 +8695,7 @@ function deleteMeal(root, input) {
 
 // src/skills/chef-meal-logging/scripts/lib/log-from-plan.mjs
 var invalid = (...problems) => ({ status: "invalid-input", problems });
-function logFromPlan(root, { date, slot, cookedSlots, loggedAt }) {
+function logFromPlan(root, { date, slot, cookedSlots, loggedAt, matches = [] }) {
   if (slot !== undefined && !MEAL_SLOTS.includes(slot))
     return invalid("slot: must be breakfast, lunch, dinner or snack");
   const plan = todayPlan(root, date ?? "");
@@ -8670,7 +8716,8 @@ function logFromPlan(root, { date, slot, cookedSlots, loggedAt }) {
     servings: meal.servings,
     servingsCooked: meal.cook_servings,
     cooked: cooked(meal),
-    loggedAt
+    loggedAt,
+    matches
   }));
   const problems = inputs.flatMap((input) => validate(root, input));
   if (problems.length)
@@ -8693,7 +8740,8 @@ var OPTIONS = {
   "from-plan": { type: "boolean" },
   "cooked-slots": { type: "string" },
   "not-cooked": { type: "boolean" },
-  "logged-at": { type: "string" }
+  "logged-at": { type: "string" },
+  match: { type: "string", multiple: true }
 };
 var { values, positionals } = parseArgs({
   args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
@@ -8711,7 +8759,8 @@ function fromPlan() {
     date: values.date,
     slot: values.slot,
     cookedSlots: (values["cooked-slots"] ?? "").split(",").filter(Boolean),
-    loggedAt: values["logged-at"] ?? new Date().toISOString()
+    loggedAt: values["logged-at"] ?? new Date().toISOString(),
+    matches: values.match
   });
 }
 var MODES = {
@@ -8722,7 +8771,8 @@ var MODES = {
     food: values.food,
     servings: Number(values.servings),
     cooked: values.cooked ?? false,
-    loggedAt: values["logged-at"] ?? new Date().toISOString()
+    loggedAt: values["logged-at"] ?? new Date().toISOString(),
+    matches: values.match
   }),
   edit: () => editMeal(root, {
     id: values.id,

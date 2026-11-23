@@ -18,6 +18,8 @@ node scripts/shopping-lists.mjs build --upcoming
 
 Without either flag, the latest saved plan is used. The result and shopping-list heading show its `week_start`. On `no-plan`, offer to plan meals with `chef-meal-planning`.
 
+Pass explicit inventory matches when a recipe ingredient differs from the inventory name: `--match milk=fridge.dairy.whole_milk`. Run the inventory `view` command for exact paths. Chef validates that every matched path exists and never guesses or converts an unconvertible unit.
+
 The result has:
 
 - `items`: what to buy, `{ item, amount, unit, text, recipes, sources }`, scaled to each recipe meal's amount to cook and combined. `amount`, `unit` and `text` (`1.5 cups`) are in the household's unit system (setting `units`), rounded up for shopping; `sources` keeps each recipe's own amount and unit, so answer "how much does the soup need?" from there. Chef never guesses a conversion, so the same food in units that can't be converted (`1 bunch` and `150 g`) stays on separate rows. `on_hand` (`{ amount, unit, text }`) means inventory holds the food in a unit Chef can't compare; ask the user to check it.

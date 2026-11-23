@@ -78,7 +78,7 @@ export function buildList(root, { weekStart, upcoming = false, today = localToda
   const parsedMatches = parseItemMatches(matchValues);
   const stock = listItems(loadInventory(root));
   if (parsedMatches.problems.length) return { status: 'invalid-input', data_root: root, problems: parsedMatches.problems };
-  for (const path of parsedMatches.matches.values()) {
+  for (const path of parsedMatches.paths) {
     if (!stock.some((item) => item.path === path)) return { status: 'invalid-input', data_root: root, problems: [`match path not found: ${path}`] };
   }
 
