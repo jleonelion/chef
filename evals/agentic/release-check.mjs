@@ -2,10 +2,12 @@ export function verifyReleaseEvidence({
   evidence = [],
   requiredHosts = ['codex', 'claude', 'copilot'],
   requiredRows = [],
+  requiredJudgeRows = [],
   reps = 3,
   exceptions = [],
 } = {}) {
   const failures = [];
+  if (reps !== 3) failures.push('release evidence: repetitions must be exactly 3');
   if (!requiredRows.length) failures.push('release evidence: no required rows selected');
 
   for (const host of requiredHosts) {
@@ -26,7 +28,6 @@ export function verifyReleaseEvidence({
     const result = matches[0];
     if (result.reps !== reps) failures.push(`${host}: expected ${reps} repetitions, found ${result.reps}`);
     if (result.invalid) failures.push(`${host}: result contains invalid repetitions`);
-    if (!result.passed) failures.push(`${host}: result aggregate is not passing`);
     if (JSON.stringify(result.selected_rows) !== JSON.stringify(requiredRows)) {
       failures.push(`${host}: incomplete or mismatched full-suite selection`);
     }
@@ -42,10 +43,18 @@ export function verifyReleaseEvidence({
         failures.push(`${host}: unexpected row ${row.id}`);
         continue;
       }
+      if (requiredJudgeRows.includes(row.id) && (!row.judge || row.judge.status !== 'passing' || row.judge.passes !== '3/3')) {
+        failures.push(`${host}/${row.id}: judge did not pass 3/3`);
+      }
       if (row.invalid_reps > 0) failures.push(`${host}/${row.id}: ${row.invalid_reps} invalid repetitions`);
       if (row.valid_reps !== reps) failures.push(`${host}/${row.id}: expected ${reps} valid repetitions, found ${row.valid_reps}`);
       if (!row.pass || row.pass_rate !== 1) failures.push(`${host}/${row.id}: failing or incomplete row`);
       if (row.judge && row.judge.status !== 'passing') failures.push(`${host}/${row.id}: judge did not pass`);
+    }
+    for (const judgeRow of requiredJudgeRows) {
+      if (!result.rows.some((row) => row.id === judgeRow)) {
+        failures.push(`${host}/${judgeRow}: missing judge row`);
+      }
     }
   }
 

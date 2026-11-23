@@ -25,12 +25,20 @@ if (positionals.length < 1) throw new Error('usage: bun run agentic:verify <resu
 const allRows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
 
 if (values.release) {
-  if (positionals.length !== 3) throw new Error('release verification requires exactly one evidence file for codex, claude and copilot');
   const evidence = positionals.map((file) => JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')));
   const exceptions = values['exception-file']
     ? JSON.parse(fs.readFileSync(path.resolve(values['exception-file']), 'utf8'))
     : [];
+  if (Number(values.reps) !== 3) throw new Error('release verification requires exactly 3 repetitions');
+  const exceptionHosts = new Set(exceptions.map((entry) => entry.host));
+  const evidenceHosts = new Set(evidence.map((result) => result.harness?.name));
+  const missingHosts = ['codex', 'claude', 'copilot'].filter((host) => !evidenceHosts.has(host));
+  if (!exceptions.length && missingHosts.length) throw new Error(`release verification requires evidence for ${missingHosts.join(', ')}`);
+  for (const host of missingHosts) {
+    if (!exceptionHosts.has(host)) throw new Error(`release evidence for ${host} is missing and has no approved exception`);
+  }
   const requiredRows = allRows.filter((row) => !row.known_failure).map((row) => row.id);
+  const requiredJudgeRows = allRows.filter((row) => row.judge).map((row) => row.id);
   const current = { ...currentProvenance(repo), rows_total: allRows.length };
   const provenanceProblems = evidence.flatMap((result) => [
     ...validateResult(result).map((problem) => `schema: ${problem}`),
@@ -47,6 +55,7 @@ if (values.release) {
     evidence,
     requiredHosts: ['codex', 'claude', 'copilot'],
     requiredRows,
+    requiredJudgeRows,
     reps: Number(values.reps),
     exceptions,
   });
@@ -59,8 +68,7 @@ if (values.release) {
   } else {
     console.log(`release evidence verified: ${requiredRows.length} rows, 3/3 on codex, claude and copilot`);
   }
-}
-
+} else {
 if (positionals.length !== 1) throw new Error('normal verification accepts exactly one result file');
 
 const resultFile = path.resolve(positionals[0]);
@@ -95,4 +103,5 @@ if (problems.length) {
   process.exitCode = 1;
 } else {
   console.log(`verified ${path.relative(repo, resultFile)}: ${expectedRows.length}/${allRows.length} rows, ${values.reps} rep(s)`);
+}
 }

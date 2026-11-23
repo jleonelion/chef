@@ -81,3 +81,36 @@ test('approved subscription-limit exception is recorded as an exception, not a p
   assert.equal(checked.exceptions.length, 1);
   assert.deepEqual(checked.exceptions[0].missing_rows, ['one']);
 });
+
+test('release evidence rejects non-3 repetition counts and incomplete judge coverage', () => {
+  const ids = ['judged'];
+  const evidence = ['codex', 'claude', 'copilot'].map((host) => ({
+    ...result(host, ids),
+    rows: [{
+      id: 'judged',
+      pass: true,
+      valid_reps: 3,
+      invalid_reps: 0,
+      pass_rate: 1,
+      judge: { status: 'passing', passes: '1/1' },
+    }],
+  }));
+  const checked = verifyReleaseEvidence({
+    evidence,
+    requiredHosts: ['codex', 'claude', 'copilot'],
+    requiredRows: ids,
+    requiredJudgeRows: ids,
+    reps: 3,
+  });
+  assert.equal(checked.passed, false);
+  assert.ok(checked.failures.some((failure) => failure.includes('judge did not pass 3/3')));
+
+  const wrongReps = verifyReleaseEvidence({
+    evidence: [],
+    requiredHosts: [],
+    requiredRows: [],
+    reps: 1,
+  });
+  assert.equal(wrongReps.passed, false);
+  assert.ok(wrongReps.failures.some((failure) => failure.includes('exactly 3')));
+});
