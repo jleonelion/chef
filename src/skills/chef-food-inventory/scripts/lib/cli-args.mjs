@@ -18,6 +18,7 @@ export const OPTIONS = {
   recipe: { type: 'string' },
   servings: { type: 'string' },
   'deduction-id': { type: 'string' },
+  match: { type: 'string', multiple: true },
   today: { type: 'string' },
   days: { type: 'string' },
 };

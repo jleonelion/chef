@@ -9,7 +9,7 @@ import { readSettings } from '../../../lib/settings.mjs';
 import { buildList } from './lib/build.mjs';
 import { deliverList } from './lib/deliver.mjs';
 
-const OPTIONS = { 'data-root': { type: 'string' }, 'week-start': { type: 'string' }, upcoming: { type: 'boolean' }, override: { type: 'string', multiple: true } };
+const OPTIONS = { 'data-root': { type: 'string' }, 'week-start': { type: 'string' }, upcoming: { type: 'boolean' }, override: { type: 'string', multiple: true }, match: { type: 'string', multiple: true } };
 const { values, positionals } = parseArgs({
   args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
   options: OPTIONS,
@@ -23,7 +23,7 @@ function run(root) {
   if (weekStart !== undefined && values.upcoming) problems.push('--upcoming and --week-start cannot be used together');
   if (problems.length) return { status: 'invalid-input', data_root: root, problems };
   const settings = readSettings(root);
-  const list = buildList(root, { weekStart, upcoming: values.upcoming, overrides, units: settings.settings.units });
+  const list = buildList(root, { weekStart, upcoming: values.upcoming, overrides, units: settings.settings.units, matches: values.match });
   if (list.status !== 'built') return list;
   const delivery = deliverList(root, list, { recipients: settings.settings.household_recipients });
   if (delivery.status === 'refused') return delivery;

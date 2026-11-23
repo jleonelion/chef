@@ -1,11 +1,21 @@
 import { ingredientLines, listRecipes } from '../../../../lib/recipes.mjs';
 import { parseIngredientLine } from '../../../../lib/ingredient-line.mjs';
 import { convertQuantity, normalizeUnit, quantityDimension } from '../../../../lib/quantity.mjs';
+import { itemName, parseItemMatches } from '../../../../lib/item-matches.mjs';
 import { commitInventory } from './commit.mjs';
 import { listItems, loadInventory, readText, STORE } from './store.mjs';
 
 const round = (value) => Math.round(value * 1e6) / 1e6;
-const itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+export function validateInventoryMatches(root, matchValues = []) {
+  const parsed = parseItemMatches(matchValues);
+  const problems = [...parsed.problems];
+  const items = listItems(loadInventory(root));
+  for (const path of parsed.paths) {
+    if (!items.some((item) => item.path === path)) problems.push(`match path not found: ${path}`);
+  }
+  return problems;
+}
 
 export function deductionApplied(root, deductionId) {
   return (readText(root, STORE.audit) ?? '').trim().split('\n').filter(Boolean).some((line) => {
@@ -18,8 +28,10 @@ export function deductionApplied(root, deductionId) {
   });
 }
 
-function findItem(items, ingredient) {
+function findItem(items, ingredient, matches) {
   const wanted = itemName(ingredient);
+  const matchedPath = matches.get(wanted);
+  if (matchedPath) return items.find((item) => item.path === matchedPath) ?? null;
   return items.find((item) => itemName(item.name) === wanted || itemName(item.key.replaceAll('_', ' ')) === wanted);
 }
 
@@ -28,11 +40,13 @@ function publicDeduction(entry) {
   return deduction;
 }
 
-export function deductRecipe(root, { recipe: slug, servings, deductionId, now = new Date().toISOString() }) {
+export function deductRecipe(root, { recipe: slug, servings, deductionId, matches: matchValues = [], now = new Date().toISOString() }) {
   const problems = [];
   if (!slug) problems.push('recipe: required');
   if (!Number.isFinite(servings) || servings <= 0) problems.push('servings: must be a positive number');
   if (!deductionId?.trim()) problems.push('deduction_id: required');
+  const parsed = parseItemMatches(matchValues);
+  problems.push(...parsed.problems);
   if (problems.length) return { status: 'invalid-input', problems };
   if (deductionApplied(root, deductionId)) return { status: 'duplicate', deduction_id: deductionId };
 
@@ -47,6 +61,10 @@ export function deductRecipe(root, { recipe: slug, servings, deductionId, now = 
 
   const inventory = loadInventory(root);
   const items = listItems(inventory);
+  for (const path of parsed.paths) {
+    if (!items.some((item) => item.path === path)) problems.push(`match path not found: ${path}`);
+  }
+  if (problems.length) return { status: 'invalid-input', problems };
   const multiplier = servings / baseServings;
   const planned = [];
   const notFound = [];
@@ -54,7 +72,7 @@ export function deductRecipe(root, { recipe: slug, servings, deductionId, now = 
 
   for (const line of ingredientLines(recipe.body)) {
     const ingredient = parseIngredientLine(line);
-    const match = findItem(items, ingredient.item);
+    const match = findItem(items, ingredient.item, parsed.matches);
     if (!match) {
       notFound.push(ingredient.item || line);
       continue;
