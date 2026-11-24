@@ -54,6 +54,57 @@ test('checkResponse applies content assertions to the final reply', () => {
   assert.throws(() => checkResponse('Recipients are required.', [{ path: '$.content', includes: 'defaults' }]), /missing "defaults"/);
 });
 
+test('meal confirmation rows accept lunch regardless of capitalization', () => {
+  const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
+  for (const [id, turn] of [
+    ['chef-meal-logging-from-plan-no-plan', 1],
+    ['chef-meal-logging-direct-entry-confirms-before-write', 0],
+  ]) {
+    const row = rows.find((row) => row.id === id);
+    for (const slot of ['lunch', 'Lunch', 'LUNCH', 'LuNcH']) {
+      checkResponse(
+        `Please confirm: January 21, 2026, ${slot}, Chickpea Spinach Stew, 1 serving, cooked at home. Shall I log this entry?`,
+        row.responses[turn],
+      );
+    }
+  }
+});
+
+test('meal confirmation rows require the proposed entry and an explicit confirmation request', async (t) => {
+  const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
+  const proposal = 'January 21, 2026, lunch, Chickpea Spinach Stew, 1 serving, cooked at home. Shall I log this entry?';
+  for (const [id, turn] of [
+    ['chef-meal-logging-from-plan-no-plan', 1],
+    ['chef-meal-logging-direct-entry-confirms-before-write', 0],
+  ]) {
+    const row = rows.find((row) => row.id === id);
+    checkResponse(proposal, row.responses[turn]);
+    checkResponse('2026-01-21, Lunch, Chickpea Spinach Stew, one serving, home-cooked. Confirm this entry?', row.responses[turn]);
+    checkResponse('21 Jan 2026, lunch, Chickpea Spinach Stew. Servings: 1. Cooked at home: yes. Please confirm before I log it.', row.responses[turn]);
+    checkResponse(proposal.replace('Shall I log this entry?', 'Would you like me to save this entry?'), row.responses[turn]);
+    for (const [name, response] of [
+      ['wrong meal slot', proposal.replace('lunch', 'dinner')],
+      ['partial meal-slot word', proposal.replace('lunch', 'luncheon')],
+      ['missing meal slot', proposal.replace('lunch, ', '')],
+      ['wrong month', proposal.replace('January', 'February')],
+      ['wrong day', proposal.replace('21', '22')],
+      ['wrong year', proposal.replace('2026', '2025')],
+      ['wrong recipe', proposal.replace('Chickpea Spinach Stew', 'Lemon Garlic Pasta')],
+      ['missing servings', proposal.replace('1 serving, ', '')],
+      ['wrong servings', proposal.replace('1 serving', '2 servings')],
+      ['missing cooked status', proposal.replace(', cooked at home', '')],
+      ['not cooked at home', proposal.replace('cooked at home', 'not cooked at home')],
+      ['negative cooked status', proposal.replace('cooked at home', 'Cooked at home: no')],
+      ['missing confirmation', proposal.replace(' Shall I log this entry?', '')],
+      ['unrelated question', proposal.replace('Shall I log this entry?', 'What would you like for dinner?')],
+    ]) {
+      await t.test(`${id}: ${name}`, () => {
+        assert.throws(() => checkResponse(response, row.responses[turn]), (error) => error.check === 'response');
+      });
+    }
+  }
+});
+
 test('household recipient reply assertions accept equivalent wording and reject wrong semantics', () => {
   const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
   const row = rows.find(({ id }) => id === 'chef-setup-household-recipients');
@@ -114,6 +165,42 @@ test('checkFiles asserts present, absent and parsed file contents', async (t) =>
   ]);
   await assert.rejects(checkFiles(root, [{ path: 'missing.md' }]), /expected file was not written: missing.md/);
   await assert.rejects(checkFiles(root, [{ path: 'page.md', absent: true }]), /file must not be written: page.md/);
+});
+
+test('no-plan meal logging stays read-only and direct entry requires one approved write', async (t) => {
+  const root = dataRoot(t);
+  const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
+  const noPlan = rows.find(({ id }) => id === 'chef-meal-logging-from-plan-no-plan');
+  const direct = rows.find(({ id }) => id === 'chef-meal-logging-direct-entry-confirms-before-write');
+  const run = { script: 'scripts/meal-logging.mjs', args: ['log'] };
+  checkScripts([], noPlan.scripts);
+  assert.throws(() => checkScripts([run], noPlan.scripts), (error) => error.check === 'scripts');
+  await checkFiles(root, noPlan.files);
+
+  checkScripts([], direct.turnScripts[0]);
+  assert.throws(() => checkScripts([run], direct.turnScripts[0]), (error) => error.check === 'scripts');
+  checkScripts([run], direct.turnScripts[1]);
+  assert.throws(() => checkScripts([], direct.turnScripts[1]), (error) => error.check === 'scripts');
+  checkScripts([run], direct.scripts);
+  assert.throws(() => checkScripts([run, run], direct.scripts), (error) => error.check === 'scripts');
+  await assert.rejects(checkFiles(root, direct.files), /expected file was not written/);
+
+  const entry = { date: '2026-01-21', slot: 'lunch', recipe: 'chickpea-spinach-stew', servings: 1, cooked: true };
+  const file = path.join(root, 'data/meal-log/log.json');
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, JSON.stringify({ entries: [entry] }));
+  await checkFiles(root, direct.files);
+  await assert.rejects(checkFiles(root, noPlan.files), /file must not be written/);
+  for (const [field, wrong] of [
+    ['date', '2026-01-22'], ['slot', 'dinner'], ['recipe', 'lemon-garlic-pasta'],
+    ['servings', 2], ['cooked', false],
+  ]) {
+    fs.writeFileSync(file, JSON.stringify({ entries: [{ ...entry, [field]: wrong }] }));
+    await assert.rejects(checkFiles(root, direct.files), (error) =>
+      error.check === 'files' && error.message.startsWith(`$.entries[0].${field}`));
+  }
+  fs.writeFileSync(file, JSON.stringify({ entries: [entry, entry] }));
+  await assert.rejects(checkFiles(root, direct.files), /entries.length/);
 });
 
 test('checkFiles counts the files in a folder', async (t) => {

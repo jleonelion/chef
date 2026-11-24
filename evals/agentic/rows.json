@@ -416,22 +416,25 @@
     "id": "chef-meal-logging-from-plan-no-plan",
     "flow": "should-not-act",
     "description": "Logging from the plan for a date with no plan falls back to manual logging, and nothing is logged before the user confirms the proposed entry (#48).",
+    "grounding": { "recipes": ["chickpea-spinach-stew"] },
     "turns": [
       "For the fixed date 2026-01-21, not today, log my planned lunch from my Chef meal plan.",
       "I had 1 serving of the chickpea spinach stew, cooked at home."
     ],
     "responses": [
       [
-        { "path": "$.content", "includes": "2026" },
-        { "path": "$.content", "includes": "21" },
-        { "path": "$.content", "includes": "lunch" },
+        { "path": "$.content", "matches": "\\b(?:2026-01-21|[Jj]an(?:uary)?\\.?\\s+21(?:st)?,?\\s+2026|21(?:st)?\\s+[Jj]an(?:uary)?\\.?[,]?\\s+2026)\\b" },
+        { "path": "$.content", "matches": "\\b[Ll][Uu][Nn][Cc][Hh]\\b" },
         { "path": "$.content", "includes": "manual" }
       ],
       [
         { "path": "$.content", "includes": "Chickpea Spinach Stew" },
-        { "path": "$.content", "includes": "2026" },
-        { "path": "$.content", "includes": "21" },
-        { "path": "$.content", "includes": "Lunch" }
+        { "path": "$.content", "matches": "\\b(?:2026-01-21|[Jj]an(?:uary)?\\.?\\s+21(?:st)?,?\\s+2026|21(?:st)?\\s+[Jj]an(?:uary)?\\.?[,]?\\s+2026)\\b" },
+        { "path": "$.content", "matches": "\\b[Ll][Uu][Nn][Cc][Hh]\\b" },
+        { "path": "$.content", "matches": "\\b(?:1|[Oo]ne)\\s+servings?\\b|\\b[Ss]ervings?[\\s*_:=-]+1\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Cc]ooked at home|[Hh]ome[- ]cooked|[Cc]ooked[\\s*_:=-]+(?:[Yy]es|[Tt]rue))\\b" },
+        { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:[Nn]ot\\s+(?:cooked at home|home[- ]cooked)|[Cc]ooked(?: at home)?[\\s*_:=-]*(?:[Nn]o|[Ff]alse))\\b)" },
+        { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)" }
       ]
     ],
     "skills": ["chef-meal-logging"],
@@ -945,15 +948,17 @@
     ],
     "responses": [
       [
-        { "path": "$.content", "includes": "2026" },
-        { "path": "$.content", "includes": "21" },
-        { "path": "$.content", "includes": "Lunch" },
+        { "path": "$.content", "matches": "\\b(?:2026-01-21|[Jj]an(?:uary)?\\.?\\s+21(?:st)?,?\\s+2026|21(?:st)?\\s+[Jj]an(?:uary)?\\.?[,]?\\s+2026)\\b" },
+        { "path": "$.content", "matches": "\\b[Ll][Uu][Nn][Cc][Hh]\\b" },
         { "path": "$.content", "includes": "Chickpea Spinach Stew" },
-        { "path": "$.content", "includes": "?" }
+        { "path": "$.content", "matches": "\\b(?:1|[Oo]ne)\\s+servings?\\b|\\b[Ss]ervings?[\\s*_:=-]+1\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Cc]ooked at home|[Hh]ome[- ]cooked|[Cc]ooked[\\s*_:=-]+(?:[Yy]es|[Tt]rue))\\b" },
+        { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:[Nn]ot\\s+(?:cooked at home|home[- ]cooked)|[Cc]ooked(?: at home)?[\\s*_:=-]*(?:[Nn]o|[Ff]alse))\\b)" },
+        { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)" }
       ]
     ],
     "skills": ["chef-meal-logging"],
-    "scripts": { "required": ["scripts/meal-logging.mjs"] },
+    "scripts": { "required": ["scripts/meal-logging.mjs"], "max": { "scripts/meal-logging.mjs": 1 } },
     "turnScripts": [
       { "forbidden": ["scripts/meal-logging.mjs"] },
       { "required": ["scripts/meal-logging.mjs"] }
@@ -967,6 +972,7 @@
           { "path": "$.entries[0].date", "equals": "2026-01-21" },
           { "path": "$.entries[0].slot", "equals": "lunch" },
           { "path": "$.entries[0].recipe", "equals": "chickpea-spinach-stew" },
+          { "path": "$.entries[0].servings", "equals": 1 },
           { "path": "$.entries[0].cooked", "equals": true }
         ]
       }
