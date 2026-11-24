@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, failureDigest, repReport, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, failureDigest, repReport, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure, snapshotFiles } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -165,6 +165,15 @@ test('checkFiles asserts present, absent and parsed file contents', async (t) =>
   ]);
   await assert.rejects(checkFiles(root, [{ path: 'missing.md' }]), /expected file was not written: missing.md/);
   await assert.rejects(checkFiles(root, [{ path: 'page.md', absent: true }]), /file must not be written: page.md/);
+});
+
+test('unchanged file checks reject creating a file absent at setup', async (t) => {
+  const root = dataRoot(t);
+  const checks = [{ path: 'data/audit.jsonl', unchanged: true }];
+  const baseline = snapshotFiles(root, checks);
+  await checkFiles(root, checks, baseline);
+  fs.writeFileSync(path.join(root, 'data/audit.jsonl'), '{"event":"deduction"}\n');
+  await assert.rejects(checkFiles(root, checks, baseline), /data\/audit.jsonl: file changed since setup/);
 });
 
 test('no-plan meal logging stays read-only and direct entry requires one approved write', async (t) => {

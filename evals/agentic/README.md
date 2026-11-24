@@ -36,6 +36,10 @@ and checks the new source's name, ingredients and steps. A count check's optiona
 `pattern` filters relative file names; its `assertions` check every matched file's
 text. Keep a positive exact count so content checks cannot pass without a match.
 
+File checks with `unchanged: true` compare bytes and existence against a snapshot
+taken after the row's setup commands, before the first agent turn. They require
+that baseline, rather than assuming a fixture file must be absent.
+
 Per-repetition console lines and the final failure digest include judge failures,
 even when deterministic behavior passes. Judge failures do not change behavioral
 pass counts or turn valid executions into invalid ones.
@@ -134,3 +138,16 @@ missing or incorrect proposal details, unrelated questions, premature logging
 and incorrect final entries. Keep the archived failures unchanged. These
 eval-only changes need no Chef release but do require fresh exact-tree,
 full three-host 3/3 release evidence; deterministic checks do not replace it.
+
+The leftovers logging failures in
+[#228](https://github.com/jleonelion/chef/issues/228) required the inventory audit
+file to be absent even though it already existed in the fixture. The corrected
+row compares both inventory data and audit bytes with their post-setup state.
+It accepts "left over" and "leftovers", requires the proposed meals and a
+confirmation request, and retains both expected `cooked: false` entries,
+the prohibition on asking whether lunch was cooked, and clean data-root history.
+Regressions run the real planning and logging scripts, check both inventory
+results are `not-requested`, and reject audit appends, inventory edits and file
+deletions. Keep the archived failures unchanged. These eval-only corrections
+need no Chef release and do not resolve other failures or establish a release
+pass. Fresh exact-tree, full three-host 3/3 evidence is still required.

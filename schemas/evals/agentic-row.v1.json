@@ -59,6 +59,7 @@
         "properties": {
           "path": { "type": "string", "minLength": 1 },
           "absent": { "type": "boolean" },
+          "unchanged": { "type": "boolean", "description": "Require the file's bytes or absence to match its state after setup, before the first agent turn." },
           "pattern": { "type": "string", "description": "Filter count checks by a regular expression over relative file names; assertions apply to each matched file's text." },
           "count": {
             "oneOf": [

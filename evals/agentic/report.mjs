@@ -84,13 +84,27 @@ function listFiles(abs, pattern) {
     .filter((name) => fs.statSync(path.join(abs, name)).isFile() && (!matcher || matcher.test(name)));
 }
 
-// Each check is {path} (must exist), {path, absent: true}, or {path, count: n|{baseline,delta}}.
+const fileState = (file) => fs.existsSync(file) ? fs.readFileSync(file) : null;
+
+export function snapshotFiles(dataRoot, checks = []) {
+  return new Map(checks.filter((check) => check.unchanged).map(({ path: file }) =>
+    [file, fileState(path.join(dataRoot, file))]));
+}
+
+// Each check is {path} (must exist), {path, absent: true}, {path, unchanged: true}, or {path, count: n|{baseline,delta}}.
 // Count checks may filter relative file names with `pattern` and assert each matched file's text.
 // `assertions` run against text, parsed JSON, or parsed PDF data (see tier1 assertions).
-export async function checkFiles(dataRoot, checks) {
+export async function checkFiles(dataRoot, checks, baseline = new Map()) {
   try {
     for (const check of checks ?? []) {
       const abs = path.join(dataRoot, check.path);
+      if (check.unchanged) {
+        assert(baseline.has(check.path), `${check.path}: missing post-setup baseline`);
+        const before = baseline.get(check.path);
+        const after = fileState(abs);
+        assert(before === null ? after === null : after !== null && before.equals(after), `${check.path}: file changed since setup`);
+        continue;
+      }
       if (Object.hasOwn(check, 'count')) {
         const files = listFiles(abs, check.pattern);
         const expected = typeof check.count === 'object' ? check.count.baseline + check.count.delta : check.count;
