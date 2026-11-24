@@ -14,6 +14,18 @@ const dormant = rows.find(({ id }) => id === 'chef-health-goals-check-in-goal-un
 const shopping = rows.find(({ id }) => id === 'chef-shopping-lists-natural-from-plan');
 const noPlanReply = 'There is no planned lunch for January 21, 2026. What did you eat and how many servings? I need those details before I can propose a manual meal-log entry.';
 const lookup = { script: 'scripts/meal-planning.mjs', args: ['today', '--date', '2026-01-21'] };
+const shoppingText = `# Shopping list: week of 2026-01-19
+
+- 1.5 can chickpeas
+- 0.75 each onion
+- 1.5 clove garlic
+- 11 oz crushed tomatoes
+- 4 oz spinach (on hand: 1 bunch)
+- 1 tsp ground cumin
+
+No dietary constraints recorded. Tell me about any allergies or foods someone must never eat.
+`;
+const onHandCheck = 'Please check whether your 1 bunch of spinach covers the 4 oz needed; Chef cannot compare bunches with ounces.';
 
 async function replay(t, row, act) {
   const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-read-only-replay-'));
@@ -155,10 +167,42 @@ test('shopping permits the real build with or without a read-only inventory view
         const output = invoke('chef-shopping-lists', 'shopping-lists.mjs', ['build', '--week-start', '2026-01-19']);
         assert.equal(output.status, 'built');
         if (view) assert.equal(invoke('chef-food-inventory', 'inventory.mjs', ['view']).status, 'ok');
-        return { response: output.text, skills: ['chef-shopping-lists', ...(view ? ['chef-food-inventory'] : [])] };
+        return { response: `${output.text}\n${onHandCheck}`, skills: ['chef-shopping-lists', ...(view ? ['chef-food-inventory'] : [])] };
       });
       assert.equal(run.outcome, 'pass', JSON.stringify(run.failures ?? run.invalid));
     });
+  }
+});
+
+test('natural shopping replies retain generated text and ask the user to check incomparable stock', () => {
+  for (const request of [
+    onHandCheck,
+    'Can you check whether the spinach on hand is enough for the 4 oz needed?',
+    'Check your bunch of spinach against the amount needed.',
+    'Please verify the quantity of spinach you have.',
+  ]) {
+    checkResponse(`${shoppingText}\n${request}`, shopping.responses[0]);
+  }
+});
+
+test('natural shopping response checks reject lost safety notes, altered quantities and missing user checks', () => {
+  const valid = `${shoppingText}\n${onHandCheck}`;
+  for (const [defect, response] of [
+    ['missing nudge', valid.replace('No dietary constraints recorded. Tell me about any allergies or foods someone must never eat.\n', '')],
+    ['missing on-hand note', valid.replace(' (on hand: 1 bunch)', '')],
+    ['missing user check', shoppingText],
+    ['expiry instead of user check', `${shoppingText}\nThe spinach expired on 2026-01-17, so buy fresh spinach.`],
+    ['expiry-only check', `${shoppingText}\nPlease check the spinach expiry date before using it.`],
+    ['recipe-only check', `${shoppingText}\nPlease check the spinach recipe instructions.`],
+    ['unrelated quantity check', `${shoppingText}\nPlease check the tomato quantity; the spinach is covered.`],
+    ['unrelated check', `${shoppingText}\nPlease check the tomatoes.`],
+    ['changed purchase quantity', valid.replace('- 4 oz spinach', '- 5 oz spinach')],
+    ['changed on-hand quantity', valid.replace('on hand: 1 bunch', 'on hand: 2 bunch')],
+    ['changed other quantity', valid.replace('- 1.5 can chickpeas', '- 2 can chickpeas')],
+    ['invented conversion', valid.replace('- 4 oz spinach (on hand: 1 bunch)', '- 0 oz spinach (1 bunch covers 4 oz)')],
+    ['duplicate nudge', `${valid}\nNo dietary constraints recorded. Tell me about any allergies or foods someone must never eat.`],
+  ]) {
+    assert.throws(() => checkResponse(response, shopping.responses[0]), (error) => error.check === 'response', defect);
   }
 });
 
@@ -178,7 +222,7 @@ test('shopping rejects an actual inventory edit even when the script commits it 
     assert.equal(invoke('chef-food-inventory', 'inventory.mjs', [
       'edit', '--path', 'fridge.dairy.whole_milk', '--amount', '0',
     ]).status, 'saved');
-    return { response: output.text, skills: ['chef-shopping-lists', 'chef-food-inventory'] };
+    return { response: `${output.text}\n${onHandCheck}`, skills: ['chef-shopping-lists', 'chef-food-inventory'] };
   });
   assert.equal(run.outcome, 'failed', JSON.stringify(run.invalid));
   for (const expected of ['scripts', 'files', 'git-state']) {

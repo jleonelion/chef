@@ -1148,7 +1148,7 @@
     "candidate": true,
     "id": "chef-shopping-lists-natural-from-plan",
     "flow": "core",
-    "description": "A natural grocery-list request from a saved plan requires shopping lists and permits optional inventory view for exact matches, without inventory or shopping-list writes (#232).",
+    "description": "A natural grocery-list request retains the generated text for the fixture's three-serving stew: all purchase quantities, the incomparable spinach on-hand note and the never-asked dietary nudge once. It also asks the user to check the spinach. Optional inventory view cannot replace those obligations; no inventory or shopping-list writes (#232, #235).",
     "grounding": { "recipes": ["chickpea-spinach-stew"] },
     "setup": [
       {
@@ -1157,6 +1157,13 @@
       }
     ],
     "turns": ["Turn the 2026-01-19 dinners into a grocery list and leave out what is already in the pantry."],
+    "responses": [
+      [
+        { "path": "$.content", "includes": "# Shopping list: week of 2026-01-19\n\n- 1.5 can chickpeas\n- 0.75 each onion\n- 1.5 clove garlic\n- 11 oz crushed tomatoes\n- 4 oz spinach (on hand: 1 bunch)\n- 1 tsp ground cumin\n\nNo dietary constraints recorded. Tell me about any allergies or foods someone must never eat.\n" },
+        { "path": "$.content", "matches": "^(?:(?!No dietary constraints recorded)[\\s\\S])*No dietary constraints recorded(?:(?!No dietary constraints recorded)[\\s\\S])*$" },
+        { "path": "$.content", "matches": "(?:\\b(?:[Pp]lease|[Cc]an you|[Cc]ould you|[Ww]ould you) (?:check|verify|confirm)|(?:^|[.!?]\\s+|\\n)(?:Check|Verify|Confirm))\\b(?=[^.!?\\n;,\\u2014]*\\b(?:spinach|bunch)\\b)[^.!?\\n;,\\u2014]*\\b(?:quantity|amount|enough|covers?|against|compare)\\b" }
+      ]
+    ],
     "skills": ["chef-shopping-lists"],
     "forbidSkills": ["chef-meal-planning"],
     "scripts": {

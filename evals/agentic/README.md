@@ -254,3 +254,25 @@ Keep the archived results unchanged, with no retrospective pass claim.
 This eval-only correction needs no Chef release or `semver:` label.
 Fresh exact-tree, full three-host 3/3 release evidence remains a separate,
 explicitly authorized step. No live agents or judges were rerun.
+
+The shopping reply defect in
+[#235](https://github.com/jleonelion/chef/issues/235) is separate from those
+routing failures. The natural-request row now requires the fixture's generated
+three-serving shopping text unchanged, including `4 oz spinach (on hand: 1 bunch)`
+and the never-asked dietary nudge exactly once, plus an explicit request to check
+the incomparable stock. The packaged shopping instructions reinforce that
+optional read-only inventory inspection cannot replace generated text or the
+user check with expiry reasoning. The declared-constraint footer remains
+covered by `chef-shopping-lists-footer-once`.
+
+Synthetic response regressions reject missing notes or user checks, altered
+purchase and on-hand quantities, invented conversions and duplicate nudges.
+Real-script replays check the same row with and without inventory `view`;
+the required shopping build, unrelated-routing exclusions, no-write snapshots
+and unchanged, clean data-root history remain in force. This behavior fix is
+`semver:patch`, targeted at v1.4.0, with no setting, schema, installation or
+data-root compatibility change. Deterministic checks do not establish that
+a live agent follows the reinforced instructions. Keep archived repetition 3
+and its reported result unchanged. Fresh exact-tree, full three-host 3/3
+release evidence still needs separate authorization. No live agent or judge
+was rerun for this fix.
