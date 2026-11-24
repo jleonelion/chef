@@ -60,12 +60,26 @@ test('household recipient reply assertions accept equivalent wording and reject 
   const assertions = row.responses[0];
   const rewordedTranscript =
     'I’ll use these people as the default shopping-list recipients. An approved recurring shopping task will be set up, and this does not prevent you from asking Chef to email anyone else.';
-  const wrongTranscript =
-    'The household addresses are the mandatory default recipients for shopping lists. The recurring task does not need approval, and anyone else is forbidden.';
+  const documentedTranscript =
+    'Who should Chef email shopping lists to by default? Chef emails them automatically only if you approve the Chef shopping list recurring task. You can still ask Chef to email a shopping list to anyone. Give me their email addresses, or skip to see lists here in chat.';
+  const wrongTranscripts = [
+    'These are the default recipients. Chef emails them automatically with a recurring task. You can ask Chef to email anyone.',
+    'These are the default recipients. The recurring task does not need approval. You can ask Chef to email anyone.',
+    'These are the default recipients. Chef emails them automatically unless you approve the Chef shopping list recurring task. You can ask Chef to email anyone.',
+    'These are the default recipients. You approved a recipe. Chef emails them automatically with a recurring task. You can ask Chef to email anyone.',
+    'These are the default recipients. An unapproved recurring shopping task emails them automatically. You can ask Chef to email anyone.',
+    rewordedTranscript.replace('default', 'mandatory default'),
+    rewordedTranscript.replace('anyone else', 'anyone else, which is forbidden'),
+    rewordedTranscript.replace('default', 'only'),
+    rewordedTranscript.replace('anyone else', 'these recipients'),
+  ];
   const maxInvariantLength = 9;
 
   checkResponse(rewordedTranscript, assertions);
-  assert.throws(() => checkResponse(wrongTranscript, assertions), /missing|unexpected/);
+  checkResponse(documentedTranscript, assertions);
+  for (const transcript of wrongTranscripts) {
+    assert.throws(() => checkResponse(transcript, assertions), (error) => error.check === 'response', transcript);
+  }
   for (const assertion of assertions) {
     for (const key of ['includes', 'excludes']) {
       if (assertion[key]) assert.ok(assertion[key].length <= maxInvariantLength, `reply invariant is too coupled: "${assertion[key]}"`);
