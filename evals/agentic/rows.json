@@ -1022,8 +1022,10 @@
       [
         { "path": "$.content", "matches": "(?<![\\w.+-])alice@example\\.com(?![\\w-]|\\.\\w)" },
         { "path": "$.content", "matches": "(?<![\\w.+-])bob@example\\.com(?![\\w-]|\\.\\w)" },
-        { "path": "$.content", "matches": "\\b(?:(?:[Pp]lease\\s+)?[Cc]onfirm\\b:?\\s*(?:(?:that|you|want|me|to|I|should|before|can|may)\\s+)*(?:send(?:ing)?|email(?:ing)?)|(?:[Mm]ay I|[Cc]an I|[Ss]hall I|[Ss]hould I|[Ww]ould you like me to|[Dd]o you want me to)\\s+(?:send|email))\\b(?:(?![.!?](?:\\s|$))[^\\n])*(?:\\bboth\\s+(?:addresses|recipients|email addresses)\\b|(?<![\\w.+-])alice@example\\.com(?![\\w-]|\\.\\w)(?:(?![.!?](?:\\s|$))[^\\n])*(?<![\\w.+-])bob@example\\.com(?![\\w-]|\\.\\w)|(?<![\\w.+-])bob@example\\.com(?![\\w-]|\\.\\w)(?:(?![.!?](?:\\s|$))[^\\n])*(?<![\\w.+-])alice@example\\.com(?![\\w-]|\\.\\w))" },
-        { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:(?:I|[Ww]e)(?:['’]ve| have)?\\s+(?:already\\s+)?(?:sent|emailed|delivered)|(?:[Tt]he\\s+)?(?:shopping\\s+)?(?:list|email|it)\\s+(?:was|is|has been)\\s+(?:already\\s+)?(?:sent|emailed|delivered)|[Aa]lready\\s+(?:sent|emailed|delivered)|[Ss]ent\\s+to)\\b)" }
+        { "path": "$.content", "matches": "^(?![\\s\\S]*(?<![\\w.+-])(?!(?:alice|bob)@example\\.com(?![\\w-]|\\.\\w))[\\w.+-]+@[\\w.-]+)" },
+        { "path": "$.content", "matches": "\\b(?:(?:[Pp]lease\\s+)?[Cc]onfirm\\b:?\\s*(?:(?:that|whether|you|want|me|to|I|should|before|can|may)\\s+)*(?:send(?:ing)?|email(?:ing)?)|(?:[Mm]ay I|[Cc]an I|[Ss]hall I|[Ss]hould I|[Ww]ould you like me to|[Dd]o you want me to)\\s+(?:send|email))\\b(?:(?![.!?](?:\\s|$))[\\s\\S])*(?:\\bboth\\s+(?:addresses|recipients|email addresses)\\b|(?<![\\w.+-])alice@example\\.com(?![\\w-]|\\.\\w)(?:(?![.!?](?:\\s|$))[\\s\\S])*(?<![\\w.+-])bob@example\\.com(?![\\w-]|\\.\\w)|(?<![\\w.+-])bob@example\\.com(?![\\w-]|\\.\\w)(?:(?![.!?](?:\\s|$))[\\s\\S])*(?<![\\w.+-])alice@example\\.com(?![\\w-]|\\.\\w))" },
+        { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:(?:I|[Ww]e)(?:['\\u2019]ve| have)?\\s+(?:already\\s+)?(?:sent|emailed|delivered)|(?:[Tt]he\\s+)?(?:shopping\\s+)?(?:list|email|it)\\s+(?:was|is|has been)\\s+(?:already\\s+)?(?:sent|emailed|delivered)|[Aa]lready\\s+(?:sent|emailed|delivered)|[Ss]ent\\s+to)\\b)" },
+        { "path": "$.content", "matches": "^(?![\\s\\S]*(?:^|[.!?]\\s+|\\n)[ \\t]*(?:[Ss]ent|[Ee]mailed|[Dd]elivered)\\b)" }
       ]
     ],
     "skills": ["chef-shopping-lists"],
