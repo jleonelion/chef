@@ -29,6 +29,7 @@ import { currentProvenance, resultFilename } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 import { judgeReply, createSubscriptionJudgeCall } from './judge.mjs';
 import { selectRows } from './selection.mjs';
+import { observeScripts } from './script-evidence.mjs';
 
 const repo = path.resolve(import.meta.dirname, '..', '..');
 const TURN_TIMEOUT_MS = 10 * 60 * 1000;
@@ -37,10 +38,16 @@ const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' 
 
 function prepare(row, harness) {
   const { tmp, dataRoot } = prepareSandbox({ prefix: 'chef-agentic', id: row.id, fixture: path.join(repo, 'fixtures', 'data-root'), author: 'agentic', seed: row.seed });
-  const launcher = harness.prepare({ pluginDir: path.join(repo, 'plugins', 'chef'), workdir: tmp, env: sandboxEnv(dataRoot, { CHEF_USDA_FDC_KEY: '' }) });
-  const { env, skillsDir } = launcher;
-  const expand = (text) => text.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp);
-  return { tmp, dataRoot, env, expand, runTurn: launcher.runTurn };
+  try {
+    const launcher = harness.prepare({ pluginDir: path.join(repo, 'plugins', 'chef'), workdir: tmp, env: sandboxEnv(dataRoot, { CHEF_USDA_FDC_KEY: '' }) });
+    const { env, skillsDir } = launcher;
+    const evidence = observeScripts({ skillsDir, expectedSkillsDir: path.join(repo, 'plugins/chef/skills'), workdir: tmp, env });
+    const expand = (text) => text.replaceAll('{skills}', skillsDir).replaceAll('{data_root}', dataRoot).replaceAll('{tmp}', tmp);
+    return { tmp, dataRoot, env, expand, evidence, runTurn: launcher.runTurn };
+  } catch (error) {
+    fs.rmSync(tmp, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 function script(rep, step) {
@@ -55,6 +62,7 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
   let rep;
   const run = { row: row.id, rep: number, outcome: 'invalid', cost_usd: 0, skills: [], scriptRuns: [], toolCalls: [] };
   const failures = [];
+  const verifiedRuns = [];
   let judgePrompt = '';
   let judgeResponse = '';
   try {
@@ -65,13 +73,23 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
     const session = randomUUID();
     for (const [index, entry] of row.turns.entries()) {
       const prompt = typeof entry === 'string' ? entry : readInput(entry.turnFile).toString('utf8');
+      rep.evidence.beginTurn();
       const launched = await rep.runTurn({ prompt: rep.expand(prompt), session, resume: index > 0, model, timeoutMs: TURN_TIMEOUT_MS });
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.${launched.ext}`), launched.transcript);
       if (launched.stderr) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), launched.stderr);
       const turn = harness.project(launched.transcript);
+      const observed = rep.evidence.collect(path.join(logDir, `${row.id}-${number}-${index + 1}.executions.json`));
+      verifiedRuns.push(...observed);
+      const candidates = [...turn.scriptRuns];
+      for (const observation of observed) {
+        // Actual argv replaces the parser's guess, including unresolved shell variables.
+        const index = candidates.findIndex((candidate) => candidate.script === observation.script);
+        if (index >= 0) candidates.splice(index, 1);
+      }
+      const scriptRuns = [...observed, ...candidates];
       Object.assign(run, { model: run.model ?? turn.model ?? model ?? 'harness default', cost_usd: run.cost_usd + (turn.cost_usd ?? 0) });
       run.skills.push(...turn.skills);
-      run.scriptRuns.push(...turn.scriptRuns);
+      run.scriptRuns.push(...scriptRuns);
       run.toolCalls.push(...turn.toolCalls);
       const executionError = turnInvalid(launched, turn.error);
       if (executionError) {
@@ -82,9 +100,12 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
         judgePrompt = rep.expand(prompt);
         judgeResponse = turn.response;
       }
+      await recordBehaviorFailure(failures, () => behaviorCheck('scripts', () => {
+        if (candidates.length) throw new Error(`installed-script provenance not established for command-text candidate(s): ${candidates.map(({ script }) => script).join(', ')}`);
+      }));
       await recordBehaviorFailure(failures, () => checkResponse(turn.response, row.responses?.[index]));
       await recordBehaviorFailure(failures, () => checkReplyDenyList(turn.response));
-      await recordBehaviorFailure(failures, () => checkScripts(turn.scriptRuns, row.turnScripts?.[index]));
+      await recordBehaviorFailure(failures, () => checkScripts(scriptRuns, row.turnScripts?.[index], observed));
       await recordBehaviorFailure(failures, async () => {
         try {
           await checkFiles(rep.dataRoot, row.turnFiles?.[index], fileBaseline);
@@ -95,7 +116,7 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
       });
     }
     await recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
-    await recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
+    await recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts, verifiedRuns));
     await recordBehaviorFailure(failures, () => checkTools(run.toolCalls, row.tools));
     await recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files, fileBaseline));
     await recordBehaviorFailure(failures, () =>

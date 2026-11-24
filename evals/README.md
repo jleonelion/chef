@@ -16,6 +16,12 @@ Agentic promotion criteria and the local subscription-backed release gate are do
 
 Launcher contract: `name`, `launcherVersion`, `project(transcript)`, `detect()` (binary and version, throws "not installed"), `prepare({ pluginDir, workdir, env })` (installs the built skills the way that harness discovers them, isolated per rep, never touching the user's config; returns `{ skillsDir, env, runTurn }`), `runTurn({ prompt, session, resume, model, timeoutMs })` (returns `{ transcript, stderr, timedOut, exitCode, signal, ext, spawnError? }`). Same capability set everywhere: shell, file read/write/edit, skills, no MCP.
 
+The returned `env` is the mutable environment used by `runTurn`, including child
+shells. Before setup, the runner adds eval-only Node and Bun preloads to observe
+executed entrypoints. Projector `scriptRuns` remain command-text candidates,
+not proof that an unchanged installed script ran. See
+[installed-script evidence](agentic/README.md#installed-script-evidence).
+
 Result files are `chef-agentic` format 3 and carry the harness identity, models, dataset and fixture hashes, row selection, and a compact outcome for every rep. Each rep is a valid pass, valid behavioral failure with a stable check id, or invalid execution with a cause. Invalid causes are `timeout`, `rate_limit`, `process`, `transcript` and `harness`. The runner gives each summary a unique name under `agentic/archive/`; raw logs stay ignored under `agentic/results/logs/`. Commit release-gate summaries whether they pass or fail. Verify one against the relevant tree and requested gate with `bun run agentic:verify <result>`, passing the run's selection and repetition options. Compare harnesses by row, never by cost.
 
 Pass rates use valid reps as the denominator. Among valid reps, all passes is `passing`, zero passes is `broken`, and mixed outcomes is `flaky`. A row with any invalid rep has overall classification `invalid` and keeps its valid-rep behavior classification separately. A failed rep records every behavioral check that failed, so an expected known failure cannot hide an unrelated failure. Invalid reps never satisfy the requested repetition count or a known failure. The command exits 0 for a passing suite, 1 for behavioral failure, and 2 when any rep is invalid. It never retries a failed or invalid rep.

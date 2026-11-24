@@ -83,6 +83,58 @@ Commit summaries and use an optional exception file only for a maintainer-approv
 
 An exception is not a pass and must identify missing coverage. Raw transcripts and credentials remain local.
 
+### Installed-script evidence
+
+Launcher version 3 uses an eval-only interpreter preload, through `NODE_OPTIONS`
+for Node and `BUN_OPTIONS` for Bun. It records the actual entrypoint, real path,
+SHA-256 and arguments before the entrypoint runs. For installed Chef entrypoints
+it also records the installed skills pack's content and filesystem identity.
+The runner compares the initial install with the evaluated bundle, then checks
+the pack before and after each turn and against process-start observations.
+Changed or replaced files, including skill instructions, make the repetition
+invalid. Symbolic links inside the installed pack are not supported.
+
+Only observations of unchanged installed entrypoints satisfy `required` and
+`requiredCalls`. A matching basename, output, or command-text candidate cannot.
+An external copy never qualifies, even with the same name or identical bytes.
+An unmatched command-text candidate fails the `scripts` check with an explicit
+provenance gap. A missing required observation also reports that gap.
+Read-only inspection, including `node --check` and `node -c`, is not execution.
+Node and Bun inline eval/print modes (`-e`, `--eval`, `-p`, `--print`) also
+cannot establish direct entrypoint execution, even when their arguments name
+an unchanged installed script or their expressions import it.
+Genuine entrypoint executions launched as child processes by inline wrappers
+still count.
+Setup and post-run invocations do not
+count as agent calls. Internal subprocesses of an installed Chef script are
+integrity-checked but do not inflate its agent invocation counts.
+Actual arguments replace the static parser's guesses; forbidden and consent
+checks still apply, including to unmatched candidates.
+
+Per-turn `*.executions.json` files stay beside ignored local transcripts.
+Projectors keep the same runtime-neutral shape and never execute transcript
+commands, resolve shell variables or replay historical commands. Genuine
+Node and Bun calls can use quoted, relative or absolute paths, shell wrappers
+and variables because observation happens in the interpreter.
+If a host strips preload options, an installed call cannot satisfy a presence
+check; do not fall back to trusting command text.
+
+This is local eval instrumentation, not an adversarial security boundary.
+The agent shares the repetition's user account and writable evidence directory.
+It does not attest hostile attempts to forge observations, replace the observer,
+or race the interpreter after its startup snapshot. No live host isolation or
+connector delivery claim follows from deterministic tests.
+
+The altered-copy execution in
+[#234](https://github.com/jleonelion/chef/issues/234) remains a failed historical
+repetition. Its deleted sandbox cannot be reconstructed, and the archived
+summary must not be changed. Consent, no-send and data-root checks remain in
+place. This eval-only correction needs no Chef release or `semver:` label;
+the existing v1.4.0 milestone tracks release-evidence work, not a product change.
+Fresh exact-tree, full three-host 3/3 evidence is still required and needs
+authorization. Focused deterministic checks do not replace it; no live agents,
+judges or connectors were rerun for this correction.
+
 The v1.4.0 Codex evaluation reported in [#223](https://github.com/jleonelion/chef/issues/223)
 used a stale two-source baseline and an ambiguous reply target for the pasted
 recipe. Its completed repetition's five sources do not show a Chef storage

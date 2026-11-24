@@ -16,7 +16,7 @@ import { projectCodex } from '../trajectory.mjs';
 import { collectProcess } from './process.mjs';
 
 export const name = 'codex';
-export const launcherVersion = 2;
+export const launcherVersion = 3;
 export const project = projectCodex;
 
 export function detect() {

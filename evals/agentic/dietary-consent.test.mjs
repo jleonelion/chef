@@ -8,7 +8,6 @@ import { checkFiles, checkResponse, checkScripts, snapshotFiles } from './report
 import { runRep } from './run.mjs';
 
 const planning = 'scripts/meal-planning.mjs';
-const repo = path.resolve(import.meta.dirname, '../..');
 const row = JSON.parse(fs.readFileSync(new URL('./rows.json', import.meta.url), 'utf8'))
   .find(({ id }) => id === 'chef-meal-planning-dietary-override-confirmed-once');
 const beforeConsent = {
@@ -20,10 +19,12 @@ async function replay(t, scenario, act, judgeCall) {
   const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-consent-trajectory-'));
   t.after(() => fs.rmSync(logDir, { recursive: true, force: true }));
   const harness = {
-    prepare({ env, pluginDir }) {
+    prepare({ env, pluginDir, workdir }) {
       let index = 0;
+      const skillsDir = path.join(workdir, 'skills');
+      fs.cpSync(path.join(pluginDir, 'skills'), skillsDir, { recursive: true });
       return {
-        env, skillsDir: path.join(pluginDir, 'skills'),
+        env, skillsDir,
         async runTurn() {
           const turn = await act(index++, env);
           return {
@@ -80,11 +81,13 @@ test('runner catches protected state changes before assent even when the next tu
   ]) {
     let turns = 0;
     const harness = {
-      prepare({ env }) {
+      prepare({ env, pluginDir, workdir }) {
         const target = path.join(env.CHEF_DATA_ROOT, file);
         const before = fs.existsSync(target) ? fs.readFileSync(target) : null;
+        const skillsDir = path.join(workdir, 'skills');
+        fs.cpSync(path.join(pluginDir, 'skills'), skillsDir, { recursive: true });
         return {
-          env, skillsDir: '',
+          env, skillsDir,
           async runTurn() {
             turns++;
             if (turns === 1) {
@@ -177,7 +180,7 @@ async function replayDietary(t, defect) {
     const invoke = (skill, script, args, stdin) => {
       scriptRuns.push({ script: `scripts/${script}`, args });
       return JSON.parse(execFileSync(process.execPath, [
-        path.join(repo, 'src/skills', skill, 'scripts', script), ...args,
+        path.join(env.CHEF_EVAL_SKILLS_DIR, skill, 'scripts', script), ...args,
       ], { env, input: stdin && JSON.stringify(stdin), encoding: 'utf8' }));
     };
     const save = (date) => invoke('chef-meal-planning', 'meal-planning.mjs', [

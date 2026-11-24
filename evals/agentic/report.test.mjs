@@ -39,6 +39,26 @@ test('checkScripts matches required and forbidden call argument prefixes', () =>
   assert.throws(() => assertScriptPaths({ forbiddenCalls: [{ script: 'inventory.mjs', args: ['add-receipt'] }] }), /skill-relative path/);
 });
 
+test('checkScripts reports provenance gaps only for missing observed executions', () => {
+  const runs = [{ script: 'scripts/shopping-lists.mjs', args: ['build', '--override-dietary', 'Alex Example:dairy'] }];
+  for (const checks of [
+    { required: ['scripts/meal-planning.mjs'] },
+    { requiredCalls: [{ script: 'scripts/shopping-lists.mjs', args: ['settings'] }] },
+  ]) {
+    assert.throws(() => checkScripts(runs, checks, runs), /did not run.*provenance not established/);
+    assert.throws(() => checkScripts(runs, checks), (error) =>
+      error.check === 'scripts' && !error.message.includes('provenance not established'));
+  }
+  for (const checks of [
+    { forbidden: ['scripts/shopping-lists.mjs'] },
+    { forbiddenCalls: [{ script: 'scripts/shopping-lists.mjs', args: ['build'] }] },
+    { forbiddenFlags: ['--override-dietary'] },
+  ]) {
+    assert.throws(() => checkScripts(runs, checks, runs), (error) =>
+      error.check === 'scripts' && !error.message.includes('provenance not established'));
+  }
+});
+
 test('checkScripts opt-in allowlist permits only declared calls and exact flag values', () => {
   const checks = { allowedCalls: [
     { script: 'scripts/inventory.mjs', args: ['view'] },
