@@ -151,3 +151,17 @@ results are `not-requested`, and reject audit appends, inventory edits and file
 deletions. Keep the archived failures unchanged. These eval-only corrections
 need no Chef release and do not resolve other failures or establish a release
 pass. Fresh exact-tree, full three-host 3/3 evidence is still required.
+
+The health-goal check-in failures in
+[#229](https://github.com/jleonelion/chef/issues/229) matched the literal `2300`
+and rejected the equivalent `2,300`. The active row now requires the Lower sodium
+goal, a sodium upper bound of 2300 mg and a protein lower bound of 90 g, with
+grouping, bound wording and common unit spelling tolerated. The dormant row
+rejects invented numeric targets, including grouped sodium and protein-only
+targets. Stored-target checks and unchanged, clean data-root history remain
+required. Focused response regressions cover both rows, wrong or missing targets,
+reversed bounds, unsupported units and unrelated matching numbers. Keep the
+three archived failures unchanged. This eval-only correction needs no Chef
+release and does not establish a release pass. Reassess release evidence on the
+eventual evaluated tree with fresh exact-tree, full three-host 3/3 evidence.
+No paid agents or judges were rerun for this correction.
