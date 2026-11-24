@@ -126,6 +126,7 @@
         "max": { "type": "object", "propertyNames": { "pattern": "^scripts/[^/]+$" }, "additionalProperties": { "type": "integer", "minimum": 0 } },
         "requiredCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } },
         "forbiddenCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } },
+        "allowedCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" }, "description": "When present, every script run must match one listed call. Does not require any invocation." },
         "forbiddenFlags": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^--[a-z][a-z-]*$" } },
         "allowedFlagValues": {
           "type": "object",

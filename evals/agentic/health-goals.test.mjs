@@ -58,7 +58,7 @@ test('health-goal check-in rejects missing, incorrect or unassociated goal targe
 });
 
 test('dormant health-goal check-in rejects invented targets regardless of grouping', () => {
-  const noGoal = 'You have no health goal or daily targets saved. What goal would you like to set?';
+  const noGoal = 'You have no health goal or daily targets saved.';
   checkResponse(noGoal, dormant.responses[0]);
   for (const target of [
     'Sodium: at most 2300 mg.',
@@ -67,7 +67,12 @@ test('dormant health-goal check-in rejects invented targets regardless of groupi
     'Sodium: at most 1500 mg.',
     'Protein: at least 100 grams.',
     'At most 2,300 mg sodium.',
+    'Calories: 2000 kcal.',
+    'Fiber: 30 grams.',
   ]) {
     assert.throws(() => checkResponse(`${noGoal} ${target}`, dormant.responses[0]), (error) => error.check === 'response', target);
+  }
+  for (const response of ['', 'Everything looks fine.', 'Your goal is Lower sodium.']) {
+    assert.throws(() => checkResponse(response, dormant.responses[0]), (error) => error.check === 'response', response);
   }
 });

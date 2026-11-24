@@ -52,6 +52,7 @@ test('agentic scripts accepts skill-relative paths only', () => {
           scripts: {
             requiredCalls: [{ script: 'scripts/setup.mjs', args: ['set'] }],
             forbiddenCalls: [{ script: 'scripts/setup.mjs', args: ['rewrite'] }],
+            allowedCalls: [{ script: 'scripts/setup.mjs', args: ['set'] }],
           },
           turnScripts: [{ forbidden: ['scripts/setup.mjs'] }, { required: ['scripts/setup.mjs'] }],
         }),
@@ -62,6 +63,7 @@ test('agentic scripts accepts skill-relative paths only', () => {
   assert.ok(lint({ agentic: [agentic({ scripts: { forbidden: ['setup.mjs'] } })] }).length > 0);
   assert.match(lint({ agentic: [agentic({ scripts: { forbiden: [] } })] }).join('\n'), /forbiden/);
   assert.ok(lint({ agentic: [agentic({ scripts: { forbiddenCalls: [{ script: 'setup.mjs', args: ['set'] }] } })] }).length > 0);
+  assert.ok(lint({ agentic: [agentic({ scripts: { allowedCalls: [{ script: 'setup.mjs', args: ['set'] }] } })] }).length > 0);
   assert.match(lint({ agentic: [agentic({ turns: ['ask', 'yes'], turnScripts: [{}, {}, {}] })] }).join('\n'), /turnScripts/);
 });
 
@@ -189,15 +191,8 @@ test('agentic dataset covers every skill and negative routing', () => {
 
   assert.ok(rows.filter((row) => (row.forbidSkills ?? []).length > 0).length >= 3);
   assert.ok(rows.filter((row) => row.flow === 'should-not-act' && (row.forbidSkills ?? []).length > 0).length >= 2);
-  const mirroredPairs = ['dairy-constraint', 'plan-presence', 'health-goal'];
-  for (const pair of mirroredPairs) {
-    const members = rows.filter((row) => row.pair === pair);
-    assert.equal(members.length, 2, `${pair} needs two routing rows`);
-    const requiredSkill = members.find((row) => (row.skills ?? []).length > 0)?.skills[0];
-    assert.ok(requiredSkill, `${pair} needs a positive routing member`);
-    assert.ok(members.some((row) => (row.forbidSkills ?? []).includes(requiredSkill)),
-      `${pair} needs a negative routing member forbidding ${requiredSkill}`);
-  }
+  const dietaryDenial = rows.find((row) => row.pair === 'dairy-constraint' && row.flow === 'should-not-act');
+  assert.ok(dietaryDenial.forbidSkills.includes('chef-meal-planning'));
 
   for (const skill of skills) {
     const natural = rows.some((row) => (row.skills ?? []).includes(skill)

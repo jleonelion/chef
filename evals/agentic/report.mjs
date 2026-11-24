@@ -38,8 +38,8 @@ export function checkSkills(fired, { skills = [], forbidSkills = [] }) {
 
 // scriptRuns: [{script, args}] over every turn of a rep. `required` and `forbidden` list
 // skill-relative paths (scripts/<name>), `max` caps calls per path.
-export function assertScriptPaths({ required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [] } = {}) {
-  const scripts = [...required, ...forbidden, ...Object.keys(max), ...requiredCalls.map((call) => call.script), ...forbiddenCalls.map((call) => call.script)];
+export function assertScriptPaths({ required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [], allowedCalls = [] } = {}) {
+  const scripts = [...required, ...forbidden, ...Object.keys(max), ...requiredCalls.map((call) => call.script), ...forbiddenCalls.map((call) => call.script), ...allowedCalls.map((call) => call.script)];
   for (const script of scripts) assert(/^scripts\/[^/]+$/.test(script), `script must be a skill-relative path like scripts/<name>: ${script}`);
 }
 
@@ -55,7 +55,7 @@ const matchesCall = (run, call) => run.script === call.script
   });
 const callName = (call) => [call.script, ...call.args, ...Object.entries(call.flags ?? {}).map(([flag, values]) => `${flag}=${values.join(',')}`)].join(' ');
 
-export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [], forbiddenFlags = [], allowedFlagValues = {} } = {}) {
+export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [], allowedCalls, forbiddenFlags = [], allowedFlagValues = {} } = {}) {
   return behaviorCheck('scripts', () => {
     const counts = new Map();
     for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
@@ -65,6 +65,11 @@ export function checkScripts(scriptRuns, { required = [], forbidden = [], max = 
     for (const [script, limit] of Object.entries(max)) assert((counts.get(script) ?? 0) <= limit, `${script} ran ${counts.get(script)} times, max ${limit}`);
     for (const call of requiredCalls) assert(scriptRuns.some((run) => matchesCall(run, call)), `${callName(call)} did not run`);
     for (const call of forbiddenCalls) assert(!scriptRuns.some((run) => matchesCall(run, call)), `${callName(call)} ran`);
+    if (allowedCalls) {
+      for (const run of scriptRuns) {
+        assert(allowedCalls.some((call) => matchesCall(run, call)), `${run.script} ${run.args.join(' ')} is not allowed`);
+      }
+    }
     for (const flag of forbiddenFlags) {
       for (const run of scriptRuns) {
         assert(!run.args.some((arg) => arg === flag || arg.startsWith(`${flag}=`)), `${run.script} used forbidden flag ${flag}`);
