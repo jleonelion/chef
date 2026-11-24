@@ -119,3 +119,18 @@ not prove their full contents or retrospectively pass those three repetitions.
 Keep the archived failures unchanged. Fresh exact-tree, full three-host 3/3
 release evidence is still required; deterministic regressions do not replace
 it. No Chef release is needed for this eval-only change.
+
+The meal-logging confirmation failures in
+[#227](https://github.com/jleonelion/chef/issues/227) required capitalized
+`Lunch` even when the reply proposed the correct lowercase `lunch`.
+The no-plan and direct-entry rows now accept meal-slot capitalization variants
+while requiring January 21, 2026, Chickpea Spinach Stew, one serving,
+cooked-at-home status and an explicit confirmation request. The no-plan flow
+still forbids the logging script and any meal-log file, with unchanged, clean
+data-root history. Direct entry forbids the script before approval and requires
+exactly one invocation afterward, plus one final entry with every expected
+field, including servings. Focused verifier regressions cover both flows,
+missing or incorrect proposal details, unrelated questions, premature logging
+and incorrect final entries. Keep the archived failures unchanged. These
+eval-only changes need no Chef release but do require fresh exact-tree,
+full three-host 3/3 release evidence; deterministic checks do not replace it.
