@@ -40,6 +40,12 @@ File checks with `unchanged: true` compare bytes and existence against a snapsho
 taken after the row's setup commands, before the first agent turn. They require
 that baseline, rather than assuming a fixture file must be absent.
 
+Script checks can opt into `allowedCalls`. Every invocation must match one
+listed script and argument prefix, including any declared exact flag values.
+An empty list forbids all script calls; omitting it leaves other calls
+unrestricted. This does not require a call. Use `required` or `requiredCalls`
+for presence. Skill loads remain separate from script execution and file writes.
+
 Per-repetition console lines and the final failure digest include judge failures,
 even when deterministic behavior passes. Judge failures do not change behavioral
 pass counts or turn valid executions into invalid ones.
@@ -218,3 +224,33 @@ failures unchanged, including repetitions 2 and 3. This eval-only correction
 needs no Chef release or `semver:` label and establishes no release pass.
 Fresh exact-tree, full three-host 3/3 release evidence still needs authorization;
 no live reruns are authorized by this issue.
+
+The read-only routing failures in
+[#232](https://github.com/jleonelion/chef/issues/232) treated loading a skill as
+a forbidden mutation. The missing-plan row now permits meal-logging
+instructions, requires `today --date 2026-01-21` before the first reply, and
+requires an explanation of the missing lunch and a request for manual-entry
+details. The later generic approval still authorizes no logging command or
+write. Meal-log and inventory snapshots are checked at both turn boundaries
+and finally, including the inventory audit and rollup.
+
+The dormant health row requires read-only `status`, a no-goal explanation,
+no invented numeric targets and unchanged stores. Its semantic target also
+forbids invented goals, worded targets, unsolicited health advice and
+suggestions to set a goal. The active-goal row remains distinct and unchanged.
+The natural shopping row still requires the shopping entrypoint and forbids
+meal-planning routing. Optional inventory access permits only `view`, never
+edit, receipt intake, deduction or rollup. Shopping-list, inventory, receipt
+and rollup snapshots supplement unchanged, clean data-root history.
+Unrelated and off-topic skill exclusions remain in place.
+
+Deterministic regressions execute the real reads and shopping build, reject
+real invented-meal logging, goal changes and inventory edits, and cover
+turn-boundary writes restored later. These checks do not test live-agent
+quality or semantic-judge accuracy. Allowing an inventory read does not
+establish that shopping repetition 3's rendered reply was correct.
+The original sandboxes were deleted, so their contents cannot be recovered.
+Keep the archived results unchanged, with no retrospective pass claim.
+This eval-only correction needs no Chef release or `semver:` label.
+Fresh exact-tree, full three-host 3/3 release evidence remains a separate,
+explicitly authorized step. No live agents or judges were rerun.

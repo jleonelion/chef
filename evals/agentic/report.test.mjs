@@ -39,6 +39,32 @@ test('checkScripts matches required and forbidden call argument prefixes', () =>
   assert.throws(() => assertScriptPaths({ forbiddenCalls: [{ script: 'inventory.mjs', args: ['add-receipt'] }] }), /skill-relative path/);
 });
 
+test('checkScripts opt-in allowlist permits only declared calls and exact flag values', () => {
+  const checks = { allowedCalls: [
+    { script: 'scripts/inventory.mjs', args: ['view'] },
+    { script: 'scripts/meal-planning.mjs', args: ['today'], flags: { '--date': ['2026-01-21'] } },
+  ] };
+  checkScripts([], checks);
+  checkScripts([
+    { script: 'scripts/inventory.mjs', args: ['view', '--data-root', '/chef'] },
+    { script: 'scripts/meal-planning.mjs', args: ['today', '--date=2026-01-21'] },
+  ], checks);
+  for (const run of [
+    { script: 'scripts/inventory.mjs', args: ['edit'] },
+    { script: 'scripts/inventory.mjs', args: ['view-other'] },
+    { script: 'scripts/meal-planning.mjs', args: ['today'] },
+    { script: 'scripts/meal-planning.mjs', args: ['today', '--date', '2026-01-22'] },
+    { script: 'scripts/meal-planning.mjs', args: ['today', '--date', '2026-01-21', '--date', '2026-01-22'] },
+    { script: 'scripts/other.mjs', args: ['view'] },
+  ]) {
+    assert.throws(() => checkScripts([run], checks), (error) =>
+      error.check === 'scripts' && error.message.includes(`${run.script} ${run.args.join(' ')} is not allowed`));
+  }
+  checkScripts([{ script: 'scripts/other.mjs', args: ['write'] }]);
+  assert.throws(() => checkScripts([{ script: 'scripts/inventory.mjs', args: ['view'] }], { allowedCalls: [] }), /is not allowed/);
+  assert.throws(() => assertScriptPaths({ allowedCalls: [{ script: 'inventory.mjs', args: ['view'] }] }), /skill-relative path/);
+});
+
 test('checkTools forbids named Trajectory tool calls', () => {
   const calls = [{ name: 'Read', path: '/tmp/list.md' }, { name: 'gmail.send' }];
   checkTools(calls, { forbidden: ['Write'] });

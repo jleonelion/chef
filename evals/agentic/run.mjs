@@ -6,7 +6,7 @@
 //   seed (files written before the fixture commit; ../ lands beside the data root), setup (scripts
 //   run before the first turn; `stdin` is piped, a non-string value as JSON), turns (prompts, each a string or {turnFile: evals/agentic/inputs/...};
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
-//   scripts ({required, forbidden, max, requiredCalls, forbiddenCalls}: skill-relative paths like
+//   scripts ({required, forbidden, max, requiredCalls, forbiddenCalls, allowedCalls}: skill-relative paths like
 //   scripts/<name>; call args match by prefix; checked over all turns), turnScripts (the same checks,
 //   one entry per turn), turnFiles (file checks at each turn boundary), tools ({forbidden}: exact Trajectory tool names,
 //   checked over all turns), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).

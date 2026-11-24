@@ -668,19 +668,54 @@
     "id": "chef-meal-logging-plan-absent-logs-nothing",
     "pair": "plan-presence",
     "flow": "should-not-act",
-    "description": "Flip pair plan-presence, no plan: \"log it\" names no meal, so nothing is logged (#48).",
+    "description": "Flip pair plan-presence, no plan: read the requested date, explain the missing lunch and request manual-entry details. A later generic \"log it\" still names no meal and authorizes no write (#48, #232).",
     "turns": [
       "Log my planned lunch for 2026-01-21 from my Chef meal plan.",
       "Yes, log it. I cooked it at home."
     ],
-    "skills": [],
-    "forbidSkills": ["chef-meal-logging"],
-    "scripts": {"forbidden": ["scripts/meal-logging.mjs"]},
+    "responses": [
+      [
+        { "path": "$.content", "matches": "\\b(?:[Nn]o (?:saved )?(?:meal )?plan(?:ned)?|[Nn]othing (?:is )?planned|(?:don.t|do not|couldn.t|could not|can.t|cannot) (?:find|have|see)[^.!?\\n]*plan)\\b" },
+        { "path": "$.content", "matches": "\\b[Ll]unch\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
+        { "path": "$.content", "matches": "\\b(?:servings?|portions?|how much)\\b" }
+      ],
+      [
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
+        { "path": "$.content", "matches": "\\b(?:servings?|portions?|how much)\\b" }
+      ]
+    ],
+    "skills": ["chef-meal-logging"],
+    "forbidSkills": ["chef-health-goals", "chef-add-recipe", "chef-shopping-lists"],
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["today"], "flags": { "--date": ["2026-01-21"] } }],
+      "allowedCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["today"], "flags": { "--date": ["2026-01-21"] } }],
+      "forbidden": ["scripts/meal-logging.mjs"]
+    },
+    "turnScripts": [
+      { "requiredCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["today"], "flags": { "--date": ["2026-01-21"] } }] },
+      {}
+    ],
+    "turnFiles": [
+      [
+        { "path": "data/meal-log", "unchanged": true },
+        { "path": "data/food-inventory", "unchanged": true },
+        { "path": "knowledge/wiki/household/current-inventory.md", "unchanged": true }
+      ],
+      [
+        { "path": "data/meal-log", "unchanged": true },
+        { "path": "data/food-inventory", "unchanged": true },
+        { "path": "knowledge/wiki/household/current-inventory.md", "unchanged": true }
+      ]
+    ],
     "files": [
       {
         "path": "data/meal-log/log.json",
         "absent": true
-      }
+      },
+      { "path": "data/meal-log", "unchanged": true },
+      { "path": "data/food-inventory", "unchanged": true },
+      { "path": "knowledge/wiki/household/current-inventory.md", "unchanged": true }
     ],
     "git": {"headUnchanged": true, "clean": true}
   },
@@ -752,7 +787,7 @@
     "id": "chef-health-goals-check-in-goal-unset-stays-dormant",
     "pair": "health-goal",
     "flow": "should-not-act",
-    "description": "Flip pair health-goal, no goal: the check-in reports no goal, invents no targets and stores nothing.",
+    "description": "Flip pair health-goal, no goal: read-only status reports dormant, with no invented goal, targets, unsolicited health advice or stored changes (#232).",
     "turns": [
       "Check in on my Chef health goal: what is it, and what are my daily targets?"
     ],
@@ -760,17 +795,32 @@
       [
         {
           "path": "$.content",
-          "matches": "^(?![\\s\\S]*(?:\\b2,?300\\b|\\b(?:[Ss]odium|[Pp]rotein)\\b[^.;\\n!?]*\\d|\\b\\d[\\d,.]*\\s*(?:mg|g|milligrams?|grams?)\\b))"
+          "matches": "\\b(?:[Nn]o (?:health |nutrition )?goal|(?:haven.t|have not|hasn.t|has not|isn.t|is not|not) (?:been )?(?:set|saved|declared)[^.!?\\n]*goal|(?:health |nutrition )?goal[^.!?\\n]*(?:not (?:set|saved|declared)|unset))\\b"
+        },
+        {
+          "path": "$.content",
+          "matches": "^(?![\\s\\S]*(?:\\b2,?300\\b|\\b(?:[Cc]alories|[Ss]odium|[Pp]rotein|[Ff]at|[Cc]arbs|[Cc]arbohydrates|[Ff]iber|[Ss]ugar|[Cc]holesterol|[Tt]argets?)\\b[^.;\\n!?]*\\d|\\b\\d[\\d,.]*\\s*(?:kcal|calories|mg|g|milligrams?|grams?)\\b))"
         }
       ]
     ],
-    "skills": [],
-    "forbidSkills": ["chef-health-goals"],
+    "judge": {
+      "expected": "The check-in explains that no health goal is declared and there are no saved daily targets. It invents no goal or targets, including targets written in words. It gives no unsolicited health or nutrition advice and does not suggest setting a goal. Equivalent wording is acceptable.",
+      "threshold": 0.9
+    },
+    "skills": ["chef-health-goals"],
+    "forbidSkills": ["chef-meal-logging", "chef-meal-planning", "chef-food-inventory"],
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/health-goals.mjs", "args": ["status"] }],
+      "allowedCalls": [{ "script": "scripts/health-goals.mjs", "args": ["status"] }]
+    },
     "files": [
       {
         "path": "data/health-goals/goals.json",
         "absent": true
-      }
+      },
+      { "path": "data/health-goals", "unchanged": true },
+      { "path": "data/meal-log", "unchanged": true },
+      { "path": "data/food-inventory", "unchanged": true }
     ],
     "git": {"headUnchanged": true, "clean": true}
   },
@@ -1098,7 +1148,7 @@
     "candidate": true,
     "id": "chef-shopping-lists-natural-from-plan",
     "flow": "core",
-    "description": "A natural grocery-list request from a saved plan routes to shopping lists and excludes inventory already on hand.",
+    "description": "A natural grocery-list request from a saved plan requires shopping lists and permits optional inventory view for exact matches, without inventory or shopping-list writes (#232).",
     "grounding": { "recipes": ["chickpea-spinach-stew"] },
     "setup": [
       {
@@ -1108,9 +1158,22 @@
     ],
     "turns": ["Turn the 2026-01-19 dinners into a grocery list and leave out what is already in the pantry."],
     "skills": ["chef-shopping-lists"],
-    "forbidSkills": ["chef-meal-planning", "chef-food-inventory"],
-    "scripts": { "required": ["scripts/shopping-lists.mjs"] },
-    "files": [{ "path": "data/shopping-lists", "count": 0 }],
+    "forbidSkills": ["chef-meal-planning"],
+    "scripts": {
+      "required": ["scripts/shopping-lists.mjs"],
+      "requiredCalls": [{ "script": "scripts/shopping-lists.mjs", "args": ["build"] }],
+      "allowedCalls": [
+        { "script": "scripts/shopping-lists.mjs", "args": ["build"] },
+        { "script": "scripts/inventory.mjs", "args": ["view"] }
+      ]
+    },
+    "files": [
+      { "path": "data/shopping-lists", "count": 0 },
+      { "path": "data/shopping-lists", "unchanged": true },
+      { "path": "data/food-inventory", "unchanged": true },
+      { "path": "knowledge/raw/receipts", "unchanged": true },
+      { "path": "knowledge/wiki/household/current-inventory.md", "unchanged": true }
+    ],
     "git": { "headUnchanged": true, "clean": true }
   },
   {
