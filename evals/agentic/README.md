@@ -199,3 +199,22 @@ establish a release pass or retrospectively pass the old runs.
 The complete saved meal list must contain exactly the approved January 19
 dinner, both immediately after assent and finally. An extra conflicting dinner
 in the same weekly file fails even though the January 19 lookup still succeeds.
+
+The one-off shopping-list failures in
+[#231](https://github.com/jleonelion/chef/issues/231) required a question mark
+despite explicit imperative requests to confirm sending. The corrected row
+accepts questions and imperatives that request approval to send to both exact
+one-time recipients. Repeating recipients, asking an unrelated question,
+assuming assent or claiming the list was already sent must fail.
+The installed shopping entrypoint remains required, Gmail sending is forbidden,
+settings must remain unchanged, no shopping list may be persisted, and data-root
+history must stay unchanged and clean.
+
+Focused synthetic runner replays execute the built shopping entrypoint with
+chat delivery. An altered external script copy still fails the required-script
+check, preserving repetition 1's separate failure. These tests exercise neither
+a live Gmail connector nor a live agent or judge. Keep all three archived
+failures unchanged, including repetitions 2 and 3. This eval-only correction
+needs no Chef release or `semver:` label and establishes no release pass.
+Fresh exact-tree, full three-host 3/3 release evidence still needs authorization;
+no live reruns are authorized by this issue.
