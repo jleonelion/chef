@@ -22,7 +22,7 @@ import { parseArgs } from 'node:util';
 import { readInput } from '../lib/load-cases.mjs';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, behaviorCheck, exitCodeFor, failureDigest, repReport, assertScriptPaths, checkFiles, checkResponse, checkReplyDenyList, checkScripts, checkSkills, checkTools, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, exitCodeFor, failureDigest, repReport, assertScriptPaths, checkFiles, checkResponse, checkReplyDenyList, checkScripts, checkSkills, checkTools, recordBehaviorFailure, snapshotFiles } from './report.mjs';
 import { loadHarness } from './harnesses/index.mjs';
 import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
@@ -60,6 +60,7 @@ async function runRep(row, number, { harness, model, judgeModel, judgeCall, logD
   try {
     rep = prepare(row, harness);
     for (const step of row.setup ?? []) script(rep, step);
+    const fileBaseline = snapshotFiles(rep.dataRoot, row.files);
     const beforeHead = git(rep.dataRoot, 'rev-parse', 'HEAD');
     const session = randomUUID();
     for (const [index, entry] of row.turns.entries()) {
@@ -86,7 +87,7 @@ async function runRep(row, number, { harness, model, judgeModel, judgeCall, logD
     await recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
     await recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
     await recordBehaviorFailure(failures, () => checkTools(run.toolCalls, row.tools));
-    await recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files));
+    await recordBehaviorFailure(failures, () => checkFiles(rep.dataRoot, row.files, fileBaseline));
     await recordBehaviorFailure(failures, () =>
       behaviorCheck('git-state', () =>
         assertGitState({ beforeHead, afterHead: git(rep.dataRoot, 'rev-parse', 'HEAD'), status: git(rep.dataRoot, 'status', '--porcelain') }, row.git ?? {}),

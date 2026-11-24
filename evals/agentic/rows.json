@@ -461,7 +461,10 @@
     ],
     "turns": ["Log 2026-01-20 from my Chef meal plan.", "Dinner was not cooked at home. Yes, log both."],
     "responses": [[
-      { "path": "$.content", "includes": "leftovers" },
+      { "path": "$.content", "matches": "\\b[Ll]eft(?:overs|\\s+over)\\b" },
+      { "path": "$.content", "matches": "\\b[Ll]emon[ -][Gg]arlic[ -][Pp]asta\\b" },
+      { "path": "$.content", "matches": "\\b[Tt]hai dinner out\\b" },
+      { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)" },
       { "path": "$.content", "excludes": "Did you cook lunch" },
       { "path": "$.content", "excludes": "did you cook lunch" }
     ]],
@@ -479,9 +482,9 @@
           { "path": "$.entries.[?(@slot=='dinner')].food", "equals": "Thai dinner out" },
           { "path": "$.entries.[?(@slot=='dinner')].cooked", "equals": false }
         ]
-      }
-,
-      { "path": "data/food-inventory/audit.jsonl", "absent": true }
+      },
+      { "path": "data/food-inventory/current.json", "unchanged": true },
+      { "path": "data/food-inventory/audit.jsonl", "unchanged": true }
     ],
     "git": { "clean": true }
   },
