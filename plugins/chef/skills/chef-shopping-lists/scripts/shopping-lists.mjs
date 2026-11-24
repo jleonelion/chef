@@ -8412,6 +8412,30 @@ function parseIngredientLine(line) {
   return { line, amount, unit, item, size, packageGrams, trace: toTaste || TRACE.has(unit), citrus: null };
 }
 
+// src/lib/item-matches.mjs
+var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+function parseItemMatches(values = []) {
+  const matches = new Map;
+  const paths = [];
+  const problems = [];
+  for (const value of Array.isArray(values) ? values : [values]) {
+    const separator = value.indexOf("=");
+    if (separator <= 0 || separator === value.length - 1) {
+      problems.push(`--match must use <ingredient>=<inventory path>: ${value}`);
+      continue;
+    }
+    const ingredient = itemName(value.slice(0, separator));
+    const path13 = value.slice(separator + 1).trim();
+    if (!ingredient || !path13) {
+      problems.push(`--match must use <ingredient>=<inventory path>: ${value}`);
+      continue;
+    }
+    matches.set(ingredient, path13);
+    paths.push(path13);
+  }
+  return { matches, paths: [...new Set(paths)], problems };
+}
+
 // src/lib/quantity.mjs
 var VOLUME = { tsp: 1, tbsp: 3, cup: 48, ml: 0.2028841362, l: 202.8841362, floz: 6, pt: 96, qt: 192, gal: 768 };
 var MASS = { g: 1, kg: 1000, oz: 28.3495, lb: 453.592 };
@@ -8547,7 +8571,6 @@ function displayQuantity(amount, unit, system, { spoon } = {}) {
 // src/skills/chef-shopping-lists/scripts/lib/combine.mjs
 var BASE = { mass: "g", volume: "tsp" };
 var TOLERANCE = 0.000001;
-var itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 var exact = (amount, unit) => {
   const base = BASE[quantityDimension(unit)];
   return base ? { amount: convertQuantity(amount, unit, base), unit: base } : { amount, unit };
@@ -8578,11 +8601,13 @@ function combineLines(uses) {
   }
   return { items, unquantified };
 }
-function subtractInventory(items, stock) {
+function subtractInventory(items, stock, matchValues = []) {
+  const { matches } = parseItemMatches(matchValues);
   const remaining = [];
   const covered = [];
   for (const row of items) {
-    const match = stock.find((s) => itemName(s.name) === row.item);
+    const matchedPath = matches.get(row.item);
+    const match = matchedPath ? stock.find((s) => s.path === matchedPath) : stock.find((s) => itemName(s.name) === row.item);
     if (!match) {
       remaining.push(row);
       continue;
@@ -8655,7 +8680,7 @@ ${check.join(`
 `) + `
 `;
 }
-function buildList(root, { weekStart, upcoming = false, today: today2 = today(), overrides = [], units }) {
+function buildList(root, { weekStart, upcoming = false, today: today2 = today(), overrides = [], units, matches: matchValues = [] }) {
   const week = weekStart ?? (upcoming ? upcomingWeek(root, today2) : latestWeek(root));
   const plan = week && readPlan(root, week);
   if (!plan && upcoming) {
@@ -8668,6 +8693,14 @@ function buildList(root, { weekStart, upcoming = false, today: today2 = today(),
   }
   if (!plan)
     return { status: "no-plan", data_root: root, week_start: week, reason: "no saved meal plan; plan meals with chef-meal-planning first" };
+  const parsedMatches = parseItemMatches(matchValues);
+  const stock = listItems(loadInventory(root));
+  if (parsedMatches.problems.length)
+    return { status: "invalid-input", data_root: root, problems: parsedMatches.problems };
+  for (const path14 of parsedMatches.paths) {
+    if (!stock.some((item) => item.path === path14))
+      return { status: "invalid-input", data_root: root, problems: [`match path not found: ${path14}`] };
+  }
   const ruleset = readRuleset(root);
   const dietary = dietaryNotes(ruleset);
   const bySlug = new Map(listRecipes(root).recipes.map((recipe) => [recipe.slug, recipe]));
@@ -8680,7 +8713,7 @@ function buildList(root, { weekStart, upcoming = false, today: today2 = today(),
     return ingredientLines(recipe.body).map((line) => ({ line, multiplier: multiplier(meal, recipe), recipe: meal.slug }));
   });
   const combined = combineLines(uses);
-  const { items, covered } = subtractInventory(combined.items, listItems(loadInventory(root)));
+  const { items, covered } = subtractInventory(combined.items, stock, matchValues);
   const list = { items: displayItems(items, units), unquantified: combined.unquantified };
   return {
     status: "built",
@@ -8711,7 +8744,7 @@ function deliverList(root, list, { recipients, onMuse = muse.isMuse() }) {
 }
 
 // src/skills/chef-shopping-lists/scripts/shopping-lists.mjs
-var OPTIONS = { "data-root": { type: "string" }, "week-start": { type: "string" }, upcoming: { type: "boolean" }, override: { type: "string", multiple: true } };
+var OPTIONS = { "data-root": { type: "string" }, "week-start": { type: "string" }, upcoming: { type: "boolean" }, override: { type: "string", multiple: true }, match: { type: "string", multiple: true } };
 var { values, positionals } = parseArgs({
   args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
   options: OPTIONS,
@@ -8727,7 +8760,7 @@ function run(root) {
   if (problems.length)
     return { status: "invalid-input", data_root: root, problems };
   const settings = readSettings(root);
-  const list = buildList(root, { weekStart, upcoming: values.upcoming, overrides, units: settings.settings.units });
+  const list = buildList(root, { weekStart, upcoming: values.upcoming, overrides, units: settings.settings.units, matches: values.match });
   if (list.status !== "built")
     return list;
   const delivery = deliverList(root, list, { recipients: settings.settings.household_recipients });

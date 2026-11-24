@@ -6,7 +6,7 @@ import { logMeal, validate } from './log.mjs';
 const invalid = (...problems) => ({ status: 'invalid-input', problems });
 
 // Logs a date's planned meals (or one slot) as eaten. Everything is checked before anything is written.
-export function logFromPlan(root, { date, slot, cookedSlots, loggedAt }) {
+export function logFromPlan(root, { date, slot, cookedSlots, loggedAt, matches = [] }) {
   if (slot !== undefined && !MEAL_SLOTS.includes(slot)) return invalid('slot: must be breakfast, lunch, dinner or snack');
   const plan = todayPlan(root, date ?? '');
   const meals = (plan.meals ?? []).filter((meal) => !slot || meal.slot === slot);
@@ -28,6 +28,7 @@ export function logFromPlan(root, { date, slot, cookedSlots, loggedAt }) {
     servingsCooked: meal.cook_servings,
     cooked: cooked(meal),
     loggedAt,
+    matches,
   }));
   const problems = inputs.flatMap((input) => validate(root, input));
   if (problems.length) return invalid(...problems);

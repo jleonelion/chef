@@ -19,6 +19,7 @@ const OPTIONS = {
     'cooked-slots': { type: 'string' },
     'not-cooked': { type: 'boolean' },
     'logged-at': { type: 'string' },
+    match: { type: 'string', multiple: true },
 };
 const { values, positionals } = parseArgs({
   args: isDirectExecution(import.meta.url) ? process.argv.slice(2) : [],
@@ -38,6 +39,7 @@ function fromPlan() {
     slot: values.slot,
     cookedSlots: (values['cooked-slots'] ?? '').split(',').filter(Boolean),
     loggedAt: values['logged-at'] ?? new Date().toISOString(),
+    matches: values.match,
   });
 }
 const MODES = {
@@ -49,6 +51,7 @@ const MODES = {
     servings: Number(values.servings),
     cooked: values.cooked ?? false,
     loggedAt: values['logged-at'] ?? new Date().toISOString(),
+    matches: values.match,
   }),
   edit: () => editMeal(root, {
     id: values.id,

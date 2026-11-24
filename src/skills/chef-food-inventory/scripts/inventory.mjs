@@ -64,6 +64,7 @@ const MODES = {
     recipe: values.recipe,
     servings: Number(values.servings),
     deductionId: values['deduction-id'],
+    matches: values.match,
     now,
   }),
   expiring: (root) => ({ status: 'ok', ...window(), ...expiringItems(loadInventory(root), window()) }),

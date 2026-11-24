@@ -103,6 +103,30 @@ function dataRoot() {
   return root;
 }
 
+test('a cooked recipe validates and accepts an explicit inventory match', () => {
+  const root = dataRoot();
+  const input = {
+    date: '2026-01-16', slot: 'dinner', recipe: 'test-pasta', servings: 5, cooked: true,
+    loggedAt: '2026-01-16T19:30:00.000Z', matches: ['pasta=pantry.grains.pasta'],
+  };
+  const result = logMeal(root, input);
+  assert.equal(result.status, 'logged');
+  assert.equal(result.inventory.status, 'deducted');
+  assert.equal(result.inventory.deductions[0].inventory_path, 'pantry.grains.pasta');
+});
+
+test('a missing inventory match rejects the meal before any write', () => {
+  const root = dataRoot();
+  const input = {
+    date: '2026-01-16', slot: 'dinner', recipe: 'test-pasta', servings: 5, cooked: true,
+    loggedAt: '2026-01-16T19:30:00.000Z', matches: ['pasta=pantry.grains.missing'],
+  };
+  const result = logMeal(root, input);
+  assert.equal(result.status, 'invalid-input');
+  assert.deepEqual(result.problems, ['match path not found: pantry.grains.missing']);
+  assert.equal(fs.existsSync(path.join(root, MEAL_LOG_FILE)), false);
+});
+
 test('logging the same cooked recipe twice stores one entry and deducts inventory once', () => {
   const root = dataRoot();
   const input = {

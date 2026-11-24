@@ -61,6 +61,15 @@ test('inventory is subtracted in convertible units; fully covered items move to 
   assert.deepEqual(result.covered.map((c) => [c.item, c.on_hand.text]), [['spaghetti', '2.25 lb']]);
 });
 
+test('an explicit inventory match subtracts a differently named item', () => {
+  const milk = stock('whole milk', 1, 'cup');
+  milk.path = 'fridge.dairy.whole_milk';
+  const result = subtractInventory(combineLines([use('2 cup milk')]).items, [milk], ['milk=fridge.dairy.whole_milk']);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].amount, 48);
+  assert.equal(result.covered.length, 0);
+});
+
 test('inventory subtraction uses exact amounts, not the rounded display', () => {
   // 1.1 cup needed shows as 1.25 cups; 1.2 cups on hand covers it exactly.
   assert.deepEqual(shown(list([use('1.1 cup milk')], 'us', [stock('milk', 1.2, 'cup')]).covered), [['milk', '1.25 cups']]);

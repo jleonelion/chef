@@ -2,7 +2,7 @@ import { mealEntryId, MEAL_LOG_PATH, readMealLog } from '../../../../lib/meal-lo
 import { MEAL_SLOTS } from '../../../../lib/meal-slots.mjs';
 import { listRecipes } from '../../../../lib/recipes.mjs';
 import { slugify, writeWiki } from '../../../../lib/wiki.mjs';
-import { deductionApplied, deductRecipe } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
+import { deductionApplied, deductRecipe, validateInventoryMatches } from '../../../chef-food-inventory/scripts/lib/deduct.mjs';
 
 export const MEAL_LOG_FILE = MEAL_LOG_PATH;
 
@@ -49,6 +49,7 @@ function correctionFor(root, id) {
 
 export function logMeal(root, input) {
   const problems = validate(root, input);
+  if (input.cooked && input.recipe) problems.push(...validateInventoryMatches(root, input.matches));
   if (problems.length) return { status: 'invalid-input', problems };
   const entry = entryFor(root, input);
   const store = readMealLog(root);
@@ -64,7 +65,7 @@ export function logMeal(root, input) {
     status = 'logged';
   }
   const inventory = entry.cooked && entry.recipe
-    ? deductRecipe(root, { recipe: entry.recipe, servings: input.servingsCooked ?? entry.servings, deductionId: entry.id, now: entry.logged_at })
+    ? deductRecipe(root, { recipe: entry.recipe, servings: input.servingsCooked ?? entry.servings, deductionId: entry.id, matches: input.matches, now: entry.logged_at })
     : { status: 'not-requested' };
   return { status, entry: existing ?? entry, inventory };
 }

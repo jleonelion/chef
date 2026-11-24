@@ -3,12 +3,13 @@
 // count unit; anything else becomes its own row. Mass and volume merge exactly in a base unit
 // (g, tsp) so order never matters; the household's units apply only in displayItems.
 import { parseIngredientLine } from '../../../../lib/ingredient-line.mjs';
+import { itemName, parseItemMatches } from '../../../../lib/item-matches.mjs';
 import { convertQuantity, displayQuantity, normalizeUnit, quantityDimension, round2, SPOON_UNITS } from '../../../../lib/quantity.mjs';
 
 const BASE = { mass: 'g', volume: 'tsp' };
 // Conversion factors are inexact; stock within this fraction of the need covers it.
 const TOLERANCE = 1e-6;
-export const itemName = (value) => value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+export { itemName };
 
 const exact = (amount, unit) => {
   const base = BASE[quantityDimension(unit)];
@@ -44,11 +45,15 @@ export function combineLines(uses) {
 }
 
 // stock: inventory items from listItems(). Exact amounts. -> { items still to buy, covered }
-export function subtractInventory(items, stock) {
+export function subtractInventory(items, stock, matchValues = []) {
+  const { matches } = parseItemMatches(matchValues);
   const remaining = [];
   const covered = [];
   for (const row of items) {
-    const match = stock.find((s) => itemName(s.name) === row.item);
+    const matchedPath = matches.get(row.item);
+    const match = matchedPath
+      ? stock.find((s) => s.path === matchedPath)
+      : stock.find((s) => itemName(s.name) === row.item);
     if (!match) {
       remaining.push(row);
       continue;
