@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { PDFDocument, StandardFonts } from 'pdf-lib';
-import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, failureDigest, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, checkFiles, checkResponse, checkReplyDenyList, checkTools, exitCodeFor, failureDigest, repReport, assertScriptPaths, checkScripts, checkSkills, recordBehaviorFailure } from './report.mjs';
 import { resultFilename, sha256File, sha256Tree, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
 
@@ -215,6 +215,12 @@ test('judge failures are separate from behavioral passes', () => {
     { rep: 1, check: 'judge', message: 'missing critical detail' },
   ]);
   assert.deepEqual(result.rows[0].runs[0].judge, { pass: false, score: 0.4, verdict: null, reason: 'missing critical detail' });
+  assert.equal(result.rows[0].passes, '1/1');
+  assert.deepEqual(failureDigest(result), [
+    '(judged, 1, judge, missing critical detail)',
+  ]);
+  assert.equal(repReport({ row: 'judged', ...result.rows[0].runs[0] }),
+    'FAIL - judged rep 1: judge: missing critical detail');
 });
 
 test('aggregate reports passing, broken and flaky rows from valid reps', () => {
@@ -402,13 +408,28 @@ test('failureDigest emits compact row, rep, check, message lines', () => {
     rows: [{
       id: 'chef-setup-ok',
       failures: [{ rep: 2, check: 'skills', message: 'chef-setup\ndid not fire' }],
+      judge_failures: [{ rep: 2, check: 'judge', message: 'score 0.6\nbelow threshold 0.7' }],
       invalid: [{ rep: 3, kind: 'timeout', message: 'turn timed out' }],
     }],
   });
   assert.deepEqual(digest, [
     '(chef-setup-ok, 2, skills, chef-setup did not fire)',
+    '(chef-setup-ok, 2, judge, score 0.6 below threshold 0.7)',
     '(chef-setup-ok, 3, timeout, turn timed out)',
   ]);
+});
+
+test('rep reports show behavioral and judge failures together without relabeling invalid runs', () => {
+  assert.equal(repReport({ row: 'a', rep: 1, outcome: 'pass' }), 'ok - a rep 1');
+  assert.equal(repReport({
+    row: 'a', rep: 2, outcome: 'failed',
+    failure: { check: 'files', message: 'missing source' },
+    judge_failure: { message: 'unclear reply\nmore detail' },
+  }), 'FAIL - a rep 2: missing source; judge: unclear reply');
+  assert.equal(repReport({
+    row: 'a', rep: 3, outcome: 'invalid',
+    invalid: { kind: 'timeout', message: 'turn timed out' },
+  }), 'INVALID - a rep 3: turn timed out');
 });
 
 function validResult() {

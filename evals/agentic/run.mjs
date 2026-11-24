@@ -22,7 +22,7 @@ import { parseArgs } from 'node:util';
 import { readInput } from '../lib/load-cases.mjs';
 import { prepareSandbox, sandboxEnv } from '../lib/sandbox.mjs';
 import { assertCase, assertGitState } from '../tier1/assertions.mjs';
-import { aggregate, behaviorCheck, exitCodeFor, failureDigest, assertScriptPaths, checkFiles, checkResponse, checkReplyDenyList, checkScripts, checkSkills, checkTools, recordBehaviorFailure } from './report.mjs';
+import { aggregate, behaviorCheck, exitCodeFor, failureDigest, repReport, assertScriptPaths, checkFiles, checkResponse, checkReplyDenyList, checkScripts, checkSkills, checkTools, recordBehaviorFailure } from './report.mjs';
 import { loadHarness } from './harnesses/index.mjs';
 import { errorOutcome, harnessInvalid, turnInvalid } from './invalid.mjs';
 import { currentProvenance, resultFilename } from './provenance.mjs';
@@ -127,8 +127,7 @@ async function runRep(row, number, { harness, model, judgeModel, judgeCall, logD
   } finally {
     if (rep) fs.rmSync(rep.tmp, { recursive: true, force: true });
   }
-  const detail = run.failure?.message ?? run.invalid?.message;
-  console.log(`${run.outcome === 'pass' ? 'ok' : run.outcome === 'failed' ? 'FAIL' : 'INVALID'} - ${row.id} rep ${number}${detail ? `: ${detail.split('\n')[0]}` : ''}`);
+  console.log(repReport(run));
   return run;
 }
 

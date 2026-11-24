@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { test } from 'node:test';
 import { parseJudgeVerdict, judgeReply, createJudgeCacheKey, createSubscriptionJudgeCall } from './judge.mjs';
+
+const pastedRecipeRow = JSON.parse(fs.readFileSync(new URL('./rows.json', import.meta.url), 'utf8'))
+  .find(({ id }) => id === 'chef-add-recipe-pasted-text');
 
 test('parseJudgeVerdict rejects empty and unparseable replies', () => {
   assert.equal(parseJudgeVerdict(''), null);
@@ -50,6 +54,39 @@ test('empty replies score zero without calling the judge', async () => {
   });
   assert.deepEqual(result, { pass: false, score: 0, verdict: null, reason: 'empty response' });
   assert.equal(calls, 0);
+});
+
+test('pasted-recipe judge grades the reply, not storage proof or unsolicited findability instructions', async () => {
+  const row = pastedRecipeRow;
+  await judgeReply({
+    prompt: fs.readFileSync(new URL(`../../${row.turns[0].turnFile}`, import.meta.url), 'utf8'),
+    expected: row.judge.expected,
+    response: 'Saved Tomato Lentil Soup. No dietary flags were found in the ingredients. Nutrition was not computed because USDA is not connected.',
+    threshold: row.judge.threshold,
+    callJudge: async (prompt) => {
+      assert.match(prompt, /semantic target, not a literal template/i);
+      assert.match(prompt, /save confirmation.*enrichment/i);
+      assert.match(prompt, /findability.*checked mechanically/i);
+      assert.match(prompt, /do not require.*how to find.*ingredients or steps/i);
+      return '{"score":1,"passes":true,"reasoning":"reply meets target","missing_critical_details":[],"unexpected_problems":[],"confidence":1}';
+    },
+  });
+});
+
+test('a judge veto or a below-threshold score fails even when the other condition passes', async () => {
+  for (const [score, passes] of [[0.9, false], [0.6, true]]) {
+    const result = await judgeReply({
+      prompt: 'Save Tomato Lentil Soup',
+      expected: 'A save confirmation and enrichment summary',
+      response: `Saved. Verdict case ${score}.`,
+      threshold: pastedRecipeRow.judge.threshold,
+      callJudge: async () => JSON.stringify({
+        score, passes, reasoning: 'insufficient', missing_critical_details: [],
+        unexpected_problems: [], confidence: 1,
+      }),
+    });
+    assert.equal(result.pass, false);
+  }
 });
 
 test('unparseable verdicts score zero', async () => {

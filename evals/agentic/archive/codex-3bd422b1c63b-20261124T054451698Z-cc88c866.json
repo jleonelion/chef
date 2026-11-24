@@ -1,0 +1,71 @@
+{
+  "suite": "chef-agentic",
+  "format": 3,
+  "date": "2026-11-24T05:44:51.698Z",
+  "commit": "3bd422b1c63b9ed22fcf002acbfc363d3cdc0728",
+  "commit_dirty": false,
+  "plugin_version": "1.3.1",
+  "dataset_sha": "sha256:8e671b64700d5a33a1fa702ccfca8b670111efee2017e7cf55ca441a1b5292be",
+  "fixture_sha": "sha256:dd953780c2fa95a72524e1f091d853618921035a5580a3c9a75fb7596c312b2e",
+  "harness": {
+    "name": "codex",
+    "launcherVersion": 2,
+    "cliVersion": "codex-cli 0.171.0"
+  },
+  "selected_rows": [
+    "chef-add-recipe-pasted-text"
+  ],
+  "rows_selected": 1,
+  "rows_total": 36,
+  "judge": {
+    "type": "subscription-cli",
+    "harness": "claude",
+    "model": "sonnet"
+  },
+  "models": [
+    "gpt-6.1-sol"
+  ],
+  "reps": 1,
+  "passed": true,
+  "invalid": false,
+  "cost_usd": 0,
+  "rows": [
+    {
+      "id": "chef-add-recipe-pasted-text",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 1,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "rate_limit",
+          "message": "turn 1: turn ended in error: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 25th, 2026 12:37 AM. (see chef-add-recipe-pasted-text-1-1.jsonl)"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "rate_limit",
+            "message": "turn 1: turn ended in error: You’ve hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/settings/usage to purchase more credits or try again at Nov 25th, 2026 12:37 AM. (see chef-add-recipe-pasted-text-1-1.jsonl)"
+          }
+        }
+      ]
+    }
+  ]
+}

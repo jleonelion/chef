@@ -27,6 +27,19 @@ bun run agentic --harness codex --judge-harness claude --judge-model <model> --r
 
 Authenticate Claude Code, Codex or Copilot before the run. Supported choices are `claude`, `codex` and `copilot`. There is no `OPENAI_API_KEY` fallback. Empty, malformed, unavailable or errored judge output fails that row; never retry a failed or invalid repetition.
 
+Judge targets describe reply quality, not proof of file writes or search results.
+For `chef-add-recipe-pasted-text`, the reply confirms the saved title and reports
+enrichment, as `chef-add-recipe` instructs. It need not explain how to find the
+recipe or repeat ingredients and steps. The row checks search separately.
+It requires exactly five raw sources, four fixture files plus one new source,
+and checks the new source's name, ingredients and steps. A count check's optional
+`pattern` filters relative file names; its `assertions` check every matched file's
+text. Keep a positive exact count so content checks cannot pass without a match.
+
+Per-repetition console lines and the final failure digest include judge failures,
+even when deterministic behavior passes. Judge failures do not change behavioral
+pass counts or turn valid executions into invalid ones.
+
 ## Release evidence
 
 Use a clean prepared release tree and run the entire agentic dataset 3/3 on each local launcher:
@@ -45,3 +58,12 @@ Commit summaries and use an optional exception file only for a maintainer-approv
 ```
 
 An exception is not a pass and must identify missing coverage. Raw transcripts and credentials remain local.
+
+The v1.4.0 Codex evaluation reported in [#223](https://github.com/jleonelion/chef/issues/223)
+used a stale two-source baseline and an ambiguous reply target for the pasted
+recipe. Its completed repetition's five sources do not show a Chef storage
+failure, but its archived judge failure remains a failure under that run's
+target. Do not edit or retrospectively pass that evidence. Dataset and judge
+changes require fresh evidence against the corrected tree. Focused deterministic
+regressions or a selected-row run cannot establish the full three-host release
+gate. The other repetitions' timeouts remain unresolved by this correction.

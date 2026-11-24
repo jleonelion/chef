@@ -49,7 +49,7 @@
     "flow": "core",
     "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",
     "judge": {
-      "expected": "Confirms that the pasted recipe was saved and is findable, gives a clear result, and does not expose internal paths or planning details.",
+      "expected": "Gives a clear save confirmation naming Tomato Lentil Soup and briefly reports enrichment: no dietary flags found in the ingredient wording and nutrition not computed because USDA is not connected. Does not expose internal paths or planning details. Storage completeness and findability are checked mechanically; do not require the reply to explain how to find the recipe or restate its ingredients or steps.",
       "threshold": 0.7
     },
     "turns": [
@@ -65,7 +65,22 @@
           { "path": "$.content", "includes": "dietary_flags: []" }
         ]
       },
-      { "path": "knowledge/raw/recipes", "count": { "baseline": 2, "delta": 1 } }
+      { "path": "knowledge/raw/recipes", "count": { "baseline": 4, "delta": 1 } },
+      {
+        "path": "knowledge/raw/recipes",
+        "pattern": "^[0-9]{8}-tomato-lentil-soup\\.txt$",
+        "count": 1,
+        "assertions": [
+          { "path": "$.content", "includes": "Tomato Lentil Soup" },
+          { "path": "$.content", "includes": "1 cup red lentils" },
+          { "path": "$.content", "includes": "400 g crushed tomatoes" },
+          { "path": "$.content", "includes": "1 onion" },
+          { "path": "$.content", "includes": "4 cups vegetable stock" },
+          { "path": "$.content", "includes": "Soften the chopped onion in a pot." },
+          { "path": "$.content", "includes": "Add the lentils, tomatoes and stock." },
+          { "path": "$.content", "includes": "Simmer for 25 minutes until the lentils are soft." }
+        ]
+      }
     ],
     "after": [
       {

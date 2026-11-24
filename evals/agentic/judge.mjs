@@ -43,6 +43,9 @@ export async function judgeReply(settings) {
   }
   const prompt = [
     'Judge the response against the semantic target.',
+    'The expectation is a semantic target, not a literal template. Accept equivalent wording.',
+    'Grade accuracy, clarity, required user-visible details, and unexpected problems in the reply.',
+    'Do not invent reply requirements beyond the user request and semantic target or demand proof of mechanically checked behavior.',
     'Return exactly one JSON object with score (0-1), passes (boolean), reasoning (string),',
     'missing_critical_details (string array), unexpected_problems (string array), and confidence (0-1).',
     `Semantic target: ${settings.expected}`,
