@@ -126,7 +126,7 @@
     "gate": false,
     "id": "chef-food-inventory-receipt-to-inventory",
     "flow": "core",
-    "description": "A grocery receipt handed over as text adds a purchase, its transcript and inventory items, and the inventory check stays healthy.",
+    "description": "A text receipt with explicitly dry red lentils adds one pound in a non-canned pantry category, milk and bananas, a purchase and its transcript, but no reusable bag; inventory stays healthy.",
     "seed": [
       {
         "path": "../inbox/receipt.txt",
@@ -147,14 +147,66 @@
           { "path": "$.fridge.dairy.whole_milk.amount", "equals": 2 },
           { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" },
           { "path": "$.pantry.produce.bananas.amount", "equals": 2.1 },
-          { "path": "$.pantry.produce.bananas.unit", "equals": "lb" },
-          { "path": "$.pantry.canned.red_lentils.amount", "equals": 1 },
-          { "path": "$.pantry.canned.red_lentils.unit", "equals": "lb" },
-          { "path": "$.pantry.canned.reusable_bag", "absent": true }
+          { "path": "$.pantry.produce.bananas.unit", "equals": "lb" }
         ]
       }
     ],
     "after": [
+      {
+        "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "view"],
+        "assertions": [
+          { "path": "$.items.[?(@name=='red lentils')].path", "matches": "^pantry\\.(?!canned\\.)[^.]+\\.red_lentils$" },
+          { "path": "$.items.[?(@name=='red lentils')].amount", "equals": 1 },
+          { "path": "$.items.[?(@name=='red lentils')].unit", "equals": "lb" },
+          { "path": "$.items[*].name", "excludes": "reusable bag" }
+        ]
+      },
+      {
+        "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "health"],
+        "assertions": [{ "path": "$.status", "equals": "healthy" }]
+      }
+    ],
+    "git": { "clean": true }
+  },
+  {
+    "gate": false,
+    "id": "chef-food-inventory-canned-receipt-to-inventory",
+    "flow": "core",
+    "description": "A text receipt with explicitly canned red lentils adds one can in the canned pantry category, milk and bananas, a purchase and its transcript, but no reusable bag; inventory stays healthy.",
+    "seed": [
+      {
+        "path": "../inbox/receipt.txt",
+        "seedFile": "evals/agentic/inputs/chef-food-inventory-canned-receipt-to-inventory/receipt.txt"
+      }
+    ],
+    "turns": [
+      "Add my grocery receipt to my Chef food inventory. I saved it as a text file at {tmp}/inbox/receipt.txt."
+    ],
+    "skills": ["chef-food-inventory"],
+    "files": [
+      { "path": "data/food-inventory/purchases", "count": { "baseline": 1, "delta": 1 } },
+      { "path": "knowledge/raw/receipts", "count": { "baseline": 1, "delta": 1 } },
+      {
+        "path": "data/food-inventory/current.json",
+        "parse": "json",
+        "assertions": [
+          { "path": "$.fridge.dairy.whole_milk.amount", "equals": 2 },
+          { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" },
+          { "path": "$.pantry.produce.bananas.amount", "equals": 2.1 },
+          { "path": "$.pantry.produce.bananas.unit", "equals": "lb" }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "view"],
+        "assertions": [
+          { "path": "$.items.[?(@name=='red lentils')].path", "equals": "pantry.canned.red_lentils" },
+          { "path": "$.items.[?(@name=='red lentils')].amount", "equals": 1 },
+          { "path": "$.items.[?(@name=='red lentils')].unit", "equals": "can" },
+          { "path": "$.items[*].name", "excludes": "reusable bag" }
+        ]
+      },
       {
         "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "health"],
         "assertions": [{ "path": "$.status", "equals": "healthy" }]

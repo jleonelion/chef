@@ -82,6 +82,19 @@ changes require fresh evidence against the corrected tree. Focused deterministic
 regressions or a selected-row run cannot establish the full three-host release
 gate. The other repetitions' timeouts remain unresolved by this correction.
 
+The receipt intake failure in
+[#225](https://github.com/jleonelion/chef/issues/225) expected canned storage for
+`RED LENTILS 1LB`, which did not say whether the lentils were dry or canned.
+Saving one pound under `pantry.legumes` does not establish a Chef placement bug.
+The original row now uses `DRY RED LENTILS 1 LB` and accepts a single non-canned
+pantry entry; a separate row uses `CANNED RED LENTILS 1 CAN` and requires a
+single canned pantry entry. Both check quantities, milk, bananas, purchase and
+receipt records, healthy inventory, clean data-root history and no reusable
+bag anywhere in inventory. Keep the archived failure unchanged. These dataset
+and fixture corrections require fresh exact-tree, full three-host 3/3 release
+evidence; deterministic checks do not replace it or resolve the other timeouts.
+No Chef release is needed for this eval-only change.
+
 The same run missed brace-expanded skill reads, tracked in
 [#224](https://github.com/jleonelion/chef/issues/224). Static reprojection can
 identify those reads but cannot recover deleted data-root snapshots or establish
