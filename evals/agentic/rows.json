@@ -712,7 +712,15 @@
       [
         {
           "path": "$.content",
-          "includes": "2300"
+          "matches": "\\b[Ll]ower\\s+[Ss]odium\\b"
+        },
+        {
+          "path": "$.content",
+          "matches": "\\b[Ss]odium[\\s*_:|=-]*(?:(?:[Aa]t most|[Nn]o more than|[Uu]p to|[Mm]ax(?:imum)?(?: of)?|<=|\\u2264)[\\s*_:=-]*2,?300\\s*(?:mg|milligrams?)\\b(?!\\s*(?:/\\s*(?!day\\b)|per\\s+(?!day\\b)))|2,?300\\s*(?:mg|milligrams?)\\b(?:\\s*(?:/\\s*day|per day|daily))?[\\s*_,()-]*(?:or less|or below|[Mm]ax(?:imum)?)\\b)|(?:\\b[Aa]t most|\\b[Nn]o more than|\\b[Uu]p to|\\b[Mm]ax(?:imum)?(?: of)?|<=|\\u2264)[\\s*_:=-]*2,?300\\s*(?:mg|milligrams?)\\s+(?:of\\s+)?[Ss]odium\\b"
+        },
+        {
+          "path": "$.content",
+          "matches": "\\b[Pp]rotein[\\s*_:|=-]*(?:(?:[Aa]t least|[Nn]o less than|[Mm]in(?:imum)?(?: of)?|>=|\\u2265)[\\s*_:=-]*90\\s*(?:g|grams?)\\b(?!\\s*(?:/\\s*(?!day\\b)|per\\s+(?!day\\b)))|90\\s*(?:g|grams?)\\b(?:\\s*(?:/\\s*day|per day|daily))?[\\s*_,()-]*(?:or more|or above|[Mm]in(?:imum)?)\\b)|(?:\\b[Aa]t least|\\b[Nn]o less than|\\b[Mm]in(?:imum)?(?: of)?|>=|\\u2265)[\\s*_:=-]*90\\s*(?:g|grams?)\\s+(?:of\\s+)?[Pp]rotein\\b"
         }
       ]
     ],
@@ -752,7 +760,7 @@
       [
         {
           "path": "$.content",
-          "excludes": "2300"
+          "matches": "^(?![\\s\\S]*(?:\\b2,?300\\b|\\b(?:[Ss]odium|[Pp]rotein)\\b[^.;\\n!?]*\\d|\\b\\d[\\d,.]*\\s*(?:mg|g|milligrams?|grams?)\\b))"
         }
       ]
     ],
