@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { assertCase } from '../tier1/assertions.mjs';
 import { scanReply } from './deny-list.mjs';
+import { sha256Tree } from './provenance.mjs';
 
 export function behaviorCheck(check, evaluate) {
   try {
@@ -41,10 +42,19 @@ export function assertScriptPaths({ required = [], forbidden = [], max = {}, req
   for (const script of scripts) assert(/^scripts\/[^/]+$/.test(script), `script must be a skill-relative path like scripts/<name>: ${script}`);
 }
 
-const matchesCall = (run, call) => run.script === call.script && call.args.every((arg, index) => run.args[index] === arg);
-const callName = (call) => [call.script, ...call.args].join(' ');
+function flagValues(args, flag) {
+  return args.flatMap((arg, index) => arg === flag ? [args[index + 1]] : arg.startsWith(`${flag}=`) ? [arg.slice(flag.length + 1)] : []);
+}
 
-export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [] } = {}) {
+const matchesCall = (run, call) => run.script === call.script
+  && call.args.every((arg, index) => run.args[index] === arg)
+  && Object.entries(call.flags ?? {}).every(([flag, expected]) => {
+    const values = flagValues(run.args, flag);
+    return values.length === expected.length && values.every((value, index) => value === expected[index]);
+  });
+const callName = (call) => [call.script, ...call.args, ...Object.entries(call.flags ?? {}).map(([flag, values]) => `${flag}=${values.join(',')}`)].join(' ');
+
+export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [], forbiddenFlags = [], allowedFlagValues = {} } = {}) {
   return behaviorCheck('scripts', () => {
     const counts = new Map();
     for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
@@ -54,6 +64,18 @@ export function checkScripts(scriptRuns, { required = [], forbidden = [], max = 
     for (const [script, limit] of Object.entries(max)) assert((counts.get(script) ?? 0) <= limit, `${script} ran ${counts.get(script)} times, max ${limit}`);
     for (const call of requiredCalls) assert(scriptRuns.some((run) => matchesCall(run, call)), `${callName(call)} did not run`);
     for (const call of forbiddenCalls) assert(!scriptRuns.some((run) => matchesCall(run, call)), `${callName(call)} ran`);
+    for (const flag of forbiddenFlags) {
+      for (const run of scriptRuns) {
+        assert(!run.args.some((arg) => arg === flag || arg.startsWith(`${flag}=`)), `${run.script} used forbidden flag ${flag}`);
+      }
+    }
+    for (const [flag, allowed] of Object.entries(allowedFlagValues)) {
+      for (const run of scriptRuns) {
+        for (const value of flagValues(run.args, flag)) {
+          assert(allowed.includes(value), `${run.script} used unauthorized ${flag} value ${JSON.stringify(value)}`);
+        }
+      }
+    }
   });
 }
 
@@ -84,7 +106,10 @@ function listFiles(abs, pattern) {
     .filter((name) => fs.statSync(path.join(abs, name)).isFile() && (!matcher || matcher.test(name)));
 }
 
-const fileState = (file) => fs.existsSync(file) ? fs.readFileSync(file) : null;
+function fileState(file) {
+  if (!fs.existsSync(file)) return null;
+  return fs.statSync(file).isDirectory() ? Buffer.from(sha256Tree(file)) : fs.readFileSync(file);
+}
 
 export function snapshotFiles(dataRoot, checks = []) {
   return new Map(checks.filter((check) => check.unchanged).map(({ path: file }) =>

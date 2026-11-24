@@ -65,8 +65,13 @@ export function lintDatasets({ suites, skillNames, exists = () => true }) {
         if (!exists(input)) errors.push(`${label}: input file not found: ${input}`);
       }
       if (suite === 'agentic' && JSON.stringify(row).includes('{today}')) errors.push(`${label}: {today} makes the row depend on the wall-clock date; use a fixed date`);
-      if (suite === 'agentic' && row?.turnScripts && row.turnScripts.length !== row.turns?.length) {
-        errors.push(`${label}: turnScripts must have one entry per turn`);
+      for (const key of ['turnScripts', 'turnFiles']) {
+        if (suite === 'agentic' && row?.[key] && row[key].length !== row.turns?.length) {
+          errors.push(`${label}: ${key} must have one entry per turn`);
+        }
+      }
+      if (suite === 'agentic' && row?.judge?.turn > row.turns?.length) {
+        errors.push(`${label}: judge.turn must refer to an existing turn`);
       }
       if (suite === 'agentic' && row?.gate === true && row?.known_failure) {
         errors.push(`${label}: known_failure rows cannot be gated`);

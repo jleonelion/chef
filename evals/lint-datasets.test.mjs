@@ -71,6 +71,30 @@ test('agentic tools accepts forbidden tool names only', () => {
   assert.ok(lint({ agentic: [agentic({ tools: { forbidden: [''] } })] }).length > 0);
 });
 
+test('consent boundary checks validate per-turn files, flag scope and judge turn selection', () => {
+  const row = agentic({
+    turns: ['ask', 'yes'],
+    turnFiles: [[{ path: 'data', unchanged: true }], []],
+    turnScripts: [
+      { forbiddenFlags: ['--override'] },
+      {
+        requiredCalls: [{ script: 'scripts/setup.mjs', args: ['set'], flags: { '--override': ['Alex Example:dairy'] } }],
+        allowedFlagValues: { '--override': ['Alex Example:dairy'] },
+      },
+    ],
+    judge: { turn: 1, expected: 'Scoped consent request.', threshold: 0.9 },
+  });
+  assert.deepEqual(lint({ agentic: [row] }), []);
+  for (const [key, value, message] of [
+    ['turnFiles', [[]], /turnFiles/],
+    ['turnFiles', [[{ path: 'data', unchangd: true }], []], /unchangd/],
+    ['turnScripts', [{ forbiddenFlags: ['override'] }, {}], /pattern/],
+    ['turnScripts', [{}, { allowedFlagValues: { override: ['Alex Example:dairy'] } }], /pattern/],
+    ['judge', { ...row.judge, turn: 3 }, /judge.turn/],
+    ['judge', { ...row.judge, turn: 0 }, /judge\/turn must be >= 1/],
+  ]) assert.match(lint({ agentic: [{ ...row, [key]: value }] }).join('\n'), message);
+});
+
 test('duplicate ids fail', () => {
   assert.match(lint({ tier1: [tier1(), tier1()] }).join('\n'), /duplicate id/);
 });

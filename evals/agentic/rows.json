@@ -870,7 +870,7 @@
     "candidate": true,
     "id": "chef-meal-planning-dietary-override-confirmed-once",
     "flow": "core",
-    "description": "A member explicitly confirms a one-plan dairy override; Chef saves that plan without changing the standing dietary ruleset.",
+    "description": "Read-only lookups are allowed while Chef waits for the declaring member's one-plan consent; questions and another member's assent authorize nothing, and a later request needs fresh consent.",
     "grounding": { "recipes": ["lemon-garlic-pasta"] },
     "seed": [
       {
@@ -880,38 +880,118 @@
     ],
     "turns": [
       "I am Alex Example. Plan Lemon Garlic Pasta for my dinner on 2026-01-19.",
-      "I confirm the dairy override for this one meal plan."
+      "What would setting aside that restriction mean? I have not decided yet.",
+      "This is Sam Example, not Alex. I approve setting aside Alex's dairy restriction.",
+      "I am Alex Example. I confirm the dairy override for my dinner on 2026-01-19, for this one meal plan only.",
+      "Now plan Lemon Garlic Pasta for my dinner on 2026-01-26."
     ],
     "responses": [
       [
         { "path": "$.content", "includes": "dairy" },
-        { "path": "$.content", "includes": "Lemon Garlic Pasta" },
-        { "path": "$.content", "includes": "override" }
+        { "path": "$.content", "includes": "Lemon Garlic Pasta" }
       ],
+      [],
+      [],
       [
         { "path": "$.content", "includes": "2026" },
         { "path": "$.content", "includes": "19" },
         { "path": "$.content", "includes": "dairy" }
-      ]
+      ],
+      [{ "path": "$.content", "includes": "dairy" }]
     ],
+    "judge": {
+      "turn": 1,
+      "expected": "Lemon Garlic Pasta contains dairy and conflicts with Alex Example's declared dairy hard constraint. The reply identifies that recipe and conflict, makes clear no conflicting meal was saved, and asks Alex, the member who declared the constraint, for explicit consent limited to this dinner or plan on 2026-01-19. Accept equivalent wording such as setting aside the restriction or making a one-time exception; the literal word override is not required. Reject requests for broad or permanent permission, implied or assumed consent, consent from Sam or anyone other than Alex, claims of an already saved plan, or statements that the standing rule will change. File writes, script timing and actual override scope are checked mechanically, not inferred from the reply.",
+      "threshold": 0.9
+    },
     "skills": ["chef-meal-planning"],
     "scripts": { "required": ["scripts/meal-planning.mjs"] },
     "turnScripts": [
-      { "forbidden": ["scripts/meal-planning.mjs"] },
-      { "required": ["scripts/meal-planning.mjs"] }
+      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] },
+      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] },
+      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] },
+      {
+        "requiredCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"], "flags": { "--week-start": ["2026-01-19"], "--override": ["Alex Example:dairy"] } }],
+        "allowedFlagValues": { "--override": ["Alex Example:dairy"], "--week-start": ["2026-01-19"] }
+      },
+      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] }
+    ],
+    "turnFiles": [
+      [
+        { "path": "knowledge/wiki/meal-plans", "unchanged": true },
+        { "path": "knowledge/wiki/household", "unchanged": true },
+        { "path": "data", "unchanged": true },
+        { "path": "settings.json", "unchanged": true }
+      ],
+      [
+        { "path": "knowledge/wiki/meal-plans", "unchanged": true },
+        { "path": "knowledge/wiki/household", "unchanged": true },
+        { "path": "data", "unchanged": true },
+        { "path": "settings.json", "unchanged": true }
+      ],
+      [
+        { "path": "knowledge/wiki/meal-plans", "unchanged": true },
+        { "path": "knowledge/wiki/household", "unchanged": true },
+        { "path": "data", "unchanged": true },
+        { "path": "settings.json", "unchanged": true }
+      ],
+      [
+        { "path": "knowledge/wiki/meal-plans", "count": 1 },
+        { "path": "knowledge/wiki/meal-plans/2026-01-19.md", "assertions": [
+          { "path": "$.content", "includes": "slug: lemon-garlic-pasta" },
+          { "path": "$.content", "matches": "date: ['\"]?2026-01-19" },
+          { "path": "$.content", "includes": "slot: dinner" },
+          { "path": "$.content", "matches": "^(?![\\s\\S]*\\boverrid(?:e|es|den)\\s*:)" }
+        ] },
+        { "path": "knowledge/wiki/household", "unchanged": true },
+        { "path": "data", "unchanged": true },
+        { "path": "settings.json", "unchanged": true }
+      ],
+      [
+        { "path": "knowledge/wiki/meal-plans/2026-01-26.md", "absent": true },
+        { "path": "knowledge/wiki/household", "unchanged": true },
+        { "path": "data", "unchanged": true },
+        { "path": "settings.json", "unchanged": true }
+      ]
     ],
     "files": [
       {
         "path": "knowledge/wiki/meal-plans/2026-01-19.md",
-        "assertions": [{ "path": "$.content", "includes": "slug: lemon-garlic-pasta" }]
+        "assertions": [
+          { "path": "$.content", "includes": "slug: lemon-garlic-pasta" },
+          { "path": "$.content", "matches": "^(?![\\s\\S]*\\boverrid(?:e|es|den)\\s*:)" }
+        ]
       },
       {
         "path": "knowledge/wiki/household/dietary-ruleset.md",
+        "unchanged": true
+      },
+      { "path": "knowledge/wiki/household", "unchanged": true },
+      { "path": "data", "unchanged": true },
+      { "path": "settings.json", "unchanged": true },
+      { "path": "knowledge/wiki/meal-plans", "count": 1 }
+    ],
+    "after": [
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "today", "--date", "2026-01-19"],
         "assertions": [
-          {
-            "path": "$.content",
-            "equals": "---\ntype: dietary-ruleset\ntitle: Dietary ruleset\nmembers: [{\"name\":\"Alex Example\",\"hard_constraints\":[\"dairy\"]}]\nupdated: 2026-01-15\n---\n# Dietary ruleset\n"
-          }
+          { "path": "$.status", "equals": "planned" },
+          { "path": "$.meals.length", "equals": 1 },
+          { "path": "$.meals[0].date", "equals": "2026-01-19" },
+          { "path": "$.meals[0].slot", "equals": "dinner" },
+          { "path": "$.meals[0].slug", "equals": "lemon-garlic-pasta" }
+        ]
+      },
+      {
+        "command": ["node", "{skills}/chef-meal-planning/scripts/meal-planning.mjs", "today", "--date", "2026-01-26"],
+        "assertions": [{ "path": "$.status", "equals": "no-plan" }]
+      },
+      {
+        "command": ["node", "{skills}/chef-recipe-search/scripts/recipe-search.mjs", "search", "--query", "Lemon Garlic Pasta"],
+        "assertions": [
+          { "path": "$.recipes.length", "equals": 0 },
+          { "path": "$.excluded.[?(@slug=='lemon-garlic-pasta')].reasons.[0].constraint", "equals": "dairy" },
+          { "path": "$.dietary.overrides", "absent": true }
         ]
       }
     ],

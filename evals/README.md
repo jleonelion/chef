@@ -32,6 +32,20 @@ duplicate ids, unknown skill names and badly shaped ids all fail it.
 
 Agentic rows can forbid exact Trajectory tool names with `tools: {forbidden: [...]}`. The check covers every turn in a rep and reports failures under the stable `tools` check id.
 Script checks can match argument prefixes with `requiredCalls` and `forbiddenCalls`, for scripts that expose both read-only and mutating commands. Use `turnScripts` with one script-check object per turn when consent timing matters; `scripts` still checks the whole rep.
+Calls may also declare `flags`, mapping flag names to their exact ordered values,
+independent of flag order and accepting both `--flag value` and `--flag=value`.
+`forbiddenFlags` rejects those flags in every script run, including read-only
+scripts; `allowedFlagValues` restricts any supplied values without requiring
+the flag. Use both a required call and an allowed-value check when one approved
+call must not hide another unauthorized override.
+
+`turnFiles` takes one file-check array per turn. The runner checks each before
+launching the next turn, using the same post-setup baseline as `files`.
+`unchanged` also accepts directories and compares all descendant file names
+and bytes, so it detects new, deleted and modified files. Checks are at turn
+boundaries, not after every tool call.
+An optional `judge.turn` selects a one-based reply for the semantic judge;
+without it the final reply is judged. Dataset lint rejects out-of-range turns.
 
 ## Tier1 is the cross-harness baseline
 
