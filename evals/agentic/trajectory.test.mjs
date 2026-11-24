@@ -84,6 +84,65 @@ test('projects a recorded Codex turn', () => {
   assert.equal(trajectory.model, undefined);
 });
 
+test('Codex detects literal and brace-expanded skill reads in command order', () => {
+  const cases = [
+    ["cat codex-home/skills/chef-{meal-planning,recipe-search}/SKILL.md", ['chef-meal-planning', 'chef-recipe-search']],
+    ["cat codex-home/skills/{chef-meal-planning,chef-recipe-search}/SKILL.md", ['chef-meal-planning', 'chef-recipe-search']],
+    ["cat codex-home/skills/chef-{meal-logging,meal-planning}/SKILL.md", ['chef-meal-logging', 'chef-meal-planning']],
+    ["cat codex-home/skills/chef-meal-{logging,planning}/SKILL.md", ['chef-meal-logging', 'chef-meal-planning']],
+    ["cat 'codex-home/skills/chef-meal-planning/SKILL.md'", ['chef-meal-planning']],
+    ['cat "$PWD/codex-home/skills/chef-meal-planning/SKILL.md"', ['chef-meal-planning']],
+    ['sed -n "1,120p" /repo/skills/chef-recipe-search/SKILL.md', ['chef-recipe-search']],
+    ["rg -n 'today|Run commands' codex-home/skills/chef-meal-planning/SKILL.md | head -20", ['chef-meal-planning']],
+    ['grep -e today skills/chef-meal-planning/SKILL.md', ['chef-meal-planning']],
+    ['head -n 40 skills/chef-meal-planning/SKILL.md && tail skills/chef-recipe-search/SKILL.md', ['chef-meal-planning', 'chef-recipe-search']],
+  ];
+  for (const [read, skills] of cases) {
+    for (const command of [read, `/bin/zsh -lc ${JSON.stringify(read)}`]) {
+      const trajectory = projectCodex(stream(
+        { type: 'item.completed', item: { type: 'command_execution', command } },
+        { type: 'turn.completed' },
+      ));
+      assert.equal(trajectory.error, null);
+      assert.deepEqual(trajectory.skills, skills, command);
+      assert.deepEqual(trajectory.toolCalls, [{ name: 'shell', command }]);
+      assert.deepEqual(trajectory.scriptRuns, []);
+    }
+  }
+});
+
+test('Codex does not count skill mentions, quoted braces or unrelated paths as reads', () => {
+  const commands = [
+    'echo cat codex-home/skills/chef-{meal-planning,recipe-search}/SKILL.md',
+    'printf "%s" "cat skills/chef-meal-planning/SKILL.md"',
+    'rg "skills/chef-meal-planning/SKILL.md" README.md',
+    'sed "skills/chef-meal-planning/SKILL.md" README.md',
+    'ls codex-home/skills/{chef-meal-planning,chef-recipe-search}/SKILL.md',
+    'cat "codex-home/skills/chef-{meal-planning,recipe-search}/SKILL.md"',
+    "cat 'codex-home/skills/{chef-meal-planning,chef-recipe-search}/SKILL.md'",
+    'cat codex-home/skills/chef-\\{meal-planning,recipe-search\\}/SKILL.md',
+    'cat codex-home/not-skills/chef-meal-planning/SKILL.md',
+    'cat codex-home/skills/chef-meal-planning/SKILL.md.bak',
+    'cat codex-home/skills/chef-meal-planning/SKILL.md/notes',
+    'cat codex-home/skills/{chef-meal-planning}/SKILL.md',
+    '# cat codex-home/skills/chef-meal-planning/SKILL.md',
+    'cat README.md # skills/chef-meal-planning/SKILL.md',
+    'cat README.md > skills/chef-meal-planning/SKILL.md',
+    'cat "$(printf ignored)/skills/chef-meal-planning/SKILL.md"',
+    'cat <<EOF\ncat skills/chef-meal-planning/SKILL.md\nEOF',
+  ];
+  for (const read of commands) {
+    for (const command of [read, `/bin/zsh -lc ${JSON.stringify(read)}`]) {
+      const trajectory = projectCodex(stream(
+        { type: 'item.completed', item: { type: 'agent_message', text: 'Read skills/chef-meal-planning/SKILL.md' } },
+        { type: 'item.completed', item: { type: 'command_execution', command, aggregated_output: 'skills/chef-recipe-search/SKILL.md' } },
+        { type: 'turn.completed' },
+      ));
+      assert.deepEqual(trajectory.skills, [], command);
+    }
+  }
+});
+
 test('Codex: failures and truncated transcripts set error', () => {
   const lines = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
   assert.deepEqual(projectCodex(lines({ type: 'turn.started' })).error, { kind: 'transcript', message: 'transcript has no turn.completed event' });

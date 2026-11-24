@@ -14,6 +14,7 @@
 // Each runtime has a projector that turns its raw transcript into a Trajectory. Checks and the
 // runner consume Trajectories only, never raw transcripts.
 import { invalid, runtimeInvalid } from './invalid.mjs';
+import { codexSkillReads } from './codex-skill-reads.mjs';
 
 function parseEvents(text) {
   const events = [];
@@ -117,15 +118,12 @@ export function projectCodex(text) {
   const messages = items.filter((item) => item.type === 'agent_message');
   return {
     response: String(messages.at(-1)?.text ?? ''),
-    skills: toolCalls.flatMap((call) => [...(call.command ?? '').matchAll(SKILL_READ)].map((match) => match[1])),
+    skills: toolCalls.flatMap((call) => codexSkillReads(call.command ?? '')),
     toolCalls,
     scriptRuns: toolCalls.flatMap((call) => (call.name === 'shell' ? scriptsRunBy(call.command) : [])),
     error,
   };
 }
-
-// A shell command that mentions skills/<name>/SKILL.md (cat, sed, head ...) loads that skill.
-const SKILL_READ = /\bskills\/([\w-]+)\/SKILL\.md/g;
 
 // Copilot: one `copilot -p --output-format json` transcript → Trajectory. Tool calls come from the
 // non-delta `assistant.message` events (`skill` carries the skill name, `bash` a command, file tools

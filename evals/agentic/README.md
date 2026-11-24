@@ -40,6 +40,20 @@ Per-repetition console lines and the final failure digest include judge failures
 even when deterministic behavior passes. Judge failures do not change behavioral
 pass counts or turn valid executions into invalid ones.
 
+## Codex skill reads
+
+Codex has no skill tool. Its Projector detects `SKILL.md` file operands read by
+`cat`, `sed`, `head`, `tail`, `rg` or `grep`, including commands wrapped in
+`sh`, `bash` or `zsh` with `-c` or `-lc`. It recognizes literal
+`skills/<name>/SKILL.md` paths and one unquoted comma-list brace group in the
+skill directory, such as `skills/chef-{meal-planning,recipe-search}/SKILL.md`
+or `skills/{chef-meal-planning,chef-recipe-search}/SKILL.md`.
+Names retain command and brace-list order. Quoted or escaped braces are literal,
+not expansions. Reply text, tool output, comments, output destinations and
+commands that only mention paths do not fire skills. Parsing never executes
+transcript commands. Command substitutions and here-documents are unsupported
+and skipped; this is not a general shell interpreter.
+
 ## Release evidence
 
 Use a clean prepared release tree and run the entire agentic dataset 3/3 on each local launcher:
@@ -67,3 +81,12 @@ target. Do not edit or retrospectively pass that evidence. Dataset and judge
 changes require fresh evidence against the corrected tree. Focused deterministic
 regressions or a selected-row run cannot establish the full three-host release
 gate. The other repetitions' timeouts remain unresolved by this correction.
+
+The same run missed brace-expanded skill reads, tracked in
+[#224](https://github.com/jleonelion/chef/issues/224). Static reprojection can
+identify those reads but cannot recover deleted data-root snapshots or establish
+a new release pass. Keep the archived summary and judge verdicts unchanged.
+Dietary denial assertions remain in force; the override-consent assertion
+mismatches in [#230](https://github.com/jleonelion/chef/issues/230) are separate.
+A Projector correction requires fresh exact-tree, full three-host 3/3 evidence,
+not retrospective reclassification of the old run.
