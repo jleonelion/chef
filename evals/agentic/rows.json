@@ -158,7 +158,8 @@
           { "path": "$.items.[?(@name=='red lentils')].path", "matches": "^pantry\\.(?!canned\\.)[^.]+\\.red_lentils$" },
           { "path": "$.items.[?(@name=='red lentils')].amount", "equals": 1 },
           { "path": "$.items.[?(@name=='red lentils')].unit", "equals": "lb" },
-          { "path": "$.items[*].name", "excludes": "reusable bag" }
+          { "path": "$.items[*].name", "excludes": "reusable bag" },
+          { "path": "$.items.length", "equals": 7 }
         ]
       },
       {
@@ -204,7 +205,8 @@
           { "path": "$.items.[?(@name=='red lentils')].path", "equals": "pantry.canned.red_lentils" },
           { "path": "$.items.[?(@name=='red lentils')].amount", "equals": 1 },
           { "path": "$.items.[?(@name=='red lentils')].unit", "equals": "can" },
-          { "path": "$.items[*].name", "excludes": "reusable bag" }
+          { "path": "$.items[*].name", "excludes": "reusable bag" },
+          { "path": "$.items.length", "equals": 7 }
         ]
       },
       {

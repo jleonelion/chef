@@ -90,7 +90,9 @@ The original row now uses `DRY RED LENTILS 1 LB` and accepts a single non-canned
 pantry entry; a separate row uses `CANNED RED LENTILS 1 CAN` and requires a
 single canned pantry entry. Both check quantities, milk, bananas, purchase and
 receipt records, healthy inventory, clean data-root history and no reusable
-bag anywhere in inventory. Keep the archived failure unchanged. These dataset
+bag anywhere in inventory. Each expects seven inventory entries: the five
+seeded entries plus bananas and lentils, with milk merged into its existing
+entry. Keep the archived failure unchanged. These dataset
 and fixture corrections require fresh exact-tree, full three-host 3/3 release
 evidence; deterministic checks do not replace it or resolve the other timeouts.
 No Chef release is needed for this eval-only change.

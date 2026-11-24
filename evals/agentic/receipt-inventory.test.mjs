@@ -89,6 +89,8 @@ for (const scenario of [
       ['wrong category', (output) => { output.items.find(({ name }) => name === 'red lentils').path = `pantry.${scenario.wrongCategory}.red_lentils`; }, /red lentils.*path/],
       ['wrong amount', (output) => { output.items.find(({ name }) => name === 'red lentils').amount = 2; }, /red lentils.*amount/],
       ['wrong unit', (output) => { output.items.find(({ name }) => name === 'red lentils').unit = scenario.unit === 'lb' ? 'can' : 'lb'; }, /red lentils.*unit/],
+      ['duplicate lentils under another name', (output) => { output.items.push({ ...lentils, name: 'dry red lentils', path: 'pantry.other.dry_red_lentils' }); }, /items\.length/],
+      ['reusable bag under another name', (output) => { output.items.push({ name: 'Reusable Bag', path: 'pantry.other.reusable_bag', amount: 1, unit: 'each' }); }, /items\.length/],
     ];
     for (const location of ['pantry', 'fridge', 'freezer']) {
       cases.push(
