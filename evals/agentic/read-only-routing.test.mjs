@@ -177,8 +177,9 @@ test('shopping permits the real build with or without a read-only inventory view
 test('natural shopping replies retain generated text and ask the user to check incomparable stock', () => {
   for (const request of [
     onHandCheck,
-    'Can you check the spinach on hand? Bunches cannot be compared with ounces.',
+    'Can you check whether the spinach on hand is enough for the 4 oz needed?',
     'Check your bunch of spinach against the amount needed.',
+    'Please verify the quantity of spinach you have.',
   ]) {
     checkResponse(`${shoppingText}\n${request}`, shopping.responses[0]);
   }
@@ -191,6 +192,9 @@ test('natural shopping response checks reject lost safety notes, altered quantit
     ['missing on-hand note', valid.replace(' (on hand: 1 bunch)', '')],
     ['missing user check', shoppingText],
     ['expiry instead of user check', `${shoppingText}\nThe spinach expired on 2026-01-17, so buy fresh spinach.`],
+    ['expiry-only check', `${shoppingText}\nPlease check the spinach expiry date before using it.`],
+    ['recipe-only check', `${shoppingText}\nPlease check the spinach recipe instructions.`],
+    ['unrelated quantity check', `${shoppingText}\nPlease check the tomato quantity; the spinach is covered.`],
     ['unrelated check', `${shoppingText}\nPlease check the tomatoes.`],
     ['changed purchase quantity', valid.replace('- 4 oz spinach', '- 5 oz spinach')],
     ['changed on-hand quantity', valid.replace('on hand: 1 bunch', 'on hand: 2 bunch')],

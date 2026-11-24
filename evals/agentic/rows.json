@@ -1161,7 +1161,7 @@
       [
         { "path": "$.content", "includes": "# Shopping list: week of 2026-01-19\n\n- 1.5 can chickpeas\n- 0.75 each onion\n- 1.5 clove garlic\n- 11 oz crushed tomatoes\n- 4 oz spinach (on hand: 1 bunch)\n- 1 tsp ground cumin\n\nNo dietary constraints recorded. Tell me about any allergies or foods someone must never eat.\n" },
         { "path": "$.content", "matches": "^(?:(?!No dietary constraints recorded)[\\s\\S])*No dietary constraints recorded(?:(?!No dietary constraints recorded)[\\s\\S])*$" },
-        { "path": "$.content", "matches": "(?:\\b(?:[Pp]lease|[Cc]an you|[Cc]ould you|[Ww]ould you) (?:check|verify|confirm)|(?:^|[.!?]\\s+|\\n)(?:Check|Verify|Confirm))\\b[^.!?\\n]*\\b(?:spinach|bunch)\\b" }
+        { "path": "$.content", "matches": "(?:\\b(?:[Pp]lease|[Cc]an you|[Cc]ould you|[Ww]ould you) (?:check|verify|confirm)|(?:^|[.!?]\\s+|\\n)(?:Check|Verify|Confirm))\\b(?=[^.!?\\n;,\\u2014]*\\b(?:spinach|bunch)\\b)[^.!?\\n;,\\u2014]*\\b(?:quantity|amount|enough|covers?|against|compare)\\b" }
       ]
     ],
     "skills": ["chef-shopping-lists"],
