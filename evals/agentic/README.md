@@ -99,7 +99,8 @@ Only observations of unchanged installed entrypoints satisfy `required` and
 An external copy never qualifies, even with the same name or identical bytes.
 An unmatched command-text candidate fails the `scripts` check with an explicit
 provenance gap. A missing required observation also reports that gap.
-Read-only inspection is not execution. Setup and post-run invocations do not
+Read-only inspection, including `node --check` and `node -c`, is not execution.
+Setup and post-run invocations do not
 count as agent calls. Internal subprocesses of an installed Chef script are
 integrity-checked but do not inflate its agent invocation counts.
 Actual arguments replace the static parser's guesses; forbidden and consent

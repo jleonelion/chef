@@ -166,6 +166,25 @@ test('source inspection never satisfies execution evidence', async (t) => {
   assert.equal(inspection.run.outcome, 'pass', JSON.stringify(inspection.run));
 });
 
+test('syntax-only inspection cannot satisfy required entrypoints or argument prefixes', async (t) => {
+  for (const flag of ['--check', '-c']) {
+    await t.test(flag, async (t) => {
+      const { run } = await replay(t, ({ entrypoint, execute }) => {
+        const command = invocation(entrypoint).replace(/^node /, `node ${flag} `);
+        execute(command);
+        return command;
+      }, {
+        scenario: {
+          ...row,
+          scripts: { requiredCalls: [{ script: 'scripts/shopping-lists.mjs', args: ['build'] }] },
+        },
+      });
+      assert.equal(run.outcome, 'failed');
+      assert.match(run.failure.message, /provenance not established/);
+    });
+  }
+});
+
 test('altered external copy through a shell variable is observed but never accepted', async (t) => {
   const { run, records } = await replay(t, ({ entrypoint, workdir, execute }) => {
     const copy = path.join(workdir, 'shopping-lists.mjs');

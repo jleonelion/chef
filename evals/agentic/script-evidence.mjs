@@ -38,7 +38,7 @@ export function observeScripts({ skillsDir, expectedSkillsDir, workdir, env }) {
       if (records.some((record) => record.script && (record.pack?.content !== baseline.content || record.pack?.identity !== baseline.identity))) {
         throw new Error('installed-script provenance not established: installed pack was modified or replaced');
       }
-      return records.filter((record) => record.script && !record.error && !record.nested)
+      return records.filter((record) => record.script && !record.error && !record.nested && !record.syntaxOnly)
         .sort((a, b) => BigInt(a.startedAt) < BigInt(b.startedAt) ? -1 : 1)
         .map(({ script, args }) => ({ script, args }));
     },

@@ -9,6 +9,7 @@ if (process.env.CHEF_EVAL_EXECUTION_DIR && process.argv[1]) {
     entrypoint: path.resolve(process.argv[1]), args: process.argv.slice(2),
     startedAt: process.hrtime.bigint().toString(),
     nested: process.env.CHEF_EVAL_PARENT_SCRIPT === process.env.CHEF_EVAL_SKILLS_DIR,
+    syntaxOnly: process.execArgv.some((arg) => arg === '--check' || arg === '-c'),
   };
   try {
     record.realpath = fs.realpathSync(record.entrypoint);
