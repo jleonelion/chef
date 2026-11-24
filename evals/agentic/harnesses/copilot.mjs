@@ -15,7 +15,7 @@ import { projectCopilot } from '../trajectory.mjs';
 import { collectProcess } from './process.mjs';
 
 export const name = 'copilot';
-export const launcherVersion = 2;
+export const launcherVersion = 3;
 export const project = projectCopilot;
 
 export function detect() {

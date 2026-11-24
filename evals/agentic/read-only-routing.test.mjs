@@ -7,7 +7,6 @@ import { test } from 'node:test';
 import { checkResponse, checkScripts, checkSkills } from './report.mjs';
 import { runRep } from './run.mjs';
 
-const repo = path.resolve(import.meta.dirname, '../..');
 const rows = JSON.parse(fs.readFileSync(new URL('./rows.json', import.meta.url), 'utf8'));
 const missingPlan = rows.find(({ id }) => id === 'chef-meal-logging-plan-absent-logs-nothing');
 const dormant = rows.find(({ id }) => id === 'chef-health-goals-check-in-goal-unset-stays-dormant');
@@ -19,17 +18,19 @@ async function replay(t, row, act) {
   const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-read-only-replay-'));
   t.after(() => fs.rmSync(logDir, { recursive: true, force: true }));
   const harness = {
-    prepare({ env, workdir }) {
+    prepare({ env, workdir, pluginDir }) {
       t.after(() => fs.rmSync(workdir, { recursive: true, force: true }));
+      const skillsDir = path.join(workdir, 'skills');
+      fs.cpSync(path.join(pluginDir, 'skills'), skillsDir, { recursive: true });
       let index = 0;
       return {
-        env, skillsDir: path.join(repo, 'src/skills'),
+        env, skillsDir,
         async runTurn() {
           const scriptRuns = [];
           const invoke = (skill, script, args) => {
             scriptRuns.push({ script: `scripts/${script}`, args });
             const result = spawnSync(process.execPath, [
-              path.join(repo, 'src/skills', skill, 'scripts', script), ...args,
+              path.join(skillsDir, skill, 'scripts', script), ...args,
             ], { env, encoding: 'utf8' });
             assert.ok([0, 2].includes(result.status), result.stderr);
             return JSON.parse(result.stdout);

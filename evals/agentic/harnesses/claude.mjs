@@ -12,7 +12,7 @@ import { projectClaude } from '../trajectory.mjs';
 import { collectProcess } from './process.mjs';
 
 export const name = 'claude';
-export const launcherVersion = 2;
+export const launcherVersion = 3;
 export const project = projectClaude;
 
 export function detect() {

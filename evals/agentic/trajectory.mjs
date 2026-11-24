@@ -5,14 +5,14 @@
 //     response:   string,                                // the turn's final reply
 //     skills:     string[],                              // chef skills fired, in order, "chef:" prefix dropped
 //     toolCalls:  [{ name, command?, path? }],           // every tool call, Skill calls included
-//     scriptRuns: [{ script, args }],                    // Chef scripts run via Bash; script is skill-relative, e.g. "scripts/recipe-search.mjs"
+//     scriptRuns: [{ script, args }],                    // untrusted command-text candidates; the runner requires execution observations for presence checks
 //     error:      {kind, message} | null,                 // structured invalid-execution cause; never an empty-but-valid response
 //     model?:     string,                                // absent when the runtime does not report it (Codex; Copilot reports no cost)
 //     cost_usd?:  number,                                // absent when the runtime does not report it (Codex; Copilot reports no cost)
 //   }
 //
 // Each runtime has a projector that turns its raw transcript into a Trajectory. Checks and the
-// runner consume Trajectories only, never raw transcripts.
+// runner consume Trajectories, never raw transcripts. The runner separately observes script processes.
 import { invalid, runtimeInvalid } from './invalid.mjs';
 import { codexSkillReads } from './codex-skill-reads.mjs';
 

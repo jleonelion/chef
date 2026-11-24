@@ -55,15 +55,16 @@ const matchesCall = (run, call) => run.script === call.script
   });
 const callName = (call) => [call.script, ...call.args, ...Object.entries(call.flags ?? {}).map(([flag, values]) => `${flag}=${values.join(',')}`)].join(' ');
 
-export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [], allowedCalls, forbiddenFlags = [], allowedFlagValues = {} } = {}) {
+export function checkScripts(scriptRuns, { required = [], forbidden = [], max = {}, requiredCalls = [], forbiddenCalls = [], allowedCalls, forbiddenFlags = [], allowedFlagValues = {} } = {}, verifiedRuns = scriptRuns) {
   return behaviorCheck('scripts', () => {
     const counts = new Map();
     for (const { script } of scriptRuns) counts.set(script, (counts.get(script) ?? 0) + 1);
     const ran = [...counts.keys()].join(', ') || 'none';
-    for (const script of required) assert(counts.has(script), `${script} did not run (ran: ${ran})`);
+    const gap = verifiedRuns === scriptRuns ? '' : '; installed-script provenance not established';
+    for (const script of required) assert(verifiedRuns.some((run) => run.script === script), `${script} did not run (ran: ${ran}${gap})`);
     for (const script of forbidden) assert(!counts.has(script), `${script} ran ${counts.get(script)} time(s)`);
     for (const [script, limit] of Object.entries(max)) assert((counts.get(script) ?? 0) <= limit, `${script} ran ${counts.get(script)} times, max ${limit}`);
-    for (const call of requiredCalls) assert(scriptRuns.some((run) => matchesCall(run, call)), `${callName(call)} did not run`);
+    for (const call of requiredCalls) assert(verifiedRuns.some((run) => matchesCall(run, call)), `${callName(call)} did not run${gap}`);
     for (const call of forbiddenCalls) assert(!scriptRuns.some((run) => matchesCall(run, call)), `${callName(call)} ran`);
     if (allowedCalls) {
       for (const run of scriptRuns) {

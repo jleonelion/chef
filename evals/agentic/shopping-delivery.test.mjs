@@ -59,13 +59,15 @@ async function replay(t, defect) {
   t.after(() => fs.rmSync(logDir, { recursive: true, force: true }));
   const harness = {
     prepare({ env, pluginDir, workdir }) {
-      const skillsDir = path.join(pluginDir, 'skills');
+      const skillsDir = path.join(workdir, 'skills');
+      fs.cpSync(path.join(pluginDir, 'skills'), skillsDir, { recursive: true });
       return {
         env, skillsDir,
         async runTurn() {
           let entrypoint = path.join(skillsDir, 'chef-shopping-lists/scripts/shopping-lists.mjs');
-          if (defect === 'external copy') {
-            const copy = path.join(workdir, 'shopping-lists.mjs');
+          if (defect === 'external copy' || defect === 'matching external path') {
+            const copy = path.join(workdir, defect === 'external copy' ? 'shopping-lists.mjs' : 'copy/scripts/shopping-lists.mjs');
+            fs.mkdirSync(path.dirname(copy), { recursive: true });
             fs.writeFileSync(copy, `${fs.readFileSync(entrypoint, 'utf8')}\n// Altered external copy.\n`);
             entrypoint = copy;
           }
@@ -117,6 +119,7 @@ test('one-off delivery builds in chat without sending, saving recipients or chan
 test('one-off delivery retains entrypoint, no-send and protected-state checks', async (t) => {
   for (const [defect, check] of [
     ['external copy', 'scripts'],
+    ['matching external path', 'scripts'],
     ['send before approval', 'tools'],
     ['save recipients', 'files'],
     ['persist list', 'files'],
