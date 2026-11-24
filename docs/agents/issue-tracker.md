@@ -18,6 +18,55 @@ Infer the repo from `git remote -v`; `gh` does this automatically when run insid
 
 File issues only into the user's own repo. Never file into `mattpocock/skills` (the repo these skills come from) unless the user owns it. In a fork, `gh` can default to the upstream parent, so before the first `gh issue create` of a session, check the target with `gh repo view --json nameWithOwner` and confirm it with the user if it is not their repo.
 
+## Issue status
+
+Use [Engineering, Project 2](https://github.com/users/jleonelion/projects/2),
+owned by `jleonelion`, for issue status. Issues remain in `jleonelion/chef`.
+The shared development rule lives in `~/code/home/global/AGENTS.md`.
+
+When starting implementation of a tracked issue, including `/implement`
+and `/implement-spec`, set its `Status` to `In Progress` before the first
+code, docs, or configuration edit. Planning, investigation, and review
+alone do not trigger this transition.
+
+1. Read the issue and the Project's items:
+
+   ```sh
+   gh issue view <number> --repo jleonelion/chef --json url,state
+   gh project view 2 --owner jleonelion --format json
+   gh project item-list 2 --owner jleonelion --format json --limit <item-count>
+   ```
+
+   Use the current Project item count as the limit and match the exact
+   issue URL. An incomplete list or failed read does not prove absence.
+   Preserve closed issues and statuses `In Review` and `Done`. Transition
+   only from `Todo` or unset; if already `In Progress`, verify without
+   rewriting it. Report unexpected statuses rather than replacing them.
+
+2. Reuse an existing item. If the open issue is absent, add it to this
+   Project, then read its status before proceeding:
+
+   ```sh
+   gh project item-add 2 --owner jleonelion --url <issue-url> --format json
+   ```
+
+3. If a transition is needed, update the existing `Status` field:
+
+   ```sh
+   gh project item-edit 2 --owner jleonelion --url <issue-url> --field Status --value "In Progress"
+   ```
+
+4. Re-run the complete item-list read and verify the persisted status.
+   Update only the active issue or child, not parents or siblings.
+
+Keep assignees, labels, release targets, and completion rules unchanged.
+Issue status is separate from open/closed state, triage, and assignment.
+Use the existing Project and options; create no labels or status options.
+These commands require Project read/write access, the `project` scope for
+OAuth tokens. Report access, update, or verification failures before
+editing and in the handoff if unresolved; continue unless the workflow
+requires a successful claim first.
+
 ## Release targeting
 
 Terms are in `GLOSSARY.md`: **Version**, **Change level**, **Breaking change**, **Release target**, **Backlog**.
@@ -59,5 +108,5 @@ Used by `/wayfinder`. The **map** is a single issue with **child** issues as tic
 - **Child ticket**: an issue linked to the map as a GitHub sub-issue (see **Make an issue a sub-issue of a parent**). Where sub-issues aren't enabled, add the child to a task list in the map body and put `Part of #<map>` at the top of the child body. Labels: `wayfinder:<type>` (`research`/`prototype`/`grilling`/`task`). Once claimed, the ticket is assigned to the driving dev.
 - **Blocking**: see **Blocking** under Conventions.
 - **Frontier query**: list the map's open children (`gh issue list --state open`, scoped to the map's sub-issues / task list), drop any with an open blocker (see **Count open blockers**, or an open issue in the `Blocked by` line) or an assignee; first in map order wins.
-- **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write.
+- **Claim**: `gh issue edit <n> --add-assignee @me`, the session's first write. When starting implementation, follow **Issue status** after claiming; assignment alone does not update issue status.
 - **Resolve**: `gh issue comment <n> --body "<answer>"`, then `gh issue close <n>`, then append a context pointer (gist + link) to the map's Decisions-so-far.
