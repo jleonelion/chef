@@ -37,6 +37,11 @@ Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes
 duplicate ids, unknown skill names and badly shaped ids all fail it.
 
 Agentic rows can forbid exact Trajectory tool names with `tools: {forbidden: [...]}`. The check covers every turn in a rep and reports failures under the stable `tools` check id.
+`tools.forbiddenPatterns` rejects regular-expression matches in any projected
+tool `command` or `path`. Receipt-refusal rows use it to forbid inbox-body
+access throughout the turn, before or after the required sender check.
+This checks recorded literal inputs, not resolved shell paths or arbitrary
+program behavior; it is not an adversarial filesystem-access monitor.
 Script checks can match argument prefixes with `requiredCalls` and `forbiddenCalls`, for scripts that expose both read-only and mutating commands. Use `turnScripts` with one script-check object per turn when consent timing matters; `scripts` still checks the whole rep.
 Calls may also declare `flags`, mapping flag names to their exact ordered values,
 independent of flag order and accepting both `--flag value` and `--flag=value`.

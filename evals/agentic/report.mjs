@@ -87,10 +87,17 @@ export function checkScripts(scriptRuns, { required = [], forbidden = [], max = 
   });
 }
 
-export function checkTools(toolCalls, { forbidden = [] } = {}) {
+export function checkTools(toolCalls, { forbidden = [], forbiddenPatterns = [] } = {}) {
   return behaviorCheck('tools', () => {
     const called = new Set(toolCalls.map(({ name }) => name));
     for (const tool of forbidden) assert(!called.has(tool), `${tool} was called`);
+    for (const pattern of forbiddenPatterns) {
+      const matcher = new RegExp(pattern);
+      for (const call of toolCalls) {
+        assert(!matcher.test(call.command ?? '') && !matcher.test(call.path ?? ''),
+          `${call.name} accessed forbidden input matching ${pattern}`);
+      }
+    }
   });
 }
 
