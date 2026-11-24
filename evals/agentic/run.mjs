@@ -8,7 +8,7 @@
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
 //   scripts ({required, forbidden, max, requiredCalls, forbiddenCalls, allowedCalls}: skill-relative paths like
 //   scripts/<name>; call args match by prefix; checked over all turns), turnScripts (the same checks,
-//   one entry per turn), turnFiles (file checks at each turn boundary), tools ({forbidden}: exact Trajectory tool names,
+//   one entry per turn), turnFiles (file checks at each turn boundary), tools ({forbidden, forbiddenPatterns}: exact tool names or command/path patterns,
 //   checked over all turns), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root} and {tmp}; rows must not depend on the wall-clock date (the lint rejects {today}).
 //   repro / known_failure / expect_failure (see evals/repro/README.md): a known_failure row passes

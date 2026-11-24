@@ -159,6 +159,24 @@ and fixture corrections require fresh exact-tree, full three-host 3/3 release
 evidence; deterministic checks do not replace it or resolve the other timeouts.
 No Chef release is needed for this eval-only change.
 
+The sender-refusal failure in
+[#233](https://github.com/jleonelion/chef/issues/233) substituted missing
+authentication for the returned untrusted-sender cause. The skill now separates
+trust from authentication and requires the returned cause and exact sender.
+Three rows cover authenticated-but-untrusted, trusted-but-unauthenticated and
+both-fail cases. The both-fail semantic target explicitly rejects the historical
+false attribution; trust still takes precedence. Equivalent explanations are
+judge-scored, while sender identity, exact sender-check arguments, no ingestion,
+recorded body-access inputs, unchanged receipt/inventory/purchase/audit bytes
+and unchanged, clean data-root history remain deterministic.
+The tool-input check cannot resolve arbitrary shell aliases or hidden reads.
+Keep the archived failure unchanged. This packaged wording correction is
+`semver:patch`, targeted to v1.4.0, with no settings, schema, data-root, receipt
+contract or integration changes. Deterministic regressions do not prove future
+model explanations. The old sandboxes were deleted, and no live harness or
+judge reruns are authorized for this correction. Fresh exact-tree, full
+three-host 3/3 release evidence remains an explicit gap.
+
 The same run missed brace-expanded skill reads, tracked in
 [#224](https://github.com/jleonelion/chef/issues/224). Static reprojection can
 identify those reads but cannot recover deleted data-root snapshots or establish

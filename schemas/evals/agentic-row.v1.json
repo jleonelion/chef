@@ -47,7 +47,8 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "forbidden": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+        "forbidden": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+        "forbiddenPatterns": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Regular expressions forbidden in every Trajectory tool command and path." }
       }
     },
     "setup": { "$ref": "#/$defs/steps" },
