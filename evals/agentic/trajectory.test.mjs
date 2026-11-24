@@ -128,15 +128,18 @@ test('Codex does not count skill mentions, quoted braces or unrelated paths as r
     '# cat codex-home/skills/chef-meal-planning/SKILL.md',
     'cat README.md # skills/chef-meal-planning/SKILL.md',
     'cat README.md > skills/chef-meal-planning/SKILL.md',
+    'cat "$(printf ignored)/skills/chef-meal-planning/SKILL.md"',
     'cat <<EOF\ncat skills/chef-meal-planning/SKILL.md\nEOF',
   ];
-  for (const command of commands) {
-    const trajectory = projectCodex(stream(
-      { type: 'item.completed', item: { type: 'agent_message', text: 'Read skills/chef-meal-planning/SKILL.md' } },
-      { type: 'item.completed', item: { type: 'command_execution', command, aggregated_output: 'skills/chef-recipe-search/SKILL.md' } },
-      { type: 'turn.completed' },
-    ));
-    assert.deepEqual(trajectory.skills, [], command);
+  for (const read of commands) {
+    for (const command of [read, `/bin/zsh -lc ${JSON.stringify(read)}`]) {
+      const trajectory = projectCodex(stream(
+        { type: 'item.completed', item: { type: 'agent_message', text: 'Read skills/chef-meal-planning/SKILL.md' } },
+        { type: 'item.completed', item: { type: 'command_execution', command, aggregated_output: 'skills/chef-recipe-search/SKILL.md' } },
+        { type: 'turn.completed' },
+      ));
+      assert.deepEqual(trajectory.skills, [], command);
+    }
   }
 });
 
