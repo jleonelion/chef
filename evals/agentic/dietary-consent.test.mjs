@@ -182,7 +182,10 @@ async function replayDietary(t, defect) {
     };
     const save = (date) => invoke('chef-meal-planning', 'meal-planning.mjs', [
       'plan', '--week-start', date, '--override', 'Alex Example:dairy',
-    ], [{ date, slot: 'dinner', recipe: 'lemon-garlic-pasta', servings: 1 }]);
+    ], [
+      { date, slot: 'dinner', recipe: 'lemon-garlic-pasta', servings: 1 },
+      ...(defect?.extraMeal ? [{ date: '2026-01-20', slot: 'dinner', recipe: 'lemon-garlic-pasta', servings: 1 }] : []),
+    ]);
     if (index === 0) {
       assert.equal(invoke('chef-meal-planning', 'meal-planning.mjs', ['today', '--date', '2026-01-19']).status, 'no-plan');
     }
@@ -222,6 +225,7 @@ test('consent trajectory rejects early writes, absent or third-party assent, ear
     ['search override before assent', { earlySearch: true }, 'scripts'],
     ['saved override metadata', { persist: true }, 'files'],
     ['reuse on a later request', { reuse: true }, 'scripts'],
+    ['extra conflicting dinner in the approved week', { extraMeal: true }, 'files'],
   ]) {
     await t.test(name, async (t) => {
       const run = await replayDietary(t, defect);

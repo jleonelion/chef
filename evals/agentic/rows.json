@@ -937,10 +937,11 @@
       ],
       [
         { "path": "knowledge/wiki/meal-plans", "count": 1 },
-        { "path": "knowledge/wiki/meal-plans/2026-01-19.md", "assertions": [
-          { "path": "$.content", "includes": "slug: lemon-garlic-pasta" },
-          { "path": "$.content", "matches": "date: ['\"]?2026-01-19" },
-          { "path": "$.content", "includes": "slot: dinner" },
+        { "path": "knowledge/wiki/meal-plans/2026-01-19.md", "parse": "frontmatter", "assertions": [
+          { "path": "$.frontmatter.meals.length", "equals": 1 },
+          { "path": "$.frontmatter.meals[0].slug", "equals": "lemon-garlic-pasta" },
+          { "path": "$.frontmatter.meals[0].date", "equals": "2026-01-19" },
+          { "path": "$.frontmatter.meals[0].slot", "equals": "dinner" },
           { "path": "$.content", "matches": "^(?![\\s\\S]*\\boverrid(?:e|es|den)\\s*:)" }
         ] },
         { "path": "knowledge/wiki/household", "unchanged": true },
@@ -957,8 +958,12 @@
     "files": [
       {
         "path": "knowledge/wiki/meal-plans/2026-01-19.md",
+        "parse": "frontmatter",
         "assertions": [
-          { "path": "$.content", "includes": "slug: lemon-garlic-pasta" },
+          { "path": "$.frontmatter.meals.length", "equals": 1 },
+          { "path": "$.frontmatter.meals[0].slug", "equals": "lemon-garlic-pasta" },
+          { "path": "$.frontmatter.meals[0].date", "equals": "2026-01-19" },
+          { "path": "$.frontmatter.meals[0].slot", "equals": "dinner" },
           { "path": "$.content", "matches": "^(?![\\s\\S]*\\boverrid(?:e|es|den)\\s*:)" }
         ]
       },

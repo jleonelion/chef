@@ -196,3 +196,6 @@ No Chef release or `semver:` label is needed for this eval-only change.
 No live agents or judges were rerun. Fresh exact-tree, full three-host 3/3
 release evidence still needs authorization; deterministic regressions do not
 establish a release pass or retrospectively pass the old runs.
+The complete saved meal list must contain exactly the approved January 19
+dinner, both immediately after assent and finally. An extra conflicting dinner
+in the same weekly file fails even though the January 19 lookup still succeeds.

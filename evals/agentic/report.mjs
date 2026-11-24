@@ -6,6 +6,7 @@ import path from 'node:path';
 import { assertCase } from '../tier1/assertions.mjs';
 import { scanReply } from './deny-list.mjs';
 import { sha256Tree } from './provenance.mjs';
+import { parsePage } from '../../src/lib/frontmatter.mjs';
 
 export function behaviorCheck(check, evaluate) {
   try {
@@ -154,7 +155,8 @@ export async function checkFiles(dataRoot, checks, baseline = new Map()) {
         continue;
       }
       const content = fs.readFileSync(abs, 'utf8');
-      const value = check.parse === 'json' ? JSON.parse(content) : { content };
+      const value = check.parse === 'json' ? JSON.parse(content)
+        : check.parse === 'frontmatter' ? { ...parsePage(content), content } : { content };
       for (const assertion of check.assertions ?? []) assertCase(value, assertion);
     }
   } catch (error) {

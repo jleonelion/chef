@@ -74,7 +74,7 @@
               }
             ]
           },
-          "parse": { "enum": ["text", "json", "pdf"] },
+          "parse": { "enum": ["text", "json", "pdf", "frontmatter"] },
           "assertions": { "$ref": "#/$defs/assertions" }
         }
       }

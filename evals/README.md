@@ -44,6 +44,8 @@ launching the next turn, using the same post-setup baseline as `files`.
 `unchanged` also accepts directories and compares all descendant file names
 and bytes, so it detects new, deleted and modified files. Checks are at turn
 boundaries, not after every tool call.
+File checks with `parse: "frontmatter"` expose `frontmatter`, `body` and raw
+`content`, using Chef's YAML reader to check the complete saved meal list.
 An optional `judge.turn` selects a one-based reply for the semantic judge;
 without it the final reply is judged. Dataset lint rejects out-of-range turns.
 
