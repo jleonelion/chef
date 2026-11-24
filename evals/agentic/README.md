@@ -105,3 +105,17 @@ Dietary denial assertions remain in force; the override-consent assertion
 mismatches in [#230](https://github.com/jleonelion/chef/issues/230) are separate.
 A Projector correction requires fresh exact-tree, full three-host 3/3 evidence,
 not retrospective reclassification of the old run.
+
+The batch-prep PDF assertions in
+[#226](https://github.com/jleonelion/chef/issues/226) incorrectly searched the
+extracted string array for separate planned-date lines. The renderer groups
+repeated recipe dates on one line. The corrected assertions match each recipe
+heading followed by its full planned-date line in the PDF reader's newline-joined
+`content`, while preserving the original `text` array and the valid-PDF,
+page-count, document-title and recipe checks. Regression PDFs cover grouped
+dates, missing and incorrect dates, wrong meal slots and dates attached to the
+wrong recipe. The original run PDFs were deleted, so this reproduction does
+not prove their full contents or retrospectively pass those three repetitions.
+Keep the archived failures unchanged. Fresh exact-tree, full three-host 3/3
+release evidence is still required; deterministic regressions do not replace
+it. No Chef release is needed for this eval-only change.
