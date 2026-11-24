@@ -1,8 +1,27 @@
 # Feedback and diagnostics: privacy
 
 What Chef records about its own runs, what a feedback report holds, where each copy lives, how
-long it is kept and how to delete it or turn it off. Chef never submits passive telemetry: only a
-report you approve leaves your machine. Every limit below is a starting value, not a measured one.
+long it is kept and how to delete it or turn it off. Chef never submits passive telemetry.
+Feedback is sent only as a report you preview and explicitly approve. Every limit below is a
+starting value, not a measured one.
+
+Here, "local" and "this machine" mean the host runtime's workspace, not necessarily your own
+computer. This guide covers Chef feedback, not the host's processing of your data or other
+[external integrations](usage.md#data-and-external-integrations). For data-root backups and
+restore, see the [usage guide](usage.md#backup-and-restore).
+
+## Report a problem
+
+Say "report a problem with Chef". Chef drafts a report with you and shows every line numbered.
+You can edit or remove optional items before replying "send" to the latest preview. On Muse,
+Chef first shows the destination, who sees the report, retention and size; Muse asks you to
+allow the host on the first send. Without a usable connector, approved reports stay in the
+feedback outbox and nothing is sent.
+
+To connect sending on Muse, say "connect Chef feedback". Setup creates a custom connector
+with provider `chef-feedback`, host `chef-feedback-intake.vercel.app` and custom header
+`X-Chef-Intake-Key`. Enter the install key in Muse's secure entry card, never in chat.
+Claude Code and Muse Code cannot send through this connector and save approved reports instead.
 
 ## What Chef records locally
 

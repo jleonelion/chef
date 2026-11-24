@@ -1,176 +1,103 @@
 # Chef
 
-A free, MIT-licensed kitchen-assistant skill pack: recipes, meal planning, shopping lists and
-pantry inventory. Chef keeps everything in one folder you own, the **data root**, as plain
-files under local git.
+## What is Chef?
 
-> Status: v1 includes setup, recipes, meal planning and logging, inventory, shopping lists,
-> batch-prep PDFs and advisory health goals.
+Chef is a free, MIT-licensed kitchen-assistant plugin with skills for recipes, meal planning,
+food inventory and shopping. Save a recipe from a link, pasted text or photo, plan meals around
+what you have, and turn the plan into a shopping list. The skills supply instructions and
+scripts; the agent in your host runs them. Muse installs the skills into its workspace, rather
+than using Claude Code's native plugin installer.
 
-## Install
+## Install in Muse
 
-### Muse Code / Claude Code
+Muse app support is experimental. This installation prompt has not yet been verified in a
+live Muse session. Chef's repository is public; Chef does not require connecting your GitHub
+account.
 
-```sh
-/plugin marketplace add jleonelion/chef
-/plugin install chef@chef
+Open Muse and paste this message:
+
+```text
+Install Chef, my kitchen assistant, from https://github.com/jleonelion/chef.
+Use public access without connecting my GitHub account. Check that your
+workspace has Node 20 or later and Git, and can download files and run scripts.
+Install the ready-to-use skills in plugins/chef/skills using your custom-skill
+installation instructions. Keep the repository clone beside your custom-skills
+folder for updates, separate from my household data.
+Then walk me through Chef setup and run its installation checks.
+Tell me whether every check passed. If anything is blocked or unsupported,
+stop and explain what I need to do rather than claiming installation succeeded.
 ```
 
-Or in one step on Claude Code 2.1.275 or later:
+Answer Muse's setup questions, or skip the optional ones. You can accept the default folder
+for your household data and skip integrations to get started. Tell Chef about any allergies
+or foods someone must never eat before planning meals.
 
-```sh
-/plugin install chef --marketplace jleonelion/chef
+Setup is complete only when Muse reports that every installation check passed. If it does
+not show the results, ask: "Verify my Chef install." These checks use a disposable sample
+without changing household records. A failed or blocked check is not a completed install.
+
+For failed checks or installation details, see the [installation guide](docs/installation.md).
+Using another host? See [Claude Code](docs/installation.md#claude-code) or
+[Muse Code](docs/installation.md#muse-code) installation.
+
+Your household data lives in a separate folder in the host's workspace, not necessarily on
+your own computer. Optional integrations can contact external services. Muse's "Help improve
+our AI models" setting may cover what you tell Chef; see [Muse's privacy policy](https://muse.ai/privacy)
+and the [data and integration guidance](docs/usage.md#data-and-external-integrations).
+
+Chef gives general information, not medical advice. It checks recipe ingredient wording
+against declared dietary constraints, but cannot see product labels, brands or cross-contact.
+Always check labels. See [dietary safety](docs/usage.md#dietary-safety).
+
+## Try it
+
+After setup, try these prompts in order with a recipe you want to cook:
+
+1. Paste the recipe text and ask: "Save this recipe."
+2. Ask: "Plan dinner tomorrow using the recipe I just saved. Leave the other meals unplanned."
+   Review the proposed meal and confirm it before Chef saves the plan.
+3. Ask: "Make a shopping list for that meal plan, subtracting what is already in my food inventory."
+
+Chef needs a saved recipe that passes your household's dietary checks. If it cannot use the
+recipe, review the reason before choosing another. No USDA key is needed for this workflow;
+without one, nutrition is marked "not computed", not estimated.
+
+For settings, backups, restore, verification and updates, use the [usage guide](docs/usage.md).
+
+## How it works
+
+Each skill combines instructions for the agent with scripts that read or update the data root.
+Host-specific runtime adapters handle runtime capabilities and integration requests. The
+data root holds household records and its own Git history, separately from the installed
+skills and Chef's source repository.
+
+```text
+Chef repository
+├── src/
+│   ├── skills/       Skill instructions and script source
+│   ├── lib/          Shared implementation
+│   ├── runtime/      Runtime adapters
+│   └── references/   Shared references, including the data schema
+├── plugins/chef/
+│   └── skills/       Generated, self-contained installable skills
+├── fixtures/         Synthetic household data for checks
+└── evals/            Evaluation suites and evidence
+
+Host workspace, separate from the install
+└── chef/             Household data root, default ~/workspace/chef
 ```
 
-Then ask: "Set up Chef."
+The build bundles source scripts and copies instructions and references into
+`plugins/chef/skills/`. Installed skills use that generated output, not `src/` directly.
+See the [architecture guide](docs/architecture.md) for execution flow, runtime integration and
+packaging, and the [data schema](src/references/data-root-schema.md) for stored formats.
 
-### Muse app (experimental)
+## Contribute or get help
 
-Give Muse's GitHub plugin access to `jleonelion/chef`, then ask Muse: "Install Chef from
-jleonelion/chef." Muse copies the skills and runs `chef-setup`.
+- [Contributing](CONTRIBUTING.md) covers setup, checks and the pull request workflow.
+- [Report a problem](docs/feedback-privacy.md#report-a-problem) through Chef, or
+  [open a public issue](https://github.com/jleonelion/chef/issues/new) without private household data.
+- [Usage guide](docs/usage.md) covers day-to-day operation and safety.
+- [Feedback and privacy](docs/feedback-privacy.md) explains diagnostics, consent and deletion.
 
-## Your data
-
-- Data root: `~/workspace/chef` by default. Set `CHEF_DATA_ROOT`, or name a folder during
-  setup, to put it elsewhere.
-- `settings.json` in the data root holds your per-user settings: units for shopping
-  lists, pantry amounts and the inventory page (and, if you opt in, recipe ingredients), the default
-  recipients for emailed shopping lists, which senders' receipt emails Chef may read from your
-  Gmail, and a calendar.
-  All are optional.
-  Git ignores the file, so it is never committed or pushed. Change settings by asking Chef
-  (`chef-setup`), not by editing the file; a broken file falls back to defaults with a warning.
-- Recipes are Markdown pages in `knowledge/wiki/recipes/`, each with an unchanged copy of its source in
-  `knowledge/raw/recipes/`. Every change Chef makes is a git commit in the data root. The format is
-  documented in `src/references/data-root-schema.md`.
-- New recipes get dietary flags (from the ingredient wording) and nutrition from USDA
-  FoodData Central. Nutrition needs a free USDA key, which you connect during setup: on Muse
-  as a custom connector, elsewhere as the `CHEF_USDA_FDC_KEY` environment variable. The key
-  never enters the data root or the chat. Without it, nutrition is marked "not computed";
-  Chef never estimates it.
-  Optional ingredients, garnishes and unmeasured salt and pepper are left out (and listed as
-  left out). A recipe can use another saved recipe, such as `1/2 cup [[basil-pesto]]`, and
-  counts its nutrition. The rules are in `src/references/data-root-schema.md` (Nutrition).
-  For a bulk re-enrich that hits USDA's rate limit, set `CHEF_FDC_CACHE=1` to keep USDA food
-  details in the data root's git-ignored `cache/` folder and reuse them. Off by default.
-- When Chef suggests a recipe, your yes or no is kept in `data/recipe-decisions/`, so a recipe
-  you turned down is not suggested again. "Always" and "never" rules live there too. Retiring a
-  recipe hides it from search without deleting it; you can bring it back.
-- Weekly meal plans are saved in `knowledge/wiki/meal-plans/` with a nutrition rollup. Every
-  candidate passes the household dietary gate. Chef emits calendar instructions only when the
-  `calendar` setting names a calendar; scripts never call a calendar API.
-- Health features stay off until you tell Chef a goal (`chef-health-goals`). Then your goal and
-  daily targets live in `data/health-goals/`, you can ask for a weekly progress report from your
-  meal log, and meal plans add advisory suggestions. Drop the goal and they go quiet again.
-- Back up the entire data root, including its local `.git` history, and test that you can restore
-  the copy. To move or restore one, ask Chef to adopt the backup; `chef-setup` clones it and drops
-  the remote.
-- Ask Chef to "verify my Chef install" any time; it never touches your data.
-
-## How updates work
-
-- Your install is a git clone of the Chef repository: on the Muse app, the one clone next to
-  `custom-skills/`; on Claude Code and Muse Code, the plugin folder.
-- Releases are semver git tags, such as `v1.1.0`.
-- The "Chef update notice" task (`check-update`) fetches tags from the clone's `origin` remote
-  and compares the newest one with the installed `plugin.json` version. It installs nothing.
-  A clone with no `origin` remote is refused, never reported as current.
-- Ask Chef to "update Chef" to install the newest release. Chef commits the data root, checks
-  out the release tag, makes the installed `chef-` skills match it and shows what changed. Data
-  and settings migrations wait for your confirmation; Chef then verifies the install. Updates
-  never delete data-root files.
-
-## Feedback and diagnostics
-
-Chef never sends anything on its own. Only a report you approve leaves your machine. Details
-are in [docs/feedback-privacy.md](docs/feedback-privacy.md).
-
-- **Local log.** Chef keeps a short technical log on this machine of its own script runs, the
-  invocation trace: which script ran, how long it took and how it ended. It never records what
-  you ask, recipes, or household, health or dietary details. It holds at most 200 runs, 256 KiB
-  and 14 days, in the data root's git-ignored `diagnostics/` folder. It has been on by default
-  since v1.2.0; v1.3.0 extends it from recipe search to all 10 skills and tells you about it
-  once on each machine. Say "show Chef's log" or "clear Chef's log", or turn it off (which also
-  deletes it) with "turn off Chef's log" (`chef-setup set --trace off`).
-- **Report a problem.** Say "report a problem with Chef". Chef drafts a report with you, shows
-  every line numbered so you can edit or remove any of them, and sends only after you reply
-  "send". On Muse it first shows where the report goes, who sees it, how long it is kept and its
-  size, and Muse asks you to allow the host on the first send.
-- **After an internal error**, Chef offers once to report it: at most once an hour for each
-  skill's error, and "no thanks" ends offers for that error. Turn offers off with "stop offering
-  to report errors" (`chef-setup set --post-error-offers off`). Offers need the log.
-- **Sending from Muse.** Say "connect Chef feedback" (`chef-setup`): a custom connector with
-  provider `chef-feedback`, host `chef-feedback-intake.vercel.app`, custom header
-  `X-Chef-Intake-Key`. Enter the install key in Muse's secure entry card, never in chat. Without
-  the connector, or on a runtime that cannot send such as Claude Code, "send" saves the approved
-  report in the data root's `diagnostics/outbox/` and sends nothing.
-- **Feedback closed.** If the maintainer closes feedback intake, "send" sends nothing: Chef says
-  so, keeps the approved report in `diagnostics/outbox/` and does not retry by itself.
-- **Receipts and delete.** A sent report's receipt (id and secret) is saved at 0600 under
-  `diagnostics/receipts/` for 90 days, as long as intake can hold the report, and never shown in
-  chat. Say "delete a report I sent" to pick one by date, class and id; after one confirmation
-  Chef deletes it from feedback intake and removes the receipt.
-- **Turn sending off** only in Muse's Settings > Connectors. The stored key outlives the
-  connector folder under `custom-connectors/`, and uninstalling Chef does not remove it.
-
-## Safety
-
-- Chef gives general information, not medical advice.
-- Chef never suggests a recipe that its ingredient list shows conflicts with a hard constraint you've declared, and leaves out recipes it can't verify. It can't see product labels, brands, or cross-contact, so always check labels.
-- Tell Chef about allergies and foods someone must never eat (during setup, or any time). Recipes that conflict, or that Chef hasn't checked, are left out and listed with the reason. You can mark a recipe you checked yourself as safe; that is saved with the date. Setting a constraint aside works for one plan only and is never saved.
-- Allergen flags cover the US major food allergens plus gluten. Anything else is matched on ingredient wording only.
-- Muse's "Help improve our AI models" setting may cover what you tell Chef; see
-  [Muse's privacy policy](https://muse.ai/privacy).
-
-## Development
-
-Requires Node 20+ and Bun.
-
-| Command | What it does |
-|---|---|
-| `bun run build` | Bundle `src/skills/*` into `plugins/chef/skills/*` (commit the result) |
-| `bun run check` | Skill-format lint, unit tests, eval dataset lint, tier1 evals, reproduction-case lint, migration regression |
-| `bun run evals:new <tier1\|agentic> <skill> <slug> [--topic <t>]` | Scaffold a lint-clean eval row; agentic repro rows also take `--expect-failure <check>` (see `evals/README.md`) |
-| `bun run evals:lint` | Lint `evals/tier1/cases/` and `evals/agentic/rows.json` (JSON Schema in `schemas/evals/`, `<skill>-<scenario>` ids, real skill names; see `evals/README.md`) |
-| `bun run repro` | Lint reproduction cases in `evals/repro/` (schema, test links, `known_failure` age, PII scan); see its README |
-| `bun run smoke` | Run tier1 against a copy of the built skills outside the repo |
-| `bun run hygiene` | Public-hygiene scan; set `CHEF_HYGIENE_DENY` to the deny-list patterns |
-| `bun run agentic` | Agentic suite: headless Claude Code with the built plugin, 3 reps per row (local only) |
-
-The agentic suite runs `claude -p` with `plugins/chef` loaded against a fresh copy of the fixture
-per rep, so it needs a signed-in Claude Code and spends real usage. It never runs in CI. Each row
-in `evals/agentic/rows.json` is one core flow, or a should-not-act check, with deterministic
-asserts only (skills fired, reply text, files written or not, script output, git state). The runner
-does not retry. It separates behavioral failures from invalid executions such as timeouts, rate
-limits, process failures and unusable transcripts. The uniquely named result file under
-`evals/agentic/archive/` includes the model id, plugin version, pass rates, classifications and
-invalid-rep details, and is attached to the release. `--rows <id,id>`,
-`--known-failures`, `--reps`, `--model` and `--out` narrow a run.
-
-Checks never read a raw transcript. A runtime's projector turns each turn into a Trajectory
-(`{response, skills, toolCalls, scriptRuns, error}`, documented in `evals/agentic/trajectory.mjs`).
-A transcript with an unparseable line or no result event gets a structured invalid-execution
-error, so it cannot count as a behavioral failure. A row may add
-`scripts: {required, forbidden, max}` (skill-relative paths such as `scripts/meal-logging.mjs`; `max`
-caps calls per path), checked over all turns of a rep; the should-not-act rows list their mutating
-scripts under `forbidden`. Projector tests use trimmed recordings in `evals/agentic/testdata/`
-(re-record steps are in `trajectory.test.mjs`).
-
-Layout: `src/` is the source, `plugins/chef/` is the built plugin, `fixtures/data-root/` is a
-synthetic data root used by tests, and `fixtures/schema-v<n>/` are frozen copies per
-released schema version (see `fixtures/README.md`). CI fails if the built output differs from a fresh build.
-
-Tests never call USDA. Tier1 runs off Muse with `CHEF_USDA_FDC_KEY` cleared; on a Muse VM with
-a USDA connector, the connector takes precedence and tier1 would reach the live API.
-
-The skill-format lint only accepts the 10 v1 skill names (`V1_SKILLS` in
-`scripts/lib/skill-format.mjs`) and reports which are still missing. It imports each source and
-built entry script after dependencies are installed, then checks its exported modes, flags and
-statuses against SKILL.md and the invocation fact registry. Missing skills become an error once
-the plugin version reaches 1.0.0, or with `node scripts/lint-skills.mjs --release`.
-
-Contributions: see `CONTRIBUTING.md`. No real names, addresses or personal emails anywhere. Use `example.com`.
-
-## License
-
-MIT
+[MIT license](LICENSE).
