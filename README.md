@@ -10,22 +10,31 @@ than using Claude Code's native plugin installer.
 
 ## Install in Muse
 
-Muse app support is experimental.
+Muse app support is experimental. This installation prompt has not yet been verified in a
+live Muse session. Chef's repository is public; Chef does not require connecting your GitHub
+account.
 
-You need Muse with its GitHub plugin able to access `jleonelion/chef`, and a workspace where
-Muse can run scripts and write files. Chef's scripts require Node 20 or later and Git in that
-workspace. Optional connectors are not required to get started.
+Open Muse and paste this message:
 
-1. Give Muse's GitHub plugin access to [jleonelion/chef](https://github.com/jleonelion/chef).
-2. Ask Muse: "Install Chef from jleonelion/chef." Muse copies the skills and runs Chef setup.
-   If onboarding does not start, ask: "Set up Chef."
-3. During setup, choose a data root or accept `~/workspace/chef`. Answer or skip the optional
-   questions about units, household members, dietary constraints and integrations. Tell Chef
-   about any allergies or foods someone must never eat before planning meals.
-4. Ask: "Verify my Chef install." Setup's `verify` result must have `status: pass`, with every
-   check marked `ok: true`. It checks Node, data-root permissions and schema, and bundled
-   scripts against a disposable sample, without changing household records. A failure is
-   not a completed install.
+```text
+Install Chef, my kitchen assistant, from https://github.com/jleonelion/chef.
+Use public access without connecting my GitHub account. Check that your
+workspace has Node 20 or later and Git, and can download files and run scripts.
+Install the ready-to-use skills in plugins/chef/skills using your custom-skill
+installation instructions. Keep the repository clone beside your custom-skills
+folder for updates, separate from my household data.
+Then walk me through Chef setup and run its installation checks.
+Tell me whether every check passed. If anything is blocked or unsupported,
+stop and explain what I need to do rather than claiming installation succeeded.
+```
+
+Answer Muse's setup questions, or skip the optional ones. You can accept the default folder
+for your household data and skip integrations to get started. Tell Chef about any allergies
+or foods someone must never eat before planning meals.
+
+Setup is complete only when Muse reports that every installation check passed. If it does
+not show the results, ask: "Verify my Chef install." These checks use a disposable sample
+without changing household records. A failed or blocked check is not a completed install.
 
 For failed checks or installation details, see the [installation guide](docs/installation.md).
 Using another host? See [Claude Code](docs/installation.md#claude-code) or

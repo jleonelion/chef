@@ -48,7 +48,14 @@ never in chat.
 
 ## Muse installation details
 
-Muse copies the built skills into its `custom-skills/` folder. Chef's updater expects
+The repository is public and can be fetched without GitHub credentials. Chef does not depend
+on Muse's GitHub plugin. Anonymous downloading still depends on Muse's network permissions,
+and installation needs a writable workspace with Node 20 or later and Git. The README's
+prompt asks Muse to check those requirements; it is not a verified live-install procedure.
+
+The marketplace JSON points to `plugins/chef/`; reading that file alone does not install or
+register skills in Muse. Muse must load the built skills using its custom-skill mechanism.
+Chef's Muse installation layout puts them in `custom-skills/`. Chef's updater expects
 underscore-style folder names there, such as `chef_setup`, and exactly one Chef repository
 clone next to `custom-skills/`. That clone must contain
 `plugins/chef/.claude-plugin/plugin.json` and retain its `origin` remote so Chef can find
