@@ -15,7 +15,7 @@ Do not gate a known-failure row. Reassess gated rows after harness, Projector, d
 
 ## Hosted workflow
 
-Scheduled and GitHub-hosted agentic promotion is disabled. The workflow supports manual dispatch only and does not run in PR or push CI. Do not use API credentials or separately billed APIs for release judging.
+Scheduled and GitHub-hosted agentic promotion is disabled. There is no active hosted workflow; do not treat prior hosted or scheduled results as local release evidence. Do not use API credentials or separately billed APIs for release judging.
 
 ## Local subscription-backed judge
 
