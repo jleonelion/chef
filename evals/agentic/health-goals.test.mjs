@@ -47,6 +47,8 @@ test('health-goal check-in rejects missing, incorrect or unassociated goal targe
     ['protein numeric prefix', valid.replace('90 g', '190 g')],
     ['different amount', valid.replace('2300 mg', '2300.5 mg')],
     ['malformed grouping', valid.replace('2300 mg', '23,00 mg')],
+    ['negative sodium', valid.replace('2300 mg', '-2300 mg')],
+    ['negative protein', valid.replace('90 g', '-90 g')],
     ['unsupported units', valid.replace('2300 mg', '2300 mcg')],
     ['body-weight units', valid.replace('90 g', '90 g/kg')],
     ['weekly instead of daily units', valid.replace('2300 mg', '2300 mg/week')],
