@@ -144,6 +144,45 @@ test('checkFiles parses PDFs and rejects empty PDF content', async (t) => {
   ] }]), /missing "Lemon Garlic Pasta"/);
 });
 
+test('batch-prep PDF assertions require the correct grouped dates and meal slots per recipe', async (t) => {
+  const root = dataRoot(t);
+  const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
+  const row = rows.find(({ id }) => id === 'chef-batch-prep-planning-pdf');
+  const file = path.join(root, row.files[0].path);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const pasta = '2026-01-19 dinner, 2026-01-21 dinner';
+  const stew = '2026-01-20 dinner';
+
+  for (const [name, pastaDates, stewDates, passes] of [
+    ['grouped dates', pasta, stew, true],
+    ['missing first pasta date', '2026-01-21 dinner', stew, false],
+    ['missing repeated pasta date', '2026-01-19 dinner', stew, false],
+    ['missing stew date', pasta, '', false],
+    ['incorrect pasta date', '2026-01-19 dinner, 2026-01-22 dinner', stew, false],
+    ['incorrect stew date', pasta, '2026-01-22 dinner', false],
+    ['incorrect pasta meal slot', '2026-01-19 dinner, 2026-01-21 lunch', stew, false],
+    ['incorrect stew meal slot', pasta, '2026-01-20 lunch', false],
+    ['dates assigned to the wrong recipe', stew, pasta, false],
+  ]) {
+    await t.test(name, async () => {
+      const pdf = await PDFDocument.create();
+      pdf.setTitle('Batch prep plan: week of 2026-01-19');
+      const font = await pdf.embedFont(StandardFonts.Helvetica);
+      for (const [title, dates] of [
+        ['Lemon Garlic Pasta', pastaDates],
+        ['Chickpea Spinach Stew', stewDates],
+      ]) {
+        pdf.addPage().drawText(`BATCH PREP PLAN\n${title}\nPlanned: ${dates}`, { font });
+      }
+      fs.writeFileSync(file, await pdf.save());
+
+      if (passes) await checkFiles(root, row.files);
+      else await assert.rejects(checkFiles(root, row.files), (error) =>
+        error.check === 'files' && error.message.startsWith('$.content:') && error.message.includes('does not match'));
+    });
+  }
+});
+
 test('checkFiles rejects inventory containing a reusable bag', async (t) => {
   const root = dataRoot(t);
   fs.writeFileSync(path.join(root, 'data', 'inventory.json'), JSON.stringify({

@@ -245,9 +245,8 @@
           { "path": "$.title", "equals": "Batch prep plan: week of 2026-01-19" },
           { "path": "$.text", "includes": "Lemon Garlic Pasta" },
           { "path": "$.text", "includes": "Chickpea Spinach Stew" },
-          { "path": "$.text", "includes": "Planned: 2026-01-19 dinner" },
-          { "path": "$.text", "includes": "Planned: 2026-01-20 dinner" },
-          { "path": "$.text", "includes": "Planned: 2026-01-21 dinner" }
+          { "path": "$.content", "matches": "(?:^|\\n)Lemon Garlic Pasta\\nPlanned: 2026-01-19 dinner, 2026-01-21 dinner(?:\\n|$)" },
+          { "path": "$.content", "matches": "(?:^|\\n)Chickpea Spinach Stew\\nPlanned: 2026-01-20 dinner(?:\\n|$)" }
         ]
       }
     ],
