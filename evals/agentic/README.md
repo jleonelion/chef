@@ -106,7 +106,8 @@ The same run missed brace-expanded skill reads, tracked in
 identify those reads but cannot recover deleted data-root snapshots or establish
 a new release pass. Keep the archived summary and judge verdicts unchanged.
 Dietary denial assertions remain in force; the override-consent assertion
-mismatches in [#230](https://github.com/jleonelion/chef/issues/230) are separate.
+mismatches in [#230](https://github.com/jleonelion/chef/issues/230) required the
+separate correction below.
 A Projector correction requires fresh exact-tree, full three-host 3/3 evidence,
 not retrospective reclassification of the old run.
 
@@ -165,3 +166,36 @@ three archived failures unchanged. This eval-only correction needs no Chef
 release and does not establish a release pass. Reassess release evidence on the
 eventual evaluated tree with fresh exact-tree, full three-host 3/3 evidence.
 No paid agents or judges were rerun for this correction.
+
+The dietary override row in
+[#230](https://github.com/jleonelion/chef/issues/230) rejected equivalent
+set-aside wording and the documented read-only `today --date` lookup.
+Its first reply now has a semantic target, selected with `judge.turn: 1`,
+requiring the named recipe, dairy conflict, no-save explanation and explicit
+consent from Alex for this dinner only. The judge must reject broad, permanent,
+implied or third-party permission. The literal word `override` is not required.
+
+Deterministic checks still forbid planning and every override flag before
+eligible assent, including overrides on recipe searches. The conversation
+includes an undecided reply and Sam attempting to approve Alex's exception
+before Alex confirms. Protected plan, household, data and settings state is
+checked after each pre-consent turn. After assent the row requires the intended
+date, dinner, recipe and exactly `Alex Example:dairy`, unchanged standing rules
+and inventory, and no saved override metadata. A later dinner request must not
+reuse consent; a final unoverridden search must still exclude the recipe.
+Turn-boundary checks catch changes that a later turn restores, but cannot
+observe writes restored within a single turn.
+
+Synthetic trajectory regressions run the real lookup, planning and search
+scripts. They cover early writes, missing assent, wrong-member assent,
+early search overrides, persisted metadata and later reuse. A scripted judge
+transport test verifies reply selection, not live semantic-judge accuracy.
+The old sandboxes are gone; no original per-turn content can be reconstructed.
+Keep all archived failures unchanged, including those also affected by #224.
+No Chef release or `semver:` label is needed for this eval-only change.
+No live agents or judges were rerun. Fresh exact-tree, full three-host 3/3
+release evidence still needs authorization; deterministic regressions do not
+establish a release pass or retrospectively pass the old runs.
+The complete saved meal list must contain exactly the approved January 19
+dinner, both immediately after assent and finally. An extra conflicting dinner
+in the same weekly file fails even though the January 19 lookup still succeeds.

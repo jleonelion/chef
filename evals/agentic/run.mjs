@@ -8,7 +8,7 @@
 //   later turns resume the session), responses (assertions against each turn's final reply), skills,
 //   scripts ({required, forbidden, max, requiredCalls, forbiddenCalls}: skill-relative paths like
 //   scripts/<name>; call args match by prefix; checked over all turns), turnScripts (the same checks,
-//   one entry per turn), tools ({forbidden}: exact Trajectory tool names,
+//   one entry per turn), turnFiles (file checks at each turn boundary), tools ({forbidden}: exact Trajectory tool names,
 //   checked over all turns), files (see report.mjs checkFiles), git ({headUnchanged, clean}), after (scripts run last, with asserts).
 //   Turns, commands and stdin expand {skills}, {data_root} and {tmp}; rows must not depend on the wall-clock date (the lint rejects {today}).
 //   repro / known_failure / expect_failure (see evals/repro/README.md): a known_failure row passes
@@ -51,21 +51,20 @@ function script(rep, step) {
   return JSON.parse(result.stdout);
 }
 
-async function runRep(row, number, { harness, model, judgeModel, judgeCall, logDir }) {
+export async function runRep(row, number, { harness, model, judgeModel, judgeCall, logDir }) {
   let rep;
   const run = { row: row.id, rep: number, outcome: 'invalid', cost_usd: 0, skills: [], scriptRuns: [], toolCalls: [] };
   const failures = [];
-  let lastPrompt = '';
-  let lastResponse = '';
+  let judgePrompt = '';
+  let judgeResponse = '';
   try {
     rep = prepare(row, harness);
     for (const step of row.setup ?? []) script(rep, step);
-    const fileBaseline = snapshotFiles(rep.dataRoot, row.files);
+    const fileBaseline = snapshotFiles(rep.dataRoot, [...(row.files ?? []), ...(row.turnFiles ?? []).flat()]);
     const beforeHead = git(rep.dataRoot, 'rev-parse', 'HEAD');
     const session = randomUUID();
     for (const [index, entry] of row.turns.entries()) {
       const prompt = typeof entry === 'string' ? entry : readInput(entry.turnFile).toString('utf8');
-      lastPrompt = rep.expand(prompt);
       const launched = await rep.runTurn({ prompt: rep.expand(prompt), session, resume: index > 0, model, timeoutMs: TURN_TIMEOUT_MS });
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.${launched.ext}`), launched.transcript);
       if (launched.stderr) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), launched.stderr);
@@ -79,10 +78,21 @@ async function runRep(row, number, { harness, model, judgeModel, judgeCall, logD
         const cause = { ...executionError, message: `turn ${index + 1}: ${executionError.message} (see ${row.id}-${number}-${index + 1}.${launched.ext})` };
         throw Object.assign(new Error(cause.message), { invalid: cause });
       }
-      lastResponse = turn.response;
+      if (index + 1 === (row.judge?.turn ?? row.turns.length)) {
+        judgePrompt = rep.expand(prompt);
+        judgeResponse = turn.response;
+      }
       await recordBehaviorFailure(failures, () => checkResponse(turn.response, row.responses?.[index]));
       await recordBehaviorFailure(failures, () => checkReplyDenyList(turn.response));
       await recordBehaviorFailure(failures, () => checkScripts(turn.scriptRuns, row.turnScripts?.[index]));
+      await recordBehaviorFailure(failures, async () => {
+        try {
+          await checkFiles(rep.dataRoot, row.turnFiles?.[index], fileBaseline);
+        } catch (error) {
+          error.message = `turn ${index + 1}: ${error.message}`;
+          throw error;
+        }
+      });
     }
     await recordBehaviorFailure(failures, () => checkSkills(run.skills, row));
     await recordBehaviorFailure(failures, () => checkScripts(run.scriptRuns, row.scripts));
@@ -106,9 +116,9 @@ async function runRep(row, number, { harness, model, judgeModel, judgeCall, logD
         if (!judgeCall) throw new Error(`judge model is required (use --judge-model or CHEF_EVAL_JUDGE_MODEL)`);
         const result = await judgeReply({
           callJudge: judgeCall,
-          prompt: lastPrompt,
+          prompt: judgePrompt,
           expected: row.judge.expected,
-          response: lastResponse,
+          response: judgeResponse,
           threshold: row.judge.threshold,
         });
         run.judge = result;
@@ -217,9 +227,11 @@ async function main() {
   process.exitCode = exitCodeFor(result);
 }
 
-try {
-  await main();
-} catch (error) {
-  console.error(`Agentic suite INVALID: ${harnessInvalid(error).message}`);
-  process.exitCode = 2;
+if (import.meta.main ?? process.argv[1] === import.meta.filename) {
+  try {
+    await main();
+  } catch (error) {
+    console.error(`Agentic suite INVALID: ${harnessInvalid(error).message}`);
+    process.exitCode = 2;
+  }
 }

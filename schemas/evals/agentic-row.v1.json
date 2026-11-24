@@ -24,6 +24,7 @@
       "required": ["expected", "threshold"],
       "properties": {
         "expected": { "type": "string", "minLength": 1 },
+        "turn": { "type": "integer", "minimum": 1, "description": "One-based turn whose reply is judged; defaults to the final turn." },
         "threshold": { "type": "number", "minimum": 0, "maximum": 1 }
       }
     },
@@ -41,6 +42,7 @@
     },
     "scripts": { "$ref": "#/$defs/scriptChecks" },
     "turnScripts": { "type": "array", "items": { "$ref": "#/$defs/scriptChecks" } },
+    "turnFiles": { "type": "array", "items": { "$ref": "#/properties/files" } },
     "tools": {
       "type": "object",
       "additionalProperties": false,
@@ -59,7 +61,7 @@
         "properties": {
           "path": { "type": "string", "minLength": 1 },
           "absent": { "type": "boolean" },
-          "unchanged": { "type": "boolean", "description": "Require the file's bytes or absence to match its state after setup, before the first agent turn." },
+          "unchanged": { "type": "boolean", "description": "Require bytes, recursive directory contents or absence to match the post-setup state before the first agent turn." },
           "pattern": { "type": "string", "description": "Filter count checks by a regular expression over relative file names; assertions apply to each matched file's text." },
           "count": {
             "oneOf": [
@@ -72,7 +74,7 @@
               }
             ]
           },
-          "parse": { "enum": ["text", "json", "pdf"] },
+          "parse": { "enum": ["text", "json", "pdf", "frontmatter"] },
           "assertions": { "$ref": "#/$defs/assertions" }
         }
       }
@@ -107,7 +109,12 @@
       "required": ["script", "args"],
       "properties": {
         "script": { "type": "string", "pattern": "^scripts/[^/]+$" },
-        "args": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        "args": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "flags": {
+          "type": "object",
+          "propertyNames": { "pattern": "^--[a-z][a-z-]*$" },
+          "additionalProperties": { "type": "array", "items": { "type": "string" } }
+        }
       }
     },
     "scriptChecks": {
@@ -118,7 +125,13 @@
         "forbidden": { "$ref": "#/$defs/scriptPaths" },
         "max": { "type": "object", "propertyNames": { "pattern": "^scripts/[^/]+$" }, "additionalProperties": { "type": "integer", "minimum": 0 } },
         "requiredCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } },
-        "forbiddenCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } }
+        "forbiddenCalls": { "type": "array", "items": { "$ref": "#/$defs/scriptCall" } },
+        "forbiddenFlags": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^--[a-z][a-z-]*$" } },
+        "allowedFlagValues": {
+          "type": "object",
+          "propertyNames": { "pattern": "^--[a-z][a-z-]*$" },
+          "additionalProperties": { "type": "array", "uniqueItems": true, "items": { "type": "string" } }
+        }
       }
     },
     "skillNames": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
