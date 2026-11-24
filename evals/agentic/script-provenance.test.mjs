@@ -185,6 +185,47 @@ test('syntax-only inspection cannot satisfy required entrypoints or argument pre
   }
 });
 
+test('inline eval and print inspection cannot satisfy installed execution requirements', async (t) => {
+  for (const [runtime, flags] of [
+    ['node', ['-e ', '--eval ', '--eval=', '-p ', '--print ', '-pe ']],
+    ['bun', ['-e ', '--eval ', '--eval=', '-p ', '--print ', '--print=']],
+  ]) {
+    for (const flag of flags) {
+      await t.test(`${runtime} ${flag}expression`, async (t) => {
+        const { run } = await replay(t, ({ entrypoint, execute }) => {
+          const expression = "'require(\"node:fs\").readFileSync(process.argv[1]).length'";
+          const command = `${runtime} ${flag}${expression} ${JSON.stringify(entrypoint)} build`;
+          execute(command);
+          return command;
+        }, {
+          scenario: {
+            ...row,
+            scripts: { requiredCalls: [{ script: 'scripts/shopping-lists.mjs', args: ['build'] }] },
+          },
+        });
+        assert.equal(run.outcome, 'failed', JSON.stringify(run));
+        assert.equal(run.failure.check, 'scripts');
+        assert.match(run.failure.message, /provenance not established/);
+      });
+    }
+  }
+});
+
+test('inline wrappers still count genuine installed entrypoints launched as child processes', async (t) => {
+  for (const runtime of ['node', 'bun']) {
+    await t.test(runtime, async (t) => {
+      const { run } = await replay(t, ({ entrypoint, execute }) => {
+        const expression = "'require(\"node:child_process\").execFileSync(process.execPath, process.argv.slice(1), { env: process.env, stdio: \"inherit\" })'";
+        const command = `${runtime} -e ${expression} ${JSON.stringify(entrypoint)} build --week-start 2026-01-19`;
+        assert.equal(JSON.parse(execute(command)).delivery.mode, 'chat');
+        return command;
+      });
+      assert.equal(run.outcome, 'pass', JSON.stringify(run));
+      assert.equal(run.scriptRuns.filter(({ script }) => script === 'scripts/shopping-lists.mjs').length, 1);
+    });
+  }
+});
+
 test('altered external copy through a shell variable is observed but never accepted', async (t) => {
   const { run, records } = await replay(t, ({ entrypoint, workdir, execute }) => {
     const copy = path.join(workdir, 'shopping-lists.mjs');

@@ -100,6 +100,11 @@ An external copy never qualifies, even with the same name or identical bytes.
 An unmatched command-text candidate fails the `scripts` check with an explicit
 provenance gap. A missing required observation also reports that gap.
 Read-only inspection, including `node --check` and `node -c`, is not execution.
+Node and Bun inline eval/print modes (`-e`, `--eval`, `-p`, `--print`) also
+cannot establish direct entrypoint execution, even when their arguments name
+an unchanged installed script or their expressions import it.
+Genuine entrypoint executions launched as child processes by inline wrappers
+still count.
 Setup and post-run invocations do not
 count as agent calls. Internal subprocesses of an installed Chef script are
 integrity-checked but do not inflate its agent invocation counts.

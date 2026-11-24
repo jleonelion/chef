@@ -8,17 +8,18 @@ if (process.env.CHEF_EVAL_EXECUTION_DIR && process.argv[1]) {
   const record = {
     entrypoint: path.resolve(process.argv[1]), args: process.argv.slice(2),
     startedAt: process.hrtime.bigint().toString(),
-    nested: process.env.CHEF_EVAL_PARENT_SCRIPT === process.env.CHEF_EVAL_SKILLS_DIR,
-    syntaxOnly: process.execArgv.some((arg) => arg === '--check' || arg === '-c'),
+    nested: process.env.CHEF_EVAL_PARENT_SKILLS_ROOT === process.env.CHEF_EVAL_SKILLS_DIR,
+    nonEntrypointMode: process.execArgv.some((arg) => arg === '--check' || arg === '-c'
+      || /^(?:--(?:eval|print)(?:=|$)|-[ep])/.test(arg)),
   };
   try {
     record.realpath = fs.realpathSync(record.entrypoint);
     record.sha256 = createHash('sha256').update(fs.readFileSync(record.realpath)).digest('hex');
     const relative = path.relative(fs.realpathSync(process.env.CHEF_EVAL_SKILLS_DIR), record.realpath);
-    if (/^chef-[\w-]+\/scripts\/[\w-]+\.(?:mjs|js|sh|py)$/.test(relative)) {
+    if (!record.nonEntrypointMode && /^chef-[\w-]+\/scripts\/[\w-]+\.(?:mjs|js|sh|py)$/.test(relative)) {
       record.script = relative.slice(relative.indexOf('/') + 1);
       record.pack = snapshot(process.env.CHEF_EVAL_SKILLS_DIR);
-      process.env.CHEF_EVAL_PARENT_SCRIPT = process.env.CHEF_EVAL_SKILLS_DIR;
+      process.env.CHEF_EVAL_PARENT_SKILLS_ROOT = process.env.CHEF_EVAL_SKILLS_DIR;
     }
   } catch (error) {
     record.error = error.message;
