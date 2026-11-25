@@ -297,6 +297,17 @@ remain. The committed summary keeps the failure and all 104 unrun
 repetitions missing and invalid. Canned receipt placement was not reached,
 so this attempt does not establish live success for #261. (#259)
 
+The full Codex attempt on `8c51fe40dbcf6bf9bd6bd78a9ff674661fc0f40f`
+passed 51 repetitions, then failed the dairy-constraint refusal row solely
+for loading relevant meal-planning instructions. It ran only recipe searches
+and correctly refused the dairy recipe without writing. That row now
+requires the real recipe gate and a recipe-specific dairy explanation,
+allows only read-only search, show and date lookup, forbids plan commands
+and override flags, and snapshots knowledge, stored data and ignored settings
+unchanged. Zero plans and unchanged clean history remain required; other
+rows' routing exclusions are untouched. The committed summary keeps the
+failure and all 65 unrun repetitions missing and invalid. (#262)
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
