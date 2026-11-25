@@ -206,6 +206,18 @@ The shared assertion helper is included in relevant-tree provenance checks,
 so changing its interpretation invalidates evidence just like changing a row.
 Fresh full-dataset evidence is required.
 
+The canned-receipt repetition on
+`8ec10d787af6012a7920f8b46c14aa9f5d3b50e3` chose
+`pantry.canned_goods.canned_red_lentils`. The skill assigns target selection
+to the model, and the schema permits snake-case category names rather than
+an enumerated category list. The shipped `pantry.canned` placement is only
+a fallback for untargeted lines. Both receipt rows now recognize explicitly
+named `canned` and `canned_*` categories: the canned row requires one and
+the dry row rejects them. This also closes the dry row's previous false
+acceptance of `canned_goods`. All name, quantity, unit, singleton, count,
+non-food, record, health and history checks remain. Keep the failed partial
+summary unchanged; fresh full-dataset evidence is required.
+
 The sender-refusal failure in
 [#233](https://github.com/jleonelion/chef/issues/233) substituted missing
 authentication for the returned untrusted-sender cause. The skill now separates

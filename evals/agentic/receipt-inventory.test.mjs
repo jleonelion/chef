@@ -60,11 +60,14 @@ test('dry receipt eval accepts one pound of lentils in legumes or grains', async
   }
 });
 
-test('canned receipt eval requires one can of lentils in canned', async (t) => {
+test('canned receipt eval requires one can of lentils in a canned pantry category', async (t) => {
   const row = rows.find(({ id }) => id === 'chef-food-inventory-canned-receipt-to-inventory');
   assert.ok(row, 'the canned receipt scenario exists');
-  for (const name of ['red lentils', 'canned red lentils']) {
-    const { dataRoot, env } = prepareReceipt(t, row, 'canned', 'can', name);
+  for (const [category, name] of [
+    ['canned', 'red lentils'], ['canned', 'canned red lentils'],
+    ['canned_goods', 'canned red lentils'],
+  ]) {
+    const { dataRoot, env } = prepareReceipt(t, row, category, 'can', name);
     await checkFiles(dataRoot, row.files);
     checkAfter(row, env);
     assertGitState({
@@ -77,8 +80,8 @@ test('canned receipt eval requires one can of lentils in canned', async (t) => {
 });
 
 for (const scenario of [
-  { id: 'chef-food-inventory-receipt-to-inventory', category: 'legumes', unit: 'lb', wrongCategory: 'canned', qualified: 'dry red lentils', wrongForm: 'canned red lentils' },
-  { id: 'chef-food-inventory-canned-receipt-to-inventory', category: 'canned', unit: 'can', wrongCategory: 'legumes', qualified: 'canned red lentils', wrongForm: 'dry red lentils' },
+  { id: 'chef-food-inventory-receipt-to-inventory', category: 'legumes', unit: 'lb', wrongCategories: ['canned', 'canned_goods', 'canned_food'], qualified: 'dry red lentils', wrongForm: 'canned red lentils' },
+  { id: 'chef-food-inventory-canned-receipt-to-inventory', category: 'canned', unit: 'can', wrongCategories: ['legumes', 'grains'], qualified: 'canned red lentils', wrongForm: 'dry red lentils' },
 ]) {
   test(`${scenario.id} rejects incorrect lentils and non-food inventory`, async (t) => {
     const row = rows.find(({ id }) => id === scenario.id);
@@ -91,7 +94,11 @@ for (const scenario of [
     const lentils = view.items.find(({ name }) => name === 'red lentils');
     const cases = [
       ['missing lentils', (output) => { output.items = output.items.filter(({ name }) => name !== 'red lentils'); }, /red lentils.*path/],
-      ['wrong category', (output) => { output.items.find(({ name }) => name === 'red lentils').path = `pantry.${scenario.wrongCategory}.red_lentils`; }, /red lentils.*path/],
+      ...scenario.wrongCategories.map((category) => [
+        `wrong category ${category}`,
+        (output) => { output.items.find(({ name }) => name === 'red lentils').path = `pantry.${category}.red_lentils`; },
+        /red lentils.*path/,
+      ]),
       ['wrong amount', (output) => { output.items.find(({ name }) => name === 'red lentils').amount = 2; }, /red lentils.*amount/],
       ['wrong unit', (output) => { output.items.find(({ name }) => name === 'red lentils').unit = scenario.unit === 'lb' ? 'can' : 'lb'; }, /red lentils.*unit/],
       ['wrong storage form', (output) => { output.items.find(({ name }) => name === 'red lentils').name = scenario.wrongForm; }, /red lentils.*path/],
