@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
 import { parseJudgeVerdict, judgeReply, createJudgeCacheKey, createSubscriptionJudgeCall } from './judge.mjs';
+import { TRACE_NOTICE } from '../../src/lib/diagnostics/trace-notice.mjs';
 
 const pastedRecipeRow = JSON.parse(fs.readFileSync(new URL('./rows.json', import.meta.url), 'utf8'))
   .find(({ id }) => id === 'chef-add-recipe-pasted-text');
@@ -68,6 +69,8 @@ test('pasted-recipe judge grades the reply, not storage proof or unsolicited fin
       assert.match(prompt, /save confirmation.*enrichment/i);
       assert.match(prompt, /findability.*checked mechanically/i);
       assert.match(prompt, /do not require.*how to find.*ingredients or steps/i);
+      assert.match(prompt, /do not penalize.*required first-use notice/i);
+      assert.ok(prompt.includes(TRACE_NOTICE));
       return '{"score":1,"passes":true,"reasoning":"reply meets target","missing_critical_details":[],"unexpected_problems":[],"confidence":1}';
     },
   });
