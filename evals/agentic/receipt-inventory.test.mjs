@@ -11,7 +11,7 @@ const repo = path.resolve(import.meta.dirname, '../..');
 const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
 const script = path.join(repo, 'src/skills/chef-food-inventory/scripts/inventory.mjs');
 
-function prepareReceipt(t, row, category, unit, name = 'red lentils') {
+function prepareReceipt(t, row, category, unit, name = 'red lentils', bananaTarget = 'pantry.produce') {
   const { tmp, dataRoot } = prepareSandbox({
     prefix: 'chef-receipt-check',
     id: row.id,
@@ -24,7 +24,7 @@ function prepareReceipt(t, row, category, unit, name = 'red lentils') {
   const transcript = path.join(tmp, 'transcript.txt');
   fs.writeFileSync(transcript, [
     '- 1 gal whole milk - $3.49',
-    '- 2.1 lb bananas - $1.26',
+    `- 2.1 lb bananas - $1.26 -> ${bananaTarget}`,
     `- 1 ${unit} ${name} - $2.19 -> pantry.${category}`,
   ].join('\n'));
   const result = JSON.parse(execFileSync(process.execPath, [
@@ -44,11 +44,12 @@ function checkAfter(row, env) {
 
 test('dry receipt eval accepts one pound of lentils in legumes or grains', async (t) => {
   const row = rows.find(({ id }) => id === 'chef-food-inventory-receipt-to-inventory');
-  for (const [category, name] of [
+  for (const [category, name, bananaTarget] of [
     ['legumes', 'red lentils'], ['grains', 'red lentils'],
     ['legumes', 'dry red lentils'], ['grains', 'dry red lentils'],
+    ['legumes', 'dry red lentils', 'fridge.produce'],
   ]) {
-    const { dataRoot, env } = prepareReceipt(t, row, category, 'lb', name);
+    const { dataRoot, env } = prepareReceipt(t, row, category, 'lb', name, bananaTarget);
     await checkFiles(dataRoot, row.files);
     checkAfter(row, env);
     assertGitState({
@@ -63,11 +64,12 @@ test('dry receipt eval accepts one pound of lentils in legumes or grains', async
 test('canned receipt eval requires one can of lentils in a canned pantry category', async (t) => {
   const row = rows.find(({ id }) => id === 'chef-food-inventory-canned-receipt-to-inventory');
   assert.ok(row, 'the canned receipt scenario exists');
-  for (const [category, name] of [
+  for (const [category, name, bananaTarget] of [
     ['canned', 'red lentils'], ['canned', 'canned red lentils'],
     ['canned_goods', 'canned red lentils'],
+    ['canned', 'canned red lentils', 'fridge.produce'],
   ]) {
-    const { dataRoot, env } = prepareReceipt(t, row, category, 'can', name);
+    const { dataRoot, env } = prepareReceipt(t, row, category, 'can', name, bananaTarget);
     await checkFiles(dataRoot, row.files);
     checkAfter(row, env);
     assertGitState({
@@ -104,6 +106,11 @@ for (const scenario of [
       ['wrong storage form', (output) => { output.items.find(({ name }) => name === 'red lentils').name = scenario.wrongForm; }, /red lentils.*path/],
       ['wrong lentil variety', (output) => { output.items.find(({ name }) => name === 'red lentils').name = 'green lentils'; }, /red lentils.*path/],
       ['duplicate lentils under another name', (output) => { output.items.push({ ...lentils, name: scenario.qualified, path: `pantry.other.${scenario.qualified.replaceAll(' ', '_')}` }); }, /red lentils.*path/],
+      ['missing bananas', (output) => { output.items = output.items.filter(({ name }) => name !== 'bananas'); }, /bananas.*path/],
+      ['wrong banana amount', (output) => { output.items.find(({ name }) => name === 'bananas').amount = 2; }, /bananas.*amount/],
+      ['wrong banana unit', (output) => { output.items.find(({ name }) => name === 'bananas').unit = 'kg'; }, /bananas.*unit/],
+      ['unexpected frozen bananas', (output) => { output.items.find(({ name }) => name === 'bananas').path = 'freezer.produce.bananas'; }, /bananas.*path/],
+      ['duplicate bananas', (output) => { output.items.push({ ...output.items.find(({ name }) => name === 'bananas'), path: 'fridge.produce.bananas' }); }, /bananas.*path/],
       ['reusable bag under another name', (output) => { output.items.push({ name: 'Reusable Bag', path: 'pantry.other.reusable_bag', amount: 1, unit: 'each' }); }, /items\.length/],
     ];
     for (const location of ['pantry', 'fridge', 'freezer']) {
