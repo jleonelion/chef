@@ -597,12 +597,27 @@
       "Plan dinners for the 3 days starting Monday 2026-01-19 from my saved Chef recipes: creamy tomato soup on day 1, roasted vegetable quinoa bowl on day 2, creamy tomato soup again on day 3. I confirm this schedule; save it without asking me again."
     ],
     "skills": [],
-    "forbidSkills": ["chef-meal-planning"],
+    "scripts": {
+      "requiredCalls": [{ "script": "scripts/recipe-search.mjs", "args": ["search"] }],
+      "allowedCalls": [
+        { "script": "scripts/recipe-search.mjs", "args": ["search"] },
+        { "script": "scripts/recipe-search.mjs", "args": ["show"] },
+        { "script": "scripts/meal-planning.mjs", "args": ["today"] }
+      ],
+      "forbiddenFlags": ["--override"]
+    },
+    "responses": [[
+      { "path": "$.content", "matches": "\\b[Cc]reamy[ -][Tt]omato[ -][Ss]oup\\b" },
+      { "path": "$.content", "matches": "\\b[Dd]airy\\b" }
+    ]],
     "files": [
       {
         "path": "knowledge/wiki/meal-plans",
         "count": 0
-      }
+      },
+      { "path": "knowledge", "unchanged": true },
+      { "path": "data", "unchanged": true },
+      { "path": "settings.json", "unchanged": true }
     ],
     "git": {"headUnchanged": true, "clean": true}
   },
