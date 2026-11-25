@@ -1,4 +1,4 @@
-// Codex launcher: `codex exec --json`, built skills installed under a per-rep CODEX_HOME/skills.
+// Codex launcher: `codex exec --json`, built skills installed under a per-rep .agents/skills.
 // Contract: see evals/README.md.
 //
 // Isolation: CODEX_HOME and HOME both point into the rep's workdir, --ignore-user-config and
@@ -16,7 +16,7 @@ import { projectCodex } from '../trajectory.mjs';
 import { collectProcess } from './process.mjs';
 
 export const name = 'codex';
-export const launcherVersion = 3;
+export const launcherVersion = 4;
 export const project = projectCodex;
 
 export function detect() {
@@ -31,7 +31,8 @@ export function prepare({ pluginDir, workdir, env }) {
   const auth = path.join(process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex'), 'auth.json');
   if (!fs.existsSync(auth)) throw new Error('codex is not logged in (no auth.json); run `codex login`');
   const codexHome = path.join(workdir, 'codex-home');
-  const skillsDir = path.join(codexHome, 'skills');
+  // Keep Chef separate from the system skills Codex creates under CODEX_HOME/skills.
+  const skillsDir = path.join(workdir, '.agents', 'skills');
   fs.mkdirSync(path.join(workdir, 'home'), { recursive: true });
   fs.mkdirSync(codexHome, { recursive: true });
   fs.copyFileSync(auth, path.join(codexHome, 'auth.json'));
