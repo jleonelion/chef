@@ -4,6 +4,9 @@ import assert from 'node:assert/strict';
 
 function step(current, segment, expression) {
   const filter = segment.match(/^\[\?\(@\.?([^=]+)=='([^']+)'\)\]$/);
+  const choiceFilter = segment.match(/^\[\?\(@\.?([\w-]+) in (\[.*\])\)\]$/);
+  const choices = choiceFilter && JSON.parse(choiceFilter[2]);
+  if (choiceFilter) assert(Array.isArray(choices) && choices.every((choice) => typeof choice === 'string'), `${expression}: filter choices must be a string array`);
   const arrayProp = segment.match(/^([^[]+)\[\*\]$/);
   const indexProp = segment.match(/^([^[]+)\[(\d+)\]$/);
   const next = [];
@@ -12,6 +15,9 @@ function step(current, segment, expression) {
     else if (filter) {
       assert(Array.isArray(item), `${expression}: filter target is not an array`);
       next.push(...item.filter((entry) => String(entry[filter[1]]) === filter[2]));
+    } else if (choiceFilter) {
+      assert(Array.isArray(item), `${expression}: filter target is not an array`);
+      next.push(...item.filter((entry) => choices.includes(String(entry[choiceFilter[1]]))));
     } else if (arrayProp) {
       assert(Array.isArray(item[arrayProp[1]]), `${expression}: ${arrayProp[1]} is not an array`);
       next.push(...item[arrayProp[1]]);

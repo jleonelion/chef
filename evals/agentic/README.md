@@ -188,6 +188,24 @@ and fixture corrections require fresh exact-tree, full three-host 3/3 release
 evidence; deterministic checks do not replace it or resolve the other timeouts.
 No Chef release is needed for this eval-only change.
 
+The dry-receipt repetition on `eab060747120b82c56c5f6f30b5890ae4a7e405d`
+stored one pound as `pantry.legumes.dry_red_lentils`. The fixture says
+`DRY RED LENTILS`, and the skill asks for plain item names without requiring
+the storage-form adjective to be dropped. The old exact-name selector could
+not select that entry. Dry and canned rows now accept only their explicit
+plain-name variants, `red lentils` or respectively `dry red lentils` and
+`canned red lentils`, with matching key variants. Wrong forms, varieties,
+locations, quantities and units still fail. Exactly seven entries, no bag,
+purchase and raw receipt records, health and clean-history checks remain.
+The failed partial summary is unchanged and is not release acceptance.
+The assertion query supports finite string choices with
+`$.items.[?(@name in ["red lentils","dry red lentils"])].path`;
+multiple selected entries stay multiple and fail singleton assertions.
+Real-script regressions reproduce the original failure and test both forms.
+The shared assertion helper is included in relevant-tree provenance checks,
+so changing its interpretation invalidates evidence just like changing a row.
+Fresh full-dataset evidence is required.
+
 The sender-refusal failure in
 [#233](https://github.com/jleonelion/chef/issues/233) substituted missing
 authentication for the returned untrusted-sender cause. The skill now separates

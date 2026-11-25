@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const RELEVANT_PATHS = ['package.json', 'bun.lock', 'src', 'plugins', 'evals/agentic', 'schemas', 'fixtures', 'scripts/build.mjs'];
+const RELEVANT_PATHS = ['package.json', 'bun.lock', 'src', 'plugins', 'evals/agentic', 'evals/tier1/assertions.mjs', 'schemas', 'fixtures', 'scripts/build.mjs'];
 const EVIDENCE_PATHS = ['evals/agentic/archive/', 'evals/agentic/results/'];
 
 const git = (repo, ...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' }).trim();
