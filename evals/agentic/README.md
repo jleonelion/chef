@@ -228,6 +228,18 @@ confirmation, no logging-script calls, no meal-log file and unchanged clean
 history remain required. Generic unrelated questions still fail. Preserve the
 failed partial summary unchanged and collect fresh full-dataset evidence.
 
+The full Codex attempt on
+`cf5bd9f8ba153465d7d146918cf82a9de07c7c4e` reached the complete no-plan
+proposal and asked "Log this entry and deduct the recipe ingredients for
+one serving from inventory?" The confirmation matcher accepted only
+`confirm` or modal prefixes such as "Shall I". All three meal-confirmation
+rows now also accept direct questions to log, save or record the proposed
+entry or meals. The action question must begin a sentence and end before
+any intervening sentence boundary. Statements followed by unrelated
+questions, reported questions and negated logging still fail. Complete
+proposal details, approval timing, script and file checks are unchanged.
+Preserve the failed partial summary unchanged; a fresh full run is required.
+
 The leftovers logging failures in
 [#228](https://github.com/jleonelion/chef/issues/228) required the inventory audit
 file to be absent even though it already existed in the fixture. The corrected
