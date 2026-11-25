@@ -62,6 +62,9 @@ test('leftovers confirmation accepts equivalent spelling without losing meal or 
   for (const leftovers of ['leftovers', 'left over', 'Left over']) {
     checkResponse(proposal.replace('leftovers', leftovers), row.responses[0]);
   }
+  for (const question of ['Log both?', 'Save these entries?', 'Record both meals?']) {
+    checkResponse(proposal.replace('Shall I log both?', question), row.responses[0]);
+  }
   for (const response of [
     proposal.replace('leftovers', 'freshly cooked'),
     proposal.replace('Lemon Garlic Pasta', 'Tomato Soup'),
