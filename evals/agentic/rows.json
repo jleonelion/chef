@@ -155,7 +155,7 @@
       {
         "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "view"],
         "assertions": [
-          { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].path", "matches": "^pantry\\.(?!canned\\.)[^.]+\\.(?:dry_)?red_lentils$" },
+          { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].path", "matches": "^pantry\\.(?!canned(?:_[a-z0-9]+)*\\.)[^.]+\\.(?:dry_)?red_lentils$" },
           { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].amount", "equals": 1 },
           { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].unit", "equals": "lb" },
           { "path": "$.items[*].name", "excludes": "reusable bag" },
@@ -202,7 +202,7 @@
       {
         "command": ["node", "{skills}/chef-food-inventory/scripts/inventory.mjs", "view"],
         "assertions": [
-          { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].path", "matches": "^pantry\\.canned\\.(?:canned_)?red_lentils$" },
+          { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].path", "matches": "^pantry\\.canned(?:_[a-z0-9]+)*\\.(?:canned_)?red_lentils$" },
           { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].amount", "equals": 1 },
           { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].unit", "equals": "can" },
           { "path": "$.items[*].name", "excludes": "reusable bag" },
