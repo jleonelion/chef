@@ -49,6 +49,9 @@ this candidate.
   refused email bodies remain unread and are not ingested. (#233)
 - Saved-recipe confirmations use the recipe title without filesystem paths
   or links. Enrichment details remain part of the confirmation. (#256)
+- Receipt destinations distinguish canned and dry storage forms, and existing
+  paths are reused only for the same food and form. Explicit user destinations
+  remain authoritative. (#261)
 - Feedback reports rejected as `unsupported-schema-version` now explain that
   Chef needs updating and keep the approved report unchanged. (#121)
 
@@ -271,6 +274,16 @@ also accept direct log, save or record questions about the proposed entry
 or meals. Unrelated, reported and negated questions remain rejected, and
 proposal, timing and persistence checks are unchanged. The committed summary
 keeps that failure and all 80 unrun repetitions missing and invalid. (#260)
+
+The full Codex attempt on `126287d06e51a912f6898f9f837ce2d962ea4fdd`
+passed 16 repetitions, then placed canned lentils at
+`pantry.legumes.canned_red_lentils` in canned receipt repetition two. This
+violates #225's required canned category, rather than choosing an equivalent
+category name. The committed summary keeps that failure and all 100 unrun
+repetitions missing and invalid. Receipt skill instructions now distinguish
+canned and dry destinations at transcript construction and match existing
+items by food and storage form. Explicit user targets remain authoritative.
+No assertion, fixture or threshold was changed for this repair. (#261)
 
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
