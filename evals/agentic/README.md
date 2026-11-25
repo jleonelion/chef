@@ -50,6 +50,16 @@ Per-repetition console lines and the final failure digest include judge failures
 even when deterministic behavior passes. Judge failures do not change behavioral
 pass counts or turn valid executions into invalid ones.
 
+Use `--fail-fast --concurrency 1` for serial release attempts that stop on the
+first failing, invalid or judge-failed repetition. No later job starts. With
+higher concurrency, already-running jobs finish but no further jobs start.
+The runner still archives a summary, marking every unrun repetition invalid
+as missing, and exits nonzero even when the failed row is a candidate.
+Without `--fail-fast`, existing candidate-only exit behavior is unchanged.
+Ignored `*.result.json` files preserve complete per-repetition judge verdicts
+before the console reports them. They may contain raw tool inputs and stay
+local with transcripts, never in the committed archive.
+
 ## Codex skill reads
 
 Codex has no skill tool. Its Projector detects `SKILL.md` file operands read by
