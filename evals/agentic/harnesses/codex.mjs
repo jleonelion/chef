@@ -1,5 +1,8 @@
 // Codex launcher: `codex exec --json`, built skills installed under a per-rep .agents/skills.
 // Contract: see evals/README.md.
+// runTurn also returns modelEvidence: selected model, thread/turn IDs and a CODEX_HOME-relative
+// rollout path, or an error. Process failure fields are unchanged; the runner decides validity.
+// Only successful evidence supplies model. Neither metadata nor defaults are guessed from config.
 //
 // Isolation: CODEX_HOME and HOME both point into the rep's workdir, --ignore-user-config and
 // --ignore-rules skip the user's config and execpolicy. Only auth.json is copied in (never written
@@ -14,9 +17,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { projectCodex } from '../trajectory.mjs';
 import { collectProcess } from './process.mjs';
+import { createCodexModelReader } from './codex-model-evidence.mjs';
 
 export const name = 'codex';
-export const launcherVersion = 4;
+export const launcherVersion = 5;
 export const project = projectCodex;
 
 export function detect() {
@@ -38,6 +42,7 @@ export function prepare({ pluginDir, workdir, env }) {
   fs.copyFileSync(auth, path.join(codexHome, 'auth.json'));
   fs.cpSync(path.join(pluginDir, 'skills'), skillsDir, { recursive: true });
   const rep = { ...env, CODEX_HOME: codexHome, HOME: path.join(workdir, 'home') };
+  const readModelEvidence = createCodexModelReader(codexHome);
   let thread = null;
   const runTurn = ({ prompt, resume, model, timeoutMs }) => {
     const flags = ['--json', '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules'];
@@ -46,8 +51,9 @@ export function prepare({ pluginDir, workdir, env }) {
     const args = resume && thread ? ['exec', 'resume', ...flags, thread, prompt] : ['exec', ...flags, prompt];
     const result = collectProcess(spawn('codex', args, { cwd: workdir, env: rep, stdio: ['ignore', 'pipe', 'pipe'] }), { timeoutMs, ext: 'jsonl' });
     return result.then((turn) => {
-      thread ??= /"thread_id":"([^"]+)"/.exec(turn.transcript)?.[1] ?? null;
-      return turn;
+      const modelEvidence = readModelEvidence(turn.transcript);
+      thread ??= modelEvidence.threadId ?? null;
+      return { ...turn, modelEvidence, ...(modelEvidence.model && { model: modelEvidence.model }) };
     });
   };
   return { skillsDir, env: rep, runTurn };
