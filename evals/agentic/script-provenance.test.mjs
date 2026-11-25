@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { runRep } from './run.mjs';
+import { prepare as prepareCodex } from './harnesses/codex.mjs';
+import { observeScripts } from './script-evidence.mjs';
 import { projectClaude, projectCodex, projectCopilot } from './trajectory.mjs';
 
 const stream = (...events) => events.map((event) => JSON.stringify(event)).join('\n');
@@ -58,6 +60,35 @@ async function replay(t, act, { transport = projectors[1], scenario = row, insta
 }
 
 const invocation = (entrypoint) => `node ${JSON.stringify(entrypoint)} build --week-start 2026-01-19`;
+
+test('Codex system-skill initialization does not invalidate the installed Chef pack', (t) => {
+  const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'chef-codex-provenance-'));
+  t.after(() => fs.rmSync(workdir, { recursive: true, force: true }));
+  const authHome = path.join(workdir, 'auth-fixture');
+  fs.mkdirSync(authHome);
+  fs.writeFileSync(path.join(authHome, 'auth.json'), '{}');
+  const previous = process.env.CODEX_HOME;
+  let launcher;
+  try {
+    process.env.CODEX_HOME = authHome;
+    launcher = prepareCodex({
+      pluginDir: path.resolve('plugins/chef'), workdir, env: {},
+    });
+  } finally {
+    if (previous === undefined) delete process.env.CODEX_HOME;
+    else process.env.CODEX_HOME = previous;
+  }
+  const evidence = observeScripts({
+    skillsDir: launcher.skillsDir, expectedSkillsDir: path.resolve('plugins/chef/skills'),
+    workdir, env: launcher.env,
+  });
+  evidence.beginTurn();
+  // Codex creates its own system skills when it first discovers installed skills.
+  const systemSkills = path.join(launcher.env.CODEX_HOME, 'skills', '.system');
+  fs.mkdirSync(systemSkills, { recursive: true });
+  fs.writeFileSync(path.join(systemSkills, '.codex-system-skills.marker'), 'synthetic host bootstrap');
+  assert.deepEqual(evidence.collect(path.join(workdir, 'executions.json')), []);
+});
 
 test('all Projectors retain genuine execution evidence without trusting quoted mentions', async (t) => {
   for (const transport of projectors) {
