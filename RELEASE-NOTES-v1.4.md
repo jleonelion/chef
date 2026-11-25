@@ -250,6 +250,17 @@ row accepts meal-detail questions, as the existing no-plan flip pair does,
 while rejecting unrelated planned-meal questions. Date, lunch, the complete
 proposed entry, explicit confirmation and all no-write checks remain. (#260)
 
+The full Codex attempt on `8ec10d787af6012a7920f8b46c14aa9f5d3b50e3`
+passed 17 repetitions, then failed canned receipt repetition three for
+`pantry.canned_goods.canned_red_lentils`. The committed summary keeps that
+failure and all 99 unrun repetitions missing and invalid. Explicit receipt
+targets may use model-chosen snake-case categories; `pantry.canned` is only
+the fallback. Both receipt rows now recognize explicitly named `canned`
+and `canned_*` categories. The canned row requires one; the dry row rejects
+them, closing its previous false acceptance of `canned_goods`. All other
+receipt checks remain. No no-plan repetition was reached in this attempt,
+and no earlier partial pass establishes acceptance for this correction. (#259)
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
