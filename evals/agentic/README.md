@@ -216,6 +216,18 @@ and incorrect final entries. Keep the archived failures unchanged. These
 eval-only changes need no Chef release but do require fresh exact-tree,
 full three-host 3/3 release evidence; deterministic checks do not replace it.
 
+The no-plan fallback repetition on
+`3ba506fee6462e204b9f31028e1ee4250233180e` explained the missing plan and
+asked what the user had for lunch, how many servings and whether it was
+cooked at home. The row instead required the literal word `manual`, which
+the skill does not require. That assertion now accepts an ordinary request
+for what the user ate or had, matching the existing no-plan flip pair's
+manual-entry intent. The flip pair also accepts "What did you have".
+Date and lunch checks, the complete second-turn proposal and explicit
+confirmation, no logging-script calls, no meal-log file and unchanged clean
+history remain required. Generic unrelated questions still fail. Preserve the
+failed partial summary unchanged and collect fresh full-dataset evidence.
+
 The leftovers logging failures in
 [#228](https://github.com/jleonelion/chef/issues/228) required the inventory audit
 file to be absent even though it already existed in the fixture. The corrected

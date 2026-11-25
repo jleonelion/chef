@@ -425,7 +425,7 @@
       [
         { "path": "$.content", "matches": "\\b(?:2026-01-21|[Jj]an(?:uary)?\\.?\\s+21(?:st)?,?\\s+2026|21(?:st)?\\s+[Jj]an(?:uary)?\\.?[,]?\\s+2026)\\b" },
         { "path": "$.content", "matches": "\\b[Ll][Uu][Nn][Cc][Hh]\\b" },
-        { "path": "$.content", "includes": "manual" }
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Ww]hat did you have(?=\\s+for (?:breakfast|lunch|dinner|snack)\\b|\\s*\\?)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" }
       ],
       [
         { "path": "$.content", "includes": "Chickpea Spinach Stew" },
@@ -677,11 +677,11 @@
       [
         { "path": "$.content", "matches": "\\b(?:[Nn]o (?:saved )?(?:meal )?plan(?:ned)?|[Nn]othing (?:is )?planned|(?:don.t|do not|couldn.t|could not|can.t|cannot) (?:find|have|see)[^.!?\\n]*plan)\\b" },
         { "path": "$.content", "matches": "\\b[Ll]unch\\b" },
-        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Ww]hat did you have(?=\\s+for (?:breakfast|lunch|dinner|snack)\\b|\\s*\\?)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
         { "path": "$.content", "matches": "\\b(?:servings?|portions?|how much)\\b" }
       ],
       [
-        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Ww]hat did you have(?=\\s+for (?:breakfast|lunch|dinner|snack)\\b|\\s*\\?)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
         { "path": "$.content", "matches": "\\b(?:servings?|portions?|how much)\\b" }
       ]
     ],
