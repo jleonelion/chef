@@ -261,6 +261,17 @@ them, closing its previous false acceptance of `canned_goods`. All other
 receipt checks remain. No no-plan repetition was reached in this attempt,
 and no earlier partial pass establishes acceptance for this correction. (#259)
 
+The full Codex attempt on `cf5bd9f8ba153465d7d146918cf82a9de07c7c4e`
+passed 36 repetitions, including both receipt rows 3/3, then failed the
+no-plan proposal's confirmation selector. The complete entry was followed
+by "Log this entry and deduct the recipe ingredients for one serving from
+inventory?" without writes. The skill requires asking whether to log it,
+not a modal prefix such as "Shall I". All three meal-confirmation rows now
+also accept direct log, save or record questions about the proposed entry
+or meals. Unrelated, reported and negated questions remain rejected, and
+proposal, timing and persistence checks are unchanged. The committed summary
+keeps that failure and all 80 unrun repetitions missing and invalid. (#260)
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
