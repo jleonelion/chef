@@ -189,6 +189,17 @@ acceptance of `canned_goods`. All name, quantity, unit, singleton, count,
 non-food, record, health and history checks remain. Keep the failed partial
 summary unchanged; fresh full-dataset evidence is required.
 
+The full Codex attempt on
+`63bf37de8b272515f7c5eaeb7f5bbfef8cb077b7` put 2.1 lb of bananas in
+`fridge.produce`, while the row pinned the fallback `pantry.produce` path.
+Neither the receipt nor the target-selection contract fixes that new
+item's location to the pantry. Both receipt rows now check the inventory
+view for exactly one `bananas` item, exactly 2.1 lb, stored in the pantry
+or fridge. Missing, duplicate, wrong-quantity, wrong-unit and frozen banana
+entries fail. The existing whole-milk update, dry/canned lentil distinction,
+seven-item count, bag exclusion, records, health and clean-history checks
+remain. Keep the failed summary unchanged and collect fresh full evidence.
+
 The sender-refusal failure in
 [#233](https://github.com/jleonelion/chef/issues/233) substituted missing
 authentication for the returned untrusted-sender cause. The skill now separates

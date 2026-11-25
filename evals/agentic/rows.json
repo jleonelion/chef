@@ -145,9 +145,7 @@
         "parse": "json",
         "assertions": [
           { "path": "$.fridge.dairy.whole_milk.amount", "equals": 2 },
-          { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" },
-          { "path": "$.pantry.produce.bananas.amount", "equals": 2.1 },
-          { "path": "$.pantry.produce.bananas.unit", "equals": "lb" }
+          { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" }
         ]
       }
     ],
@@ -158,6 +156,9 @@
           { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].path", "matches": "^pantry\\.(?!canned(?:_[a-z0-9]+)*\\.)[^.]+\\.(?:dry_)?red_lentils$" },
           { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].amount", "equals": 1 },
           { "path": "$.items.[?(@name in [\"red lentils\",\"dry red lentils\"])].unit", "equals": "lb" },
+          { "path": "$.items.[?(@name=='bananas')].path", "matches": "^(?:pantry|fridge)\\.[^.]+\\.[^.]+$" },
+          { "path": "$.items.[?(@name=='bananas')].amount", "equals": 2.1 },
+          { "path": "$.items.[?(@name=='bananas')].unit", "equals": "lb" },
           { "path": "$.items[*].name", "excludes": "reusable bag" },
           { "path": "$.items.length", "equals": 7 }
         ]
@@ -192,9 +193,7 @@
         "parse": "json",
         "assertions": [
           { "path": "$.fridge.dairy.whole_milk.amount", "equals": 2 },
-          { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" },
-          { "path": "$.pantry.produce.bananas.amount", "equals": 2.1 },
-          { "path": "$.pantry.produce.bananas.unit", "equals": "lb" }
+          { "path": "$.fridge.dairy.whole_milk.unit", "equals": "gal" }
         ]
       }
     ],
@@ -205,6 +204,9 @@
           { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].path", "matches": "^pantry\\.canned(?:_[a-z0-9]+)*\\.(?:canned_)?red_lentils$" },
           { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].amount", "equals": 1 },
           { "path": "$.items.[?(@name in [\"red lentils\",\"canned red lentils\"])].unit", "equals": "can" },
+          { "path": "$.items.[?(@name=='bananas')].path", "matches": "^(?:pantry|fridge)\\.[^.]+\\.[^.]+$" },
+          { "path": "$.items.[?(@name=='bananas')].amount", "equals": 2.1 },
+          { "path": "$.items.[?(@name=='bananas')].unit", "equals": "lb" },
           { "path": "$.items[*].name", "excludes": "reusable bag" },
           { "path": "$.items.length", "equals": 7 }
         ]
