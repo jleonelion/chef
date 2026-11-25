@@ -2,7 +2,8 @@
 
 Draft release notes. This candidate is not a published or verified release.
 It starts from main at `7e4c6f952d659728d44f4d54f25e51307f154f46`
-and covers changes since published v1.3.1.
+and covers changes since published v1.3.1. The refreshed candidate also
+includes main through `85b10b2d7a3cb0766fe96de08d2b437680991fc7`.
 
 This preparation supersedes [draft #221](https://github.com/jleonelion/chef/pull/221).
 That draft, its evaluated commit `12111a655d2fa22fd55d1da4bccec6aecc66073c`
@@ -75,6 +76,9 @@ this candidate.
   and installed-pack integrity. Modified or external copies cannot satisfy
   required Chef execution. This local instrumentation does not attest hostile
   agents or prove live connector behavior. (#234)
+- Codex installs Chef separately from its managed system skills, preventing
+  host initialization from falsely invalidating the installed pack.
+  Integrity checks remain unchanged; the Codex launcher version is 4. (#254)
 - Skill-contract lint checks documented script modes, flags and statuses.
   Contributor docs now describe fork-based PRs and merge-gated review; the
   README links to focused guides. (#193)
@@ -96,10 +100,11 @@ their meanings. Inventory `health` now regenerates old-unit pages, so it
 must not be treated as strictly read-only.
 
 `schemas/feedback/facts.v1.json` adds operations, statuses and a recipe-search
-status fact. Production intake compatibility is **unresolved**. Before
-publication, confirm the live intake accepts this schema and still supports
-previously released clients under its compatibility policy. No intake deploy
-or live compatibility test is part of this preparation.
+status fact. The maintainer accepted the compatibility review as complete.
+Actual candidate report builders, intake validation, older-client reports
+and local storage checks passed. The live health endpoint responded, but
+production deployment identity and version settings remain unverified.
+This acceptance does not claim a production report submission or intake deploy.
 
 ## Release readiness
 
@@ -160,3 +165,31 @@ Dependencies and `bun.lock` are unchanged. The check-stage commands above
 are the existing `bun run check` stages, run directly with Node because of
 the Bun startup-directory problem; the aggregate command is not claimed
 as a pass.
+
+## Candidate refresh
+
+The first Codex evaluation on the original prepared candidate stopped at
+`chef-setup-receipt-intake`, repetition 1, with invalid installed-pack
+provenance. That interrupted attempt remains invalid and incomplete.
+Offline reproduction found that Codex created `.system` inside the monitored
+directory without changing existing Chef entries. The historical temporary
+directory was deleted, so its exact filesystem delta cannot be recovered.
+The launcher fix in #254 requires fresh evaluation evidence; it does not
+retrospectively pass the interrupted attempt.
+
+Refresh checks passed with the command sandbox disabled:
+
+- `bun run check`: ten skills linted, 939 tests passed, dataset lint passed,
+  96/96 tier1 cases, reproduction lint and migration regression passed.
+  This run needed no proxy-environment override and does not erase the
+  original preparation's #218 failure.
+- `node scripts/bundle-smoke.mjs`: 96/96 tier1 cases and bundled install
+  verification passed.
+- `node scripts/hygiene.mjs`: passed with zero local deny patterns.
+  The CI secret deny-list check is still required.
+- `node evals/agentic/smoke.mjs --harness <name>`: passed for Codex,
+  Claude Code and Copilot, 96/96 tier1 cases each. These checks do not
+  execute live model turns.
+- All three release manifests still report 1.4.0. Bundles, source, schemas,
+  fixtures and dependencies are unchanged from the original prepared
+  candidate, so no rebuild was needed for the launcher-only fix.
