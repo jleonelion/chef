@@ -16,6 +16,11 @@ Agentic promotion criteria and the local subscription-backed release gate are do
 
 Launcher contract: `name`, `launcherVersion`, `project(transcript)`, `detect()` (binary and version, throws "not installed"), `prepare({ pluginDir, workdir, env })` (installs the built skills the way that harness discovers them, isolated per rep, never touching the user's config; returns `{ skillsDir, env, runTurn }`), `runTurn({ prompt, session, resume, model, timeoutMs })` (returns `{ transcript, stderr, timedOut, exitCode, signal, ext, spawnError? }`). Same capability set everywhere: shell, file read/write/edit, skills, no MCP.
 
+Codex also returns its observed selected `model` and compact `modelEvidence`
+from matching session turn contexts, without overriding its default. Missing,
+stale or ambiguous metadata invalidates a completed turn. Process failures keep
+their original classification; full rollouts remain local and are not copied.
+
 The returned `env` is the mutable environment used by `runTurn`, including child
 shells. Before setup, the runner adds eval-only Node and Bun preloads to observe
 executed entrypoints. Projector `scriptRuns` remain command-text candidates,
@@ -30,7 +35,7 @@ Local smoke (not CI): `bun run agentic:smoke --harness <name>` installs the skil
 
 | Harness | Skill loading | Unattended flags | Isolation |
 |---|---|---|---|
-| codex | built skills copied to a per-rep `.agents/skills`, separate from Codex-managed `CODEX_HOME/skills/.system` (Codex has no skill tool: a skill fires when a command reads its `SKILL.md`) | `codex exec --json`, `-c sandbox_mode="workspace-write"` (writes confined to the rep workdir); stdin closed; `--ignore-user-config --ignore-rules --skip-git-repo-check`; turns resume via `codex exec resume <thread_id>` | `CODEX_HOME` and `HOME` inside the rep workdir; only `auth.json` is copied in, never written back; no login fails closed. No model or cost in the transcript: result `model` falls back to `--model` or "harness default", cost is 0. `CHEF_EVAL_CODEX_UNSANDBOXED=1` adds `--dangerously-bypass-approvals-and-sandbox` for environments where Codex's own sandbox cannot start (for example inside Copilot's sandbox); use only when already sandboxed. |
+| codex | built skills copied to a per-rep `.agents/skills`, separate from Codex-managed `CODEX_HOME/skills/.system` (Codex has no skill tool: a skill fires when a command reads its `SKILL.md`) | `codex exec --json`, `-c sandbox_mode="workspace-write"` (writes confined to the rep workdir); stdin closed; `--ignore-user-config --ignore-rules --skip-git-repo-check`; turns resume via `codex exec resume <thread_id>` | `CODEX_HOME` and `HOME` inside the rep workdir; only `auth.json` is copied in, never written back; no login fails closed. Launcher version 5 retains the selected model slug from matching session turn contexts before cleanup. No cost in the transcript; cost is 0. `CHEF_EVAL_CODEX_UNSANDBOXED=1` adds `--dangerously-bypass-approvals-and-sandbox` for environments where Codex's own sandbox cannot start (for example inside Copilot's sandbox); use only when already sandboxed. |
 | copilot | `--plugin-dir` on a per-rep copy of the plugin | `copilot -p --output-format json --allow-all-tools --no-ask-user --no-auto-update --disable-builtin-mcps --no-custom-instructions`; first turn `--session-id=<id>`, later turns `--resume=<id>` | `COPILOT_HOME` per rep. Auth is `GH_TOKEN` (env or `gh auth token`), passed as env only, never written; none fails closed. User-level skill dirs such as `~/.agents/skills` stay visible (same skill names). Reports premium requests, not cost: result cost is 0. Inside a sandbox that intercepts TLS, Copilot cannot authenticate; run it outside. |
 | claude | `--plugin-dir` on a per-rep copy of the plugin | `--permission-mode dontAsk --allowedTools 'Bash Read Write Edit Glob Grep Skill'`, `--strict-mcp-config`, `--setting-sources project` | per-rep plugin copy and sandbox env |
 Unknown keys, assertions with no recognised check (`equals`, `absent`, `includes`, `excludes`, `min`),

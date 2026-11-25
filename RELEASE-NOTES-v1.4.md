@@ -225,6 +225,22 @@ Missing or ambiguous evidence invalidates a completed turn rather than
 guessing the model. This does not identify an undisclosed server-side revision.
 (#258)
 
+The full Codex attempt on `eab060747120b82c56c5f6f30b5890ae4a7e405d`
+passed twelve repetitions, then failed the dry-receipt row's exact-name
+selector after storing one pound as `dry red lentils` in pantry
+legumes. Its committed partial summary retains that failure and all 104
+unrun repetitions as missing and invalid. Codex selected `gpt-6.2-sol`,
+observed in per-turn session metadata, with independent Copilot judge
+`gpt-6.1-sol`. No partial successes count as release acceptance.
+
+Dry and canned receipt selectors now accept the fixture's explicit storage-form
+adjectives or the plain `red lentils` name. Wrong forms and varieties, duplicate
+entries, quantities, units and locations still fail, as do missing purchases
+or receipt transcripts, unhealthy inventory, reusable bags, incorrect total
+entry counts and dirty data-root history. The shared assertion interpreter
+is now covered by relevant-tree provenance checks. These are eval-only
+corrections, not Chef inventory behavior changes. (#259)
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
