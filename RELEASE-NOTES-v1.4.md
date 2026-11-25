@@ -285,6 +285,18 @@ canned and dry destinations at transcript construction and match existing
 items by food and storage form. Explicit user targets remain authoritative.
 No assertion, fixture or threshold was changed for this repair. (#261)
 
+The full Codex attempt on `63bf37de8b272515f7c5eaeb7f5bbfef8cb077b7`
+passed 12 repetitions, then failed the dry receipt's exact banana path.
+The transcript correctly stored 2.1 lb at `fridge.produce.bananas`, while
+the row pinned the keyword fallback `pantry.produce.bananas`. New item
+targets are model-selected. Both receipt rows now require exactly one
+`bananas` item, exactly 2.1 lb, in the pantry or fridge. Missing, duplicate,
+wrong-quantity, wrong-unit and frozen banana entries fail. The known
+whole-milk update and all lentil, count, record, health and history checks
+remain. The committed summary keeps the failure and all 104 unrun
+repetitions missing and invalid. Canned receipt placement was not reached,
+so this attempt does not establish live success for #261. (#259)
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
