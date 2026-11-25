@@ -308,6 +308,19 @@ unchanged. Zero plans and unchanged clean history remain required; other
 rows' routing exclusions are untouched. The committed summary keeps the
 failure and all 65 unrun repetitions missing and invalid. (#262)
 
+The full Codex attempt on `b43e6c9a21dac1058cca946b6aa32c9ebfec7d12`
+passed 37 repetitions, then hit the Codex subscription usage limit on the
+first turn of no-plan repetition two. That repetition is invalid with a
+`rate_limit` cause; all 79 unrun repetitions remain missing and invalid.
+No behavioral or judge failure occurred before the quota stop. Schema and
+relevant-tree provenance verify, but this partial result is not acceptance.
+The CLI reported retry at 5:02 PM without a timezone. No model or account
+fallback, purchase or limit exception was used. Full evaluation is blocked
+until quota is available, then requires a fresh complete 39-row 3/3 run.
+The #262 refusal row was not reached, so its live behavior remains unverified.
+The evaluated candidate passed all 999 offline tests, required local checks
+and seven exact-commit CI jobs.
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
