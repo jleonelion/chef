@@ -60,6 +60,16 @@ filesystem link, and its judge also penalized the required notice. The
 add-recipe skill now calls for a plain-text saved title without filesystem
 paths or links. Fresh full-dataset evidence is required.
 
+Use `--fail-fast --concurrency 1` for serial release attempts that stop on the
+first failing, invalid or judge-failed repetition. No later job starts. With
+higher concurrency, already-running jobs finish but no further jobs start.
+The runner still archives a summary, marking every unrun repetition invalid
+as missing, and exits nonzero even when the failed row is a candidate.
+Without `--fail-fast`, existing candidate-only exit behavior is unchanged.
+Ignored `*.result.json` files preserve complete per-repetition judge verdicts
+before the console reports them. They may contain raw tool inputs and stay
+local with transcripts, never in the committed archive.
+
 ## Codex skill reads
 
 Codex has no skill tool. Its Projector detects `SKILL.md` file operands read by

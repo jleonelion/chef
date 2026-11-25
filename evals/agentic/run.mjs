@@ -159,15 +159,23 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
   } finally {
     if (rep) fs.rmSync(rep.tmp, { recursive: true, force: true });
   }
+  fs.writeFileSync(path.join(logDir, `${row.id}-${number}.result.json`), `${JSON.stringify(run, null, 2)}\n`);
   console.log(repReport(run));
   return run;
 }
 
-async function pool(jobs, size) {
+const repetitionFailed = (run) => run.outcome !== 'pass' || Boolean(run.judge_failure);
+
+export async function pool(jobs, size, { failFast = false } = {}) {
   const results = [];
   const queue = [...jobs];
+  let stopped = false;
   const worker = async () => {
-    while (queue.length) results.push(await queue.shift()());
+    while (queue.length && !stopped) {
+      const run = await queue.shift()();
+      results.push(run);
+      if (failFast && repetitionFailed(run)) stopped = true;
+    }
   };
   await Promise.all(Array.from({ length: Math.min(size, jobs.length) }, worker));
   return results;
@@ -197,6 +205,7 @@ async function main() {
       harness: { type: 'string', default: 'claude' },
       model: { type: 'string' },
       concurrency: { type: 'string', default: '4' },
+      'fail-fast': { type: 'boolean', default: false },
       out: { type: 'string' },
       'judge-model': { type: 'string' },
       'judge-harness': { type: 'string', default: 'claude' },
@@ -233,7 +242,8 @@ async function main() {
   const logDir = path.join(repo, 'evals', 'agentic', 'results', 'logs', path.basename(out, '.json'));
   fs.mkdirSync(logDir, { recursive: true });
   const jobs = rows.flatMap((row) => Array.from({ length: reps }, (_, index) => () => runRep(row, index + 1, { harness, model: values.model, judgeModel, judgeCall, logDir })));
-  const runs = await pool(jobs, Number(values.concurrency));
+  const runs = await pool(jobs, Number(values.concurrency), { failFast: values['fail-fast'] });
+  const stopped = values['fail-fast'] && runs.some(repetitionFailed);
   const result = aggregate({ meta: info, reps, rows, runs });
   const schemaErrors = validateResult(result);
   if (schemaErrors.length) throw new Error(`result failed schema validation:\n${schemaErrors.join('\n')}`);
@@ -244,8 +254,8 @@ async function main() {
     console.log(`${row.pass ? 'pass' : 'FAIL'} ${row.classification} ${row.passes} (${row.pass_rate ?? 'n/a'}${invalid}) ${row.id}${row.known_failure ? ` (known_failure ${row.known_failure}, expect ${row.expect_failure})` : ''}`);
   }
   for (const line of failureDigest(result)) console.error(line);
-  console.log(`Agentic suite ${result.passed ? 'passed' : result.invalid ? 'INVALID' : 'FAILED'} (model ${result.models.join(', ') || 'unknown'}, $${result.cost_usd}). Result: ${path.relative(repo, out)}`);
-  process.exitCode = exitCodeFor(result);
+  console.log(`Agentic suite ${stopped ? 'stopped on failure' : result.passed ? 'passed' : result.invalid ? 'INVALID' : 'FAILED'} (model ${result.models.join(', ') || 'unknown'}, $${result.cost_usd}). Result: ${path.relative(repo, out)}`);
+  process.exitCode = stopped ? runs.some((run) => run.outcome === 'invalid') ? 2 : 1 : exitCodeFor(result);
 }
 
 if (import.meta.main ?? process.argv[1] === import.meta.filename) {
