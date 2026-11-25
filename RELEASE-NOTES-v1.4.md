@@ -47,6 +47,8 @@ this candidate.
 - Receipt sender refusals preserve the returned cause and exact sender. An
   untrusted sender is not misreported as merely missing authentication;
   refused email bodies remain unread and are not ingested. (#233)
+- Saved-recipe confirmations use the recipe title without filesystem paths
+  or links. Enrichment details remain part of the confirmation. (#256)
 - Feedback reports rejected as `unsupported-schema-version` now explain that
   Chef needs updating and keep the approved report unchanged. (#121)
 
@@ -78,7 +80,8 @@ this candidate.
   agents or prove live connector behavior. (#234)
 - Codex installs Chef separately from its managed system skills, preventing
   host initialization from falsely invalidating the installed pack.
-  Integrity checks remain unchanged; the Codex launcher version is 4. (#254)
+  Integrity checks remain unchanged. Launcher version 4 introduced that
+  layout; version 5 retains selected-model evidence. (#254, #258)
 - Skill-contract lint checks documented script modes, flags and statuses.
   Contributor docs now describe fork-based PRs and merge-gated review; the
   README links to focused guides. (#193)
@@ -193,3 +196,37 @@ Refresh checks passed with the command sandbox disabled:
 - All three release manifests still report 1.4.0. Bundles, source, schemas,
   fixtures and dependencies are unchanged from the original prepared
   candidate, so no rebuild was needed for the launcher-only fix.
+
+## Evaluation repair
+
+The next Codex attempt on `66158672e5b42a913eb5bc6ec1c44e6386856500`
+completed six setup repetitions, then failed the pasted-recipe semantic
+judge at 0.65 against the unchanged 0.7 threshold. The answer exposed an
+absolute filesystem link. The judge also called Chef's mandatory first-use
+invocation-trace notice unsolicited. The original judge verdict was recovered
+from the local judge session without another call. The interrupted attempt
+has no aggregate summary and remains failed and incomplete.
+
+The recipe skill now confirms saved titles in plain text without filesystem
+paths or links. Judges receive the exact required first-use notice as product
+context; all other reply requirements remain. No row, required detail,
+threshold or mechanical check was removed or relaxed. (#256)
+
+Native `--fail-fast --concurrency 1` stops after the first failing, invalid or
+judge-failed repetition and archives an honest partial summary. Unrun
+repetitions are invalid as missing, not passes. Complete per-repetition judge
+verdicts are saved locally before console reporting. Without the opt-in flag,
+candidate-only exit behavior is unchanged. (#257)
+
+Codex launcher version 5 observes its selected model from per-turn session
+metadata before temporary-directory cleanup, without overriding its default.
+Compact local evidence records the selected slug and session and turn IDs.
+Missing or ambiguous evidence invalidates a completed turn rather than
+guessing the model. This does not identify an undisclosed server-side revision.
+(#258)
+
+Only source and packaged skill documentation changed in the installed pack.
+The files match; compiled entrypoints and all three 1.4.0 manifests remain
+unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
+checks and full Codex evaluation are required. Claude Code and Copilot host
+evaluations remain outside this repair session's scope.
