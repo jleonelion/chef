@@ -241,6 +241,15 @@ entry counts and dirty data-root history. The shared assertion interpreter
 is now covered by relevant-tree provenance checks. These are eval-only
 corrections, not Chef inventory behavior changes. (#259)
 
+The full Codex attempt on `3ba506fee6462e204b9f31028e1ee4250233180e`
+passed 36 repetitions, then failed the no-plan fallback row because its
+reply asked what the user had for lunch without saying the literal word
+`manual`. The skill does not require that word. The committed summary keeps
+the failure and all 80 unrun repetitions missing and invalid. The corrected
+row accepts meal-detail questions, as the existing no-plan flip pair does,
+while rejecting unrelated planned-meal questions. Date, lunch, the complete
+proposed entry, explicit confirmation and all no-write checks remain. (#260)
+
 Only source and packaged skill documentation changed in the installed pack.
 The files match; compiled entrypoints and all three 1.4.0 manifests remain
 unchanged. No rebuild was needed or run for these repairs. Fresh exact-tree
