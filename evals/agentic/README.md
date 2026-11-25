@@ -304,6 +304,18 @@ details. The later generic approval still authorizes no logging command or
 write. Meal-log and inventory snapshots are checked at both turn boundaries
 and finally, including the inventory audit and rollup.
 
+The dairy-constraint refusal on
+`8c51fe40dbcf6bf9bd6bd78a9ff674661fc0f40f` loaded meal-planning
+instructions, checked the recipe gate and correctly refused the dairy
+recipe without writing. Its flip-pair row incorrectly forbade the relevant
+instruction load. Only that row now permits it, requires the real recipe
+search and a reply naming Creamy Tomato Soup and dairy, and limits commands
+to recipe `search`/`show` and read-only plan `today`. Plan writes and every
+override-bearing call are forbidden. Knowledge, stored data and ignored
+settings are snapshotted unchanged, alongside the existing zero plans and
+clean, unchanged history. Other rows' routing exclusions remain intact.
+Preserve the failed partial summary unchanged; obtain fresh full evidence.
+
 The dormant health row requires read-only `status`, a no-goal explanation,
 no invented numeric targets and unchanged stores. Its semantic target also
 forbids invented goals, worded targets, unsolicited health advice and

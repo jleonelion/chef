@@ -11,6 +11,8 @@ const rows = JSON.parse(fs.readFileSync(new URL('./rows.json', import.meta.url),
 const missingPlan = rows.find(({ id }) => id === 'chef-meal-logging-plan-absent-logs-nothing');
 const dormant = rows.find(({ id }) => id === 'chef-health-goals-check-in-goal-unset-stays-dormant');
 const shopping = rows.find(({ id }) => id === 'chef-shopping-lists-natural-from-plan');
+const dairyRefusal = rows.find(({ id }) => id === 'chef-meal-planning-dairy-constraint-present-refuses');
+const dairyRefusalReply = 'No dinners were saved. Creamy Tomato Soup conflicts with the declared dairy constraint. Which safe saved recipe should replace it?';
 const noPlanReply = 'There is no planned lunch for January 21, 2026. What did you eat and how many servings? I need those details before I can propose a manual meal-log entry.';
 const lookup = { script: 'scripts/meal-planning.mjs', args: ['today', '--date', '2026-01-21'] };
 const shoppingText = `# Shopping list: week of 2026-01-19
@@ -60,6 +62,49 @@ async function replay(t, row, act) {
   const { judge, ...behaviorRow } = row;
   return runRep(behaviorRow, 1, { harness, logDir });
 }
+
+test('dietary refusal permits relevant skill reads after checking the real recipe gate', async (t) => {
+  const run = await replay(t, dairyRefusal, (index, invoke) => {
+    const output = invoke('chef-recipe-search', 'recipe-search.mjs', ['search', '--query', 'creamy tomato soup']);
+    assert.ok(output.excluded.some(({ slug }) => slug === 'creamy-tomato-soup'));
+    assert.equal(invoke('chef-meal-planning', 'meal-planning.mjs', ['today', '--date', '2026-01-19']).status, 'no-plan');
+    return { response: dairyRefusalReply, skills: ['chef-recipe-search', 'chef-meal-planning'] };
+  });
+  assert.equal(run.outcome, 'pass', JSON.stringify(run.failures ?? run.invalid));
+});
+
+test('dietary refusal requires its gate and rejects plan writes or override-bearing reads', () => {
+  const search = { script: 'scripts/recipe-search.mjs', args: ['search'] };
+  assert.throws(() => checkScripts([], dairyRefusal.scripts), /recipe-search.mjs search did not run/);
+  for (const run of [
+    { script: 'scripts/meal-planning.mjs', args: ['plan', '--week-start', '2026-01-19'] },
+    { script: 'scripts/recipe-search.mjs', args: ['search', '--override', 'Alex Example:dairy'] },
+    { script: 'scripts/meal-planning.mjs', args: ['today', '--override=Alex Example:dairy'] },
+    { script: 'scripts/inventory.mjs', args: ['edit', '--path', 'fridge.dairy.whole_milk', '--amount', '0'] },
+  ]) {
+    assert.throws(() => checkScripts([search, run], dairyRefusal.scripts), (error) => error.check === 'scripts');
+  }
+  checkResponse(dairyRefusalReply, dairyRefusal.responses[0]);
+  for (const reply of ['', 'I cannot do that.', dairyRefusalReply.replace('Creamy Tomato Soup', 'Another recipe'), dairyRefusalReply.replace('dairy', 'sesame')]) {
+    assert.throws(() => checkResponse(reply, dairyRefusal.responses[0]), (error) => error.check === 'response');
+  }
+});
+
+test('dietary refusal protects stored data, household rules and settings', async (t) => {
+  for (const relative of ['data/food-inventory/current.json', 'knowledge/wiki/household/dietary-ruleset.md', 'settings.json']) {
+    await t.test(relative, async (t) => {
+      const run = await replay(t, dairyRefusal, (index, invoke, env) => {
+        invoke('chef-recipe-search', 'recipe-search.mjs', ['search']);
+        fs.appendFileSync(path.join(env.CHEF_DATA_ROOT, relative), '\nunauthorized write\n');
+        return { response: dairyRefusalReply, skills: ['chef-recipe-search', 'chef-meal-planning'] };
+      });
+      assert.equal(run.outcome, 'failed', JSON.stringify(run.invalid));
+      for (const expected of relative === 'settings.json' ? ['files'] : ['files', 'git-state']) {
+        assert.ok(run.failures.some(({ check }) => check === expected), JSON.stringify(run.failures));
+      }
+    });
+  }
+});
 
 test('missing-plan logging permits the real date lookup and stays read-only after generic assent', async (t) => {
   const run = await replay(t, missingPlan, (index, invoke) => {
