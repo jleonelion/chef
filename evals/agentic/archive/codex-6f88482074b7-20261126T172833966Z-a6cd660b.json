@@ -1,0 +1,2437 @@
+{
+  "suite": "chef-agentic",
+  "format": 3,
+  "date": "2026-11-26T17:28:34.142Z",
+  "commit": "6f88482074b7ad923438f6e49a2ce33910356233",
+  "commit_dirty": false,
+  "plugin_version": "1.4.0",
+  "dataset_sha": "sha256:763df465f8be5840791f44277321f7c41880999394a81ec5a405d755115f4d4a",
+  "fixture_sha": "sha256:dd953780c2fa95a72524e1f091d853618921035a5580a3c9a75fb7596c312b2e",
+  "harness": {
+    "name": "codex",
+    "launcherVersion": 5,
+    "cliVersion": "codex-cli 0.172.0"
+  },
+  "selected_rows": [
+    "chef-setup-receipt-intake",
+    "chef-setup-household-recipients",
+    "chef-add-recipe-pasted-text",
+    "chef-meal-planning-plan-week",
+    "chef-food-inventory-receipt-to-inventory",
+    "chef-food-inventory-canned-receipt-to-inventory",
+    "chef-batch-prep-planning-pdf",
+    "chef-health-goals-check-in",
+    "chef-recipe-decisions-accept-publish",
+    "chef-recipe-decisions-rejected-not-reproposed",
+    "chef-meal-logging-planned-dinner",
+    "chef-meal-logging-day-from-plan",
+    "chef-meal-logging-from-plan-no-plan",
+    "chef-meal-logging-plan-leftovers-and-food",
+    "chef-meal-logging-plan-cooking-servings",
+    "chef-meal-planning-dietary-should-not-act",
+    "chef-meal-planning-dairy-constraint-absent-saves",
+    "chef-meal-planning-dairy-constraint-present-refuses",
+    "chef-meal-logging-plan-present-logs-planned-meal",
+    "chef-meal-logging-plan-absent-logs-nothing",
+    "chef-health-goals-check-in-goal-set-reports-targets",
+    "chef-health-goals-check-in-goal-unset-stays-dormant",
+    "chef-recipe-decisions-prior-rejection-new-proposed",
+    "chef-food-inventory-untrusted-sender-refused",
+    "chef-food-inventory-authenticated-untrusted-sender-refused",
+    "chef-food-inventory-trusted-unauthenticated-sender-refused",
+    "chef-food-inventory-receipt-intake-off-refused",
+    "chef-meal-planning-dietary-override-confirmed-once",
+    "chef-shopping-lists-one-off-addresses-confirm-first",
+    "chef-meal-logging-direct-entry-confirms-before-write",
+    "chef-recipe-search-natural-request",
+    "chef-shopping-lists-natural-from-plan",
+    "chef-shopping-lists-footer-once",
+    "chef-food-inventory-expiring-natural-request",
+    "chef-health-goals-natural-request",
+    "chef-add-recipe-natural-request",
+    "chef-setup-natural-request",
+    "chef-off-topic-weather",
+    "chef-off-topic-laptop"
+  ],
+  "rows_selected": 39,
+  "rows_total": 39,
+  "judge": {
+    "type": "subscription-cli",
+    "harness": "copilot",
+    "model": "gpt-6.1-sol"
+  },
+  "models": [
+    "gpt-6.2-sol"
+  ],
+  "reps": 3,
+  "passed": true,
+  "invalid": false,
+  "cost_usd": 0,
+  "rows": [
+    {
+      "id": "chef-setup-receipt-intake",
+      "flow": "core",
+      "gate": false,
+      "passes": "3/3",
+      "pass_rate": 1,
+      "valid_reps": 3,
+      "invalid_reps": 0,
+      "behavior": "passing",
+      "classification": "passing",
+      "flaky": false,
+      "pass": true,
+      "failures": [],
+      "invalid": [],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "pass",
+          "skills": [
+            "chef-setup"
+          ]
+        },
+        {
+          "rep": 2,
+          "outcome": "pass",
+          "skills": [
+            "chef-setup"
+          ]
+        },
+        {
+          "rep": 3,
+          "outcome": "pass",
+          "skills": [
+            "chef-setup"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chef-setup-household-recipients",
+      "flow": "core",
+      "gate": false,
+      "passes": "3/3",
+      "pass_rate": 1,
+      "valid_reps": 3,
+      "invalid_reps": 0,
+      "behavior": "passing",
+      "classification": "passing",
+      "flaky": false,
+      "pass": true,
+      "failures": [],
+      "invalid": [],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "pass",
+          "skills": [
+            "chef-setup"
+          ]
+        },
+        {
+          "rep": 2,
+          "outcome": "pass",
+          "skills": [
+            "chef-setup"
+          ]
+        },
+        {
+          "rep": 3,
+          "outcome": "pass",
+          "skills": [
+            "chef-setup"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "chef-add-recipe-pasted-text",
+      "flow": "core",
+      "gate": false,
+      "passes": "1/1",
+      "pass_rate": 1,
+      "valid_reps": 1,
+      "invalid_reps": 2,
+      "behavior": "passing",
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": "failed",
+        "passes": "0/1"
+      },
+      "judge_failures": [
+        {
+          "rep": 1,
+          "check": "judge",
+          "message": "score 0.8 below threshold 0.7"
+        }
+      ],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "pass",
+          "skills": [
+            "chef-add-recipe"
+          ],
+          "judge": {
+            "pass": false,
+            "score": 0.8,
+            "verdict": {
+              "score": 0.8,
+              "passes": false,
+              "reasoning": "The response clearly confirms saving Tomato Lentil Soup and accurately reports both enrichment results without exposing internal paths or planning details. However, it omits the required first-use notice about Chef's local technical log and reporting controls.",
+              "missing_critical_details": [
+                "Required first-use notice explaining what Chef logs, its privacy limits, how to disable and delete the log, and the review-before-send problem-report process."
+              ],
+              "unexpected_problems": [],
+              "confidence": 1
+            }
+          },
+          "judge_failure": {
+            "message": "score 0.8 below threshold 0.7"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-planning-plan-week",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-receipt-to-inventory",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-canned-receipt-to-inventory",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-batch-prep-planning-pdf",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-health-goals-check-in",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-recipe-decisions-accept-publish",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-recipe-decisions-rejected-not-reproposed",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-planned-dinner",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-day-from-plan",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-from-plan-no-plan",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-plan-leftovers-and-food",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-plan-cooking-servings",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-planning-dietary-should-not-act",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-planning-dairy-constraint-absent-saves",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-planning-dairy-constraint-present-refuses",
+      "flow": "should-not-act",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-plan-present-logs-planned-meal",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-plan-absent-logs-nothing",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-health-goals-check-in-goal-set-reports-targets",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-health-goals-check-in-goal-unset-stays-dormant",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-recipe-decisions-prior-rejection-new-proposed",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-untrusted-sender-refused",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-authenticated-untrusted-sender-refused",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-trusted-unauthenticated-sender-refused",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-receipt-intake-off-refused",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-planning-dietary-override-confirmed-once",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "judge": {
+        "status": null,
+        "passes": "0/0"
+      },
+      "judge_failures": [],
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-shopping-lists-one-off-addresses-confirm-first",
+      "flow": "should-not-act",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-meal-logging-direct-entry-confirms-before-write",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-recipe-search-natural-request",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-shopping-lists-natural-from-plan",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-shopping-lists-footer-once",
+      "flow": "core",
+      "gate": false,
+      "candidate": true,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-food-inventory-expiring-natural-request",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-health-goals-natural-request",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-add-recipe-natural-request",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-setup-natural-request",
+      "flow": "core",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-off-topic-weather",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    },
+    {
+      "id": "chef-off-topic-laptop",
+      "flow": "should-not-act",
+      "gate": false,
+      "passes": "0/0",
+      "pass_rate": null,
+      "valid_reps": 0,
+      "invalid_reps": 3,
+      "behavior": null,
+      "classification": "invalid",
+      "flaky": false,
+      "pass": false,
+      "failures": [],
+      "invalid": [
+        {
+          "rep": 1,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 2,
+          "kind": "harness",
+          "message": "rep produced no result"
+        },
+        {
+          "rep": 3,
+          "kind": "harness",
+          "message": "rep produced no result"
+        }
+      ],
+      "runs": [
+        {
+          "rep": 1,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 2,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        },
+        {
+          "rep": 3,
+          "outcome": "invalid",
+          "skills": [],
+          "invalid": {
+            "kind": "harness",
+            "message": "rep produced no result"
+          }
+        }
+      ]
+    }
+  ]
+}
