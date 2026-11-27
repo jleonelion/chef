@@ -180,6 +180,47 @@ and fixture corrections require fresh exact-tree, full three-host 3/3 release
 evidence; deterministic checks do not replace it or resolve the other timeouts.
 No Chef release is needed for this eval-only change.
 
+The dry-receipt repetition on `eab060747120b82c56c5f6f30b5890ae4a7e405d`
+stored one pound as `pantry.legumes.dry_red_lentils`. The fixture says
+`DRY RED LENTILS`, and the skill asks for plain item names without requiring
+the storage-form adjective to be dropped. The old exact-name selector could
+not select that entry. Dry and canned rows now accept only their explicit
+plain-name variants, `red lentils` or respectively `dry red lentils` and
+`canned red lentils`, with matching key variants. Wrong forms, varieties,
+locations, quantities and units still fail. Exactly seven entries, no bag,
+purchase and raw receipt records, health and clean-history checks remain.
+The failed partial summary is unchanged and is not release acceptance.
+The assertion query supports finite string choices with
+`$.items.[?(@name in ["red lentils","dry red lentils"])].path`;
+multiple selected entries stay multiple and fail singleton assertions.
+Real-script regressions reproduce the original failure and test both forms.
+The shared assertion helper is included in relevant-tree provenance checks,
+so changing its interpretation invalidates evidence just like changing a row.
+Fresh full-dataset evidence is required.
+
+The canned-receipt repetition on
+`8ec10d787af6012a7920f8b46c14aa9f5d3b50e3` chose
+`pantry.canned_goods.canned_red_lentils`. The skill assigns target selection
+to the model, and the schema permits snake-case category names rather than
+an enumerated category list. The shipped `pantry.canned` placement is only
+a fallback for untargeted lines. Both receipt rows now recognize explicitly
+named `canned` and `canned_*` categories: the canned row requires one and
+the dry row rejects them. This also closes the dry row's previous false
+acceptance of `canned_goods`. All name, quantity, unit, singleton, count,
+non-food, record, health and history checks remain. Keep the failed partial
+summary unchanged; fresh full-dataset evidence is required.
+
+The full Codex attempt on
+`63bf37de8b272515f7c5eaeb7f5bbfef8cb077b7` put 2.1 lb of bananas in
+`fridge.produce`, while the row pinned the fallback `pantry.produce` path.
+Neither the receipt nor the target-selection contract fixes that new
+item's location to the pantry. Both receipt rows now check the inventory
+view for exactly one `bananas` item, exactly 2.1 lb, stored in the pantry
+or fridge. Missing, duplicate, wrong-quantity, wrong-unit and frozen banana
+entries fail. The existing whole-milk update, dry/canned lentil distinction,
+seven-item count, bag exclusion, records, health and clean-history checks
+remain. Keep the failed summary unchanged and collect fresh full evidence.
+
 The sender-refusal failure in
 [#233](https://github.com/jleonelion/chef/issues/233) substituted missing
 authentication for the returned untrusted-sender cause. The skill now separates

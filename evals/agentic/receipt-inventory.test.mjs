@@ -11,7 +11,7 @@ const repo = path.resolve(import.meta.dirname, '../..');
 const rows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
 const script = path.join(repo, 'src/skills/chef-food-inventory/scripts/inventory.mjs');
 
-function prepareReceipt(t, row, category, unit) {
+function prepareReceipt(t, row, category, unit, name = 'red lentils', bananaTarget = 'pantry.produce') {
   const { tmp, dataRoot } = prepareSandbox({
     prefix: 'chef-receipt-check',
     id: row.id,
@@ -24,8 +24,8 @@ function prepareReceipt(t, row, category, unit) {
   const transcript = path.join(tmp, 'transcript.txt');
   fs.writeFileSync(transcript, [
     '- 1 gal whole milk - $3.49',
-    '- 2.1 lb bananas - $1.26',
-    `- 1 ${unit} red lentils - $2.19 -> pantry.${category}.red_lentils`,
+    `- 2.1 lb bananas - $1.26 -> ${bananaTarget}`,
+    `- 1 ${unit} ${name} - $2.19 -> pantry.${category}`,
   ].join('\n'));
   const result = JSON.parse(execFileSync(process.execPath, [
     script, 'add-receipt', '--transcript-file', transcript, '--date', '2026-01-20',
@@ -44,8 +44,12 @@ function checkAfter(row, env) {
 
 test('dry receipt eval accepts one pound of lentils in legumes or grains', async (t) => {
   const row = rows.find(({ id }) => id === 'chef-food-inventory-receipt-to-inventory');
-  for (const category of ['legumes', 'grains']) {
-    const { dataRoot, env } = prepareReceipt(t, row, category, 'lb');
+  for (const [category, name, bananaTarget] of [
+    ['legumes', 'red lentils'], ['grains', 'red lentils'],
+    ['legumes', 'dry red lentils'], ['grains', 'dry red lentils'],
+    ['legumes', 'dry red lentils', 'fridge.produce'],
+  ]) {
+    const { dataRoot, env } = prepareReceipt(t, row, category, 'lb', name, bananaTarget);
     await checkFiles(dataRoot, row.files);
     checkAfter(row, env);
     assertGitState({
@@ -57,23 +61,29 @@ test('dry receipt eval accepts one pound of lentils in legumes or grains', async
   }
 });
 
-test('canned receipt eval requires one can of lentils in canned', async (t) => {
+test('canned receipt eval requires one can of lentils in a canned pantry category', async (t) => {
   const row = rows.find(({ id }) => id === 'chef-food-inventory-canned-receipt-to-inventory');
   assert.ok(row, 'the canned receipt scenario exists');
-  const { dataRoot, env } = prepareReceipt(t, row, 'canned', 'can');
-  await checkFiles(dataRoot, row.files);
-  checkAfter(row, env);
-  assertGitState({
-    status: execFileSync('git', ['status', '--porcelain'], { cwd: dataRoot, encoding: 'utf8' }).trim(),
-  }, row.git);
-  const receipt = fs.readFileSync(path.join(dataRoot, row.seed[0].path), 'utf8');
-  assert.match(receipt, /\bCANNED RED LENTILS 1 CAN\b/);
-  assert.doesNotMatch(receipt, /\bDRY\b/);
+  for (const [category, name, bananaTarget] of [
+    ['canned', 'red lentils'], ['canned', 'canned red lentils'],
+    ['canned_goods', 'canned red lentils'],
+    ['canned', 'canned red lentils', 'fridge.produce'],
+  ]) {
+    const { dataRoot, env } = prepareReceipt(t, row, category, 'can', name, bananaTarget);
+    await checkFiles(dataRoot, row.files);
+    checkAfter(row, env);
+    assertGitState({
+      status: execFileSync('git', ['status', '--porcelain'], { cwd: dataRoot, encoding: 'utf8' }).trim(),
+    }, row.git);
+    const receipt = fs.readFileSync(path.join(dataRoot, row.seed[0].path), 'utf8');
+    assert.match(receipt, /\bCANNED RED LENTILS 1 CAN\b/);
+    assert.doesNotMatch(receipt, /\bDRY\b/);
+  }
 });
 
 for (const scenario of [
-  { id: 'chef-food-inventory-receipt-to-inventory', category: 'legumes', unit: 'lb', wrongCategory: 'canned' },
-  { id: 'chef-food-inventory-canned-receipt-to-inventory', category: 'canned', unit: 'can', wrongCategory: 'legumes' },
+  { id: 'chef-food-inventory-receipt-to-inventory', category: 'legumes', unit: 'lb', wrongCategories: ['canned', 'canned_goods', 'canned_food'], qualified: 'dry red lentils', wrongForm: 'canned red lentils' },
+  { id: 'chef-food-inventory-canned-receipt-to-inventory', category: 'canned', unit: 'can', wrongCategories: ['legumes', 'grains'], qualified: 'canned red lentils', wrongForm: 'dry red lentils' },
 ]) {
   test(`${scenario.id} rejects incorrect lentils and non-food inventory`, async (t) => {
     const row = rows.find(({ id }) => id === scenario.id);
@@ -86,10 +96,21 @@ for (const scenario of [
     const lentils = view.items.find(({ name }) => name === 'red lentils');
     const cases = [
       ['missing lentils', (output) => { output.items = output.items.filter(({ name }) => name !== 'red lentils'); }, /red lentils.*path/],
-      ['wrong category', (output) => { output.items.find(({ name }) => name === 'red lentils').path = `pantry.${scenario.wrongCategory}.red_lentils`; }, /red lentils.*path/],
+      ...scenario.wrongCategories.map((category) => [
+        `wrong category ${category}`,
+        (output) => { output.items.find(({ name }) => name === 'red lentils').path = `pantry.${category}.red_lentils`; },
+        /red lentils.*path/,
+      ]),
       ['wrong amount', (output) => { output.items.find(({ name }) => name === 'red lentils').amount = 2; }, /red lentils.*amount/],
       ['wrong unit', (output) => { output.items.find(({ name }) => name === 'red lentils').unit = scenario.unit === 'lb' ? 'can' : 'lb'; }, /red lentils.*unit/],
-      ['duplicate lentils under another name', (output) => { output.items.push({ ...lentils, name: 'dry red lentils', path: 'pantry.other.dry_red_lentils' }); }, /items\.length/],
+      ['wrong storage form', (output) => { output.items.find(({ name }) => name === 'red lentils').name = scenario.wrongForm; }, /red lentils.*path/],
+      ['wrong lentil variety', (output) => { output.items.find(({ name }) => name === 'red lentils').name = 'green lentils'; }, /red lentils.*path/],
+      ['duplicate lentils under another name', (output) => { output.items.push({ ...lentils, name: scenario.qualified, path: `pantry.other.${scenario.qualified.replaceAll(' ', '_')}` }); }, /red lentils.*path/],
+      ['missing bananas', (output) => { output.items = output.items.filter(({ name }) => name !== 'bananas'); }, /bananas.*path/],
+      ['wrong banana amount', (output) => { output.items.find(({ name }) => name === 'bananas').amount = 2; }, /bananas.*amount/],
+      ['wrong banana unit', (output) => { output.items.find(({ name }) => name === 'bananas').unit = 'kg'; }, /bananas.*unit/],
+      ['unexpected frozen bananas', (output) => { output.items.find(({ name }) => name === 'bananas').path = 'freezer.produce.bananas'; }, /bananas.*path/],
+      ['duplicate bananas', (output) => { output.items.push({ ...output.items.find(({ name }) => name === 'bananas'), path: 'fridge.produce.bananas' }); }, /bananas.*path/],
       ['reusable bag under another name', (output) => { output.items.push({ name: 'Reusable Bag', path: 'pantry.other.reusable_bag', amount: 1, unit: 'each' }); }, /items\.length/],
     ];
     for (const location of ['pantry', 'fridge', 'freezer']) {
