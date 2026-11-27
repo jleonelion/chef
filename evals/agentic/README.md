@@ -80,6 +80,16 @@ an otherwise completed turn; process and subscription-limit errors retain their
 original classification. This records the CLI-selected slug, not an undisclosed
 server-side model revision.
 
+## Monitoring a run
+
+`bun run agentic:progress -- --watch 10` reports any running `run.mjs` on the machine,
+however it was launched: harness, judge, reps, progress, per-row results, failures,
+average time per rep and ETA. Without a running process it summarizes the latest
+run under `--dir` (default: the current directory); `--history` lists archived
+summaries. It only reads ignored `results/logs/` files and the process table.
+Row counts assume the dataset's selection flags (`--rows`, `--known-failures`,
+`--gates-only`); finished runs assume the full dataset and `--reps 3`.
+
 ## Codex skill reads
 
 Codex has no skill tool. Its Projector detects `SKILL.md` file operands read by

@@ -33,7 +33,7 @@
       [
         { "path": "$.content", "includes": "default" },
         { "path": "$.content", "includes": "recurring" },
-        { "path": "$.content", "matches": "\\b(?:only (?:if|after|once) you (?:explicitly )?(?:approve|have approved) (?:the |a |your )?(?:Chef )?(?:shopping[ -]list )?recurring task|approved recurring (?:shopping(?:[ -]list)? )?task)\\b" },
+        { "path": "$.content", "matches": "\\b(?:only (?:if|after|once) you (?:explicitly )?(?:approve|have approved) (?:the |a |your )?(?:Chef )?(?:shopping[ -]list )?recurring(?: shopping(?:[ -]list)?)? task|approved recurring (?:shopping(?:[ -]list)? )?task)\\b" },
         { "path": "$.content", "includes": "anyone" },
         { "path": "$.content", "excludes": "mandatory" },
         { "path": "$.content", "excludes": "forbidden" }
