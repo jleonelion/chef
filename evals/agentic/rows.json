@@ -49,7 +49,7 @@
     "flow": "core",
     "description": "Pasted recipe text becomes a wiki page plus its raw source, enriched, committed, and findable by search.",
     "judge": {
-      "expected": "Gives a clear save confirmation naming Tomato Lentil Soup and briefly reports enrichment: no dietary flags found in the ingredient wording and nutrition not computed because USDA is not connected. Does not expose internal paths or planning details. Storage completeness and findability are checked mechanically; do not require the reply to explain how to find the recipe or restate its ingredients or steps.",
+      "expected": "Clearly confirms that Tomato Lentil Soup was saved. Fails if the reply exposes filesystem paths or links. Nothing else is required: ignore enrichment details, notices and any other extra content, and do not require the reply to explain how to find the recipe or restate its ingredients or steps. Storage, commit and findability are checked mechanically.",
       "threshold": 0.7
     },
     "turns": [

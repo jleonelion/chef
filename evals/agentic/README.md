@@ -28,9 +28,10 @@ bun run agentic --harness codex --judge-harness claude --judge-model <model> --r
 Authenticate Claude Code, Codex or Copilot before the run. Supported choices are `claude`, `codex` and `copilot`. There is no `OPENAI_API_KEY` fallback. Empty, malformed, unavailable or errored judge output fails that row; never retry a failed or invalid repetition.
 
 Judge targets describe reply quality, not proof of file writes or search results.
-For `chef-add-recipe-pasted-text`, the reply confirms the saved title and reports
-enrichment, as `chef-add-recipe` instructs. It need not explain how to find the
-recipe or repeat ingredients and steps. The row checks search separately.
+For `chef-add-recipe-pasted-text`, the reply confirms the saved title without filesystem paths or links.
+Enrichment details, notices and other extras are not judged, and the reply need
+not explain how to find the recipe or repeat ingredients and steps. The row
+checks storage, a clean committed tree and search mechanically.
 It requires exactly five raw sources, four fixture files plus one new source,
 and checks the new source's name, ingredients and steps. A count check's optional
 `pattern` filters relative file names; its `assertions` check every matched file's
@@ -49,6 +50,16 @@ for presence. Skill loads remain separate from script execution and file writes.
 Per-repetition console lines and the final failure digest include judge failures,
 even when deterministic behavior passes. Judge failures do not change behavioral
 pass counts or turn valid executions into invalid ones.
+
+The judge receives Chef's exact required first-use invocation-trace notice as
+product context. Scripts instruct the agent to show it verbatim with the answer;
+its length is not unsolicited content. This does not excuse internal paths or
+planning details. The interrupted Codex
+attempt on `66158672e5b42a913eb5bc6ec1c44e6386856500` remains failed under
+its original judge prompt. Its recipe confirmation exposed an absolute
+filesystem link, and its judge also penalized the required notice. The
+add-recipe skill now calls for a plain-text saved title without filesystem
+paths or links. Fresh full-dataset evidence is required.
 
 Use `--fail-fast --concurrency 1` for serial release attempts that stop on the
 first failing, invalid or judge-failed repetition. No later job starts. With
