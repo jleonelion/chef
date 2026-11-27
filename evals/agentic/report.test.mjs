@@ -188,12 +188,15 @@ test('household recipient reply assertions accept equivalent wording and reject 
     'I’ll use these people as the default shopping-list recipients. An approved recurring shopping task will be set up, and this does not prevent you from asking Chef to email anyone else.';
   const documentedTranscript =
     'Who should Chef email shopping lists to by default? Chef emails them automatically only if you approve the Chef shopping list recurring task. You can still ask Chef to email a shopping list to anyone. Give me their email addresses, or skip to see lists here in chat.';
+  const reorderedTranscript =
+    'Who should Chef email shopping lists to by default? Send their email addresses, or say “skip” to see lists here in chat. Chef sends lists automatically only if you approve the recurring shopping list task. You can also ask Chef to email a list to anyone.';
   const wrongTranscripts = [
     'These are the default recipients. Chef emails them automatically with a recurring task. You can ask Chef to email anyone.',
     'These are the default recipients. The recurring task does not need approval. You can ask Chef to email anyone.',
     'These are the default recipients. Chef emails them automatically unless you approve the Chef shopping list recurring task. You can ask Chef to email anyone.',
     'These are the default recipients. You approved a recipe. Chef emails them automatically with a recurring task. You can ask Chef to email anyone.',
     'These are the default recipients. An unapproved recurring shopping task emails them automatically. You can ask Chef to email anyone.',
+    reorderedTranscript.replace('only if', 'unless'),
     rewordedTranscript.replace('default', 'mandatory default'),
     rewordedTranscript.replace('anyone else', 'anyone else, which is forbidden'),
     rewordedTranscript.replace('default', 'only'),
@@ -203,6 +206,7 @@ test('household recipient reply assertions accept equivalent wording and reject 
 
   checkResponse(rewordedTranscript, assertions);
   checkResponse(documentedTranscript, assertions);
+  checkResponse(reorderedTranscript, assertions);
   for (const transcript of wrongTranscripts) {
     assert.throws(() => checkResponse(transcript, assertions), (error) => error.check === 'response', transcript);
   }
