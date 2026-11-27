@@ -9,6 +9,7 @@ import { runRep } from './run.mjs';
 
 const rows = JSON.parse(fs.readFileSync(new URL('./rows.json', import.meta.url), 'utf8'));
 const missingPlan = rows.find(({ id }) => id === 'chef-meal-logging-plan-absent-logs-nothing');
+const fallback = rows.find(({ id }) => id === 'chef-meal-logging-from-plan-no-plan');
 const dormant = rows.find(({ id }) => id === 'chef-health-goals-check-in-goal-unset-stays-dormant');
 const shopping = rows.find(({ id }) => id === 'chef-shopping-lists-natural-from-plan');
 const noPlanReply = 'There is no planned lunch for January 21, 2026. What did you eat and how many servings? I need those details before I can propose a manual meal-log entry.';
@@ -87,6 +88,27 @@ test('missing-plan logging requires the requested date and rejects logging an un
   checkResponse('Please tell me what you ate and how many servings before I can log it.', missingPlan.responses[1]);
   for (const reply of ['', 'I need more information.', 'No plan found. Please enter it manually.', 'No planned lunch. What did you eat?']) {
     assert.throws(() => checkResponse(reply, missingPlan.responses[0]), (error) => error.check === 'response', reply);
+  }
+});
+
+test('no-plan fallback requests accept ordinary meal questions without the word manual', () => {
+  for (const checks of [fallback.responses[0], ...missingPlan.responses]) {
+    for (const verb of ['eat', 'have']) {
+      checkResponse(
+        `Chef has no saved meal plan covering January 21, 2026, so lunch is unlogged. What did you ${verb} for lunch that day, how many servings did you eat, and did you cook it at home?`,
+        checks,
+      );
+    }
+    for (const question of [
+      'Would you like a recipe?',
+      'Want to see what you have planned for other days?',
+      'What did you have planned for other days?',
+    ]) {
+      assert.throws(() => checkResponse(
+        `There is no saved meal plan covering January 21, 2026 lunch. Servings are unknown. ${question}`,
+        checks,
+      ), (error) => error.check === 'response');
+    }
   }
 });
 

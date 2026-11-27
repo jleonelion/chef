@@ -146,6 +146,14 @@ test('meal confirmation rows require the proposed entry and an explicit confirma
     checkResponse('2026-01-21, Lunch, Chickpea Spinach Stew, one serving, home-cooked. Confirm this entry?', row.responses[turn]);
     checkResponse('21 Jan 2026, lunch, Chickpea Spinach Stew. Servings: 1. Cooked at home: yes. Please confirm before I log it.', row.responses[turn]);
     checkResponse(proposal.replace('Shall I log this entry?', 'Would you like me to save this entry?'), row.responses[turn]);
+    for (const question of [
+      'The Chef meal-logging skill requires confirmation before saving. Log this entry and deduct the recipe ingredients for one serving from inventory?',
+      'Save this entry?',
+      'Record this meal?',
+      'Log it?',
+    ]) {
+      checkResponse(proposal.replace('Shall I log this entry?', question), row.responses[turn]);
+    }
     for (const [name, response] of [
       ['wrong meal slot', proposal.replace('lunch', 'dinner')],
       ['partial meal-slot word', proposal.replace('lunch', 'luncheon')],
@@ -161,6 +169,9 @@ test('meal confirmation rows require the proposed entry and an explicit confirma
       ['negative cooked status', proposal.replace('cooked at home', 'Cooked at home: no')],
       ['missing confirmation', proposal.replace(' Shall I log this entry?', '')],
       ['unrelated question', proposal.replace('Shall I log this entry?', 'What would you like for dinner?')],
+      ['declarative logging with unrelated question', proposal.replace('Shall I log this entry?', 'Log this entry automatically. What would you like for dinner?')],
+      ['reported question', proposal.replace('Shall I log this entry?', 'You asked whether to log this entry?')],
+      ['negated logging', proposal.replace('Shall I log this entry?', 'Do not log this entry. Is dinner ready?')],
     ]) {
       await t.test(`${id}: ${name}`, () => {
         assert.throws(() => checkResponse(response, row.responses[turn]), (error) => error.check === 'response');

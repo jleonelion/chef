@@ -427,7 +427,7 @@
       [
         { "path": "$.content", "matches": "\\b(?:2026-01-21|[Jj]an(?:uary)?\\.?\\s+21(?:st)?,?\\s+2026|21(?:st)?\\s+[Jj]an(?:uary)?\\.?[,]?\\s+2026)\\b" },
         { "path": "$.content", "matches": "\\b[Ll][Uu][Nn][Cc][Hh]\\b" },
-        { "path": "$.content", "includes": "manual" }
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Ww]hat did you have(?=\\s+for (?:breakfast|lunch|dinner|snack)\\b|\\s*\\?)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" }
       ],
       [
         { "path": "$.content", "includes": "Chickpea Spinach Stew" },
@@ -436,7 +436,7 @@
         { "path": "$.content", "matches": "\\b(?:1|[Oo]ne)\\s+servings?\\b|\\b[Ss]ervings?[\\s*_:=-]+1\\b" },
         { "path": "$.content", "matches": "\\b(?:[Cc]ooked at home|[Hh]ome[- ]cooked|[Cc]ooked[\\s*_:=-]+(?:[Yy]es|[Tt]rue))\\b" },
         { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:[Nn]ot\\s+(?:cooked at home|home[- ]cooked)|[Cc]ooked(?: at home)?[\\s*_:=-]*(?:[Nn]o|[Ff]alse))\\b)" },
-        { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)" }
+        { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)|(?:^|[.!?]\\s+|\\n)(?:[Ll]og|[Ss]ave|[Rr]ecord)\\s+(?:(?:this|the proposed)\\s+(?:entry|meal)|these\\s+(?:entries|meals)|both|it)\\b[^.!?\\n]*\\?" }
       ]
     ],
     "skills": ["chef-meal-logging"],
@@ -466,7 +466,7 @@
       { "path": "$.content", "matches": "\\b[Ll]eft(?:overs|\\s+over)\\b" },
       { "path": "$.content", "matches": "\\b[Ll]emon[ -][Gg]arlic[ -][Pp]asta\\b" },
       { "path": "$.content", "matches": "\\b[Tt]hai dinner out\\b" },
-      { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)" },
+      { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)|(?:^|[.!?]\\s+|\\n)(?:[Ll]og|[Ss]ave|[Rr]ecord)\\s+(?:(?:this|the proposed)\\s+(?:entry|meal)|these\\s+(?:entries|meals)|both|it)\\b[^.!?\\n]*\\?" },
       { "path": "$.content", "excludes": "Did you cook lunch" },
       { "path": "$.content", "excludes": "did you cook lunch" }
     ]],
@@ -679,11 +679,11 @@
       [
         { "path": "$.content", "matches": "\\b(?:[Nn]o (?:saved )?(?:meal )?plan(?:ned)?|[Nn]othing (?:is )?planned|(?:don.t|do not|couldn.t|could not|can.t|cannot) (?:find|have|see)[^.!?\\n]*plan)\\b" },
         { "path": "$.content", "matches": "\\b[Ll]unch\\b" },
-        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Ww]hat did you have(?=\\s+for (?:breakfast|lunch|dinner|snack)\\b|\\s*\\?)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
         { "path": "$.content", "matches": "\\b(?:servings?|portions?|how much)\\b" }
       ],
       [
-        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
+        { "path": "$.content", "matches": "\\b(?:[Mm]anual|[Ww]hat (?:did you |you )?(?:eat|ate|had)|[Ww]hat did you have(?=\\s+for (?:breakfast|lunch|dinner|snack)\\b|\\s*\\?)|[Tt]ell me[^.!?\\n]*(?:meal|ate|eat))\\b" },
         { "path": "$.content", "matches": "\\b(?:servings?|portions?|how much)\\b" }
       ]
     ],
@@ -1209,7 +1209,7 @@
         { "path": "$.content", "matches": "\\b(?:1|[Oo]ne)\\s+servings?\\b|\\b[Ss]ervings?[\\s*_:=-]+1\\b" },
         { "path": "$.content", "matches": "\\b(?:[Cc]ooked at home|[Hh]ome[- ]cooked|[Cc]ooked[\\s*_:=-]+(?:[Yy]es|[Tt]rue))\\b" },
         { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:[Nn]ot\\s+(?:cooked at home|home[- ]cooked)|[Cc]ooked(?: at home)?[\\s*_:=-]*(?:[Nn]o|[Ff]alse))\\b)" },
-        { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)" }
+        { "path": "$.content", "matches": "\\b(?:[Pp]lease\\s+confirm\\b|[Cc]onfirm\\b[^?\\n]*\\?|(?:[Ss]hall I|[Ss]hould I|[Cc]an I|[Mm]ay I|[Ww]ant me to|[Ww]ould you like me to)[^?\\n]*\\b(?:log|save|record|proceed)\\b[^?\\n]*\\?)|(?:^|[.!?]\\s+|\\n)(?:[Ll]og|[Ss]ave|[Rr]ecord)\\s+(?:(?:this|the proposed)\\s+(?:entry|meal)|these\\s+(?:entries|meals)|both|it)\\b[^.!?\\n]*\\?" }
       ]
     ],
     "skills": ["chef-meal-logging"],
