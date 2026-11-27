@@ -77,6 +77,7 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
       const launched = await rep.runTurn({ prompt: rep.expand(prompt), session, resume: index > 0, model, timeoutMs: TURN_TIMEOUT_MS });
       fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.${launched.ext}`), launched.transcript);
       if (launched.stderr) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.stderr.txt`), launched.stderr);
+      if (launched.modelEvidence) fs.writeFileSync(path.join(logDir, `${row.id}-${number}-${index + 1}.model.json`), `${JSON.stringify(launched.modelEvidence, null, 2)}\n`);
       const turn = harness.project(launched.transcript);
       const observed = rep.evidence.collect(path.join(logDir, `${row.id}-${number}-${index + 1}.executions.json`));
       verifiedRuns.push(...observed);
@@ -87,7 +88,7 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
         if (index >= 0) candidates.splice(index, 1);
       }
       const scriptRuns = [...observed, ...candidates];
-      Object.assign(run, { model: run.model ?? turn.model ?? model ?? 'harness default', cost_usd: run.cost_usd + (turn.cost_usd ?? 0) });
+      Object.assign(run, { model: run.model ?? launched.model ?? turn.model ?? model ?? 'harness default', cost_usd: run.cost_usd + (turn.cost_usd ?? 0) });
       run.skills.push(...turn.skills);
       run.scriptRuns.push(...scriptRuns);
       run.toolCalls.push(...turn.toolCalls);
@@ -95,6 +96,9 @@ export async function runRep(row, number, { harness, model, judgeModel, judgeCal
       if (executionError) {
         const cause = { ...executionError, message: `turn ${index + 1}: ${executionError.message} (see ${row.id}-${number}-${index + 1}.${launched.ext})` };
         throw Object.assign(new Error(cause.message), { invalid: cause });
+      }
+      if (harness.name === 'codex' && !launched.model) {
+        throw new Error(`turn ${index + 1}: Codex model evidence unavailable: ${launched.modelEvidence?.error ?? 'launcher did not report an observed model'}`);
       }
       if (index + 1 === (row.judge?.turn ?? row.turns.length)) {
         judgePrompt = rep.expand(prompt);
