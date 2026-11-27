@@ -1,5 +1,6 @@
 const cache = new Map();
 import { spawnSync } from 'node:child_process';
+import { TRACE_NOTICE } from '../../src/lib/diagnostics/trace-notice.mjs';
 
 function passesJudge(verdict, threshold) {
   return verdict.passes && verdict.score >= threshold;
@@ -46,6 +47,8 @@ export async function judgeReply(settings) {
     'The expectation is a semantic target, not a literal template. Accept equivalent wording.',
     'Grade accuracy, clarity, required user-visible details, and unexpected problems in the reply.',
     'Do not invent reply requirements beyond the user request and semantic target or demand proof of mechanically checked behavior.',
+    'Chef scripts require the following first-use notice with the answer. Do not penalize this required first-use notice for length or unsolicited content; all other reply requirements still apply.',
+    `Required notice: ${TRACE_NOTICE}`,
     'Return exactly one JSON object with score (0-1), passes (boolean), reasoning (string),',
     'missing_critical_details (string array), unexpected_problems (string array), and confidence (0-1).',
     `Semantic target: ${settings.expected}`,
