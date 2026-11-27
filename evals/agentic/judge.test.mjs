@@ -66,7 +66,7 @@ test('pasted-recipe judge grades the reply, not storage proof or unsolicited fin
     threshold: row.judge.threshold,
     callJudge: async (prompt) => {
       assert.match(prompt, /semantic target, not a literal template/i);
-      assert.match(prompt, /save confirmation.*enrichment/i);
+      assert.match(prompt, /confirms that Tomato Lentil Soup was saved.*ignore enrichment details, notices/i);
       assert.match(prompt, /findability.*checked mechanically/i);
       assert.match(prompt, /do not require.*how to find.*ingredients or steps/i);
       assert.match(prompt, /do not penalize.*required first-use notice/i);
