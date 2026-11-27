@@ -17,6 +17,7 @@
     "smoke": "node scripts/bundle-smoke.mjs",
     "hygiene": "node scripts/hygiene.mjs",
     "agentic": "node evals/agentic/run.mjs",
+    "agentic:progress": "node evals/agentic/progress.mjs",
     "agentic:verify": "node evals/agentic/verify.mjs",
     "agentic:smoke": "node evals/agentic/smoke.mjs"
   },
