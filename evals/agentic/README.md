@@ -53,7 +53,7 @@ pass counts or turn valid executions into invalid ones.
 
 The judge receives Chef's exact required first-use invocation-trace notice as
 product context. Scripts instruct the agent to show it verbatim with the answer;
-its length is not unsolicited content. This does not excuse internal paths,
+its length is not unsolicited content. This does not excuse internal paths or
 planning details. The interrupted Codex
 attempt on `66158672e5b42a913eb5bc6ec1c44e6386856500` remains failed under
 its original judge prompt. Its recipe confirmation exposed an absolute
