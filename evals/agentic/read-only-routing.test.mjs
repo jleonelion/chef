@@ -42,11 +42,11 @@ async function replay(t, row, act) {
         env, skillsDir,
         async runTurn() {
           const scriptRuns = [];
-          const invoke = (skill, script, args) => {
+          const invoke = (skill, script, args, input) => {
             scriptRuns.push({ script: `scripts/${script}`, args });
             const result = spawnSync(process.execPath, [
               path.join(skillsDir, skill, 'scripts', script), ...args,
-            ], { env, encoding: 'utf8' });
+            ], { env, encoding: 'utf8', input: input === undefined ? undefined : JSON.stringify(input) });
             assert.ok([0, 2].includes(result.status), result.stderr);
             return JSON.parse(result.stdout);
           };
@@ -74,11 +74,11 @@ test('dietary refusal permits relevant skill reads after checking the real recip
   assert.equal(run.outcome, 'pass', JSON.stringify(run.failures ?? run.invalid));
 });
 
-test('dietary refusal requires its gate and rejects plan writes or override-bearing reads', () => {
+test('dietary refusal requires its gate and rejects override-bearing or non-read calls', () => {
   const search = { script: 'scripts/recipe-search.mjs', args: ['search'] };
   assert.throws(() => checkScripts([], dairyRefusal.scripts), /recipe-search.mjs search did not run/);
   for (const run of [
-    { script: 'scripts/meal-planning.mjs', args: ['plan', '--week-start', '2026-01-19'] },
+    { script: 'scripts/meal-planning.mjs', args: ['plan', '--week-start', '2026-01-19', '--override', 'Alex Example:dairy'] },
     { script: 'scripts/recipe-search.mjs', args: ['search', '--override', 'Alex Example:dairy'] },
     { script: 'scripts/meal-planning.mjs', args: ['today', '--override=Alex Example:dairy'] },
     { script: 'scripts/inventory.mjs', args: ['edit', '--path', 'fridge.dairy.whole_milk', '--amount', '0'] },
@@ -89,6 +89,29 @@ test('dietary refusal requires its gate and rejects plan writes or override-bear
   for (const reply of ['', 'I cannot do that.', dairyRefusalReply.replace('Creamy Tomato Soup', 'Another recipe'), dairyRefusalReply.replace('dairy', 'sesame')]) {
     assert.throws(() => checkResponse(reply, dairyRefusal.responses[0]), (error) => error.check === 'response');
   }
+});
+
+test('dietary refusal permits the refused plan attempt and detects a saved plan', async (t) => {
+  const attempt = (invoke) => {
+    invoke('chef-recipe-search', 'recipe-search.mjs', ['search', '--query', 'creamy tomato soup']);
+    return invoke('chef-meal-planning', 'meal-planning.mjs', ['plan', '--week-start', '2026-01-19'], [
+      { date: '2026-01-19', slot: 'dinner', recipe: 'creamy-tomato-soup' },
+    ]);
+  };
+  const run = await replay(t, dairyRefusal, (index, invoke) => {
+    assert.equal(attempt(invoke).status, 'refused');
+    return { response: dairyRefusalReply, skills: ['chef-recipe-search', 'chef-meal-planning'] };
+  });
+  assert.equal(run.outcome, 'pass', JSON.stringify(run.failures ?? run.invalid));
+  const saved = await replay(t, dairyRefusal, (index, invoke, env) => {
+    attempt(invoke);
+    const plans = path.join(env.CHEF_DATA_ROOT, 'knowledge/wiki/meal-plans');
+    fs.mkdirSync(plans, { recursive: true });
+    fs.writeFileSync(path.join(plans, '2026-01-19.md'), 'saved\n');
+    return { response: dairyRefusalReply, skills: ['chef-recipe-search', 'chef-meal-planning'] };
+  });
+  assert.equal(saved.outcome, 'failed', JSON.stringify(saved.invalid));
+  assert.ok(saved.failures.some(({ check }) => check === 'files'), JSON.stringify(saved.failures));
 });
 
 test('dietary refusal protects stored data, household rules and settings', async (t) => {

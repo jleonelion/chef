@@ -543,7 +543,7 @@
       ]
     ],
     "skills": ["chef-meal-planning"],
-    "scripts": { "forbidden": ["scripts/meal-planning.mjs"] },
+    "scripts": { "forbiddenFlags": ["--override"] },
     "files": [
       { "path": "knowledge/wiki/meal-plans", "count": 0 },
       {
@@ -602,7 +602,8 @@
       "allowedCalls": [
         { "script": "scripts/recipe-search.mjs", "args": ["search"] },
         { "script": "scripts/recipe-search.mjs", "args": ["show"] },
-        { "script": "scripts/meal-planning.mjs", "args": ["today"] }
+        { "script": "scripts/meal-planning.mjs", "args": ["today"] },
+        { "script": "scripts/meal-planning.mjs", "args": ["plan"] }
       ],
       "forbiddenFlags": ["--override"]
     },
@@ -1075,14 +1076,14 @@
     "skills": ["chef-meal-planning"],
     "scripts": { "required": ["scripts/meal-planning.mjs"] },
     "turnScripts": [
-      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] },
-      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] },
-      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] },
+      { "forbiddenFlags": ["--override"] },
+      { "forbiddenFlags": ["--override"] },
+      { "forbiddenFlags": ["--override"] },
       {
         "requiredCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"], "flags": { "--week-start": ["2026-01-19"], "--override": ["Alex Example:dairy"] } }],
         "allowedFlagValues": { "--override": ["Alex Example:dairy"], "--week-start": ["2026-01-19"] }
       },
-      { "forbiddenCalls": [{ "script": "scripts/meal-planning.mjs", "args": ["plan"] }], "forbiddenFlags": ["--override", "--week-start"] }
+      { "forbiddenFlags": ["--override"] }
     ],
     "turnFiles": [
       [
