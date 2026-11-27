@@ -348,6 +348,16 @@ reuse consent; a final unoverridden search must still exclude the recipe.
 Turn-boundary checks catch changes that a later turn restores, but cannot
 observe writes restored within a single turn.
 
+Dietary refusal rows (`dairy-constraint-present-refuses`, `dietary-should-not-act`
+and the pre-consent turns of the override row) permit a `meal-planning.mjs plan`
+call without `--override`. The skill's documented refusal path runs `plan` and
+reads `status: refused`; a prompt that says "save it" makes that attempt the
+expected agent behavior. The gate refuses it and writes nothing. Zero saved
+plans, per-turn protected-state snapshots and clean history still fail any real
+save, and every `--override` flag remains forbidden before eligible assent.
+The Codex run on `0667926` failed the first of these rows only on the call
+allowlist; its archived summary stays unchanged.
+
 Synthetic trajectory regressions run the real lookup, planning and search
 scripts. They cover early writes, missing assent, wrong-member assent,
 early search overrides, persisted metadata and later reuse. A scripted judge
