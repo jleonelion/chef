@@ -28,9 +28,10 @@ bun run agentic --harness codex --judge-harness claude --judge-model <model> --r
 Authenticate Claude Code, Codex or Copilot before the run. Supported choices are `claude`, `codex` and `copilot`. There is no `OPENAI_API_KEY` fallback. Empty, malformed, unavailable or errored judge output fails that row; never retry a failed or invalid repetition.
 
 Judge targets describe reply quality, not proof of file writes or search results.
-For `chef-add-recipe-pasted-text`, the reply confirms the saved title and reports
-enrichment, as `chef-add-recipe` instructs. It need not explain how to find the
-recipe or repeat ingredients and steps. The row checks search separately.
+For `chef-add-recipe-pasted-text`, the reply confirms the saved title without filesystem paths or links.
+Enrichment details, notices and other extras are not judged, and the reply need
+not explain how to find the recipe or repeat ingredients and steps. The row
+checks storage, a clean committed tree and search mechanically.
 It requires exactly five raw sources, four fixture files plus one new source,
 and checks the new source's name, ingredients and steps. A count check's optional
 `pattern` filters relative file names; its `assertions` check every matched file's
