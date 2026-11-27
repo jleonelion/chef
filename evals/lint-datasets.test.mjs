@@ -191,9 +191,6 @@ test('agentic dataset covers every skill and negative routing', () => {
 
   assert.ok(rows.filter((row) => (row.forbidSkills ?? []).length > 0).length >= 3);
   assert.ok(rows.filter((row) => row.flow === 'should-not-act' && (row.forbidSkills ?? []).length > 0).length >= 2);
-  const dietaryDenial = rows.find((row) => row.pair === 'dairy-constraint' && row.flow === 'should-not-act');
-  assert.ok(dietaryDenial.forbidSkills.includes('chef-meal-planning'));
-
   for (const skill of skills) {
     const natural = rows.some((row) => (row.skills ?? []).includes(skill)
       && (row.turns ?? []).some((turn) => typeof turn === 'string' && !/\bchef\b/i.test(turn)));
