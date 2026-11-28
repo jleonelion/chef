@@ -72,7 +72,16 @@ test('dormant health-goal check-in rejects invented targets regardless of groupi
   ]) {
     assert.throws(() => checkResponse(`${noGoal} ${target}`, dormant.responses[0]), (error) => error.check === 'response', target);
   }
-  for (const response of ['', 'Everything looks fine.', 'Your goal is Lower sodium.']) {
+  for (const reply of [
+    "You don't have a Chef health goal or daily targets set.\n\nChef log: nothing written.",
+    'You don\u2019t have a Chef health goal set.',
+    'You do not have any goal declared.',
+    'There is no goal or targets saved.',
+    'I see no Chef health goal on file.',
+    'Your goal is not currently set.',
+    "You haven't set a health goal.",
+  ]) checkResponse(reply, dormant.responses[0]);
+  for (const response of ['', 'Everything looks fine.', 'Your goal is Lower sodium.', 'You have a goal set: Lower sodium.', "You don't have to worry; your goal is Lower sodium."]) {
     assert.throws(() => checkResponse(response, dormant.responses[0]), (error) => error.check === 'response', response);
   }
 });

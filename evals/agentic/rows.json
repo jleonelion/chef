@@ -813,7 +813,7 @@
       [
         {
           "path": "$.content",
-          "matches": "\\b(?:[Nn]o (?:health |nutrition )?goal|(?:haven.t|have not|hasn.t|has not|isn.t|is not|not) (?:been )?(?:set|saved|declared)[^.!?\\n]*goal|(?:health |nutrition )?goal[^.!?\\n]*(?:not (?:set|saved|declared)|unset))\\b"
+          "matches": "\\b(?:[Nn]o (?:[\\w-]+ ){0,3}goal|(?:[Dd]on.t|[Dd]o not|[Dd]oesn.t|[Dd]oes not) (?:currently )?(?:have|has) (?:an? |any )?(?:[\\w*-]+ ){0,4}goal|(?:haven.t|have not|hasn.t|has not|isn.t|is not|not) (?:currently )?(?:been )?(?:set|saved|declared)[^.!?\\n]*goal|(?:health |nutrition )?goal[^.!?\\n]*(?:not (?:currently )?(?:set|saved|declared)|unset))\\b"
         },
         {
           "path": "$.content",
@@ -1019,7 +1019,7 @@
     "responses": [
       [
         { "path": "$.content", "includes": "receipts@example.com" },
-        { "path": "$.content", "matches": "\\b[Rr]eceipt intake (?:is|was)[\\s*_]*(?:currently |now )?(?:off|disabled|turned off|not enabled)\\b" }
+        { "path": "$.content", "matches": "\\b[Rr]eceipt[ -]intake (?:(?:is|was|remains|has been)[\\s*_]*(?:currently |now |still )?(?:off|disabled|turned off|switched off|not enabled|not turned on|inactive)|(?:isn.t|is not)[\\s*_]*(?:currently )?(?:enabled|on|turned on))\\b" }
       ]
     ],
     "skills": ["chef-food-inventory"],
@@ -1221,7 +1221,7 @@
       [
         { "path": "$.content", "matches": "\\b(?:2026-01-21|[Jj]an(?:uary)?\\.?\\s+21(?:st)?(?:,?\\s+2026\\b|(?!,?\\s+\\d{4}))|21(?:st)?\\s+[Jj]an(?:uary)?\\.?(?:,?\\s+2026\\b|(?!,?\\s+\\d{4})))\\b" },
         { "path": "$.content", "matches": "\\b[Ll][Uu][Nn][Cc][Hh]\\b" },
-        { "path": "$.content", "includes": "Chickpea Spinach Stew" },
+        { "path": "$.content", "matches": "\\b[Cc]hickpea[ -][Ss]pinach[ -][Ss]tew\\b" },
         { "path": "$.content", "matches": "\\b(?:1|[Oo]ne)\\s+servings?\\b|\\b[Ss]ervings?[\\s*_:=|-]+1\\b" },
         { "path": "$.content", "matches": "\\b(?:[Cc]ooked at home|[Hh]ome[- ]cooked|[Cc]ooked[\\s*_:=-]+(?:[Yy]es|[Tt]rue))\\b" },
         { "path": "$.content", "matches": "^(?![\\s\\S]*\\b(?:[Nn]ot\\s+(?:cooked at home|home[- ]cooked)|[Cc]ooked(?: at home)?[\\s*_:=-]*(?:[Nn]o|[Ff]alse))\\b)" },

@@ -27,10 +27,17 @@ test('receipt-intake-off row accepts capitalization and disabled wording', () =>
   const id = 'chef-food-inventory-receipt-intake-off-refused';
   const [, intake] = checks(id);
   const pattern = new RegExp(intake.matches);
-  for (const reply of ['receipt intake is off', 'Receipt intake is off.', 'Email receipt intake is disabled', 'receipt intake is **off**']) {
+  for (const reply of ['receipt intake is off', 'Receipt intake is off.', 'Email receipt intake is disabled', 'receipt intake is **off**', "Receipt intake isn't enabled", 'receipt-intake is currently turned off', 'Receipt intake remains disabled']) {
     assert.match(reply, pattern, reply);
   }
   assert.doesNotMatch('Receipt intake is on.', pattern);
+  assert.doesNotMatch('Receipt intake is enabled.', pattern);
+});
+
+test('meal-log confirm row accepts lowercase recipe name', () => {
+  const id = 'chef-meal-logging-direct-entry-confirms-before-write';
+  assert.ok(accepts(id, 'Log 1 serving of chickpea spinach stew for lunch on 2026-01-21, cooked at home? Reply yes to confirm.'));
+  assert.ok(!accepts(id, 'Log 1 serving of lentil soup for lunch on 2026-01-21, cooked at home? Reply yes to confirm.'));
 });
 
 test('logging rows accept dates without a year and table servings', () => {
