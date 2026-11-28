@@ -4,7 +4,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { currentProvenance, relevantChangesSince, verifyProvenance } from './provenance.mjs';
 import { validateResult } from './result-schema.mjs';
-import { mergeHostRuns } from './evidence-merge.mjs';
+import { formatAttemptTable, mergeHostRuns } from './evidence-merge.mjs';
 import { verifyReleaseEvidence } from './release-check.mjs';
 import { selectRows } from './selection.mjs';
 
@@ -21,9 +21,10 @@ const { values, positionals } = parseArgs({
     release: { type: 'boolean' },
     'exception-file': { type: 'string' },
     'allow-cli-drift': { type: 'boolean' },
+    report: { type: 'boolean' },
   },
 });
-if (positionals.length < 1) throw new Error('usage: bun run agentic:verify <result.json> [<result.json> ...] [--release] [--reps N] [--rows id,id] [--known-failures] [--gates-only] [--candidates] [--harness name] [--exception-file <json>] [--allow-cli-drift]');
+if (positionals.length < 1) throw new Error('usage: bun run agentic:verify <result.json> [<result.json> ...] [--release] [--reps N] [--rows id,id] [--known-failures] [--gates-only] [--candidates] [--harness name] [--exception-file <json>] [--allow-cli-drift] [--report]');
 
 const allRows = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'rows.json'), 'utf8'));
 
@@ -61,6 +62,7 @@ if (values.release) {
   ]);
   const mergeProblems = [];
   const notes = [];
+  const tables = [];
   const evidence = [];
   if (!provenanceProblems.length) {
     for (const host of evidenceHosts) {
@@ -73,6 +75,7 @@ if (values.release) {
       evidence.push(merge.merged);
       mergeProblems.push(...merge.problems);
       notes.push(...merge.notes);
+      if (values.report) tables.push(...formatAttemptTable(host, merge.table));
     }
   }
   const checked = verifyReleaseEvidence({
@@ -83,6 +86,7 @@ if (values.release) {
     reps,
     exceptions,
   });
+  if (values.report) console.log(['host | row | run | attempt | status', ...tables].join('\n'));
   for (const note of notes) console.log(`note: ${note}`);
   for (const failure of checked.failures) console.error(`error: ${failure}`);
   for (const problem of [...provenanceProblems, ...mergeProblems]) console.error(`error: ${problem}`);

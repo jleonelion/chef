@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mergeHostRuns } from './evidence-merge.mjs';
+import { formatAttemptTable, mergeHostRuns } from './evidence-merge.mjs';
 import { verifyReleaseEvidence } from './release-check.mjs';
 
 const TREE = `sha256:${'a'.repeat(64)}`;
@@ -82,4 +82,14 @@ test('summaries without tree_sha cannot be combined', () => {
   const legacy = run('a', '2026-01-01T00:00:00.000Z', [passRow('one')], { tree_sha: undefined });
   const { problems } = mergeHostRuns('codex', [legacy, run('b', '2026-01-02T00:00:00.000Z', [passRow('two')], { tree_sha: undefined })], options);
   assert.ok(problems.some((problem) => problem.includes('tree_sha')));
+});
+
+test('the attempt table lists every attempt and marks counted, superseded and missing rows', () => {
+  const runs = [run('a', '2026-01-01T00:00:00.000Z', [{ ...invalidRow('one'), passes: '2/2' }]), run('b', '2026-01-02T00:00:00.000Z', [{ ...passRow('one'), passes: '3/3' }])];
+  const lines = formatAttemptTable('codex', mergeHostRuns('codex', runs, options).table);
+  assert.deepEqual(lines, [
+    'codex | one | a | invalid 2/2 (timeout) | superseded',
+    'codex | one | b | pass 3/3 | counted',
+    'codex | two | - | no attempt | missing',
+  ]);
 });

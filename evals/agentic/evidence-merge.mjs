@@ -97,5 +97,25 @@ export function mergeHostRuns(host, runs, { requiredRows, reps, acknowledged = [
     invalid: rows.some((row) => row.invalid_reps > 0),
     rows,
   };
-  return { merged, problems, notes };
+  const table = requiredRows.map((id) => ({
+    id,
+    attempts: (attempts.get(id) ?? []).map((attempt) => ({
+      file: attempt.file,
+      date: attempt.date,
+      kind: attempt.kind,
+      passes: attempt.row.passes ?? `${attempt.row.valid_reps}/${attempt.row.valid_reps}`,
+      invalid: [...new Set((attempt.row.invalid ?? []).map((cause) => cause.kind))],
+      chosen: chosen.get(id) === attempt,
+    })),
+  }));
+  return { merged, problems, notes, table };
+}
+
+// One line per attempt, ordered by row, so the PR body can show how each row's evidence was assembled.
+export function formatAttemptTable(host, table) {
+  return table.flatMap(({ id, attempts }) =>
+    attempts.length
+      ? attempts.map((a) => `${host} | ${id} | ${a.file} | ${a.kind} ${a.passes}${a.invalid.length ? ` (${a.invalid.join(', ')})` : ''} | ${a.chosen ? 'counted' : 'superseded'}`)
+      : [`${host} | ${id} | - | no attempt | missing`],
+  );
 }
