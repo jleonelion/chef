@@ -71,6 +71,15 @@ Ignored `*.result.json` files preserve complete per-repetition judge verdicts
 before the console reports them. They may contain raw tool inputs and stay
 local with transcripts, never in the committed archive.
 
+Codex launcher version 5 observes the selected model slug from its own session
+`turn_context` before repetition cleanup. It does not override the host's default.
+Compact `*.model.json` files retain the model, session and turn IDs and relative
+rollout path, not rollout contents. The observed model enters the result's
+`models` list. Missing, stale, malformed or ambiguous model evidence invalidates
+an otherwise completed turn; process and subscription-limit errors retain their
+original classification. This records the CLI-selected slug, not an undisclosed
+server-side model revision.
+
 ## Monitoring a run
 
 `bun run agentic:progress -- --watch 10` reports any running `run.mjs` on the machine,
