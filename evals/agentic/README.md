@@ -114,7 +114,7 @@ Rules for combining runs (`evals/agentic/evidence-merge.mjs`); verification comp
 - Infra-invalid versus behavioral: invalid repetitions (`rate_limit`, `timeout`, `process`, `transcript`, `harness`) only make an attempt non-qualifying. A behavioral or judge failure on the same tree stays on record: even after a later 3/3 pass, release verification fails until the exception file acknowledges the row.
 - Every row must have a qualifying attempt; missing rows fail the gate.
 
-Commit every summary, including failed and partial ones, under `evals/agentic/archive/`. Use the optional exception file for maintainer approvals. It is either an array of host exceptions or an object with both lists:
+Commit only summaries that supply passing rows to the release evidence (a partial run's passing rows count) under `evals/agentic/archive/`; failed, invalid and wholly unsuccessful summaries stay local and untracked. Still pass local failed runs of the same tree to `agentic:verify` so their failures stay visible; `--report` prints one line per row attempt (run, outcome, passes, invalid causes, counted or superseded) for the PR body. Use the optional exception file for maintainer approvals. It is either an array of host exceptions or an object with both lists:
 
 ```json
 {
