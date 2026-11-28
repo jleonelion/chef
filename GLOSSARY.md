@@ -76,6 +76,22 @@ _Avoid_: stable row, CI row
 An agentic eval row that is not gated yet but runs in scheduled checks to collect promotion evidence; candidate failures are reported and do not block the job.
 _Avoid_: experimental row, canary row
 
+**Repetition**:
+One independent execution of an eval row against a fresh copy of the fixture data. It is a valid pass, a valid behavioral failure, or invalid.
+_Avoid_: retry, trial
+
+**Attempt**:
+One run of an eval row with all of its repetitions. Rerunning a row is a new attempt; earlier attempts stay on record and are never replaced silently.
+_Avoid_: retry
+
+**Invalid repetition**:
+A repetition that says nothing about Chef's behavior because the environment failed, such as a usage limit or a timeout. It is neither a pass nor a behavioral failure.
+_Avoid_: flaky, skipped
+
+**Release evidence**:
+The eval results that must hold for the exact tree being released: every row passing all repetitions, possibly across several attempts on that tree.
+_Avoid_: release run, CI result
+
 **Semantic target**:
 The user-visible facts and qualities a judge-scored reply should satisfy without prescribing its wording.
 _Avoid_: expected answer, answer template

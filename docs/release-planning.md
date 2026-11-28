@@ -73,6 +73,14 @@ to tag, and ensure the fixes also reach main. This is an exception to GitHub
 flow, not an ongoing maintenance branch or a promise to support older release
 lines. Complete [RELEASE-CHECKLIST.md](../RELEASE-CHECKLIST.md) for either path.
 
+Agentic release evidence is per row, not per run: each row needs 3/3 valid
+passing repetitions on the evaluated tree, and several archived runs of a host
+may be combined (see [evals/agentic/README.md](../evals/agentic/README.md#release-evidence)).
+Infrastructure-invalid repetitions such as usage limits or timeouts are recorded
+and rerun, never counted as passes. Behavioral failures stay on record and need
+maintainer acknowledgement. Changing the evaluated tree, for example by fixing a
+row, makes earlier runs stale.
+
 ## Feedback triage
 
 For each feedback record, consider whether it calls for a Chef change, an
