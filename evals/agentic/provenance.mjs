@@ -39,6 +39,15 @@ export function relevantChangesSince(repo, commit) {
   return changedFiles(repo, ['diff', '--name-only', `${commit}..HEAD`]);
 }
 
+// Hash of the committed relevant files, so evidence stays valid across commits that only touch docs or archives.
+export function treeSha(repo) {
+  const entries = git(repo, 'ls-tree', '-r', 'HEAD', '--', ...RELEVANT_PATHS)
+    .split('\n')
+    .filter(Boolean)
+    .filter((line) => !evidencePath(line.split('\t')[1]));
+  return `sha256:${createHash('sha256').update(entries.join('\n')).digest('hex')}`;
+}
+
 export function sha256File(file) {
   return `sha256:${createHash('sha256').update(fs.readFileSync(file)).digest('hex')}`;
 }
@@ -62,6 +71,7 @@ export function currentProvenance(repo) {
   const plugin = JSON.parse(fs.readFileSync(path.join(repo, 'plugins', 'chef', '.claude-plugin', 'plugin.json'), 'utf8'));
   return {
     commit: git(repo, 'rev-parse', 'HEAD'),
+    tree_sha: treeSha(repo),
     commit_dirty: relevantStatus(repo).length > 0,
     plugin_version: plugin.version,
     dataset_sha: sha256File(path.join(repo, 'evals', 'agentic', 'rows.json')),
@@ -79,7 +89,9 @@ export function verifyProvenance({ result, current, expectedRows, expectedReps, 
   const mismatch = (name, found, expected) => problems.push(`${name}: result has ${JSON.stringify(found)}, expected ${JSON.stringify(expected)}`);
   if (result.commit_dirty) problems.push('commit_dirty: result was produced from a dirty relevant tree');
   if (current.commit_dirty) problems.push('working tree: relevant files have uncommitted changes');
-  if (changesSince.length) problems.push(`evaluated commit: relevant files changed since ${result.commit}: ${changesSince.join(', ')}`);
+  if (result.tree_sha !== undefined) {
+    if (result.tree_sha !== current.tree_sha) mismatch('tree_sha', result.tree_sha, current.tree_sha);
+  } else if (changesSince.length) problems.push(`evaluated commit: relevant files changed since ${result.commit}: ${changesSince.join(', ')}`);
   for (const key of ['plugin_version', 'dataset_sha', 'fixture_sha']) if (result[key] !== current[key]) mismatch(key, result[key], current[key]);
   if (JSON.stringify(result.selected_rows) !== JSON.stringify(expectedRows)) mismatch('selected_rows', result.selected_rows, expectedRows);
   if (result.rows_selected !== expectedRows.length) mismatch('rows_selected', result.rows_selected, expectedRows.length);

@@ -97,22 +97,33 @@ and skipped; this is not a general shell interpreter.
 
 ## Release evidence
 
-Use a clean prepared release tree and run the entire agentic dataset 3/3 on each local launcher:
+Use a clean prepared release tree. Every row needs 3/3 valid, passing repetitions on the same evaluated tree on each local launcher. One uninterrupted full run is the simple case. Usage limits and infrastructure errors often interrupt a run, so the evidence may span several archived runs of one host:
 
 ```sh
-bun run agentic --harness codex --judge-harness claude --judge-model <model> --reps 3
-bun run agentic --harness claude --judge-harness claude --judge-model <model> --reps 3
-bun run agentic --harness copilot --judge-harness claude --judge-model <model> --reps 3
-bun run agentic:verify --release <codex.json> <claude.json> <copilot.json> --reps 3
+bun run agentic --harness codex --judge-harness claude --judge-model <model> --reps 3 --fail-fast --concurrency 1
+# interrupted or failed: run only the failed row and the rows that never ran, in a new run
+bun run agentic --harness codex --judge-harness claude --judge-model <model> --reps 3 --rows <id>,<id> --fail-fast --concurrency 1
+bun run agentic:verify --release <codex-run>.json <codex-rerun>.json <claude.json> <copilot.json> --reps 3
 ```
 
-Commit summaries and use an optional exception file only for a maintainer-approved subscription-limit exception:
+Rules for combining runs (`evals/agentic/evidence-merge.mjs`); verification computes the merge on the fly and writes no derived file:
+
+- Same tree: every summary carries `tree_sha`, a hash of the committed relevant files (archives and docs excluded). All runs of a host must share it, plus plugin version, dataset and fixture hashes, launcher and CLI version (`--allow-cli-drift` relaxes only the CLI version), observed models, repetitions and judge identity. A row-criteria or product fix changes the tree and makes older runs stale. Summaries without `tree_sha` can only be verified alone.
+- Attempt: one run of a row with all its repetitions. Repetitions are never mixed across runs and never retried inside a run; rerunning a row is a fresh, recorded attempt.
+- The latest valid (non-invalid) attempt of a row wins. An invalid attempt never supersedes a valid one and never counts as a pass, even when the agent behaved correctly (for example a turn timeout or a usage limit). Verification lists every superseded attempt as a `note:`.
+- Infra-invalid versus behavioral: invalid repetitions (`rate_limit`, `timeout`, `process`, `transcript`, `harness`) only make an attempt non-qualifying. A behavioral or judge failure on the same tree stays on record: even after a later 3/3 pass, release verification fails until the exception file acknowledges the row.
+- Every row must have a qualifying attempt; missing rows fail the gate.
+
+Commit only summaries that supply passing rows to the release evidence (a partial run's passing rows count) under `evals/agentic/archive/`; failed, invalid and wholly unsuccessful summaries stay local and untracked. Still pass local failed runs of the same tree to `agentic:verify` so their failures stay visible; `--report` prints one line per row attempt (run, outcome, passes, invalid causes, counted or superseded) for the PR body. Use the optional exception file for maintainer approvals. It is either an array of host exceptions or an object with both lists:
 
 ```json
-[{ "host": "codex", "approved_by": "maintainer", "reason": "subscription limit", "missing_rows": ["row-id"] }]
+{
+  "exceptions": [{ "host": "codex", "approved_by": "maintainer", "reason": "subscription limit", "missing_rows": ["row-id"] }],
+  "acknowledged": [{ "host": "codex", "row": "row-id", "approved_by": "maintainer", "reason": "row criteria fixed in #264" }]
+}
 ```
 
-An exception is not a pass and must identify missing coverage. Raw transcripts and credentials remain local.
+A host exception is not a pass and must identify missing coverage. An acknowledgement only covers an earlier behavioral failure of a row that later passed on the same tree. Raw transcripts and credentials remain local.
 
 ### Installed-script evidence
 
